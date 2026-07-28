@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+@variant high-contrast (&:where(.high-contrast, .high-contrast *));
+
+@keyframes gradePulse {
+  0% { transform: scale(1); background-color: rgba(99, 102, 241, 0.25); box-shadow: 0 0 12px rgba(99, 102, 241, 0.4); }
+  50% { transform: scale(1.06); background-color: rgba(99, 102, 241, 0.4); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); }
+  100% { transform: scale(1); background-color: transparent; box-shadow: none; }
+}
+
+.animate-grade-pulse {
+  animation: gradePulse 1.8s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 20px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-report, #printable-report *,
+  #printable-certificate, #printable-certificate *,
+  #printable-student-transcript, #printable-student-transcript * {
+    visibility: visible;
+  }
+  #printable-report, #printable-certificate, #printable-student-transcript {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
+
+/* ==========================================
+   HTEIM High-Contrast Accessibility Mode
+   ========================================== */
+.high-contrast {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.high-contrast .bg-white,
+.high-contrast .bg-slate-50,
+.high-contrast .bg-slate-100 {
+  background-color: #0a0a0a !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.high-contrast text-slate-900,
+.high-contrast text-slate-800,
+.high-contrast text-slate-700,
+.high-contrast text-slate-600 {
+  color: #ffffff !important;
+}
+
+/* ==========================================
+   HTEIM Premium Dark Mode Theme Overrides
+   ========================================== */
+.dark {
+  background-color: #030712 !important;
+  color: #f9fafb !important;
+}
+
+.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #030712 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1f2937 !important;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1f2937 !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #374151 !important;
+}
+
+/* Borders */
+.dark .border-slate-100 {
+  border-color: #1f2937 !important;
+}
+
+.dark .border-slate-200 {
+  border-color: #374151 !important;
+}
+
+/* Texts */
+.dark .text-slate-900 {
+  color: #f9fafb !important;
+}
+
+.dark .text-slate-800 {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-slate-700 {
+  color: #e5e7eb !important;
+}
+
+.dark .text-slate-600 {
+  color: #d1d5db !important;
+}
+
+.dark .text-slate-500 {
+  color: #9ca3af !important;
+}
+
+.dark .text-slate-400 {
+  color: #6b7280 !important;
+}
+
+/* Form inputs & controls */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  border-color: #374151 !important;
+}
+
+.dark select option {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+/* Tables */
+.dark table {
+  background-color: #111827 !important;
+}
+
+.dark th {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+}
+
+.dark td {
+  border-color: #1f2937 !important;
+}
+
+/* Header style override */
+.dark header {
+  background-image: linear-gradient(to right, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.75), rgba(49, 46, 129, 0.25)) !important;
+  border-color: #334155 !important;
+}
+
+/* Colored track boxes inside HomeTab & courses */
+.dark .bg-emerald-50\/50 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  color: #a7f3d0 !important;
+}
+.dark .border-emerald-200 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+}
+
+.dark .bg-indigo-50\/50 {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #c7d2fe !important;
+}
+.dark .border-indigo-200 {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+.dark .bg-indigo-100 {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  color: #818cf8 !important;
+}
+
+.dark .bg-amber-50\/50 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #fde68a !important;
+}
+.dark .border-amber-200 {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+}
+
+.dark .bg-purple-50\/50 {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+  color: #e9d5ff !important;
+}
+.dark .border-purple-200 {
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+.dark .bg-purple-100 {
+  background-color: rgba(168, 85, 247, 0.2) !important;
+  color: #c084fc !important;
+}
+
+/* Semi-transparent icon circles and stats */
+.dark .bg-indigo-50 {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+.dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+.dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+.dark .bg-rose-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+/* Custom scrollbars */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #4b5563 !important;
+}

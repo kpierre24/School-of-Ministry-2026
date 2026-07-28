@@ -1,0 +1,17 @@
+{
+  "short_name": "HTEIM ERP",
+  "name": "HTEIM School of Ministry ERP & Student Portal",
+  "description": "Official Academic Ministry Portal, Attendance Tracker & Financial Tuition Management System powered by Rockproxy Technologies.",
+  "icons": [
+    {
+      "src": "/hteim_logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait"
+}
