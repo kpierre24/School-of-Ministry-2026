@@ -40,6 +40,10 @@ import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlay
 
 interface LibraryTabProps {
   userRole?: UserRole;
+  resources?: LibraryResource[];
+  setResources?: React.Dispatch<React.SetStateAction<LibraryResource[]>>;
+  classroomMedia?: MediaResource[];
+  setClassroomMedia?: React.Dispatch<React.SetStateAction<MediaResource[]>>;
 }
 
 // Helper to check if text contains raw binary zip code / PK header from DOCX
@@ -102,7 +106,7 @@ const extractCleanTextFromDataUrl = async (dataUrl: string): Promise<string> => 
   }
 };
 
-const INITIAL_RESOURCES: LibraryResource[] = [
+export const INITIAL_RESOURCES: LibraryResource[] = [
   {
     id: 'r1',
     title: 'HTEIM School of Ministry Official Student Handbook 2026',
@@ -179,12 +183,22 @@ const INITIAL_RESOURCES: LibraryResource[] = [
   }
 ];
 
-export const LibraryTab: React.FC<LibraryTabProps> = ({ userRole = 'admin' }) => {
+export const LibraryTab: React.FC<LibraryTabProps> = ({ 
+  userRole = 'admin',
+  resources: propResources,
+  setResources: propSetResources,
+  classroomMedia: propClassroomMedia,
+  setClassroomMedia: propSetClassroomMedia
+}) => {
   const isStudent = userRole === 'student';
-  const [resources, setResources] = useState<LibraryResource[]>(() => {
+
+  const [localResources, setLocalResources] = useState<LibraryResource[]>(() => {
     const saved = localStorage.getItem('hteim_library_resources');
     return saved ? JSON.parse(saved) : INITIAL_RESOURCES;
   });
+
+  const resources = propResources !== undefined ? propResources : localResources;
+  const setResources = propSetResources !== undefined ? propSetResources : setLocalResources;
 
   // Save state to localStorage
   useEffect(() => {
@@ -192,10 +206,13 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ userRole = 'admin' }) =>
   }, [resources]);
 
   // Global classroom sermon & lecture audio/video media player state
-  const [classroomMedia, setClassroomMedia] = useState<MediaResource[]>(() => {
+  const [localClassroomMedia, setLocalClassroomMedia] = useState<MediaResource[]>(() => {
     const saved = localStorage.getItem('hteim_classroom_media');
     return saved ? JSON.parse(saved) : DEFAULT_PRESET_MEDIA;
   });
+
+  const classroomMedia = propClassroomMedia !== undefined ? propClassroomMedia : localClassroomMedia;
+  const setClassroomMedia = propSetClassroomMedia !== undefined ? propSetClassroomMedia : setLocalClassroomMedia;
 
   useEffect(() => {
     localStorage.setItem('hteim_classroom_media', JSON.stringify(classroomMedia));

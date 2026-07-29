@@ -21,7 +21,9 @@ import {
   Play,
   Sliders,
   PenSquare,
-  DollarSign
+  DollarSign,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import { TabType } from '../types';
 import { AppUser } from '../lib/userAuth';
@@ -42,6 +44,11 @@ interface HomeTabProps {
   avgAttendanceRate: number;
   pendingAssignmentsCount?: number;
   uncollectedTuitionAmount?: number;
+  isCloudSyncing?: boolean;
+  cloudSyncError?: string | null;
+  lastSyncedTime?: string | null;
+  onPushToCloud?: () => Promise<void>;
+  userEmail?: string | null;
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -53,7 +60,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   classDaysCount,
   avgAttendanceRate,
   pendingAssignmentsCount = 3,
-  uncollectedTuitionAmount = 2450
+  uncollectedTuitionAmount = 2450,
+  isCloudSyncing = false,
+  cloudSyncError = null,
+  lastSyncedTime = null,
+  onPushToCloud,
+  userEmail = null
 }) => {
   const isStudent = appUser?.role === 'student';
   const [activePillarTab, setActivePillarTab] = useState(0);
@@ -251,6 +263,63 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </div>
           </div>
           
+        </div>
+      </section>
+
+      {/* Prominent Firestore Cloud database synchronization panel */}
+      <section className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 border border-indigo-500/20 rounded-3xl p-5 md:p-6 text-white shadow-xl relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute right-0 top-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold tracking-wider">
+                Firestore Cloud Active
+              </span>
+              {userEmail && (
+                <span className="px-2 py-0.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 rounded-full text-[9px] font-mono font-bold">
+                  👤 Logged in as: {userEmail}
+                </span>
+              )}
+            </div>
+            <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+              Firestore Cloud Database Backup
+            </h3>
+            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+              Your School of Ministry portal is fully linked to your Google Cloud Firestore database: 
+              <code className="bg-slate-950 text-amber-300 px-1.5 py-0.5 rounded ml-1 font-mono text-[10px] select-all border border-slate-800">
+                ai-studio-studentportal-c93c3080-9ed6-4ab3-b27e-c6e6444aa9a8
+              </code>.
+            </p>
+            {lastSyncedTime ? (
+              <p className="text-[11px] text-slate-400 font-medium">
+                ✅ Last successfully backed up: <strong className="text-indigo-300 font-mono">{lastSyncedTime}</strong>. All devices logged into your account will instantly sync this exact data.
+              </p>
+            ) : (
+              <p className="text-[11px] text-amber-300 font-bold flex items-center gap-1.5 animate-pulse">
+                ⚠️ Your Cloud Database is currently empty! Click "Upload Local Data to Cloud" on the right to upload your local records to Firestore now.
+              </p>
+            )}
+          </div>
+          
+          <button
+            onClick={() => onPushToCloud?.()}
+            disabled={isCloudSyncing}
+            className="w-full md:w-auto px-5 py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 flex-shrink-0 border border-amber-300"
+          >
+            {isCloudSyncing ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+            ) : (
+              <Cloud className="w-3.5 h-3.5 text-slate-950" />
+            )}
+            <span>{isCloudSyncing ? "Saving Backup..." : "Upload Local Data to Cloud"}</span>
+          </button>
         </div>
       </section>
 

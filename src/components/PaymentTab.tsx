@@ -44,6 +44,8 @@ interface PaymentTabProps {
   isAdmin: boolean;
   currentStudentName?: string;
   userRole?: string;
+  payments?: PaymentRecord[];
+  setPayments?: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
 }
 
 export const INITIAL_PAYMENTS: PaymentRecord[] = [
@@ -820,7 +822,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   availableStudents, 
   isAdmin, 
   currentStudentName, 
-  userRole = 'admin' 
+  userRole = 'admin',
+  payments: propPayments,
+  setPayments: propSetPayments
 }) => {
   const isStudent = userRole === 'student';
 
@@ -843,7 +847,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   }
 
   // State Management
-  const [payments, setPayments] = useState<PaymentRecord[]>(() => {
+  const [localPayments, setLocalPayments] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('hteim_student_payments');
     if (saved) {
       try {
@@ -914,6 +918,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     }
     return INITIAL_PAYMENTS;
   });
+
+  const payments = propPayments !== undefined ? propPayments : localPayments;
+  const setPayments = propSetPayments !== undefined ? propSetPayments : setLocalPayments;
 
   const [activeSubTab, setActiveSubTab] = useState<'ledger' | 'analytics'>('ledger');
   const [searchQuery, setSearchQuery] = useState('');

@@ -28,9 +28,11 @@ import { UserRole } from '../lib/userAuth';
 
 interface CoursesTabProps {
   userRole?: UserRole;
+  courses?: Course[];
+  setCourses?: React.Dispatch<React.SetStateAction<Course[]>>;
 }
 
-const INITIAL_COURSES: Course[] = [
+export const INITIAL_COURSES: Course[] = [
   {
     id: 'c_main',
     code: 'SOM-CORE',
@@ -124,12 +126,19 @@ const INITIAL_COURSES: Course[] = [
   }
 ];
 
-export const CoursesTab: React.FC<CoursesTabProps> = ({ userRole = 'admin' }) => {
+export const CoursesTab: React.FC<CoursesTabProps> = ({ 
+  userRole = 'admin',
+  courses: propCourses,
+  setCourses: propSetCourses
+}) => {
   const isStudent = userRole === 'student';
-  const [courses, setCourses] = useState<Course[]>(() => {
+  const [localCourses, setLocalCourses] = useState<Course[]>(() => {
     const saved = localStorage.getItem('hteim_courses');
     return saved ? JSON.parse(saved) : INITIAL_COURSES;
   });
+
+  const courses = propCourses !== undefined ? propCourses : localCourses;
+  const setCourses = propSetCourses !== undefined ? propSetCourses : setLocalCourses;
 
   // Persist to localStorage
   useEffect(() => {

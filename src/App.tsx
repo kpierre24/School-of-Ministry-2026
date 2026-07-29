@@ -85,7 +85,7 @@ import {
 import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId } from './lib/sheets';
 import { getDemoAttendance } from './data';
-import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel } from './types';
+import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord } from './types';
 import { AppUser, generateStudentUsername } from './lib/userAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
@@ -93,11 +93,12 @@ import { LoginModal } from './components/LoginModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
 import { StudentsTab } from './components/StudentsTab';
-import { CoursesTab } from './components/CoursesTab';
+import { CoursesTab, INITIAL_COURSES } from './components/CoursesTab';
 import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
-import { ScheduleTab } from './components/ScheduleTab';
-import { LibraryTab } from './components/LibraryTab';
-import { PaymentTab } from './components/PaymentTab';
+import { ScheduleTab, INITIAL_SCHEDULE } from './components/ScheduleTab';
+import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
+import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
+import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { HomeTab } from './components/HomeTab';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
 import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
@@ -311,6 +312,34 @@ export default function App() {
   const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('sheetUrl') || 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=283667804#gid=283667804');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Synchronized States
+  const [courses, setCourses] = useState<Course[]>(() => {
+    const saved = localStorage.getItem('hteim_courses');
+    return saved ? JSON.parse(saved) : INITIAL_COURSES;
+  });
+  const [schedules, setSchedules] = useState<ScheduleItem[]>(() => {
+    const saved = localStorage.getItem('hteim_scheduled_classes');
+    return saved ? JSON.parse(saved) : INITIAL_SCHEDULE;
+  });
+  const [libraryResources, setLibraryResources] = useState<LibraryResource[]>(() => {
+    const saved = localStorage.getItem('hteim_library_resources');
+    return saved ? JSON.parse(saved) : INITIAL_RESOURCES;
+  });
+  const [classroomMedia, setClassroomMedia] = useState<MediaResource[]>(() => {
+    const saved = localStorage.getItem('hteim_classroom_media');
+    return saved ? JSON.parse(saved) : DEFAULT_PRESET_MEDIA;
+  });
+  const [payments, setPayments] = useState<PaymentRecord[]>(() => {
+    const saved = localStorage.getItem('hteim_student_payments');
+    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+  });
+  const [zoomExceptionNote, setZoomExceptionNote] = useState<string>(() => {
+    return localStorage.getItem('hteim_zoom_exception_note') || '';
+  });
+  const [hasZoomException, setHasZoomException] = useState<boolean>(() => {
+    return localStorage.getItem('hteim_has_zoom_exception') === 'true';
+  });
   
   const [records, setRecords] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('attendanceRecords');
@@ -925,6 +954,14 @@ export default function App() {
           if (cloudState.notifications !== undefined) setNotifications(cloudState.notifications);
           if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
           
+          if (cloudState.courses !== undefined) setCourses(cloudState.courses);
+          if (cloudState.schedules !== undefined) setSchedules(cloudState.schedules);
+          if (cloudState.libraryResources !== undefined) setLibraryResources(cloudState.libraryResources);
+          if (cloudState.classroomMedia !== undefined) setClassroomMedia(cloudState.classroomMedia);
+          if (cloudState.payments !== undefined) setPayments(cloudState.payments);
+          if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
+          if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
+          
           if (cloudState.updatedAt) {
             const timeStr = new Date(cloudState.updatedAt).toLocaleTimeString('en-US', { 
               hour: '2-digit', 
@@ -935,6 +972,40 @@ export default function App() {
           }
           setSyncedBannerMessage("☁️ Cloud Sync: Successfully pulled latest school database from Firestore.");
           setTimeout(() => setSyncedBannerMessage(null), 4500);
+        } else if (cloudState === null && active) {
+          // If no cloud data is present, immediately upload the existing local storage database to Firestore
+          const stateToSave = {
+            records,
+            classDays,
+            studentNotes,
+            excusedAbsences,
+            rubricScores,
+            deletedStudentNames,
+            studentPhotos,
+            studentLevels,
+            customAssignments,
+            submissions,
+            notifications,
+            sheetUrl,
+            courses,
+            schedules,
+            libraryResources,
+            classroomMedia,
+            payments,
+            zoomExceptionNote,
+            hasZoomException
+          };
+          const success = await saveToFirestore(user?.email, stateToSave);
+          if (success) {
+            const timeStr = new Date().toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              second: '2-digit' 
+            });
+            setLastSyncedTime(timeStr);
+            setSyncedBannerMessage("☁️ Firestore Cloud Connected: Successfully uploaded existing local database.");
+            setTimeout(() => setSyncedBannerMessage(null), 5000);
+          }
         }
       } catch (err: any) {
         console.error("Cloud pull error:", err);
@@ -966,7 +1037,14 @@ export default function App() {
         customAssignments,
         submissions,
         notifications,
-        sheetUrl
+        sheetUrl,
+        courses,
+        schedules,
+        libraryResources,
+        classroomMedia,
+        payments,
+        zoomExceptionNote,
+        hasZoomException
       };
       const success = await saveToFirestore(user?.email, stateToSave);
       if (success) {
@@ -993,7 +1071,7 @@ export default function App() {
     if (isCloudSyncing) return;
 
     const timer = setTimeout(async () => {
-      if (records.length === 0 && classDays.length === 0) return;
+      if (records.length === 0 && classDays.length === 0 && courses.length === 0 && schedules.length === 0 && libraryResources.length === 0) return;
 
       try {
         const stateToSave = {
@@ -1008,7 +1086,14 @@ export default function App() {
           customAssignments,
           submissions,
           notifications,
-          sheetUrl
+          sheetUrl,
+          courses,
+          schedules,
+          libraryResources,
+          classroomMedia,
+          payments,
+          zoomExceptionNote,
+          hasZoomException
         };
         await saveToFirestore(user?.email, stateToSave);
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
@@ -1035,6 +1120,13 @@ export default function App() {
     submissions, 
     notifications, 
     sheetUrl,
+    courses,
+    schedules,
+    libraryResources,
+    classroomMedia,
+    payments,
+    zoomExceptionNote,
+    hasZoomException,
     user
   ]);
 
@@ -2456,6 +2548,11 @@ export default function App() {
               coursesCount={6}
               classDaysCount={classDays.length}
               avgAttendanceRate={avgAttendance}
+              isCloudSyncing={isCloudSyncing}
+              cloudSyncError={cloudSyncError}
+              lastSyncedTime={lastSyncedTime}
+              onPushToCloud={handlePushToCloud}
+              userEmail={user?.email}
             />
           </div>
         )}
@@ -2530,7 +2627,11 @@ export default function App() {
 
         {activeErpTab === 'courses' && (
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <CoursesTab userRole={appUser?.role} />
+            <CoursesTab 
+              userRole={appUser?.role} 
+              courses={courses}
+              setCourses={setCourses}
+            />
           </div>
         )}
 
@@ -2574,13 +2675,25 @@ export default function App() {
                 setShowLiveCheckinModal(true);
                 setLiveCheckinDayId(dayId);
               }}
+              schedules={schedules}
+              setSchedules={setSchedules}
+              zoomExceptionNote={zoomExceptionNote}
+              setZoomExceptionNote={setZoomExceptionNote}
+              hasZoomException={hasZoomException}
+              setHasZoomException={setHasZoomException}
             />
           </div>
         )}
 
         {activeErpTab === 'library' && (
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <LibraryTab userRole={appUser?.role} />
+            <LibraryTab 
+              userRole={appUser?.role} 
+              resources={libraryResources}
+              setResources={setLibraryResources}
+              classroomMedia={classroomMedia}
+              setClassroomMedia={setClassroomMedia}
+            />
           </div>
         )}
 
@@ -2591,6 +2704,8 @@ export default function App() {
               isAdmin={appUser?.role === 'admin'}
               userRole={appUser?.role}
               currentStudentName={appUser?.studentName || appUser?.name}
+              payments={payments}
+              setPayments={setPayments}
             />
           </div>
         )}

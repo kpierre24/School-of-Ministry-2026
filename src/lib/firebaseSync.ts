@@ -1,15 +1,33 @@
 import { app } from './auth';
 import { 
-  getFirestore, 
+  initializeFirestore, 
   doc, 
   getDoc, 
   setDoc, 
-  getDocFromServer 
+  getDocFromServer,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
 
-export const db = getFirestore(app);
+// Initialize Firestore using the explicit database ID from config
+export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true
+}, firebaseConfig.firestoreDatabaseId);
 
-// Test connection on boot to verify configuration
+// Enable offline persistence if available in browser context
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn("Firestore offline persistence failed-precondition: multiple tabs open.");
+    } else if (err.code === 'unimplemented') {
+      console.warn("Firestore offline persistence is unimplemented in this browser.");
+    } else {
+      console.warn("Firestore offline persistence failed to initialize:", err);
+    }
+  });
+}
+
+// Test connection to verify configuration
 export async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'app_states', 'connection_test'));
@@ -17,7 +35,7 @@ export async function testConnection() {
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. Client is offline.");
+      console.warn("Please check your Firebase configuration. Client is operating in offline mode.");
     } else {
       console.warn("Firestore connection check info:", error);
     }
@@ -25,7 +43,6 @@ export async function testConnection() {
   }
 }
 
-testConnection();
 
 export interface SyncedAppState {
   records?: any[];
@@ -40,6 +57,13 @@ export interface SyncedAppState {
   submissions?: any[];
   notifications?: any[];
   sheetUrl?: string;
+  courses?: any[];
+  schedules?: any[];
+  libraryResources?: any[];
+  classroomMedia?: any[];
+  payments?: any[];
+  zoomExceptionNote?: string;
+  hasZoomException?: boolean;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -66,7 +90,11 @@ export async function loadFromFirestore(userEmail: string | null | undefined): P
     }
     return null;
   } catch (error) {
-    console.error("Error loading state from Firestore:", error);
+    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('failed to get document'))) {
+      console.warn("Firestore is operating offline. Falling back to local state.", error.message);
+    } else {
+      console.error("Error loading state from Firestore:", error);
+    }
     return null;
   }
 }
@@ -88,6 +116,10 @@ export async function saveToFirestore(
     await setDoc(docRef, dataToSave, { merge: true });
     return true;
   } catch (error) {
+    if (error instanceof Error && error.message.includes('offline')) {
+      console.warn("Firestore is offline. Save is queued and will synchronize once online:", error.message);
+      return true; // Return true because Firestore automatically queues and syncs offline writes
+    }
     console.error("Error saving state to Firestore:", error);
     return false;
   }

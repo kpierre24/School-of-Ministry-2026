@@ -53,7 +53,7 @@ export const PERIODS = [
   { id: 'eve', label: 'EVENING SESSION', time: '07:00 - 09:00 pm EST' },
 ];
 
-const INITIAL_SCHEDULE: ScheduleItem[] = [
+export const INITIAL_SCHEDULE: ScheduleItem[] = [
   // Past Classes (June 2026)
   {
     id: 'sch_p1',
@@ -234,19 +234,35 @@ interface ScheduleTabProps {
   classDays: { id: string; name: string }[];
   onTakeAttendanceForDay: (dayId: string) => void;
   userRole?: UserRole;
+  schedules?: ScheduleItem[];
+  setSchedules?: React.Dispatch<React.SetStateAction<ScheduleItem[]>>;
+  zoomExceptionNote?: string;
+  setZoomExceptionNote?: React.Dispatch<React.SetStateAction<string>>;
+  hasZoomException?: boolean;
+  setHasZoomException?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   classDays,
   onTakeAttendanceForDay,
-  userRole = 'admin'
+  userRole = 'admin',
+  schedules: propSchedules,
+  setSchedules: propSetSchedules,
+  zoomExceptionNote: propZoomExceptionNote,
+  setZoomExceptionNote: propSetZoomExceptionNote,
+  hasZoomException: propHasZoomException,
+  setHasZoomException: propSetHasZoomException
 }) => {
   const isStudent = userRole === 'student';
-  // Saved Schedule State
-  const [schedules, setSchedules] = useState<ScheduleItem[]>(() => {
+
+  // Local state fallbacks
+  const [localSchedules, setLocalSchedules] = useState<ScheduleItem[]>(() => {
     const saved = localStorage.getItem('hteim_scheduled_classes');
     return saved ? JSON.parse(saved) : INITIAL_SCHEDULE;
   });
+
+  const schedules = propSchedules !== undefined ? propSchedules : localSchedules;
+  const setSchedules = propSetSchedules !== undefined ? propSetSchedules : setLocalSchedules;
 
   // Sync to localStorage
   useEffect(() => {
@@ -262,12 +278,19 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   // Zoom Exception & Copy State
   const [zoomCopiedField, setZoomCopiedField] = useState<string | null>(null);
   const [showZoomExceptionModal, setShowZoomExceptionModal] = useState(false);
-  const [zoomExceptionNote, setZoomExceptionNote] = useState<string>(() => {
+
+  const [localZoomExceptionNote, setLocalZoomExceptionNote] = useState<string>(() => {
     return localStorage.getItem('hteim_zoom_exception_note') || '';
   });
-  const [hasZoomException, setHasZoomException] = useState<boolean>(() => {
+  const [localHasZoomException, setLocalHasZoomException] = useState<boolean>(() => {
     return localStorage.getItem('hteim_has_zoom_exception') === 'true';
   });
+
+  const zoomExceptionNote = propZoomExceptionNote !== undefined ? propZoomExceptionNote : localZoomExceptionNote;
+  const setZoomExceptionNote = propSetZoomExceptionNote !== undefined ? propSetZoomExceptionNote : setLocalZoomExceptionNote;
+
+  const hasZoomException = propHasZoomException !== undefined ? propHasZoomException : localHasZoomException;
+  const setHasZoomException = propSetHasZoomException !== undefined ? propSetHasZoomException : setLocalHasZoomException;
 
   // Calendar Export Handlers
   const handleExportAllToICS = () => {
@@ -293,6 +316,8 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     e.preventDefault();
     localStorage.setItem('hteim_zoom_exception_note', zoomExceptionNote);
     localStorage.setItem('hteim_has_zoom_exception', hasZoomException ? 'true' : 'false');
+    setZoomExceptionNote(zoomExceptionNote);
+    setHasZoomException(hasZoomException);
     setShowZoomExceptionModal(false);
   };
 
