@@ -14,19 +14,28 @@
 }
 
 @layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+  }
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 10px;
+    height: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: #f1f5f9;
+    border-radius: 8px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 20px;
+    background-color: #94a3b8;
+    border-radius: 8px;
+    border: 2px solid #f1f5f9;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #475569;
   }
   .custom-scrollbar::-webkit-scrollbar-corner {
-    background: transparent;
+    background: #f1f5f9;
   }
 }
 
@@ -240,6 +249,16 @@
 }
 
 /* Custom scrollbars */
+.dark .custom-scrollbar {
+  scrollbar-color: #64748b rgba(30, 41, 59, 0.6);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.6);
+}
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #4b5563 !important;
+  background-color: #64748b !important;
+  border-color: rgba(15, 23, 42, 0.8) !important;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8 !important;
 }

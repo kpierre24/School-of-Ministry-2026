@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion } from 'motion/react';
 import { User } from 'firebase/auth';
 import stringSimilarity from 'string-similarity';
 import jsPDF from 'jspdf';
@@ -55,6 +56,9 @@ import {
   GraduationCap,
   Send,
   ShieldCheck,
+  ShieldAlert,
+  Crown,
+  Lock,
   Medal,
   DollarSign,
   WifiOff,
@@ -62,6 +66,8 @@ import {
   Camera
 } from 'lucide-react';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
+import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
+import { usePWAInstall } from './lib/pwa';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -75,7 +81,7 @@ import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId } from './lib/sheets';
 import { getDemoAttendance } from './data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel } from './types';
-import { AppUser } from './lib/userAuth';
+import { AppUser, generateStudentUsername } from './lib/userAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
 import { LoginModal } from './components/LoginModal';
@@ -88,6 +94,11 @@ import { ScheduleTab } from './components/ScheduleTab';
 import { LibraryTab } from './components/LibraryTab';
 import { PaymentTab } from './components/PaymentTab';
 import { HomeTab } from './components/HomeTab';
+import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
+import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
+import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal';
+import { logActivity } from './lib/auditLogger';
+import { exportFullBackupJSON } from './lib/backupSuite';
 
 type ClassDay = {
   id: string;
@@ -178,20 +189,85 @@ export default function App() {
     };
   });
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
+  const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
+
+  const handleQuickRoleSwitch = (role: 'admin' | 'teacher' | 'student', studentNameChoice?: string) => {
+    let newUser: AppUser;
+    if (role === 'admin') {
+      newUser = {
+        id: 'u-admin',
+        username: 'admin',
+        name: 'Administrator',
+        role: 'admin',
+        email: 'admin@hteim.edu'
+      };
+    } else if (role === 'teacher') {
+      newUser = {
+        id: 'u-teacher',
+        username: 'teacher',
+        name: 'Rev. Dr. Faculty Instructor',
+        role: 'teacher',
+        email: 'teacher@hteim.edu'
+      };
+    } else {
+      const chosenName = studentNameChoice || uniqueStudents[0] || 'Aaron Miller';
+      newUser = {
+        id: `u-student-${chosenName.toLowerCase().replace(/\s+/g, '-')}`,
+        username: generateStudentUsername(chosenName),
+        name: chosenName,
+        role: 'student',
+        studentName: chosenName,
+        email: `${generateStudentUsername(chosenName).toLowerCase()}@hteim.edu`
+      };
+    }
+    setAppUser(newUser);
+    localStorage.setItem('hteim_app_user', JSON.stringify(newUser));
+    setShowRoleMenu(false);
+    setSyncedBannerMessage(`🎭 Role Switch: Previewing portal as ${role.toUpperCase()} (${newUser.name})`);
+    setTimeout(() => {
+      setSyncedBannerMessage('');
+    }, 4500);
+  };
+  const [showOutstandingPaymentBanner, setShowOutstandingPaymentBanner] = useState<boolean>(false);
+  const [studentPaymentSummary, setStudentPaymentSummary] = useState<StudentPaymentSummary | null>(null);
 
   useEffect(() => {
     if (appUser) {
       localStorage.setItem('hteim_app_user', JSON.stringify(appUser));
+      if (appUser.role === 'student') {
+        const sName = appUser.studentName || appUser.name;
+        const summary = getStudentPaymentDetails(sName);
+        setStudentPaymentSummary(summary);
+        if (summary.hasOutstanding) {
+          setShowOutstandingPaymentBanner(true);
+        } else {
+          setShowOutstandingPaymentBanner(false);
+        }
+      } else {
+        setShowOutstandingPaymentBanner(false);
+        setStudentPaymentSummary(null);
+      }
     } else {
       localStorage.removeItem('hteim_app_user');
+      setShowOutstandingPaymentBanner(false);
+      setStudentPaymentSummary(null);
     }
   }, [appUser]);
 
   const handleAppLoginSuccess = (user: AppUser) => {
     setAppUser(user);
     setShowLoginModal(false);
-    if (user.role === 'student' && activeErpTab === 'students') {
-      setActiveErpTab('attendance');
+    if (user.role === 'student') {
+      if (activeErpTab === 'students') {
+        setActiveErpTab('attendance');
+      }
+      const sName = user.studentName || user.name;
+      const summary = getStudentPaymentDetails(sName);
+      setStudentPaymentSummary(summary);
+      if (summary.hasOutstanding) {
+        setShowOutstandingPaymentBanner(true);
+      }
     }
   };
 
@@ -201,7 +277,7 @@ export default function App() {
     setShowLoginModal(true);
   };
   
-  const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('sheetUrl') || '');
+  const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('sheetUrl') || 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=283667804#gid=283667804');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -301,6 +377,10 @@ export default function App() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showMobileDownloadModal, setShowMobileDownloadModal] = useState(false);
+
+  // Mobile PWA Installation Hook
+  const pwaHook = usePWAInstall();
 
   // Theme Mode State
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -436,6 +516,7 @@ export default function App() {
 
   // Export Backup Handler
   const handleExportBackup = () => {
+    if (appUser?.role === 'student') return;
     const data = {
       exportDate: new Date().toISOString(),
       atRiskThreshold,
@@ -461,6 +542,7 @@ export default function App() {
 
   // Import Backup Handler
   const handleImportBackup = (jsonContent: string): boolean => {
+    if (appUser?.role === 'student') return false;
     try {
       const parsed = JSON.parse(jsonContent);
       if (parsed.atRiskThreshold !== undefined) setAtRiskThreshold(parsed.atRiskThreshold);
@@ -488,6 +570,7 @@ export default function App() {
 
   // Reset Data Handler
   const handleResetAllData = () => {
+    if (appUser?.role === 'student') return;
     localStorage.removeItem('hteim_custom_assignments');
     localStorage.removeItem('hteim_assignment_submissions');
     localStorage.removeItem('hteim_app_notifications');
@@ -958,8 +1041,8 @@ export default function App() {
       const headers = Object.keys(data[0]);
       const rows = data.map(item => headers.map(h => item[h]));
       
-      const classDayName = 'Oct 01';
-      setClassDays([{ id: classDayName, name: classDayName }]);
+      const classDayName = 'Lesson 2 Assignment';
+      setClassDays([{ id: classDayName, name: `${classDayName} (05/05/2026)` }]);
 
       let nameIndex = headers.findIndex(h => h.toLowerCase().includes('first and last name'));
       if (nameIndex === -1) nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'));
@@ -971,8 +1054,10 @@ export default function App() {
       if (scoreIndex === -1) scoreIndex = 1;
 
       const processed: AttendanceRecord[] = rows.map(row => {
+        const rawName = row[nameIndex] || 'Unknown';
+        const cleanName = rawName.trim().replace(/[\r\n]+/g, ' ');
         return {
-          name: (row[nameIndex] || 'Unknown').trim(),
+          name: cleanName,
           timestamp: row[timestampIndex] || '',
           score: row[scoreIndex] || '',
           classDay: classDayName,
@@ -1016,7 +1101,7 @@ export default function App() {
       addRecentSheet(targetUrl, docTitle);
 
       const allSheets = metadata.sheets.map((s: any) => s.properties.title);
-      const sheets = allSheets.filter((title: string) => !title.toLowerCase().includes('lesson 2 assignment'));
+      const sheets = allSheets;
       
       if (sheets.length === 0) {
         throw new Error("No valid class sheets found in the document.");
@@ -1053,20 +1138,26 @@ export default function App() {
             if (firstTimestamp) {
               const datePart = firstTimestamp.split(' ')[0];
               if (datePart && datePart.trim() !== '') {
-                displayDate = datePart.trim();
+                const trimmedDate = datePart.trim();
+                if (sheetTitle.toLowerCase().includes(trimmedDate.toLowerCase())) {
+                  displayDate = sheetTitle;
+                } else {
+                  displayDate = `${sheetTitle} (${trimmedDate})`;
+                }
               }
             }
           }
           updatedClassDays.push({ id: sheetTitle, name: displayDate });
           
           rows.forEach(row => {
-            const name = row[nameIndex] || 'Unknown';
-            if (!name || name.trim() === '' || name.trim() === 'Unknown') return;
-            if (/^[\d\s\/]+$/.test(name.trim())) return;
+            const rawName = row[nameIndex] || 'Unknown';
+            const name = rawName.trim().replace(/[\r\n]+/g, ' ');
+            if (!name || name === '' || name === 'Unknown') return;
+            if (/^[\d\s\/]+$/.test(name)) return;
             if (isExcludedStudent(name)) return;
             
             allRecords.push({
-              name: name.trim(),
+              name: name,
               timestamp: row[timestampIndex] || '',
               score: row[scoreIndex] || '',
               classDay: sheetTitle,
@@ -1294,6 +1385,18 @@ export default function App() {
         if (val !== null) scoresList.push(val);
       });
 
+      // Missed classes count as 0 (unless excused)
+      const studentKey = student.name.toLowerCase().trim();
+      classDays.forEach(day => {
+        const att = student.attendanceByDay[day.id];
+        if (!att || !att.present) {
+          const isExcused = !!(excusedAbsences[studentKey] || {})[day.id];
+          if (!isExcused) {
+            scoresList.push(0);
+          }
+        }
+      });
+
       // Include graded course assignments and exams
       const studentSubs = submissions.filter(sub => 
         (sub.studentName.toLowerCase().trim() === student.name.toLowerCase().trim() || 
@@ -1343,7 +1446,7 @@ export default function App() {
     });
 
     return { uniqueStudents: students, avgAttendance: avg, avgScoreOverall, classDayStats };
-  }, [records, classDays, deletedStudentNames, studentNotes, studentPhotos, studentLevels, customAssignments, submissions]);
+  }, [records, classDays, deletedStudentNames, studentNotes, studentPhotos, studentLevels, customAssignments, submissions, excusedAbsences]);
 
   // Find current student stats if a student is logged in
   const loggedInStudentData = useMemo(() => {
@@ -1560,7 +1663,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-900 font-sans p-6 overflow-hidden">
+    <div className="flex flex-col min-h-screen md:h-screen w-full bg-slate-50 text-slate-900 font-sans p-3 sm:p-5 md:p-6 overflow-y-auto md:overflow-hidden">
       {/* Mobile PWA & Offline Status Banners */}
       {isOffline && (
         <div className="bg-amber-500 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-xs border border-amber-600 animate-fadeIn flex-shrink-0">
@@ -1586,35 +1689,61 @@ export default function App() {
         </div>
       )}
 
+      {/* PWA Mobile App Install Prompt Banner */}
+      {pwaHook.isInstallable && (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between gap-3 shadow-md border border-amber-500/30 animate-fadeIn flex-shrink-0">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="truncate font-semibold">
+              Install HTEIM ERP as a standalone app on your smartphone or desktop for quick access!
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => pwaHook.triggerInstall()}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] rounded-lg transition-all cursor-pointer shadow-xs"
+            >
+              Install App
+            </button>
+            <button
+              onClick={() => setShowMobileDownloadModal(true)}
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-[11px] rounded-lg transition-all cursor-pointer border border-slate-700"
+            >
+              APK Download
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-gradient-to-r from-amber-100/60 via-amber-50/30 to-indigo-50/50 border border-amber-200/70 rounded-2xl p-4 shadow-md mb-4 flex-shrink-0 relative z-30">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Logo & Brand Info */}
-          <div className="flex items-center gap-3.5">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
             <img 
               src="/hteim_logo.jpg" 
               alt="HTEIM School of Ministry Logo" 
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-amber-400 shadow-md object-contain bg-white p-1 flex-shrink-0 transition-transform hover:scale-105 cursor-pointer"
+              className="w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl border-2 border-amber-400 shadow-md object-contain bg-white p-1 flex-shrink-0 transition-transform hover:scale-105 cursor-pointer"
               referrerPolicy="no-referrer"
               onClick={() => setActiveErpTab('home')}
             />
             <div onClick={() => setActiveErpTab('home')} className="cursor-pointer group">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">HTEIM School of Ministry</h1>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 rounded-full border border-amber-300/70 flex items-center gap-1">
+              <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                <h1 className="text-base xs:text-lg sm:text-xl font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">HTEIM School of Ministry</h1>
+                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 rounded-full border border-amber-300/70 flex items-center gap-1 mx-auto sm:mx-0">
                   <Sparkles className="w-3 h-3 text-amber-600" /> Ministry Portal
                 </span>
               </div>
-              <p className="text-slate-500 text-xs mt-0.5 font-medium flex items-center gap-1.5 flex-wrap">
+              <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
                 <span className="font-bold text-slate-700">Heaven Touching Earth Int'l Ministries</span>
-                <span className="text-slate-300">•</span>
-                <span className="italic text-amber-700/90 font-serif">"Bringing Heaven to Earth, Taking People to Heaven"</span>
+                <span className="text-slate-300 hidden sm:inline">•</span>
+                <span className="italic text-amber-700/90 font-serif w-full sm:w-auto text-center sm:text-left">"Bringing Heaven to Earth, Taking People to Heaven"</span>
               </p>
             </div>
           </div>
 
           {/* Stats Badges & Header Action Controls */}
-          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
+          <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto">
             {/* Quick KPI Stat Chips */}
             {records.length > 0 && (
               <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium">
@@ -1655,7 +1784,7 @@ export default function App() {
             )}
 
             {/* Action Buttons Group */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center justify-center lg:justify-end gap-2 flex-wrap w-full lg:w-auto">
               {dataSource === 'sheets' && (
                 <button
                   onClick={() => handleLoadSheets()}
@@ -1667,6 +1796,19 @@ export default function App() {
                   <span className="hidden sm:inline">Sync</span>
                 </button>
               )}
+
+              {/* Mobile App & APK Download Center Button */}
+              <button
+                onClick={() => setShowMobileDownloadModal(true)}
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-xs rounded-xl shadow-xs border border-amber-500/30 transition-all cursor-pointer flex items-center gap-2 relative active:scale-95 group"
+                title="Download Android APK & Install Mobile PWA"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span>Mobile App / APK</span>
+                <span className="bg-amber-500 text-slate-950 font-black text-[9px] px-1.5 py-0.2 rounded uppercase">
+                  v2.4
+                </span>
+              </button>
 
               {appUser?.role !== 'student' && (
                 <button
@@ -1734,6 +1876,31 @@ export default function App() {
                   currentStudentName={appUser?.studentName || appUser?.name}
                 />
 
+                {(appUser?.role === 'admin' || appUser?.role === 'teacher') ? (
+                  <button
+                    onClick={() => setShowAdminAuditModal(true)}
+                    className="p-2 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-amber-400 rounded-xl transition-all cursor-pointer shadow-2xs border border-indigo-800/60 flex items-center gap-1.5"
+                    title="Administrative & Data Tools (Audit Trail & Backup)"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-400" />
+                    <span className="hidden xl:inline text-xs font-black text-white pr-0.5">Admin Tools</span>
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <button
+                      disabled
+                      className="p-2 bg-slate-100 border border-slate-200 text-slate-400 rounded-xl cursor-not-allowed opacity-75 flex items-center gap-1.5"
+                    >
+                      <Lock className="w-4 h-4 text-amber-500" />
+                      <span className="hidden xl:inline text-xs font-bold text-slate-500 pr-0.5">Admin Tools</span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Requires Instructor or Administrator Privileges</span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={() => setShowSettingsModal(true)}
                   className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
@@ -1751,21 +1918,159 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Account / User Role Control */}
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+              {/* Account & Persistent Role Pill + Demo Role Switcher */}
+              <div className="flex items-center justify-center gap-2 pl-0 lg:pl-2 border-l-0 lg:border-l border-slate-200 w-full lg:w-auto mt-1 lg:mt-0">
+                {/* Contextual Active Role Pill & Role Switcher Popover */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowRoleMenu(!showRoleMenu)}
+                    className={`px-2.5 py-1 rounded-xl border text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs cursor-pointer select-none transition-all hover:scale-[1.02] ${
+                      appUser?.role === 'admin'
+                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-900'
+                        : appUser?.role === 'teacher'
+                        ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-900'
+                        : 'bg-blue-500/15 border-blue-500/40 text-blue-900'
+                    }`}
+                    title="Active Role Permission - Click to switch preview role"
+                  >
+                    {appUser?.role === 'admin' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500/20" />}
+                    {appUser?.role === 'teacher' && <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />}
+                    {appUser?.role === 'student' && <UserCheck className="w-3.5 h-3.5 text-blue-600" />}
+                    <span className="hidden xs:inline">{appUser?.role === 'admin' ? 'Administrator' : appUser?.role === 'teacher' ? 'Instructor' : 'Student'}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${showRoleMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Quick Role Switcher Dropdown */}
+                  {showRoleMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <h4 className="text-xs font-black text-amber-300 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            Demo Role Switcher
+                          </h4>
+                          <p className="text-[10px] text-slate-400">Instant portal permission preview</p>
+                        </div>
+                        <button 
+                          onClick={() => setShowRoleMenu(false)}
+                          className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 pt-1">
+                        {/* Admin Role Option */}
+                        <button
+                          onClick={() => handleQuickRoleSwitch('admin')}
+                          className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                            appUser?.role === 'admin'
+                              ? 'bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30'
+                              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 font-bold">
+                              <Crown className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-white">Administrator</p>
+                              <p className="text-[9px] text-slate-400">Full System Governance & Backups</p>
+                            </div>
+                          </div>
+                          {appUser?.role === 'admin' && <Check className="w-4 h-4 text-amber-400" />}
+                        </button>
+
+                        {/* Instructor Role Option */}
+                        <button
+                          onClick={() => handleQuickRoleSwitch('teacher')}
+                          className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                            appUser?.role === 'teacher'
+                              ? 'bg-indigo-500/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
+                              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 font-bold">
+                              <GraduationCap className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-white">Instructor / Faculty</p>
+                              <p className="text-[9px] text-slate-400">Class Scheduling, Attendance & Grading</p>
+                            </div>
+                          </div>
+                          {appUser?.role === 'teacher' && <Check className="w-4 h-4 text-indigo-400" />}
+                        </button>
+
+                        {/* Student Role Option */}
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => handleQuickRoleSwitch('student')}
+                            className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                              appUser?.role === 'student'
+                                ? 'bg-blue-500/20 border-blue-500/50 text-white ring-1 ring-blue-500/30'
+                                : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 font-bold">
+                                <UserCheck className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-black text-white">Student Account</p>
+                                <p className="text-[9px] text-slate-400">Student Portal & Personal Attendance</p>
+                              </div>
+                            </div>
+                            {appUser?.role === 'student' && <Check className="w-4 h-4 text-blue-400" />}
+                          </button>
+
+                          {/* Quick Student Switcher if student mode */}
+                          {appUser?.role === 'student' && uniqueStudents.length > 0 && (
+                            <div className="p-2 bg-slate-950/80 rounded-xl border border-slate-800 text-xs space-y-1">
+                              <label className="text-[9px] uppercase font-mono font-bold text-slate-400 block">Preview Specific Student:</label>
+                              <select
+                                value={appUser.studentName || appUser.name}
+                                onChange={(e) => handleQuickRoleSwitch('student', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-1.5 text-xs font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                {uniqueStudents.map(s => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>Full Credentials Portal</span>
+                        <button 
+                          onClick={() => {
+                            setShowRoleMenu(false);
+                            setShowLoginModal(true);
+                          }}
+                          className="text-amber-400 font-bold hover:underline cursor-pointer"
+                        >
+                          Open Login Modal
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   onClick={() => setShowLoginModal(true)}
                   className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 px-2.5 py-1 rounded-xl transition-all cursor-pointer group"
-                  title="Switch user role / Open login portal"
+                  title="Open login portal / user details"
                 >
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs ${
                     appUser?.role === 'admin' ? 'bg-amber-500 text-slate-950' :
                     appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' :
-                    'bg-emerald-600 text-white'
+                    'bg-blue-600 text-white'
                   }`}>
                     {appUser ? appUser.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
                   </div>
-                  <div className="text-left hidden sm:block">
+                  <div className="text-left hidden lg:block">
                     <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors">
                       {appUser ? appUser.name : 'Guest'}
                     </p>
@@ -2046,6 +2351,7 @@ export default function App() {
               classDays={classDays}
               userRole={appUser?.role}
               onTakeAttendanceForDay={(dayId) => {
+                if (appUser?.role === 'student') return;
                 setActiveErpTab('attendance');
                 setShowLiveCheckinModal(true);
                 setLiveCheckinDayId(dayId);
@@ -2150,7 +2456,7 @@ export default function App() {
 
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Status Filters */}
-                  <div className="flex bg-slate-200/60 p-0.5 rounded-md text-xs font-medium text-slate-600">
+                  <div className="flex bg-slate-200/60 p-0.5 rounded-md text-xs font-medium text-slate-600 max-w-full overflow-x-auto custom-scrollbar whitespace-nowrap">
                     <button
                       onClick={() => setStatusFilter('all')}
                       className={`px-2.5 py-1 rounded-sm text-[11px] font-bold transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'hover:text-slate-900'}`}
@@ -3521,6 +3827,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       <SettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+        userRole={appUser?.role || 'admin'}
         atRiskThreshold={atRiskThreshold}
         setAtRiskThreshold={setAtRiskThreshold}
         satisfactoryThreshold={satisfactoryThreshold}
@@ -3535,6 +3842,32 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         onImportBackup={handleImportBackup}
         onResetAllData={handleResetAllData}
         onOpenGuide={() => setShowGuideModal(true)}
+        onOpenMobileDownloadCenter={() => setShowMobileDownloadModal(true)}
+        onOpenAdminTools={() => {
+          setShowSettingsModal(false);
+          setShowAdminAuditModal(true);
+        }}
+      />
+
+      {/* Admin Audit Trail & Data Tools Modal */}
+      <AdminAuditAndBackupModal
+        isOpen={showAdminAuditModal}
+        onClose={() => setShowAdminAuditModal(false)}
+        currentUserRole={appUser?.role}
+        currentActorName={appUser ? (appUser.role === 'admin' ? 'Administrator' : appUser.name) : 'Administrator'}
+        onDataRestored={() => {
+          // Refresh records from local storage
+          const savedAtt = localStorage.getItem('attendanceRecords');
+          if (savedAtt) {
+            try { setRecords(JSON.parse(savedAtt)); } catch(e){}
+          }
+        }}
+      />
+
+      {/* Mobile App & APK Download Center Modal */}
+      <MobileDownloadCenterModal
+        isOpen={showMobileDownloadModal}
+        onClose={() => setShowMobileDownloadModal(false)}
       />
 
       {/* Guide & Access Modal */}
@@ -4000,7 +4333,31 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
       {/* 3. Live Ministry Check-In Mode Modal (Mobile & Tablet) */}
       {showLiveCheckinModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+        appUser?.role === 'student' ? (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
+            <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 text-center space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  Access Restricted
+                </span>
+                <h3 className="text-base font-black text-white mt-1">Attendance Check-In Restricted</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Attendance marking and live check-ins are strictly reserved for Teachers and Administrators. Students cannot self-assign attendance.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowLiveCheckinModal(false)}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Close Window
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl h-full max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp">
             {/* Live Checkin Header */}
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
@@ -4167,41 +4524,53 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
                       {/* Single-Touch 3-Button Toggle */}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
+                        <motion.button
                           onClick={() => handleSetStatus('present')}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.90 }}
+                          animate={{ scale: isPresent ? 1.05 : 1 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                           className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                             isPresent 
-                              ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/30' 
+                              ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30' 
                               : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
                           }`}
                         >
                           <Check className="w-3.5 h-3.5" />
                           Present
-                        </button>
+                        </motion.button>
 
-                        <button
+                        <motion.button
                           onClick={() => handleSetStatus('excused')}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.90 }}
+                          animate={{ scale: isExcused ? 1.05 : 1 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                           className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                             isExcused 
-                              ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-400/30' 
+                              ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400/30' 
                               : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
                           }`}
                         >
                           <AlertCircle className="w-3.5 h-3.5" />
                           Excused
-                        </button>
+                        </motion.button>
 
-                        <button
+                        <motion.button
                           onClick={() => handleSetStatus('absent')}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.90 }}
+                          animate={{ scale: (!isPresent && !isExcused) ? 1.05 : 1 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                           className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                             !isPresent && !isExcused 
-                              ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/30' 
+                              ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-500/30' 
                               : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
                           }`}
                         >
                           <X className="w-3.5 h-3.5" />
                           Absent
-                        </button>
+                        </motion.button>
                       </div>
                     </div>
                   );
@@ -4218,7 +4587,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             </div>
           </div>
         </div>
-      )}
+      )
+    )}
 
       {/* Batch Announcement Broadcast Modal */}
       {showBatchBroadcastModal && (
@@ -4232,6 +4602,18 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             track: 'Active Ministry Module'
           }))}
           onSendBroadcast={handleSendBatchBroadcast}
+        />
+      )}
+
+      {/* Outstanding Payment Notice Banner for Students */}
+      {showOutstandingPaymentBanner && studentPaymentSummary && studentPaymentSummary.hasOutstanding && (
+        <OutstandingPaymentBanner
+          summary={studentPaymentSummary}
+          onClose={() => setShowOutstandingPaymentBanner(false)}
+          onViewStatement={() => {
+            setActiveErpTab('payments');
+            setShowOutstandingPaymentBanner(false);
+          }}
         />
       )}
 

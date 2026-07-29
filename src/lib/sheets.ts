@@ -25,7 +25,11 @@ export const fetchMultipleRanges = async (
   accessToken: string
 ) => {
   const params = new URLSearchParams();
-  ranges.forEach(range => params.append('ranges', range));
+  ranges.forEach(range => {
+    // Single-quote range names if they contain spaces or special characters to prevent API invalid range errors
+    const formattedRange = range.startsWith("'") ? range : `'${range.replace(/'/g, "''")}'`;
+    params.append('ranges', formattedRange);
+  });
   
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${params.toString()}`;
   const response = await fetch(url, {

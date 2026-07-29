@@ -1,13 +1,15 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
 // Register Service Worker for Mobile PWA & Offline Support
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.log('PWA ServiceWorker registration skipped/failed:', err);
+    navigator.serviceWorker.register('/sw.js').then((registration) => {
+      console.log('HTEIM ERP PWA ServiceWorker active with scope:', registration.scope);
+    }).catch((err) => {
+      console.log('PWA ServiceWorker registration note:', err);
     });
   });
 }

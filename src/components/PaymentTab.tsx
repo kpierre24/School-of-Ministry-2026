@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { logActivity } from '../lib/auditLogger';
 import {
   CreditCard,
   DollarSign,
@@ -44,7 +45,7 @@ interface PaymentTabProps {
   userRole?: string;
 }
 
-const INITIAL_PAYMENTS: PaymentRecord[] = [
+export const INITIAL_PAYMENTS: PaymentRecord[] = [
   {
     "id": "pay-sheet-1",
     "studentName": "Afeshia Burke",
@@ -1175,6 +1176,15 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       return p;
     }));
 
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
+      role: userRole === 'admin' ? 'admin' : 'teacher',
+      actionCategory: 'Payment Entry',
+      actionTitle: 'Tuition Payment Logged',
+      details: `Collected $${added.toFixed(2)} via ${paymentMethodInput} for ${selectedPaymentForModal.studentName}. Updated paid total: $${newPaid.toFixed(2)}. Status: ${newStatus}.`,
+      targetStudent: selectedPaymentForModal.studentName
+    });
+
     setShowRecordPaymentModal(false);
     setSelectedPaymentForModal(null);
   };
@@ -1199,6 +1209,16 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     };
 
     setPayments(prev => [newRecord, ...prev]);
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : 'Staff User',
+      role: 'admin',
+      actionCategory: 'Payment Entry',
+      actionTitle: 'Student Tuition Agreement Created',
+      details: `Created tuition ledger for ${nameClean} (${newTrack}). Total Tuition: $${newTotalTuition}, Initial Paid: $${newInitialPayment}.`,
+      targetStudent: nameClean
+    });
+
     setShowAddStudentModal(false);
     setNewStudentName('');
     setNewInitialPayment(0);

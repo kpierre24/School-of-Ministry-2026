@@ -25,7 +25,9 @@ import {
   ExternalLink,
   Check,
   AlertTriangle,
-  Bell
+  Bell,
+  Lock,
+  ShieldAlert
 } from 'lucide-react';
 import { ScheduleItem } from '../types';
 import { UserRole } from '../lib/userAuth';
@@ -297,6 +299,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
   // Helper to open modal for a fresh date or item
   const handleOpenAddModal = (defaultDateStr?: string, defaultPeriod?: string) => {
+    if (isStudent) return;
     setEditingItem(null);
     setIsCopyingMode(false);
     setFormDate(defaultDateStr || new Date().toISOString().split('T')[0]);
@@ -311,6 +314,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   };
 
   const handleOpenEditModal = (item: ScheduleItem) => {
+    if (isStudent) return;
     setEditingItem(item);
     setIsCopyingMode(false);
     setFormDate(item.date);
@@ -327,6 +331,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   // Save Scheduled Class
   const handleSaveSchedule = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isStudent) return;
     if (!formTitle.trim() || !formDate) return;
 
     const moduleObj = CORE_MODULES.find(m => m.code === formModuleCode) || CORE_MODULES[0];
@@ -372,6 +377,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
   // Delete Scheduled Class
   const handleDeleteSchedule = (id: string) => {
+    if (isStudent) return;
     setSchedules(prev => prev.filter(s => s.id !== id));
     setShowScheduleModal(false);
   };
@@ -379,6 +385,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   // Copy / Duplicate Scheduled Class to a target date
   const handleCopySchedule = (item: ScheduleItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (isStudent) return;
     setEditingItem(null);
     setIsCopyingMode(true);
     setFormDate(item.date); // pre-fills current date as default starting point
@@ -523,8 +530,22 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
             </button>
           </div>
 
-          {/* + Schedule Lecture Button */}
-          {!isStudent && (
+          {/* + Schedule Lecture Button with Restricted Hover Tooltip */}
+          {isStudent ? (
+            <div className="relative group">
+              <button
+                disabled
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed opacity-80"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Schedule Lecture</span>
+              </button>
+              <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                <span>Requires Instructor or Administrator Privileges</span>
+              </div>
+            </div>
+          ) : (
             <button
               onClick={() => handleOpenAddModal()}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:scale-95"
@@ -618,7 +639,21 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
               <ExternalLink className="w-3 h-3 text-blue-200" />
             </a>
 
-            {!isStudent && (
+            {isStudent ? (
+              <div className="relative group">
+                <button
+                  disabled
+                  className="px-3 py-2.5 bg-slate-900/80 text-slate-400 border border-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed opacity-75"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden xl:inline">Exception Alert</span>
+                </button>
+                <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Requires Instructor or Administrator Privileges</span>
+                </div>
+              </div>
+            ) : (
               <button
                 type="button"
                 onClick={() => setShowZoomExceptionModal(true)}
@@ -704,8 +739,10 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
               return (
                 <div
                   key={`day-${dayNum}`}
-                  onClick={() => handleOpenAddModal(dateStr)}
-                  className={`min-h-[110px] bg-slate-950 border rounded-xl p-2.5 flex flex-col justify-between transition-all cursor-pointer group hover:border-indigo-500/60 hover:bg-slate-900/90 ${
+                  onClick={() => !isStudent && handleOpenAddModal(dateStr)}
+                  className={`min-h-[110px] bg-slate-950 border rounded-xl p-2.5 flex flex-col justify-between transition-all ${
+                    !isStudent ? 'cursor-pointer group hover:border-indigo-500/60 hover:bg-slate-900/90' : 'cursor-default'
+                  } ${
                     isToday
                       ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-950/20'
                       : 'border-slate-800'
@@ -720,16 +757,18 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                       {dayNum}
                     </span>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenAddModal(dateStr);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-md text-[10px] font-bold transition-all"
-                      title="Add class on this date"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
+                    {!isStudent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenAddModal(dateStr);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-md text-[10px] font-bold transition-all"
+                        title="Add class on this date"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Scheduled Classes Badges on this day */}
@@ -739,9 +778,11 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                         key={cls.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenEditModal(cls);
+                          if (!isStudent) handleOpenEditModal(cls);
                         }}
-                        className={`p-1.5 rounded-lg border text-[11px] leading-tight transition-all hover:scale-[1.02] shadow-xs relative group/item ${getModuleBadgeStyle(cls.courseCode)}`}
+                        className={`p-1.5 rounded-lg border text-[11px] leading-tight transition-all shadow-xs relative group/item ${
+                          !isStudent ? 'hover:scale-[1.02] cursor-pointer' : 'cursor-default'
+                        } ${getModuleBadgeStyle(cls.courseCode)}`}
                       >
                         <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span className="font-extrabold font-mono text-[9px] uppercase tracking-wider">
@@ -751,25 +792,29 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                             <span className="text-[9px] font-mono opacity-80">
                               {cls.timeSlot?.split(' ')[0] || ''}
                             </span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleCopySchedule(cls, e)}
-                              className="opacity-0 group-hover/item:opacity-100 p-0.5 hover:bg-indigo-600 hover:text-white rounded text-slate-300 transition-all cursor-pointer"
-                              title="Duplicate / Copy class card"
-                            >
-                              <Copy className="w-2.5 h-2.5 text-indigo-300 hover:text-white" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteSchedule(cls.id);
-                              }}
-                              className="opacity-0 group-hover/item:opacity-100 p-0.5 hover:bg-rose-600 hover:text-white rounded text-slate-300 transition-all cursor-pointer"
-                              title="Remove class from schedule"
-                            >
-                              <Trash2 className="w-2.5 h-2.5 text-rose-400 hover:text-white" />
-                            </button>
+                            {!isStudent && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopySchedule(cls, e)}
+                                  className="opacity-0 group-hover/item:opacity-100 p-0.5 hover:bg-indigo-600 hover:text-white rounded text-slate-300 transition-all cursor-pointer"
+                                  title="Duplicate / Copy class card"
+                                >
+                                  <Copy className="w-2.5 h-2.5 text-indigo-300 hover:text-white" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteSchedule(cls.id);
+                                  }}
+                                  className="opacity-0 group-hover/item:opacity-100 p-0.5 hover:bg-rose-600 hover:text-white rounded text-slate-300 transition-all cursor-pointer"
+                                  title="Remove class from schedule"
+                                >
+                                  <Trash2 className="w-2.5 h-2.5 text-rose-400 hover:text-white" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                         <p className="font-bold line-clamp-2 text-slate-100">
@@ -846,8 +891,11 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                       return (
                         <td 
                           key={p.id} 
-                          className="p-3 text-center border-r border-slate-800/80 align-top hover:bg-slate-800/50 transition-all cursor-pointer group relative min-h-[90px]"
+                          className={`p-3 text-center border-r border-slate-800/80 align-top transition-all group relative min-h-[90px] ${
+                            !isStudent ? 'hover:bg-slate-800/50 cursor-pointer' : ''
+                          }`}
                           onClick={() => {
+                            if (isStudent) return;
                             if (classInSlot) handleOpenEditModal(classInSlot);
                             else handleOpenAddModal(undefined, p.label);
                           }}
@@ -860,25 +908,29 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                                 </span>
                                 <div className="flex items-center gap-1">
                                   <span className="text-[9px] font-bold opacity-75">{classInSlot.date}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopySchedule(classInSlot, e)}
-                                    className="opacity-0 group-hover/cell:opacity-100 p-1 hover:bg-indigo-600 hover:text-white rounded bg-slate-900/60 text-indigo-300 transition-all cursor-pointer"
-                                    title="Copy card"
-                                  >
-                                    <Copy className="w-3 h-3 text-indigo-400 hover:text-white" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteSchedule(classInSlot.id);
-                                    }}
-                                    className="opacity-0 group-hover/cell:opacity-100 p-1 hover:bg-rose-600 hover:text-white rounded bg-slate-900/60 text-rose-300 transition-all cursor-pointer"
-                                    title="Remove class"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-rose-400 hover:text-white" />
-                                  </button>
+                                  {!isStudent && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleCopySchedule(classInSlot, e)}
+                                        className="opacity-0 group-hover/cell:opacity-100 p-1 hover:bg-indigo-600 hover:text-white rounded bg-slate-900/60 text-indigo-300 transition-all cursor-pointer"
+                                        title="Copy card"
+                                      >
+                                        <Copy className="w-3 h-3 text-indigo-400 hover:text-white" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteSchedule(classInSlot.id);
+                                        }}
+                                        className="opacity-0 group-hover/cell:opacity-100 p-1 hover:bg-rose-600 hover:text-white rounded bg-slate-900/60 text-rose-300 transition-all cursor-pointer"
+                                        title="Remove class"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-rose-400 hover:text-white" />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <p className="font-extrabold text-white text-xs line-clamp-2">
@@ -890,9 +942,9 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <div className="py-6 text-slate-500 italic text-xs font-serif group-hover:text-slate-300 transition-colors flex flex-col items-center justify-center gap-1">
+                            <div className="py-6 text-slate-500 italic text-xs font-serif transition-colors flex flex-col items-center justify-center gap-1">
                               <span>No Lecture</span>
-                              <Plus className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity" />
+                              {!isStudent && <Plus className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity" />}
                             </div>
                           )}
                         </td>
@@ -921,8 +973,10 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
             {filteredSchedules.map((item) => (
               <div 
                 key={item.id}
-                onClick={() => handleOpenEditModal(item)}
-                className="p-4 bg-slate-950 border border-slate-800 hover:border-indigo-500/50 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all cursor-pointer hover:bg-slate-800/40"
+                onClick={() => !isStudent && handleOpenEditModal(item)}
+                className={`p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all ${
+                  !isStudent ? 'hover:border-indigo-500/50 cursor-pointer hover:bg-slate-800/40' : ''
+                }`}
               >
                 <div className="flex items-start gap-4">
                   <div className={`p-3 rounded-xl border flex flex-col items-center justify-center font-mono font-bold text-xs min-w-[90px] ${getModuleBadgeStyle(item.courseCode)}`}>
@@ -961,46 +1015,48 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                  {item.classDayId && (
+                {!isStudent && (
+                  <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                    {item.classDayId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTakeAttendanceForDay(item.classDayId!);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" /> Attendance
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => handleCopySchedule(item, e)}
+                      className="p-1.5 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 rounded-lg transition-colors cursor-pointer border border-indigo-800/60"
+                      title="Copy / Duplicate Class"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onTakeAttendanceForDay(item.classDayId!);
+                        handleOpenEditModal(item);
                       }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors cursor-pointer border border-slate-700"
+                      title="Edit Class"
                     >
-                      <UserCheck className="w-3.5 h-3.5" /> Attendance
+                      <Edit3 className="w-3.5 h-3.5" />
                     </button>
-                  )}
-                  <button
-                    onClick={(e) => handleCopySchedule(item, e)}
-                    className="p-1.5 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 rounded-lg transition-colors cursor-pointer border border-indigo-800/60"
-                    title="Copy / Duplicate Class"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenEditModal(item);
-                    }}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors cursor-pointer border border-slate-700"
-                    title="Edit Class"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSchedule(item.id);
-                    }}
-                    className="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded-lg transition-colors cursor-pointer border border-rose-800/60"
-                    title="Remove Class from Calendar"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSchedule(item.id);
+                      }}
+                      className="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded-lg transition-colors cursor-pointer border border-rose-800/60"
+                      title="Remove Class from Calendar"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1008,7 +1064,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
       )}
 
       {/* SCHEDULE LECTURE MODAL */}
-      {showScheduleModal && (
+      {!isStudent && showScheduleModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scaleIn">
             {/* Modal Header */}

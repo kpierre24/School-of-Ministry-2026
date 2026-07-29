@@ -165,6 +165,7 @@ export type AssignmentSubmission = {
   studentFileUrl?: string;
   studentFileName?: string;
   studentFileType?: string;
+  studentFiles?: { name: string; url: string; type?: string }[];
   studentNotes?: string;
   studentTypedResponse?: string;
   

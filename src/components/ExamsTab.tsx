@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { logActivity } from '../lib/auditLogger';
 import { 
   FileSpreadsheet, 
   Search, 
@@ -30,7 +31,10 @@ import {
   Paperclip,
   ChevronRight,
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  Lock,
+  ShieldAlert,
+  Image
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
@@ -234,6 +238,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
   const [uploadFileType, setUploadFileType] = useState('');
+  const [uploadFilesList, setUploadFilesList] = useState<{ name: string; url: string; type?: string }[]>([]);
   const [uploadNotes, setUploadNotes] = useState('');
   const [uploadTypedResponse, setUploadTypedResponse] = useState('');
 
@@ -335,6 +340,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         }
         return asg;
       }));
+
+      logActivity({
+        actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
+        role: userRole === 'admin' ? 'admin' : 'teacher',
+        actionCategory: 'Assignment Action',
+        actionTitle: 'Written Assignment Updated',
+        details: `Updated assignment "${newAsgTitle.trim()}". Due date: ${newAsgDueDate}, Max Points: ${newAsgMaxPoints}.`
+      });
     } else {
       const newAssignment: CustomAssignment = {
         id: `ASG-${Date.now().toString().slice(-4)}`,
@@ -349,6 +362,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         teacherAttachmentUrl: newAsgAttachmentUrl || undefined
       };
       setCustomAssignments(prev => [newAssignment, ...prev]);
+
+      logActivity({
+        actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
+        role: userRole === 'admin' ? 'admin' : 'teacher',
+        actionCategory: 'Assignment Action',
+        actionTitle: 'New Written Assignment Created',
+        details: `Created assignment "${newAsgTitle.trim()}". Module: ${newAsgModule || 'General'}, Due date: ${newAsgDueDate}, Max Points: ${newAsgMaxPoints}.`
+      });
     }
 
     handleCloseAddAssignmentModal();
@@ -413,12 +434,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       setUploadFileType(existing.studentFileType || '');
       setUploadNotes(existing.studentNotes || '');
       setUploadTypedResponse(existing.studentTypedResponse || '');
+      setUploadFilesList(existing.studentFiles || (existing.studentFileUrl ? [{ name: existing.studentFileName || 'Student_Response_Document.pdf', url: existing.studentFileUrl, type: existing.studentFileType }] : []));
     } else {
       setUploadFileName('');
       setUploadFileUrl('');
       setUploadFileType('');
       setUploadNotes('');
       setUploadTypedResponse('');
+      setUploadFilesList([]);
     }
 
     setShowUploadModal(true);
@@ -433,14 +456,17 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       s => s.assignmentId === activeAssignmentForStudent.id && s.studentName.toLowerCase().trim() === activeStudentName.toLowerCase().trim()
     );
 
+    const firstFile = uploadFilesList[0];
+
     if (existingIndex >= 0) {
       // Update existing submission
       const updated = [...submissions];
       updated[existingIndex] = {
         ...updated[existingIndex],
-        studentFileName: uploadFileName || updated[existingIndex].studentFileName || (uploadTypedResponse ? 'Typed_Assignment_Response.txt' : 'Student_Response_Document.pdf'),
-        studentFileUrl: uploadFileUrl || updated[existingIndex].studentFileUrl || (uploadTypedResponse ? `data:text/plain;charset=utf-8,${encodeURIComponent(uploadTypedResponse)}` : undefined),
-        studentFileType: uploadFileType || updated[existingIndex].studentFileType || (uploadTypedResponse ? 'text/plain' : undefined),
+        studentFileName: firstFile?.name || uploadFileName || updated[existingIndex].studentFileName || (uploadTypedResponse ? 'Typed_Assignment_Response.txt' : 'Student_Response_Document.pdf'),
+        studentFileUrl: firstFile?.url || uploadFileUrl || updated[existingIndex].studentFileUrl || (uploadTypedResponse ? `data:text/plain;charset=utf-8,${encodeURIComponent(uploadTypedResponse)}` : undefined),
+        studentFileType: firstFile?.type || uploadFileType || updated[existingIndex].studentFileType || (uploadTypedResponse ? 'text/plain' : undefined),
+        studentFiles: uploadFilesList,
         studentNotes: uploadNotes,
         studentTypedResponse: uploadTypedResponse,
         submittedAt: nowStr,
@@ -455,9 +481,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         assignmentId: activeAssignmentForStudent.id,
         studentName: activeStudentName,
         submittedAt: nowStr,
-        studentFileName: uploadFileName || (uploadTypedResponse ? 'Typed_Assignment_Response.txt' : 'Student_Response_Document.pdf'),
-        studentFileUrl: uploadFileUrl || (uploadTypedResponse ? `data:text/plain;charset=utf-8,${encodeURIComponent(uploadTypedResponse)}` : 'data:text/plain;base64,U1RVRUVOVCBTVUJNSVNTSU9OIERPQ1VNRU5U'),
-        studentFileType: uploadFileType || (uploadTypedResponse ? 'text/plain' : 'application/pdf'),
+        studentFileName: firstFile?.name || uploadFileName || (uploadTypedResponse ? 'Typed_Assignment_Response.txt' : 'Student_Response_Document.pdf'),
+        studentFileUrl: firstFile?.url || uploadFileUrl || (uploadTypedResponse ? `data:text/plain;charset=utf-8,${encodeURIComponent(uploadTypedResponse)}` : 'data:text/plain;base64,U1RVRUVOVCBTVUJNSVNTSU9OIERPQ1VNRU5U'),
+        studentFileType: firstFile?.type || uploadFileType || (uploadTypedResponse ? 'text/plain' : 'application/pdf'),
+        studentFiles: uploadFilesList,
         studentNotes: uploadNotes,
         studentTypedResponse: uploadTypedResponse,
         status: 'Submitted',
@@ -555,6 +582,15 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       };
       setSubmissions(prev => [newSub, ...prev]);
     }
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
+      role: userRole === 'admin' ? 'admin' : 'teacher',
+      actionCategory: 'Grade Adjustment',
+      actionTitle: 'Grade & Essay Correction Saved',
+      details: `Graded "${assignment.title}" for ${studentName}. Score: ${correctionScore}/${assignment.maxPoints}.${correctionFeedback ? ` Feedback: "${correctionFeedback}"` : ''}`,
+      targetStudent: studentName
+    });
 
     // Trigger Grading Notification
     if (onNotificationCreated) {
@@ -698,8 +734,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     <div className="space-y-6 animate-fadeIn">
       
       {/* Top Banner & Sub-Tab Switcher */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 text-white border border-indigo-900/50 shadow-xl sticky top-0 z-30 backdrop-blur-md">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
               <Award className="w-6 h-6 text-amber-400" />
@@ -718,6 +754,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               >
                 <Plus className="w-4 h-4" /> Add New Assignment
               </button>
+            )}
+
+            {isStudent && subTab === 'assignments' && (
+              <div className="relative group flex-shrink-0">
+                <button
+                  disabled
+                  className="px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs rounded-xl flex items-center gap-2 cursor-not-allowed opacity-80"
+                >
+                  <Lock className="w-4 h-4 text-amber-400" />
+                  <span>Add New Assignment</span>
+                </button>
+                <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Requires Instructor or Administrator Privileges</span>
+                </div>
+              </div>
             )}
 
             <button
@@ -1071,7 +1123,24 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                                 <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-indigo-600" /> Submitted (Awaiting Grading)</span>
                                 <span className="text-[10px] font-mono text-indigo-700">{sub?.submittedAt}</span>
                               </div>
-                              <p className="text-[11px] text-indigo-800 font-medium truncate">File: {sub?.studentFileName}</p>
+                              {sub?.studentFiles && sub.studentFiles.length > 0 ? (
+                                <div className="space-y-1 bg-white p-2 rounded-lg border border-indigo-100 max-h-36 overflow-y-auto custom-scrollbar">
+                                  <span className="text-[10px] text-indigo-700 font-bold block mb-1">Uploaded Files ({sub.studentFiles.length}):</span>
+                                  {sub.studentFiles.map((file, fIdx) => (
+                                    <button
+                                      key={fIdx}
+                                      type="button"
+                                      onClick={() => setPreviewFile({ name: file.name, url: file.url })}
+                                      className="flex items-center gap-1.5 w-full text-left text-[11px] text-indigo-800 hover:text-indigo-950 hover:bg-slate-50 p-1 rounded font-medium truncate transition-colors"
+                                    >
+                                      <span className="text-xs">📄</span>
+                                      <span className="truncate flex-1">{file.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[11px] text-indigo-800 font-medium truncate">File: {sub?.studentFileName}</p>
+                              )}
                               <button
                                 onClick={() => handleOpenStudentUpload(asg)}
                                 className="w-full py-1.5 bg-white border border-indigo-300 text-indigo-700 font-bold text-xs rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
@@ -1124,20 +1193,20 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </span>
               </div>
 
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse text-xs">
+              <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200">
+                <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[950px]">
                   <thead>
-                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                      <th className="p-3 pl-4">Student Name</th>
-                      <th className="p-3">Assignment Title</th>
-                      <th className="p-3">Submission Status</th>
-                      <th className="p-3">Student's Uploaded Response</th>
-                      <th className="p-3">Teacher Corrected Document</th>
-                      <th className="p-3 text-center">Score</th>
-                      <th className="p-3 text-right pr-4">Actions</th>
+                    <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                      <th className="p-3 pl-4 sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200 shadow-2xs min-w-[170px]">Student Name</th>
+                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[200px]">Assignment Title</th>
+                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[140px]">Submission Status</th>
+                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Student's Uploaded Response</th>
+                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Teacher Corrected Document</th>
+                      <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[90px]">Score</th>
+                      <th className="p-3 text-right pr-4 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody>
                     {/* Render rows for each student / assignment combination */}
                     {displayedStudents.map(std => {
                       const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
@@ -1154,11 +1223,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         const isGraded = sub?.status === 'Graded' || sub?.status === 'Correction Returned';
 
                         return (
-                          <tr key={`${std.name}-${asg.id}`} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="p-3 pl-4 font-black text-slate-900">
+                          <tr key={`${std.name}-${asg.id}`} className="group hover:bg-slate-50/80 transition-colors">
+                            <td className="p-3 pl-4 font-black text-slate-900 sticky left-0 z-10 bg-white border-b border-r border-slate-200 shadow-2xs group-hover:bg-slate-50 transition-colors">
                               {std.name}
                             </td>
-                            <td className="p-3 text-slate-700 font-medium max-w-[220px]" title={asg.title}>
+                            <td className="p-3 text-slate-700 font-medium max-w-[220px] border-b border-slate-200" title={asg.title}>
                               <div className="font-bold text-slate-900 truncate">{asg.title}</div>
                               <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
                                 <Calendar className="w-3 h-3 text-slate-400" /> Due: {asg.dueDate || 'N/A'}
@@ -1191,7 +1260,24 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
                             {/* STUDENT'S FILE */}
                             <td className="p-3">
-                              {sub?.studentFileName ? (
+                              {sub?.studentFiles && sub.studentFiles.length > 0 ? (
+                                <div className="space-y-1 max-w-[220px]">
+                                  {sub.studentFiles.map((file, fIdx) => (
+                                    <div key={fIdx} className="flex items-center justify-between gap-1.5 bg-indigo-50/50 p-1 px-1.5 rounded-lg border border-indigo-100/40 text-[11px] hover:bg-indigo-50 transition-colors">
+                                      <span className="font-mono text-indigo-800 font-bold truncate flex-1" title={file.name}>
+                                        📄 {file.name}
+                                      </span>
+                                      <button
+                                        onClick={() => setPreviewFile({ name: file.name, url: file.url })}
+                                        className="p-0.5 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer flex-shrink-0"
+                                        title={`View ${file.name}`}
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : sub?.studentFileName ? (
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-indigo-700 font-bold truncate max-w-[150px]" title={sub.studentFileName}>
                                     {sub.studentFileName}
@@ -1337,27 +1423,27 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </span>
             </div>
 
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200">
+              <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[1200px]">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                    <th className="p-3 pl-4 min-w-[155px]">Student Candidate</th>
+                  <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="p-3 pl-4 min-w-[180px] sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200 shadow-2xs">Student Candidate</th>
                     {allQuizSheets.map(qs => (
-                      <th key={qs} className="p-3 text-center min-w-[130px]" title={qs}>{qs}</th>
+                      <th key={qs} className="p-3 text-center min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>
                     ))}
                     {customAssignments.map(asg => (
-                      <th key={asg.id} className="p-3 text-center min-w-[140px] bg-indigo-50/70 text-indigo-900" title={asg.title}>
+                      <th key={asg.id} className="p-3 text-center min-w-[150px] sticky top-0 z-20 bg-indigo-50/95 text-indigo-900 border-b border-indigo-200 shadow-2xs" title={asg.title}>
                         {asg.title} ({asg.maxPoints} pts)
                       </th>
                     ))}
-                    <th className="p-3 text-center min-w-[85px]">Overall Avg</th>
-                    <th className="p-3 text-center min-w-[70px]">Grade</th>
-                    <th className="p-3 text-center min-w-[110px]">Participation</th>
-                    <th className="p-3 text-center min-w-[110px]">Assignments</th>
-                    <th className="p-3 text-center min-w-[100px]">Composite Avg</th>
+                    <th className="p-3 text-center min-w-[90px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Overall Avg</th>
+                    <th className="p-3 text-center min-w-[70px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Grade</th>
+                    <th className="p-3 text-center min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Participation</th>
+                    <th className="p-3 text-center min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Assignments</th>
+                    <th className="p-3 text-center min-w-[105px] sticky top-0 z-20 bg-indigo-100/90 text-indigo-950 border-b border-indigo-200 shadow-2xs">Composite Avg</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody>
                   {displayedStudents.map((s) => {
                     const studentKey = s.name.toLowerCase().trim();
                     const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
@@ -1366,13 +1452,13 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     const gradeLetter = getGradeLetter(s.percentage);
 
                     return (
-                      <tr key={s.name} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3 pl-4 font-bold text-slate-900">{s.name}</td>
+                      <tr key={s.name} className="group hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3 pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white border-b border-r border-slate-200 shadow-2xs group-hover:bg-slate-50 transition-colors">{s.name}</td>
                         {allQuizSheets.map(qs => {
                           const score = s.attendanceByDay?.[qs]?.score || '—';
                           const hasScore = score !== '—';
                           return (
-                            <td key={`${qs}-${score}`} className={`p-3 text-center font-mono font-bold text-slate-800 transition-all duration-300 ${hasScore ? 'animate-grade-pulse' : ''}`}>
+                            <td key={`${qs}-${score}`} className={`p-3 text-center font-mono font-bold text-slate-800 border-b border-slate-200 transition-all duration-300 ${hasScore ? 'animate-grade-pulse' : ''}`}>
                               {score}
                             </td>
                           );
@@ -1386,20 +1472,20 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           const scoreDisplay = sub && sub.score !== undefined ? `${sub.score}/${asg.maxPoints}` : (sub?.status === 'Submitted' ? 'Submitted' : '—');
                           const badgeColor = sub && sub.score !== undefined ? 'text-indigo-700 font-bold bg-indigo-50/40 animate-grade-pulse' : 'text-slate-400';
                           return (
-                            <td key={`${asg.id}-${sub?.score || 0}-${sub?.updatedAt || ''}`} className={`p-3 text-center font-mono transition-all duration-300 ${badgeColor}`}>
+                            <td key={`${asg.id}-${sub?.score || 0}-${sub?.updatedAt || ''}`} className={`p-3 text-center font-mono border-b border-slate-200 transition-all duration-300 ${badgeColor}`}>
                               {scoreDisplay}
                             </td>
                           );
                         })}
-                        <td className="p-3 text-center font-mono font-extrabold text-indigo-700 transition-all duration-300 animate-grade-pulse">
+                        <td className="p-3 text-center font-mono font-extrabold text-indigo-700 border-b border-slate-200 transition-all duration-300 animate-grade-pulse">
                           {s.percentage !== null ? `${Math.round(s.percentage)}%` : 'N/A'}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center border-b border-slate-200">
                           <span className="px-2 py-0.5 rounded font-mono font-black text-[11px] bg-indigo-100 text-indigo-800 transition-all duration-300 inline-block animate-grade-pulse">
                             {gradeLetter}
                           </span>
                         </td>
-                        <td className="p-3 text-center font-mono">
+                        <td className="p-3 text-center font-mono border-b border-slate-200">
                           <input 
                             type="number" 
                             min="0" 
@@ -1410,7 +1496,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                             className="w-14 p-1 text-center bg-slate-50 border border-slate-200 rounded font-bold text-xs"
                           /> %
                         </td>
-                        <td className="p-3 text-center font-mono">
+                        <td className="p-3 text-center font-mono border-b border-slate-200">
                           <input 
                             type="number" 
                             min="0" 
@@ -1421,7 +1507,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                             className="w-14 p-1 text-center bg-slate-50 border border-slate-200 rounded font-bold text-xs"
                           /> %
                         </td>
-                        <td className="p-3 text-center font-mono font-black text-indigo-900 bg-indigo-50/50">
+                        <td className="p-3 text-center font-mono font-black text-indigo-900 bg-indigo-50/50 border-b border-slate-200">
                           {composite}%
                         </td>
                       </tr>
@@ -1607,21 +1693,95 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
               <div className="space-y-1.5 pt-1 border-t border-slate-100">
                 <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <FileUp className="w-4 h-4 text-indigo-600" /> Upload Document File (Optional)
+                  <FileUp className="w-4 h-4 text-indigo-600" /> Upload Documents or Image Submissions (Multiple Allowed)
                 </label>
                 <input
                   type="file"
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,image/*"
                   onChange={(e) => handleFileUpload(e, (url, name, type) => {
-                    setUploadFileUrl(url);
-                    setUploadFileName(name);
-                    setUploadFileType(type);
+                    if (url && name) {
+                      setUploadFilesList(prev => {
+                        if (prev.some(f => f.name === name)) return prev;
+                        return [...prev, { name, url, type }];
+                      });
+                      setUploadFileName(name);
+                      setUploadFileUrl(url);
+                      setUploadFileType(type || '');
+                    }
+                    e.target.value = ''; // Reset input to allow re-uploading or uploading another file
                   })}
                   className="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
                 />
-                {uploadFileName && (
-                  <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 mt-1 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Ready for upload: {uploadFileName}
-                  </p>
+                
+                {/* List of uploaded files with preview and delete capability */}
+                {uploadFilesList.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ready for Submission ({uploadFilesList.length})</p>
+                    <div className="grid grid-cols-1 gap-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                      {uploadFilesList.map((file, idx) => {
+                        const isImage = file.url?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+                        return (
+                          <div key={idx} className="flex flex-col p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100/70 transition-all gap-2 animate-fadeIn">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <span className="text-base flex-shrink-0">{isImage ? '🖼️' : '📄'}</span>
+                                <div className="text-left overflow-hidden">
+                                  <p className="text-xs font-bold text-slate-800 truncate" title={file.name}>{file.name}</p>
+                                  <p className="text-[10px] text-slate-500 capitalize">{file.type?.split('/')[1] || 'document'}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewFile({ name: file.name, url: file.url })}
+                                  className="p-1 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                                  title="Preview file"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setUploadFilesList(prev => {
+                                      const filtered = prev.filter((_, i) => i !== idx);
+                                      if (filtered.length > 0) {
+                                        setUploadFileName(filtered[0].name);
+                                        setUploadFileUrl(filtered[0].url);
+                                        setUploadFileType(filtered[0].type || '');
+                                      } else {
+                                        setUploadFileName('');
+                                        setUploadFileUrl('');
+                                        setUploadFileType('');
+                                      }
+                                      return filtered;
+                                    });
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Remove file"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Inline miniature preview for images to be highly visual */}
+                            {isImage && file.url && (
+                              <div className="p-1.5 bg-white border border-slate-200 rounded-lg text-center">
+                                <img 
+                                  src={file.url} 
+                                  alt={file.name} 
+                                  className="max-h-24 mx-auto rounded border border-slate-200 object-contain"
+                                  referrerPolicy="no-referrer"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 italic">No document files attached yet.</p>
                 )}
               </div>
 
@@ -1680,7 +1840,28 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
             <form onSubmit={handleSaveCorrection} className="p-6 space-y-4 text-xs font-medium">
               {/* Student Submission Quick View */}
-              {activeSubmissionForCorrection.submission?.studentFileName && (
+              {activeSubmissionForCorrection.submission?.studentFiles && activeSubmissionForCorrection.submission.studentFiles.length > 0 ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">Student's Uploaded Documents ({activeSubmissionForCorrection.submission.studentFiles.length})</p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                    {activeSubmissionForCorrection.submission.studentFiles.map((file, fIdx) => (
+                      <div key={fIdx} className="flex items-center justify-between gap-2 bg-white p-2 rounded-lg border border-slate-100">
+                        <p className="font-bold text-slate-900 truncate max-w-[220px]" title={file.name}>📄 {file.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFile({
+                            name: file.name,
+                            url: file.url
+                          })}
+                          className="px-2.5 py-1 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 font-bold rounded-lg flex items-center gap-1 cursor-pointer text-[11px] transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Inspect File
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : activeSubmissionForCorrection.submission?.studentFileName ? (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                   <div className="space-y-0.5">
                     <p className="text-[10px] font-bold text-slate-500 uppercase">Student's Uploaded Document</p>
@@ -1697,7 +1878,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     <Eye className="w-3.5 h-3.5 text-indigo-600" /> Inspect File
                   </button>
                 </div>
-              )}
+              ) : null}
 
               {activeSubmissionForCorrection.submission?.studentTypedResponse && (
                 <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
@@ -1904,7 +2085,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             </div>
 
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
-              {previewFile.content ? (
+              {previewFile.content && (
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                   <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                     <Edit3 className="w-4 h-4 text-indigo-600" /> Student Typed Response Content
@@ -1913,20 +2094,41 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     {previewFile.content}
                   </div>
                 </div>
-              ) : (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-indigo-600" /> Document Document Stream Ready
-                  </p>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    File <strong>"{previewFile.name}"</strong> is securely encoded in the School of Ministry repository. Click download below to save the full document locally.
-                  </p>
-                </div>
               )}
 
-              {previewFile.url && (
-                <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
-                  <FolderOpen className="w-12 h-12 text-indigo-400 mx-auto" />
+              {previewFile.url && (() => {
+                const isImage = previewFile.url?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(previewFile.name);
+                return isImage ? (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                      <Image className="w-4 h-4 text-indigo-600" /> Image Submission Preview
+                    </p>
+                    <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+                      <img 
+                        src={previewFile.url} 
+                        alt={previewFile.name} 
+                        className="max-h-[350px] mx-auto rounded-xl border border-slate-300 object-contain shadow-md bg-slate-50"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-indigo-600" /> Document Stream Ready
+                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      File <strong>"{previewFile.name}"</strong> is securely encoded in the School of Ministry repository. Click download below to save the full document locally.
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {previewFile.url && (
+              <div className="p-6 pt-0">
+                <div className="text-center py-5 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-2.5">
+                  <FolderOpen className="w-10 h-10 text-indigo-400 mx-auto" />
                   <p className="text-xs text-slate-700 font-bold">{previewFile.name}</p>
                   <a
                     href={previewFile.url}
@@ -1936,8 +2138,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     <Download className="w-4 h-4" /> Download Complete File
                   </a>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="p-4 bg-slate-100 border-t border-slate-200 flex justify-end">
               <button
