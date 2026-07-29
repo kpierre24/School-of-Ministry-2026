@@ -64,8 +64,12 @@ import {
   DollarSign,
   WifiOff,
   Radio,
-  Camera
+  Camera,
+  Cloud,
+  CloudOff,
+  UploadCloud
 } from 'lucide-react';
+import { loadFromFirestore, saveToFirestore } from './lib/firebaseSync';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { usePWAInstall } from './lib/pwa';
@@ -896,6 +900,143 @@ export default function App() {
   });
 
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+
+  // Pull from cloud on startup / login user change
+  useEffect(() => {
+    let active = true;
+    const initialPull = async () => {
+      setIsCloudSyncing(true);
+      setCloudSyncError(null);
+      try {
+        const cloudState = await loadFromFirestore(user?.email);
+        if (cloudState && active) {
+          if (cloudState.records !== undefined) setRecords(cloudState.records);
+          if (cloudState.classDays !== undefined) setClassDays(cloudState.classDays);
+          if (cloudState.studentNotes !== undefined) setStudentNotes(cloudState.studentNotes);
+          if (cloudState.excusedAbsences !== undefined) setExcusedAbsences(cloudState.excusedAbsences);
+          if (cloudState.rubricScores !== undefined) setRubricScores(cloudState.rubricScores);
+          if (cloudState.deletedStudentNames !== undefined) setDeletedStudentNames(cloudState.deletedStudentNames);
+          if (cloudState.studentPhotos !== undefined) setStudentPhotos(cloudState.studentPhotos);
+          if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
+          if (cloudState.customAssignments !== undefined) setCustomAssignments(cloudState.customAssignments);
+          if (cloudState.submissions !== undefined) setSubmissions(cloudState.submissions);
+          if (cloudState.notifications !== undefined) setNotifications(cloudState.notifications);
+          if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
+          
+          if (cloudState.updatedAt) {
+            const timeStr = new Date(cloudState.updatedAt).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              second: '2-digit' 
+            });
+            setLastSyncedTime(timeStr);
+          }
+          setSyncedBannerMessage("☁️ Cloud Sync: Successfully pulled latest school database from Firestore.");
+          setTimeout(() => setSyncedBannerMessage(null), 4500);
+        }
+      } catch (err: any) {
+        console.error("Cloud pull error:", err);
+        setCloudSyncError("Could not retrieve cloud sync data.");
+      } finally {
+        if (active) setIsCloudSyncing(false);
+      }
+    };
+
+    initialPull();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const handlePushToCloud = async () => {
+    setIsCloudSyncing(true);
+    setCloudSyncError(null);
+    try {
+      const stateToSave = {
+        records,
+        classDays,
+        studentNotes,
+        excusedAbsences,
+        rubricScores,
+        deletedStudentNames,
+        studentPhotos,
+        studentLevels,
+        customAssignments,
+        submissions,
+        notifications,
+        sheetUrl
+      };
+      const success = await saveToFirestore(user?.email, stateToSave);
+      if (success) {
+        setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        }));
+        setSyncedBannerMessage("☁️ Cloud Backup Saved: Your workspace is fully synchronized in Firestore.");
+        setTimeout(() => setSyncedBannerMessage(null), 4000);
+      } else {
+        setCloudSyncError("Cloud save failed.");
+      }
+    } catch (err: any) {
+      console.error("Cloud push error:", err);
+      setCloudSyncError("Failed to save backup to Firestore.");
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  // Debounced auto-save to cloud on state changes
+  useEffect(() => {
+    if (isCloudSyncing) return;
+
+    const timer = setTimeout(async () => {
+      if (records.length === 0 && classDays.length === 0) return;
+
+      try {
+        const stateToSave = {
+          records,
+          classDays,
+          studentNotes,
+          excusedAbsences,
+          rubricScores,
+          deletedStudentNames,
+          studentPhotos,
+          studentLevels,
+          customAssignments,
+          submissions,
+          notifications,
+          sheetUrl
+        };
+        await saveToFirestore(user?.email, stateToSave);
+        setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        }));
+      } catch (err) {
+        console.error("Auto-sync save failed:", err);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [
+    records, 
+    classDays, 
+    studentNotes, 
+    excusedAbsences, 
+    rubricScores, 
+    deletedStudentNames, 
+    studentPhotos, 
+    studentLevels, 
+    customAssignments, 
+    submissions, 
+    notifications, 
+    sheetUrl,
+    user
+  ]);
 
   useEffect(() => {
     localStorage.setItem('sheetUrl', sheetUrl);
@@ -1837,6 +1978,26 @@ export default function App() {
                   <span className="hidden sm:inline">Sync</span>
                 </button>
               )}
+
+              {/* Cloud Synchronization Backup Trigger */}
+              <button
+                onClick={handlePushToCloud}
+                disabled={isCloudSyncing}
+                className="px-3 py-2 bg-gradient-to-r from-indigo-950 to-slate-900 hover:from-indigo-900 hover:to-slate-800 text-white font-black text-xs rounded-xl shadow-md border border-indigo-700/60 transition-all cursor-pointer flex items-center gap-2 relative active:scale-95 group"
+                title="Backup and Sync Workspace with Firestore Cloud"
+              >
+                {isCloudSyncing ? (
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                ) : (
+                  <Cloud className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                )}
+                <span>Cloud Sync</span>
+                {lastSyncedTime && (
+                  <span className="text-[9px] text-indigo-300 font-mono hidden md:inline">
+                    {lastSyncedTime}
+                  </span>
+                )}
+              </button>
 
               {/* Global Command Palette Trigger Button (Ctrl + K / Cmd + K) */}
               <button
