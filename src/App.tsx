@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import hteimLogoAsset from './assets/hteim_logo.jpg';
 import { motion } from 'motion/react';
 import { User } from 'firebase/auth';
 import stringSimilarity from 'string-similarity';
@@ -97,6 +98,7 @@ import { HomeTab } from './components/HomeTab';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
 import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
 import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal';
+import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
 
@@ -191,6 +193,18 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
+  const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleQuickRoleSwitch = (role: 'admin' | 'teacher' | 'student', studentNameChoice?: string) => {
     let newUser: AppUser;
@@ -211,7 +225,20 @@ export default function App() {
         email: 'teacher@hteim.edu'
       };
     } else {
-      const chosenName = studentNameChoice || uniqueStudents[0] || 'Aaron Miller';
+      let chosenName = 'Aaron Miller';
+      if (typeof studentNameChoice === 'string' && studentNameChoice.trim()) {
+        chosenName = studentNameChoice.trim();
+      } else if (studentNameChoice && typeof (studentNameChoice as any).name === 'string') {
+        chosenName = (studentNameChoice as any).name.trim();
+      } else if (uniqueStudents && uniqueStudents.length > 0) {
+        const firstStudent = uniqueStudents[0];
+        if (typeof firstStudent === 'string') {
+          chosenName = firstStudent;
+        } else if (firstStudent && typeof (firstStudent as any).name === 'string') {
+          chosenName = (firstStudent as any).name;
+        }
+      }
+
       newUser = {
         id: `u-student-${chosenName.toLowerCase().replace(/\s+/g, '-')}`,
         username: generateStudentUsername(chosenName),
@@ -809,6 +836,12 @@ export default function App() {
   const [showLiveCheckinModal, setShowLiveCheckinModal] = useState<boolean>(false);
   const [liveCheckinDayId, setLiveCheckinDayId] = useState<string>('');
   const [liveCheckinSearch, setLiveCheckinSearch] = useState<string>('');
+  const [selectedCheckinStudents, setSelectedCheckinStudents] = useState<string[]>([]);
+
+  // Clear selections when the active check-in day or the modal visibility changes
+  useEffect(() => {
+    setSelectedCheckinStudents([]);
+  }, [liveCheckinDayId, showLiveCheckinModal]);
 
   // 5. Custom Evaluation Rubric Scores State (Participation, Scripture Memory, Assignments)
   const [rubricScores, setRubricScores] = useState<Record<string, { participation: number; scripture: number; assignment: number }>>(() => {
@@ -1716,28 +1749,36 @@ export default function App() {
       )}
 
       {/* Header */}
-      <header className="bg-gradient-to-r from-amber-100/60 via-amber-50/30 to-indigo-50/50 border border-amber-200/70 rounded-2xl p-4 shadow-md mb-4 flex-shrink-0 relative z-30">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <header className="bg-slate-900/90 backdrop-blur-md border border-indigo-500/25 rounded-2xl p-4 shadow-2xl mb-4 flex-shrink-0 relative z-30 overflow-hidden group">
+        {/* Futuristic Background Mesh Glows */}
+        <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           {/* Logo & Brand Info */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
-            <img 
-              src="/hteim_logo.jpg" 
-              alt="HTEIM School of Ministry Logo" 
-              className="w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl border-2 border-amber-400 shadow-md object-contain bg-white p-1 flex-shrink-0 transition-transform hover:scale-105 cursor-pointer"
-              referrerPolicy="no-referrer"
-              onClick={() => setActiveErpTab('home')}
-            />
+            <div className="relative group/logo">
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-indigo-500 to-amber-500 rounded-2xl blur-xs opacity-70 group-hover/logo:opacity-100 transition-opacity" />
+              <img 
+                src={hteimLogoAsset} 
+                alt="HTEIM School of Ministry Logo" 
+                className="relative w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-2xl border-2 border-amber-400/80 shadow-xl object-contain bg-white p-1 flex-shrink-0 transition-transform group-hover/logo:scale-105 cursor-pointer"
+                onClick={() => setActiveErpTab('home')}
+              />
+            </div>
             <div onClick={() => setActiveErpTab('home')} className="cursor-pointer group">
               <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-                <h1 className="text-base xs:text-lg sm:text-xl font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">HTEIM School of Ministry</h1>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 rounded-full border border-amber-300/70 flex items-center gap-1 mx-auto sm:mx-0">
-                  <Sparkles className="w-3 h-3 text-amber-600" /> Ministry Portal
+                <h1 className="text-base xs:text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-amber-300 via-white to-indigo-200 bg-clip-text text-transparent group-hover:from-amber-200 group-hover:to-indigo-300 transition-all">
+                  HTEIM School of Ministry
+                </h1>
+                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 rounded-full border border-amber-400/40 flex items-center gap-1 mx-auto sm:mx-0 shadow-3xs">
+                  <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" /> Futuristic Portal
                 </span>
               </div>
-              <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
-                <span className="font-bold text-slate-700">Heaven Touching Earth Int'l Ministries</span>
-                <span className="text-slate-300 hidden sm:inline">•</span>
-                <span className="italic text-amber-700/90 font-serif w-full sm:w-auto text-center sm:text-left">"Bringing Heaven to Earth, Taking People to Heaven"</span>
+              <p className="text-slate-300 text-[11px] sm:text-xs mt-0.5 font-medium flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
+                <span className="font-bold text-slate-200">Heaven Touching Earth Int'l Ministries</span>
+                <span className="text-indigo-400 hidden sm:inline">•</span>
+                <span className="italic text-amber-300/90 font-serif w-full sm:w-auto text-center sm:text-left">"Bringing Heaven to Earth, Taking People to Heaven"</span>
               </p>
             </div>
           </div>
@@ -1796,6 +1837,19 @@ export default function App() {
                   <span className="hidden sm:inline">Sync</span>
                 </button>
               )}
+
+              {/* Global Command Palette Trigger Button (Ctrl + K / Cmd + K) */}
+              <button
+                onClick={() => setShowCommandPalette(true)}
+                className="px-3 py-2 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white font-black text-xs rounded-xl shadow-md border border-indigo-700/60 transition-all cursor-pointer flex items-center gap-2 relative active:scale-95 group"
+                title="Global Search & Quick Jump (Ctrl+K or Cmd+K)"
+              >
+                <Search className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span className="hidden sm:inline">Search</span>
+                <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-mono font-bold bg-slate-800 text-amber-300 rounded border border-slate-700">
+                  ⌘K
+                </kbd>
+              </button>
 
               {/* Mobile App & APK Download Center Button */}
               <button
@@ -2033,9 +2087,12 @@ export default function App() {
                                 onChange={(e) => handleQuickRoleSwitch('student', e.target.value)}
                                 className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-1.5 text-xs font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
                               >
-                                {uniqueStudents.map(s => (
-                                  <option key={s} value={s}>{s}</option>
-                                ))}
+                                {uniqueStudents.map(s => {
+                                  const nameStr = typeof s === 'string' ? s : s.name;
+                                  return (
+                                    <option key={nameStr} value={nameStr}>{nameStr}</option>
+                                  );
+                                })}
                               </select>
                             </div>
                           )}
@@ -2101,124 +2158,124 @@ export default function App() {
       </header>
 
       {/* ERP Classroom System Navigation Tabs */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-1.5 flex items-center justify-between overflow-x-auto custom-scrollbar shadow-lg flex-shrink-0">
-        <div className="flex items-center gap-1.5 min-w-max">
+      <div className="bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur-md border border-slate-200 dark:border-indigo-500/20 rounded-2xl p-2 flex items-center justify-between overflow-x-auto custom-scrollbar shadow-md dark:shadow-2xl flex-shrink-0 relative z-20">
+        <div className="flex items-center gap-2 min-w-max">
           <button
             onClick={() => setActiveErpTab('home')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               activeErpTab === 'home'
-                ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-sm font-black ring-1 ring-amber-400/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-300 scale-105'
+                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-slate-950" />
             <span>Home Page</span>
           </button>
-
+ 
           <button
             onClick={() => setActiveErpTab('attendance')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeErpTab === 'attendance'
-                ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>Attendance Portal</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'attendance' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'attendance' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
               {uniqueStudents.length}
             </span>
           </button>
-
+ 
           {appUser?.role !== 'student' && (
             <button
               onClick={() => setActiveErpTab('students')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeErpTab === 'students'
-                  ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
               }`}
             >
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-300" />
+              <GraduationCap className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-200" />
               <span>Students Directory</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'students' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'students' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                 {uniqueStudents.length}
               </span>
             </button>
           )}
-
+ 
           <button
             onClick={() => setActiveErpTab('courses')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeErpTab === 'courses'
-                ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
+            <BookOpen className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
             <span>Courses & Curriculum</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'courses' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'courses' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
               6 Modules
             </span>
           </button>
-
+ 
           <button
             onClick={() => setActiveErpTab('exams')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeErpTab === 'exams'
-                ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
             }`}
           >
-            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <Award className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300" />
             <span>Exams & Evaluation</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'exams' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'exams' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
               {uniqueStudents.filter(s => s.avgScore !== null).length}
             </span>
           </button>
-
+ 
           <button
             onClick={() => setActiveErpTab('schedule')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeErpTab === 'schedule'
-                ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5 text-blue-300" />
+            <Calendar className="w-3.5 h-3.5 text-blue-500 dark:text-blue-300" />
             <span>Class Schedule</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'schedule' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'schedule' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
               {classDays.length} Days
             </span>
           </button>
-
+ 
           <button
             onClick={() => setActiveErpTab('library')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeErpTab === 'library'
-                ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
             }`}
           >
-            <Bookmark className="w-3.5 h-3.5 text-teal-300" />
+            <Bookmark className="w-3.5 h-3.5 text-teal-500 dark:text-teal-300" />
             <span>Library & Resources</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'library' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'library' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
               6 Files
             </span>
           </button>
-
+ 
           {(appUser?.role === 'admin' || appUser?.role === 'student') && (
             <button
               onClick={() => setActiveErpTab('payments')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeErpTab === 'payments'
-                  ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
               }`}
             >
-              <DollarSign className="w-3.5 h-3.5 text-emerald-300" />
+              <DollarSign className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
               <span>{appUser?.role === 'student' ? 'My Payments' : 'Student Payments'}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'payments' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'payments' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                 {appUser?.role === 'student' ? 'Statement' : 'Admin'}
               </span>
             </button>
@@ -2976,10 +3033,9 @@ export default function App() {
               <div className="relative mb-4">
                 <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-400 to-emerald-500 blur-sm opacity-60"></div>
                 <img 
-                  src="/hteim_logo.jpg" 
+                  src={hteimLogoAsset} 
                   alt="HTEIM School of Ministry" 
                   className="relative w-20 h-20 rounded-full border-2 border-white shadow-xl object-contain bg-white p-1"
-                  referrerPolicy="no-referrer"
                 />
               </div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">HTEIM School of Ministry</h2>
@@ -3676,10 +3732,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
                   <div className="flex items-center gap-4">
                     <img 
-                      src="/hteim_logo.jpg" 
+                      src={hteimLogoAsset} 
                       alt="HTEIM School of Ministry Logo" 
                       className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                      referrerPolicy="no-referrer"
                     />
                     <div>
                       <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
@@ -3808,7 +3863,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 {/* Report Footer & Official Seal */}
                 <div className="pt-6 mt-6 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
                   <div className="flex items-center gap-2">
-                    <img src="/hteim_logo.jpg" alt="HTEIM Logo" className="w-6 h-6 rounded-full border border-amber-400 p-0.5 object-contain bg-white" referrerPolicy="no-referrer" />
+                    <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-6 h-6 rounded-full border border-amber-400 p-0.5 object-contain bg-white" />
                     <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
                     <span>•</span>
                     <span>Heaven Touching Earth Int'l Ministries</span>
@@ -3990,10 +4045,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
                 <div className="flex items-center gap-4">
                   <img 
-                    src="/hteim_logo.jpg" 
+                    src={hteimLogoAsset} 
                     alt="HTEIM Logo" 
                     className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                    referrerPolicy="no-referrer"
                   />
                   <div>
                     <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
@@ -4134,7 +4188,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               {/* Letterhead Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
                 <div className="flex items-center gap-2">
-                  <img src="/hteim_logo.jpg" alt="HTEIM Logo" className="w-5 h-5 rounded-full border border-amber-400 p-0.5 object-contain bg-white" referrerPolicy="no-referrer" />
+                  <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-5 h-5 rounded-full border border-amber-400 p-0.5 object-contain bg-white" />
                   <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
                 </div>
                 <div className="italic font-serif text-slate-600">
@@ -4151,10 +4205,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             {/* Top Certificate Header */}
             <div className="flex flex-col items-center justify-center mb-6">
               <img 
-                src="/hteim_logo.jpg" 
+                src={hteimLogoAsset} 
                 alt="HTEIM School of Ministry Logo" 
                 className="w-20 h-20 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-1 mb-2"
-                referrerPolicy="no-referrer"
               />
               <h1 className="text-2xl font-black tracking-wider text-slate-900 uppercase">HTEIM SCHOOL OF MINISTRY</h1>
               <p className="text-xs font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
@@ -4422,16 +4475,58 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             </div>
 
             {/* Search Input for Live Check-In */}
-            <div className="p-3 border-b border-slate-200 bg-white flex items-center justify-between gap-2 flex-shrink-0">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Filter student for check-in..."
-                  value={liveCheckinSearch}
-                  onChange={(e) => setLiveCheckinSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
-                />
+            <div className="p-3 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-1 w-full min-w-0">
+                {/* Select All Checkbox */}
+                {(() => {
+                  const filteredCheckinStudents = uniqueStudents.filter(s => s.name.toLowerCase().includes(liveCheckinSearch.toLowerCase()));
+                  const allFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.every(s => selectedCheckinStudents.includes(s.name));
+                  const someFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.some(s => selectedCheckinStudents.includes(s.name));
+                  return (
+                    <div className="flex items-center gap-2 flex-shrink-0 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="select-all-checkin"
+                        checked={allFilteredSelected}
+                        ref={el => {
+                          if (el) {
+                            el.indeterminate = someFilteredSelected && !allFilteredSelected;
+                          }
+                        }}
+                        onChange={() => {
+                          if (allFilteredSelected) {
+                            setSelectedCheckinStudents(prev => prev.filter(name => !filteredCheckinStudents.some(f => f.name === name)));
+                          } else {
+                            setSelectedCheckinStudents(prev => {
+                              const newSelection = [...prev];
+                              filteredCheckinStudents.forEach(f => {
+                                if (!newSelection.includes(f.name)) {
+                                  newSelection.push(f.name);
+                                }
+                              });
+                              return newSelection;
+                            });
+                          }
+                        }}
+                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <label htmlFor="select-all-checkin" className="text-xs font-bold text-slate-500 cursor-pointer select-none">
+                        All
+                      </label>
+                    </div>
+                  );
+                })()}
+
+                <div className="relative flex-1 min-w-0">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Filter student for check-in..."
+                    value={liveCheckinSearch}
+                    onChange={(e) => setLiveCheckinSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
+                  />
+                </div>
               </div>
 
               <button
@@ -4461,14 +4556,125 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               </button>
             </div>
 
+            {/* Selection-Based Bulk Action Bar */}
+            {(() => {
+              const handleBulkSetStatus = (status: 'present' | 'absent' | 'excused') => {
+                if (!liveCheckinDayId || selectedCheckinStudents.length === 0) return;
+
+                // 1. Prepare excusedAbsences updates
+                setExcusedAbsences(prev => {
+                  const updatedExcused = { ...prev };
+                  selectedCheckinStudents.forEach(name => {
+                    const studentKey = name.toLowerCase().trim();
+                    updatedExcused[studentKey] = {
+                      ...(updatedExcused[studentKey] || {}),
+                      [liveCheckinDayId]: status === 'excused'
+                    };
+                  });
+                  return updatedExcused;
+                });
+
+                // 2. Prepare records updates
+                setRecords(prev => {
+                  const updated = [...prev];
+                  selectedCheckinStudents.forEach(name => {
+                    const studentKey = name.toLowerCase().trim();
+                    const existingIdx = updated.findIndex(
+                      r => r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId
+                    );
+
+                    if (status === 'present') {
+                      if (existingIdx >= 0) {
+                        updated[existingIdx].present = true;
+                      } else {
+                        updated.push({
+                          studentName: name,
+                          classDay: liveCheckinDayId,
+                          present: true,
+                          score: null,
+                          timestamp: new Date().toLocaleDateString()
+                        });
+                      }
+                    } else {
+                      // For absent or excused, set present to false
+                      if (existingIdx >= 0) {
+                        updated[existingIdx].present = false;
+                      }
+                    }
+                  });
+                  return updated;
+                });
+
+                // 3. Clear selections after successful action
+                setSelectedCheckinStudents([]);
+              };
+
+              if (selectedCheckinStudents.length === 0) return null;
+
+              return (
+                <div className="px-4 py-3 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 border-b border-indigo-500/30 text-white flex flex-col sm:flex-row items-center justify-between gap-3 animate-slideDown shadow-md flex-shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="bg-indigo-500/20 text-indigo-300 p-1.5 rounded-lg border border-indigo-400/30 animate-pulse">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-white">
+                        {selectedCheckinStudents.length} {selectedCheckinStudents.length === 1 ? 'Student' : 'Students'} Selected
+                      </p>
+                      <p className="text-[10px] text-slate-400">Apply status to all selected records</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => handleBulkSetStatus('present')}
+                      className="flex-1 sm:flex-none px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Present
+                    </button>
+                    <button
+                      onClick={() => handleBulkSetStatus('excused')}
+                      className="flex-1 sm:flex-none px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Excused
+                    </button>
+                    <button
+                      onClick={() => handleBulkSetStatus('absent')}
+                      className="flex-1 sm:flex-none px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Absent
+                    </button>
+                    <button
+                      onClick={() => setSelectedCheckinStudents([])}
+                      className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Live Student Card List */}
-            <div className="p-3 overflow-y-auto custom-scrollbar flex-1 space-y-2 bg-slate-50">
+            <div className="p-3 overflow-y-auto custom-scrollbar flex-1 space-y-2 bg-slate-50 dark:bg-slate-950">
               {uniqueStudents
                 .filter(s => s.name.toLowerCase().includes(liveCheckinSearch.toLowerCase()))
                 .map(s => {
                   const att = s.attendanceByDay[liveCheckinDayId];
                   const isPresent = att?.present;
                   const isExcused = !isPresent && !!(excusedAbsences[s.name.toLowerCase().trim()] || {})[liveCheckinDayId];
+                  const isChecked = selectedCheckinStudents.includes(s.name);
+
+                  const handleToggleSelect = () => {
+                    setSelectedCheckinStudents(prev => 
+                      prev.includes(s.name) 
+                        ? prev.filter(name => name !== s.name)
+                        : [...prev, s.name]
+                    );
+                  };
 
                   const handleSetStatus = (status: 'present' | 'absent' | 'excused') => {
                     if (!liveCheckinDayId) return;
@@ -4516,10 +4722,26 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   };
 
                   return (
-                    <div key={s.name} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-extrabold text-slate-900 truncate">{s.name}</h4>
-                        <p className="text-[10px] text-slate-400 font-mono">Overall Rate: {Math.round(s.rate)}%</p>
+                    <div 
+                      key={s.name} 
+                      className={`p-3 border rounded-xl flex items-center justify-between gap-3 shadow-2xs transition-all duration-200 ${
+                        isChecked 
+                          ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-200 dark:ring-indigo-900' 
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Row Selection Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={handleToggleSelect}
+                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1" onClick={handleToggleSelect}>
+                          <h4 className="text-xs font-extrabold text-slate-900 dark:text-white truncate cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{s.name}</h4>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Overall Rate: {Math.round(s.rate)}%</p>
+                        </div>
                       </div>
 
                       {/* Single-Touch 3-Button Toggle */}
@@ -4533,7 +4755,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                             isPresent 
                               ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400'
                           }`}
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -4549,7 +4771,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                             isExcused 
                               ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400/30' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-400'
                           }`}
                         >
                           <AlertCircle className="w-3.5 h-3.5" />
@@ -4565,7 +4787,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                             !isPresent && !isExcused 
                               ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-500/30' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-400'
                           }`}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -4577,10 +4799,10 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 })}
             </div>
 
-            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-end">
               <button 
                 onClick={() => setShowLiveCheckinModal(false)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm"
+                className="px-5 py-2 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm"
               >
                 Done & Save Live Session
               </button>
@@ -4614,6 +4836,33 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             setActiveErpTab('payments');
             setShowOutstandingPaymentBanner(false);
           }}
+        />
+      )}
+
+      {/* Global Command Palette Modal (Ctrl + K) */}
+      {showCommandPalette && (
+        <CommandPaletteModal
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          onNavigate={(tab) => setActiveErpTab(tab)}
+          appUser={appUser}
+          studentList={uniqueStudents.map(s => ({
+            name: s.name,
+            rate: s.rate,
+            levelId: s.levelId,
+            studentId: getStudentIdForName(s.name)
+          }))}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenAdminTools={() => setShowAdminAuditModal(true)}
+          onOpenBatchBroadcast={() => setShowBatchBroadcastModal(true)}
+          onOpenLiveCheckin={() => {
+            setShowLiveCheckinModal(true);
+            if (!liveCheckinDayId && classDays.length > 0) {
+              setLiveCheckinDayId(classDays[classDays.length - 1].id);
+            }
+          }}
+          onOpenMobileDownload={() => setShowMobileDownloadModal(true)}
+          onOpenLogin={() => setShowLoginModal(true)}
         />
       )}
 

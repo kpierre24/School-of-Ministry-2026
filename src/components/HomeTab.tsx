@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import hteimLogoAsset from '../assets/hteim_logo.jpg';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -17,10 +18,19 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
-  Play
+  Play,
+  Sliders,
+  PenSquare,
+  DollarSign
 } from 'lucide-react';
 import { TabType } from '../types';
 import { AppUser } from '../lib/userAuth';
+import { 
+  DashboardCustomizerModal, 
+  DEFAULT_WIDGET_ORDER, 
+  DEFAULT_ENABLED_WIDGETS, 
+  WIDGET_CATALOG 
+} from './DashboardCustomizerModal';
 
 interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
@@ -30,6 +40,8 @@ interface HomeTabProps {
   coursesCount: number;
   classDaysCount: number;
   avgAttendanceRate: number;
+  pendingAssignmentsCount?: number;
+  uncollectedTuitionAmount?: number;
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -39,10 +51,45 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   studentsCount,
   coursesCount,
   classDaysCount,
-  avgAttendanceRate
+  avgAttendanceRate,
+  pendingAssignmentsCount = 3,
+  uncollectedTuitionAmount = 2450
 }) => {
   const isStudent = appUser?.role === 'student';
   const [activePillarTab, setActivePillarTab] = useState(0);
+
+  // Widget customizer local state
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('hteim_home_widget_order');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return DEFAULT_WIDGET_ORDER; }
+    }
+    return DEFAULT_WIDGET_ORDER;
+  });
+
+  const [enabledWidgets, setEnabledWidgets] = useState<string[]>(() => {
+    const saved = localStorage.getItem('hteim_home_widget_enabled');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return DEFAULT_ENABLED_WIDGETS; }
+    }
+    return DEFAULT_ENABLED_WIDGETS;
+  });
+
+  const [showCustomizerModal, setShowCustomizerModal] = useState(false);
+
+  const handleSaveWidgetLayout = (newOrder: string[], newEnabled: string[]) => {
+    setWidgetOrder(newOrder);
+    setEnabledWidgets(newEnabled);
+    localStorage.setItem('hteim_home_widget_order', JSON.stringify(newOrder));
+    localStorage.setItem('hteim_home_widget_enabled', JSON.stringify(newEnabled));
+  };
+
+  const handleResetWidgetLayout = () => {
+    setWidgetOrder(DEFAULT_WIDGET_ORDER);
+    setEnabledWidgets(DEFAULT_ENABLED_WIDGETS);
+    localStorage.removeItem('hteim_home_widget_order');
+    localStorage.removeItem('hteim_home_widget_enabled');
+  };
 
   // Sample or static statistics for aesthetic balance
   const activeStudents = studentsCount > 0 ? studentsCount : 38;
@@ -140,60 +187,66 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-12 animate-fadeIn" id="som-home-container">
       
-      {/* Premium Hero Section inspired by BiblicalTraining.org */}
-      <section className="relative overflow-hidden rounded-3xl bg-slate-950 text-white border border-slate-800 shadow-2xl">
-        {/* Subtle background radial glows */}
-        <div className="absolute -left-1/4 -top-1/4 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -right-1/4 -bottom-1/4 w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Futuristic Mesh Hero Section */}
+      <section className="relative overflow-hidden rounded-3xl futuristic-hero-bg text-white border border-indigo-500/30 shadow-2xl cyber-grid-pattern">
+        {/* Futuristic glowing ambient background lights */}
+        <div className="absolute -left-1/4 -top-1/4 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+        <div className="absolute -right-1/4 -bottom-1/4 w-[600px] h-[600px] bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative px-6 py-12 md:py-16 md:px-12 max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-10">
+        <div className="relative z-10 px-6 py-12 md:py-16 md:px-12 max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-10">
           
           {/* Hero Copy */}
           <div className="flex-1 text-left space-y-5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/10 text-amber-400 text-[11px] font-black tracking-widest uppercase rounded-full border border-amber-400/20">
-              <Sparkles className="w-3.5 h-3.5" /> Equipping Saints for Ministry
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500/15 text-amber-300 text-[11px] font-black tracking-widest uppercase rounded-full border border-amber-400/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" style={{ animationDuration: '6s' }} />
+              <span>Equipping Saints for Kingdom Ministry</span>
             </div>
             
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-none text-white font-sans">
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight text-white font-sans">
               World-Class Biblical & <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-indigo-300 bg-clip-text text-transparent">Ministerial Training</span> <br />
+              <span className="inline-block my-1.5 px-4 py-1.5 bg-gradient-to-r from-amber-400 via-amber-300 to-indigo-300 text-slate-950 font-black rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-200">
+                Ministerial Training
+              </span> <br />
               for Everyone, Everywhere.
             </h1>
             
-            <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl">
+            <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl font-normal">
               HTEIM School of Ministry provides structured, biblically-centered teaching designed to help you grow in faith, develop high standards of character, and activate your spiritual calling.
             </p>
             
             <div className="flex flex-wrap items-center gap-3.5 pt-2">
               <button
                 onClick={() => onNavigate('courses')}
-                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg hover:shadow-amber-500/10 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                className="px-6 py-3.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center gap-2 active:scale-95 border border-amber-300"
               >
-                <BookOpen className="w-4 h-4" /> Explore Curriculum
+                <BookOpen className="w-4 h-4 text-slate-950" /> Explore Curriculum
               </button>
               
               <button
                 onClick={() => onNavigate('schedule')}
-                className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2"
+                className="px-5 py-3.5 bg-slate-900/90 hover:bg-slate-800/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-indigo-500/40 hover:border-indigo-400 cursor-pointer flex items-center gap-2 backdrop-blur-md shadow-lg"
               >
                 View Academic Calendar
               </button>
             </div>
           </div>
           
-          {/* Logo / Badge Feature Graphic */}
-          <div className="hidden md:flex flex-shrink-0 w-64 h-64 bg-slate-900 border border-slate-800 rounded-2xl items-center justify-center shadow-2xl relative p-3">
-            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 to-indigo-500/10 rounded-2xl" />
-            <div className="relative flex flex-col items-center text-center p-4">
-              <img 
-                src="/hteim_logo.jpg" 
-                alt="HTEIM logo" 
-                className="w-24 h-24 rounded-xl border border-amber-400/40 shadow-lg object-contain bg-white p-1 mb-3"
-                referrerPolicy="no-referrer"
-              />
-              <span className="font-serif italic text-amber-400 text-xs font-semibold">"Bringing Heaven to Earth"</span>
-              <p className="text-[10px] font-mono text-slate-400 mt-2 uppercase font-extrabold tracking-wider">
-                Estd. School of Ministry
+          {/* Futuristic Holographic Logo Feature Card */}
+          <div className="hidden md:flex flex-shrink-0 w-64 h-64 bg-slate-900/80 backdrop-blur-md border border-indigo-500/40 rounded-3xl items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.25)] relative p-3 group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/20 via-indigo-500/20 to-purple-500/20 rounded-3xl opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 flex flex-col items-center text-center p-4">
+              <div className="relative mb-3">
+                <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-indigo-500 rounded-2xl blur-xs opacity-75 group-hover:opacity-100 transition-opacity animate-pulse" />
+                <img 
+                  src={hteimLogoAsset} 
+                  alt="HTEIM logo" 
+                  className="relative w-24 h-24 rounded-2xl border-2 border-amber-400/80 shadow-xl object-contain bg-white p-1.5"
+                />
+              </div>
+              <span className="font-serif italic text-amber-300 text-xs font-semibold drop-shadow-xs">"Bringing Heaven to Earth"</span>
+              <p className="text-[10px] font-mono text-indigo-300 mt-2 uppercase font-extrabold tracking-wider bg-indigo-950/80 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
+                Apostolic School of Ministry
               </p>
             </div>
           </div>
@@ -201,46 +254,175 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* Stats Dashboard Row */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
-            <Users className="w-5 h-5 text-indigo-600" />
+      {/* Customizable Metric Widgets Dashboard Section */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              Key Performance & Academic Metrics
+            </h2>
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-mono font-bold border border-slate-200">
+              {widgetOrder.filter(id => enabledWidgets.includes(id)).length} Active
+            </span>
           </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Enrolled</p>
-            <p className="text-xl font-black text-slate-900">{activeStudents} Students</p>
-          </div>
-        </div>
-        
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
-            <GraduationCap className="w-5 h-5 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Curriculum</p>
-            <p className="text-xl font-black text-slate-900">6 Core Modules</p>
-          </div>
+
+          <button
+            onClick={() => setShowCustomizerModal(true)}
+            className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 font-extrabold text-xs rounded-xl border border-slate-200 shadow-3xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+            title="Drag, reorder, or toggle metric cards on your dashboard"
+          >
+            <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Customize Dashboard</span>
+          </button>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-            <Calendar className="w-5 h-5 text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Scheduled Lessons</p>
-            <p className="text-xl font-black text-slate-900">{scheduledClasses} Classroom Days</p>
-          </div>
-        </div>
+        {/* Dynamic Metric Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {widgetOrder
+            .filter(id => enabledWidgets.includes(id))
+            .map(widgetId => {
+              switch (widgetId) {
+                case 'total_enrolled':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('students')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-indigo-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Users className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Total Enrolled</p>
+                        <p className="text-lg font-black text-slate-900 truncate">{activeStudents} Students</p>
+                      </div>
+                    </div>
+                  );
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-5 h-5 text-rose-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Attendance Rate</p>
-            <p className="text-xl font-black text-slate-900">{attendanceRate}% Attendance</p>
-          </div>
+                case 'active_curriculum':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('courses')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-amber-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <GraduationCap className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Active Curriculum</p>
+                        <p className="text-lg font-black text-slate-900 truncate">6 Core Modules</p>
+                      </div>
+                    </div>
+                  );
+
+                case 'scheduled_lessons':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('schedule')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-emerald-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Calendar className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Scheduled Lessons</p>
+                        <p className="text-lg font-black text-slate-900 truncate">{scheduledClasses} Classroom Days</p>
+                      </div>
+                    </div>
+                  );
+
+                case 'avg_attendance':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('attendance')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-rose-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <TrendingUp className="w-5 h-5 text-rose-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Avg Attendance</p>
+                        <p className="text-lg font-black text-slate-900 truncate">{attendanceRate}% Attendance</p>
+                      </div>
+                    </div>
+                  );
+
+                case 'pending_assignments':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('exams')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-purple-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <PenSquare className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Pending Assignments</p>
+                        <p className="text-lg font-black text-slate-900 truncate">{pendingAssignmentsCount} Quizzes & Tasks</p>
+                      </div>
+                    </div>
+                  );
+
+                case 'uncollected_tuition':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('payments')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-rose-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <DollarSign className="w-5 h-5 text-rose-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Uncollected Tuition</p>
+                        <p className="text-lg font-black text-slate-900 truncate">${uncollectedTuitionAmount.toLocaleString()} Past Due</p>
+                      </div>
+                    </div>
+                  );
+
+                case 'library_resources':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('library')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-teal-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <BookOpen className="w-5 h-5 text-teal-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Digital Library</p>
+                        <p className="text-lg font-black text-slate-900 truncate">6 Handouts & Syllabi</p>
+                      </div>
+                    </div>
+                  );
+
+                case 'upcoming_class':
+                  return (
+                    <div 
+                      key={widgetId} 
+                      onClick={() => onNavigate('schedule')}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-3.5 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Clock className="w-5 h-5 text-sky-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">Next Session</p>
+                        <p className="text-lg font-black text-slate-900 truncate">Day 12 • Main Hall</p>
+                      </div>
+                    </div>
+                  );
+
+                default:
+                  return null;
+              }
+            })}
         </div>
       </section>
 
@@ -526,6 +708,18 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
 
       </div>
+
+      {/* Dashboard Widgets Customizer Modal */}
+      {showCustomizerModal && (
+        <DashboardCustomizerModal
+          isOpen={showCustomizerModal}
+          onClose={() => setShowCustomizerModal(false)}
+          widgetOrder={widgetOrder}
+          enabledWidgets={enabledWidgets}
+          onSave={handleSaveWidgetLayout}
+          onReset={handleResetWidgetLayout}
+        />
+      )}
 
     </div>
   );

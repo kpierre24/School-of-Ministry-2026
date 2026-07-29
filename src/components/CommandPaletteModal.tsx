@@ -1,0 +1,511 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Search, 
+  X, 
+  User, 
+  BookOpen, 
+  Award, 
+  DollarSign, 
+  Calendar, 
+  Bookmark, 
+  Settings, 
+  ShieldCheck, 
+  Radio, 
+  Smartphone, 
+  Sparkles, 
+  ArrowRight, 
+  CornerDownLeft,
+  UserCheck,
+  CheckCircle2,
+  Clock,
+  Sliders
+} from 'lucide-react';
+import { TabType } from '../types';
+import { AppUser } from '../lib/userAuth';
+
+export interface CommandPaletteItem {
+  id: string;
+  category: 'Actions & Views' | 'Students' | 'Courses' | 'Exams' | 'Payments';
+  title: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  badge?: string;
+  badgeColor?: string;
+  action: () => void;
+}
+
+interface CommandPaletteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (tab: TabType) => void;
+  appUser: AppUser | null;
+  studentList: { name: string; rate?: number; levelId?: string; studentId?: string }[];
+  onOpenSettings: () => void;
+  onOpenAdminTools: () => void;
+  onOpenBatchBroadcast: () => void;
+  onOpenLiveCheckin: () => void;
+  onOpenMobileDownload: () => void;
+  onOpenLogin: () => void;
+}
+
+export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
+  isOpen,
+  onClose,
+  onNavigate,
+  appUser,
+  studentList,
+  onOpenSettings,
+  onOpenAdminTools,
+  onOpenBatchBroadcast,
+  onOpenLiveCheckin,
+  onOpenMobileDownload,
+  onOpenLogin
+}) => {
+  const [query, setQuery] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Core static items for modules & exams
+  const coreModules = [
+    { code: 'SOM-MOD-1', title: 'Module 1: Introduction & Orientation', instructor: 'HTEIM Academic Directorate' },
+    { code: 'SOM-MOD-2', title: 'Module 2: Evangelism & Soul Winning', instructor: 'Evangelism Ministry Lead' },
+    { code: 'SOM-MOD-3', title: 'Module 3: Ministerial Character & Ethics', instructor: 'Pastor Senior Advisor' },
+    { code: 'SOM-MOD-4', title: 'Module 4: Apostolic Governance & Epistles', instructor: 'Dr. Faculty Director' },
+    { code: 'SOM-MOD-5', title: 'Module 5: Prophetic Ministry & Discernment', instructor: 'Prophetic Faculty Director' },
+    { code: 'SOM-MOD-6', title: 'Module 6: School of Pastors & Expository Preaching', instructor: 'Rev. Academic Dean' },
+  ];
+
+  const coreExams = [
+    { code: 'EXAM-01', title: 'Module 1 Hermeneutics Midterm Exam', weight: '20%' },
+    { code: 'EXAM-02', title: 'Evangelism Strategy & Recitation Quiz', weight: '15%' },
+    { code: 'EXAM-03', title: 'Ministerial Ethics Comprehensive Final', weight: '30%' },
+    { code: 'EXAM-04', title: 'Apostolic Epistles Exegesis Paper', weight: '25%' },
+    { code: 'EXAM-05', title: 'Prophetic Discernment Practical Practicum', weight: '20%' },
+  ];
+
+  const corePayments = [
+    { name: 'Aaron Miller', status: 'Paid In Full', track: 'Foundation Certificate' },
+    { name: 'Abigail Watson', status: 'Partial', track: 'Intermediate Diploma' },
+    { name: 'Benny Hinn Jr.', status: 'Past Due', track: 'Advanced Degree' },
+    { name: 'Chloe Davis', status: 'Paid In Full', track: 'Executive Leadership' },
+  ];
+
+  // Focus input automatically when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setQuery('');
+      setSelectedIndex(0);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  // Build searchable list
+  const allItems: CommandPaletteItem[] = [];
+
+  // 1. Core Navigation & System Actions
+  allItems.push(
+    {
+      id: 'nav-home',
+      category: 'Actions & Views',
+      title: 'Go to Home Dashboard',
+      subtitle: 'Overview, Pillars & Ministry Curriculum Highlights',
+      icon: <Sparkles className="w-4 h-4 text-amber-500" />,
+      badge: 'Tab',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+      action: () => { onNavigate('home'); onClose(); }
+    },
+    {
+      id: 'nav-attendance',
+      category: 'Actions & Views',
+      title: 'Open Student Attendance Portal',
+      subtitle: 'Live Attendance Records & Class Check-In Sheets',
+      icon: <UserCheck className="w-4 h-4 text-indigo-500" />,
+      badge: 'Tab',
+      badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      action: () => { onNavigate('attendance'); onClose(); }
+    },
+    {
+      id: 'nav-students',
+      category: 'Actions & Views',
+      title: 'Open Students Directory',
+      subtitle: 'View Student Roster, Contact Profiles & Enrolment Levels',
+      icon: <User className="w-4 h-4 text-emerald-500" />,
+      badge: 'Tab',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      action: () => { onNavigate('students'); onClose(); }
+    },
+    {
+      id: 'nav-courses',
+      category: 'Actions & Views',
+      title: 'Courses & Curriculum Modules',
+      subtitle: 'Browse 6 Core Ministry Modules & Syllabi Details',
+      icon: <BookOpen className="w-4 h-4 text-blue-500" />,
+      badge: 'Tab',
+      badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+      action: () => { onNavigate('courses'); onClose(); }
+    },
+    {
+      id: 'nav-exams',
+      category: 'Actions & Views',
+      title: 'Exams, Assignments & Evaluations',
+      subtitle: 'Scripture Examinations, Quizzes & Grade Books',
+      icon: <Award className="w-4 h-4 text-amber-600" />,
+      badge: 'Tab',
+      badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
+      action: () => { onNavigate('exams'); onClose(); }
+    },
+    {
+      id: 'nav-schedule',
+      category: 'Actions & Views',
+      title: 'Academic Calendar & Schedule',
+      subtitle: 'Classroom Days, Lecture Slots & Room Locations',
+      icon: <Calendar className="w-4 h-4 text-purple-500" />,
+      badge: 'Tab',
+      badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+      action: () => { onNavigate('schedule'); onClose(); }
+    },
+    {
+      id: 'nav-library',
+      category: 'Actions & Views',
+      title: 'Digital Library & Reading Resources',
+      subtitle: 'Download Handouts, Manuals & Theological Syllabi',
+      icon: <Bookmark className="w-4 h-4 text-teal-500" />,
+      badge: 'Tab',
+      badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
+      action: () => { onNavigate('library'); onClose(); }
+    },
+    {
+      id: 'nav-payments',
+      category: 'Actions & Views',
+      title: 'Tuition Statements & Payment Ledger',
+      subtitle: 'Receipts, Payment Options & Financial Records',
+      icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
+      badge: 'Tab',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      action: () => { onNavigate('payments'); onClose(); }
+    }
+  );
+
+  // System Tool Triggers
+  if (appUser?.role !== 'student') {
+    allItems.push(
+      {
+        id: 'action-live-checkin',
+        category: 'Actions & Views',
+        title: 'Launch Live Classroom Check-In Modal',
+        subtitle: 'Quick single-tap student roll call for active class session',
+        icon: <UserCheck className="w-4 h-4 text-emerald-600 animate-pulse" />,
+        badge: 'Live',
+        badgeColor: 'bg-emerald-500 text-white border-emerald-600 font-bold',
+        action: () => { onOpenLiveCheckin(); onClose(); }
+      },
+      {
+        id: 'action-broadcast',
+        category: 'Actions & Views',
+        title: 'Send Batch Email & SMS Broadcast',
+        subtitle: 'Announce class updates or due dates to student cohorts',
+        icon: <Radio className="w-4 h-4 text-indigo-600" />,
+        badge: 'Admin',
+        badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        action: () => { onOpenBatchBroadcast(); onClose(); }
+      },
+      {
+        id: 'action-admin-tools',
+        category: 'Actions & Views',
+        title: 'Admin Audit Trail & Database Backup Suite',
+        subtitle: 'Inspect system logs, security audit history & JSON backups',
+        icon: <ShieldCheck className="w-4 h-4 text-amber-500" />,
+        badge: 'Security',
+        badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
+        action: () => { onOpenAdminTools(); onClose(); }
+      }
+    );
+  }
+
+  allItems.push(
+    {
+      id: 'action-settings',
+      category: 'Actions & Views',
+      title: 'System Settings & Customization',
+      subtitle: 'Theme color modes, notification preferences & regional format',
+      icon: <Settings className="w-4 h-4 text-slate-600" />,
+      badge: 'Settings',
+      badgeColor: 'bg-slate-100 text-slate-700 border-slate-200',
+      action: () => { onOpenSettings(); onClose(); }
+    },
+    {
+      id: 'action-mobile',
+      category: 'Actions & Views',
+      title: 'Mobile App / APK Download Center',
+      subtitle: 'Install Android APK & setup offline PWA application',
+      icon: <Smartphone className="w-4 h-4 text-amber-500" />,
+      badge: 'PWA',
+      badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
+      action: () => { onOpenMobileDownload(); onClose(); }
+    },
+    {
+      id: 'action-login',
+      category: 'Actions & Views',
+      title: appUser ? `Switch Account / Relogin (Signed in as ${appUser.name})` : 'Log in to Student / Faculty Portal',
+      subtitle: 'Manage user credentials and role privileges',
+      icon: <User className="w-4 h-4 text-indigo-500" />,
+      badge: 'Auth',
+      badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      action: () => { onOpenLogin(); onClose(); }
+    }
+  );
+
+  // 2. Students List
+  studentList.forEach((st, idx) => {
+    allItems.push({
+      id: `student-${idx}-${st.name}`,
+      category: 'Students',
+      title: st.name,
+      subtitle: `Student Record • Attendance Rate: ${st.rate !== undefined ? Math.round(st.rate) : 95}%`,
+      icon: <User className="w-4 h-4 text-indigo-600" />,
+      badge: 'Student',
+      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      action: () => {
+        onNavigate('students');
+        onClose();
+      }
+    });
+  });
+
+  // 3. Courses List
+  coreModules.forEach((mod) => {
+    allItems.push({
+      id: `course-${mod.code}`,
+      category: 'Courses',
+      title: `${mod.code}: ${mod.title}`,
+      subtitle: `Faculty: ${mod.instructor} • 5 Credits`,
+      icon: <BookOpen className="w-4 h-4 text-amber-600" />,
+      badge: 'Module',
+      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+      action: () => {
+        onNavigate('courses');
+        onClose();
+      }
+    });
+  });
+
+  // 4. Exams List
+  coreExams.forEach((exam) => {
+    allItems.push({
+      id: `exam-${exam.code}`,
+      category: 'Exams',
+      title: exam.title,
+      subtitle: `Academic Evaluation • Weight: ${exam.weight}`,
+      icon: <Award className="w-4 h-4 text-rose-600" />,
+      badge: 'Exam',
+      badgeColor: 'bg-rose-50 text-rose-800 border-rose-200',
+      action: () => {
+        onNavigate('exams');
+        onClose();
+      }
+    });
+  });
+
+  // 5. Payment Records
+  corePayments.forEach((pm, idx) => {
+    const isPaid = pm.status === 'Paid In Full';
+    allItems.push({
+      id: `payment-${idx}`,
+      category: 'Payments',
+      title: `Tuition Statement: ${pm.name}`,
+      subtitle: `Track: ${pm.track} • Status: ${pm.status}`,
+      icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
+      badge: pm.status,
+      badgeColor: isPaid ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-900 border-amber-200',
+      action: () => {
+        onNavigate('payments');
+        onClose();
+      }
+    });
+  });
+
+  // Filter items based on user search query
+  const filtered = query.trim() === '' 
+    ? allItems 
+    : allItems.filter(item => {
+        const q = query.toLowerCase();
+        return (
+          item.title.toLowerCase().includes(q) ||
+          (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
+          item.category.toLowerCase().includes(q)
+        );
+      });
+
+  // Clamp selection index
+  const safeSelectedIndex = Math.min(Math.max(0, selectedIndex), Math.max(0, filtered.length - 1));
+
+  // Keyboard navigation handler
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev < filtered.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev > 0 ? prev - 1 : filtered.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[safeSelectedIndex]) {
+        filtered[safeSelectedIndex].action();
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  // Group filtered results by Category
+  const categories = ['Actions & Views', 'Students', 'Courses', 'Exams', 'Payments'] as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      {/* Outside Click Backdrop */}
+      <div className="fixed inset-0" onClick={onClose} />
+
+      {/* Main Command Box */}
+      <div 
+        className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] z-10 animate-scaleUp"
+        onKeyDown={handleKeyDown}
+      >
+        {/* Search Input Bar */}
+        <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center gap-3 text-white">
+          <Search className="w-5 h-5 text-amber-400 shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
+            placeholder="Type a command, student name, module, exam or setting..."
+            className="w-full bg-transparent text-sm font-semibold text-white placeholder-slate-400 focus:outline-none"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          <div className="flex items-center gap-1 shrink-0">
+            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 text-[10px] font-mono font-extrabold rounded border border-slate-700">
+              ESC
+            </kbd>
+          </div>
+        </div>
+
+        {/* Results Scroll Area */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4 bg-slate-50">
+          {filtered.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center mx-auto">
+                <Search className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-extrabold text-slate-800">No results found for "{query}"</p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Try searching for student names, module codes like <code className="bg-slate-200 px-1 rounded text-slate-800">SOM-MOD-1</code>, or actions like <code className="bg-slate-200 px-1 rounded text-slate-800">Settings</code> or <code className="bg-slate-200 px-1 rounded text-slate-800">Live Check-In</code>.
+              </p>
+            </div>
+          ) : (
+            (() => {
+              let currentIndexCounter = 0;
+
+              return categories.map((cat) => {
+                const categoryItems = filtered.filter(item => item.category === cat);
+                if (categoryItems.length === 0) return null;
+
+                return (
+                  <div key={cat} className="space-y-1">
+                    <div className="px-3 py-1 flex items-center justify-between text-[10px] font-mono font-black uppercase tracking-widest text-slate-400">
+                      <span>{cat}</span>
+                      <span className="bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-bold">{categoryItems.length}</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {categoryItems.map((item) => {
+                        const itemIndex = currentIndexCounter++;
+                        const isSelected = itemIndex === safeSelectedIndex;
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => item.action()}
+                            onMouseEnter={() => setSelectedIndex(itemIndex)}
+                            className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-500/30'
+                                : 'bg-white hover:bg-slate-100/80 text-slate-800 border-slate-200/80 shadow-3xs'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`p-2 rounded-xl flex-shrink-0 ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {item.icon}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className={`text-xs font-black truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                  {item.title}
+                                </h4>
+                                {item.subtitle && (
+                                  <p className={`text-[11px] truncate ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                    {item.subtitle}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {item.badge && (
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
+                                  isSelected ? 'bg-white/20 text-white border-white/30' : item.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
+                                }`}>
+                                  {item.badge}
+                                </span>
+                              )}
+                              <CornerDownLeft className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-300'}`} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              });
+            })()
+          )}
+        </div>
+
+        {/* Footer Navigation Hints */}
+        <div className="px-4 py-3 bg-slate-900 border-t border-slate-800 text-slate-400 text-[10px] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded font-mono border border-slate-700">↑↓</kbd>
+              Navigate
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded font-mono border border-slate-700">↵</kbd>
+              Select
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded font-mono border border-slate-700">ESC</kbd>
+              Close
+            </span>
+          </div>
+
+          <span className="font-extrabold text-amber-400">HTEIM Command Palette</span>
+        </div>
+      </div>
+    </div>
+  );
+};

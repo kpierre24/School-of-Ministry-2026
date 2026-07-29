@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import hteimLogoAsset from '../assets/hteim_logo.jpg';
 import { 
   ShieldCheck, 
   GraduationCap, 
@@ -184,10 +185,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-between border-b border-slate-200/60 relative z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <img 
-              src="/hteim_logo.jpg" 
+              src={hteimLogoAsset} 
               alt="HTEIM Logo" 
               className="w-14 h-14 rounded-xl border-2 border-amber-300 shadow-sm object-contain bg-white p-0.5 flex-shrink-0"
-              referrerPolicy="no-referrer"
             />
             <div>
               <p className="text-xs font-black text-slate-800 uppercase tracking-wider leading-none">HTEIM</p>
@@ -558,10 +558,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
           <div className="flex items-center gap-3 mb-2">
             <img 
-              src="/hteim_logo.jpg" 
+              src={hteimLogoAsset} 
               alt="HTEIM Logo" 
               className="w-12 h-12 rounded-full border-2 border-amber-400 object-contain shadow-md bg-white p-0.5"
-              referrerPolicy="no-referrer"
             />
             <div>
               <h2 className="text-xl font-black tracking-tight text-white">HTEIM School of Ministry</h2>

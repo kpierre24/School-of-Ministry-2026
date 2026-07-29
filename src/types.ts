@@ -84,6 +84,17 @@ export type StudentProfile = {
   status: 'active' | 'probation' | 'graduated' | 'inactive';
 };
 
+export type MediaResource = {
+  id: string;
+  title: string;
+  speaker: string;
+  duration: string;
+  type: 'audio' | 'video';
+  url: string;
+  description?: string;
+  dateAdded?: string;
+};
+
 export type Course = {
   id: string;
   code: string;
@@ -95,6 +106,7 @@ export type Course = {
   location: string;
   topics: string[];
   enrolledCount: number;
+  mediaResources?: MediaResource[];
 };
 
 export type ExamItem = {

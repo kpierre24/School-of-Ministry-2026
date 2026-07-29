@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import hteimLogoAsset from '../assets/hteim_logo.jpg';
 import { logActivity } from '../lib/auditLogger';
 import {
   CreditCard,
@@ -1470,10 +1471,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 <div className="flex justify-between items-start border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
                     <img 
-                      src="/hteim_logo.jpg" 
+                      src={hteimLogoAsset} 
                       alt="HTEIM Logo" 
                       className="w-14 h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
-                      referrerPolicy="no-referrer"
                     />
                     <div>
                       <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
@@ -2164,10 +2164,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               <div className="flex justify-between items-start border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-3">
                   <img 
-                    src="/hteim_logo.jpg" 
+                    src={hteimLogoAsset} 
                     alt="HTEIM Logo" 
                     className="w-14 h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
-                    referrerPolicy="no-referrer"
                   />
                   <div>
                     <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>

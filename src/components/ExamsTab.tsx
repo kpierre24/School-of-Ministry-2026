@@ -34,11 +34,13 @@ import {
   FolderOpen,
   Lock,
   ShieldAlert,
-  Image
+  Image,
+  Share2
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
 import { CustomAssignment, AssignmentSubmission, AppNotification } from '../types';
+import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 
 type StudentScoreRecord = {
   name: string;
@@ -1050,11 +1052,33 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           <Calendar className={`w-3.5 h-3.5 ${isPastDue ? 'text-rose-600' : 'text-slate-400'}`} />
                           <span>Due: {asg.dueDate || 'No Due Date'}</span>
                         </span>
-                        {countdown && (
-                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full border shadow-2xs ${countdown.color}`}>
-                            {countdown.text}
-                          </span>
-                        )}
+                        
+                        <div className="flex items-center gap-2">
+                          {asg.dueDate && (
+                            <a
+                              href={generateGoogleCalendarUrl({
+                                id: asg.id,
+                                title: `[Due] ${asg.title}`,
+                                description: `Assignment Due Date for HTEIM School of Ministry.\nModule Track: ${asg.moduleTrack || 'Core'}\nDescription: ${asg.description}`,
+                                date: asg.dueDate,
+                                startTime: '11:59 pm',
+                                courseCode: asg.courseCode || 'ASG'
+                              })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1"
+                              title="Sync due date to Google Calendar"
+                            >
+                              <Share2 className="w-3 h-3 text-blue-600" />
+                              <span>Sync Cal</span>
+                            </a>
+                          )}
+                          {countdown && (
+                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full border shadow-2xs ${countdown.color}`}>
+                              {countdown.text}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-[11px] font-mono font-bold text-slate-800 text-right">
                         Max Points: {asg.maxPoints}

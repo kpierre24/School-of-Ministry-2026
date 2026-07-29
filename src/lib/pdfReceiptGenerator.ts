@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { PaymentRecord } from '../types';
+import hteimLogoAsset from '../assets/hteim_logo.jpg';
 
 /**
  * Converts image file to base64 for jsPDF inclusion if available
@@ -25,7 +26,7 @@ async function getLogoBase64(): Promise<string | null> {
       }
     };
     img.onerror = () => resolve(null);
-    img.src = '/hteim_logo.jpg';
+    img.src = hteimLogoAsset;
   });
 }
 

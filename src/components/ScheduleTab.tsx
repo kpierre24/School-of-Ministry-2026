@@ -26,11 +26,14 @@ import {
   Check,
   AlertTriangle,
   Bell,
+  Download,
+  Share2,
   Lock,
   ShieldAlert
 } from 'lucide-react';
 import { ScheduleItem } from '../types';
 import { UserRole } from '../lib/userAuth';
+import { downloadICSFile, generateGoogleCalendarUrl, CalendarEventItem } from '../lib/calendarExport';
 
 export const CORE_MODULES = [
   { id: 'm1', code: 'SOM-MOD-1', name: 'Module 1: Introduction', shortName: 'Introduction', color: 'emerald' },
@@ -266,6 +269,20 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     return localStorage.getItem('hteim_has_zoom_exception') === 'true';
   });
 
+  // Calendar Export Handlers
+  const handleExportAllToICS = () => {
+    const events: CalendarEventItem[] = filteredSchedules.map(s => ({
+      id: s.id,
+      title: s.title,
+      description: `Course: ${s.moduleName || s.courseCode}\nInstructor: ${s.instructor}\nPeriod: ${s.period || 'Evening Session'}`,
+      location: s.room || 'HTEIM Main Sanctuary / Zoom',
+      date: s.date,
+      startTime: s.timeSlot,
+      courseCode: s.courseCode
+    }));
+    downloadICSFile(events, 'HTEIM_School_of_Ministry_Schedule.ics');
+  };
+
   const handleCopyZoomText = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setZoomCopiedField(field);
@@ -495,6 +512,16 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
               ))}
             </select>
           </div>
+
+          {/* iCal / Google Calendar Sync Export Button */}
+          <button
+            onClick={handleExportAllToICS}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-800 shadow-3xs transition-all cursor-pointer active:scale-95"
+            title="Export all lectures to Apple Calendar, Outlook, or iCal (.ics file)"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-400" />
+            <span>Export iCal (.ics)</span>
+          </button>
 
           {/* View Mode Toggle Switcher */}
           <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl">
@@ -1015,48 +1042,70 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                   </div>
                 </div>
 
-                {!isStudent && (
-                  <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                    {item.classDayId && (
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                  <a
+                    href={generateGoogleCalendarUrl({
+                      id: item.id,
+                      title: item.title,
+                      description: `Course: ${item.moduleName || item.courseCode}\nInstructor: ${item.instructor}`,
+                      location: item.room,
+                      date: item.date,
+                      startTime: item.timeSlot,
+                      courseCode: item.courseCode
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-2.5 py-1.5 bg-blue-950/80 hover:bg-blue-900 text-blue-300 hover:text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-blue-800/60"
+                    title="Add event to Google Calendar"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="hidden sm:inline">Google Cal</span>
+                  </a>
+
+                  {!isStudent && item.classDayId && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTakeAttendanceForDay(item.classDayId!);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" /> Attendance
+                    </button>
+                  )}
+                  {!isStudent && (
+                    <>
+                      <button
+                        onClick={(e) => handleCopySchedule(item, e)}
+                        className="p-1.5 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 rounded-lg transition-colors cursor-pointer border border-indigo-800/60"
+                        title="Copy / Duplicate Class"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onTakeAttendanceForDay(item.classDayId!);
+                          handleOpenEditModal(item);
                         }}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors cursor-pointer border border-slate-700"
+                        title="Edit Class"
                       >
-                        <UserCheck className="w-3.5 h-3.5" /> Attendance
+                        <Edit3 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <button
-                      onClick={(e) => handleCopySchedule(item, e)}
-                      className="p-1.5 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 rounded-lg transition-colors cursor-pointer border border-indigo-800/60"
-                      title="Copy / Duplicate Class"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditModal(item);
-                      }}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors cursor-pointer border border-slate-700"
-                      title="Edit Class"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSchedule(item.id);
-                      }}
-                      className="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded-lg transition-colors cursor-pointer border border-rose-800/60"
-                      title="Remove Class from Calendar"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSchedule(item.id);
+                        }}
+                        className="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded-lg transition-colors cursor-pointer border border-rose-800/60"
+                        title="Remove Class from Calendar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>

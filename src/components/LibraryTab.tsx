@@ -34,8 +34,9 @@ import {
   Edit3,
   Globe
 } from 'lucide-react';
-import { LibraryResource } from '../types';
+import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
+import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
 
 interface LibraryTabProps {
   userRole?: UserRole;
@@ -189,6 +190,24 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ userRole = 'admin' }) =>
   useEffect(() => {
     localStorage.setItem('hteim_library_resources', JSON.stringify(resources));
   }, [resources]);
+
+  // Global classroom sermon & lecture audio/video media player state
+  const [classroomMedia, setClassroomMedia] = useState<MediaResource[]>(() => {
+    const saved = localStorage.getItem('hteim_classroom_media');
+    return saved ? JSON.parse(saved) : DEFAULT_PRESET_MEDIA;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_classroom_media', JSON.stringify(classroomMedia));
+  }, [classroomMedia]);
+
+  const handleAddGlobalMedia = (newMedia: MediaResource) => {
+    setClassroomMedia(prev => [newMedia, ...prev]);
+  };
+
+  const handleRemoveGlobalMedia = (mediaId: string) => {
+    setClassroomMedia(prev => prev.filter(m => m.id !== mediaId));
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -608,6 +627,14 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           </div>
         )}
       </div>
+
+      {/* Classroom Sermon & Lecture Audio/Video Player */}
+      <ClassroomMediaPlayer
+        mediaResources={classroomMedia}
+        userRole={userRole}
+        onAddMedia={handleAddGlobalMedia}
+        onRemoveMedia={handleRemoveGlobalMedia}
+      />
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">

@@ -11,9 +11,11 @@ export interface AppUser {
 }
 
 // Generate First Initial + Last Name username (e.g., Alex Burke -> ABurke)
-export const generateStudentUsername = (fullName: string): string => {
+export const generateStudentUsername = (fullName: any): string => {
   if (!fullName) return '';
-  const clean = fullName.trim().replace(/\s+/g, ' ');
+  const str = typeof fullName === 'string' ? fullName : (typeof fullName === 'object' && fullName.name ? fullName.name : String(fullName));
+  if (typeof str !== 'string' || !str) return '';
+  const clean = str.trim().replace(/\s+/g, ' ');
   const parts = clean.split(' ');
   if (parts.length === 1) {
     // Single name (e.g., "Afeshia")
