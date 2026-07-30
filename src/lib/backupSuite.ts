@@ -66,7 +66,20 @@ export function collectAllPortalData(exportedBy: string = 'Administrator'): Full
       satisfactoryThreshold: localStorage.getItem('satisfactoryThreshold') || '85',
       autoSyncInterval: localStorage.getItem('autoSyncInterval') || '0',
       syncOnTabFocus: localStorage.getItem('syncOnTabFocus') || 'true',
-      themeMode: localStorage.getItem('themeMode') || 'light'
+      themeMode: localStorage.getItem('themeMode') || 'light',
+      hteim_passing_score: localStorage.getItem('hteim_passing_score') || '70',
+      hteim_credit_hours_default: localStorage.getItem('hteim_credit_hours_default') || '3',
+      hteim_tuition_per_credit: localStorage.getItem('hteim_tuition_per_credit') || '150',
+      hteim_default_tuition_amount: localStorage.getItem('hteim_default_tuition_amount') || '1500',
+      hteim_late_fee_amount: localStorage.getItem('hteim_late_fee_amount') || '50',
+      hteim_installment_plan_term: localStorage.getItem('hteim_installment_plan_term') || '3',
+      hteim_inst_address: localStorage.getItem('hteim_inst_address') || '124 Ministry Lane, NY 10001',
+      hteim_inst_phone: localStorage.getItem('hteim_inst_phone') || '+1 (555) 777-1212',
+      hteim_inst_email: localStorage.getItem('hteim_inst_email') || 'schoolofministry@hteim.org',
+      hteim_authorized_signature: localStorage.getItem('hteim_authorized_signature') || 'Apostle Kendell Pierre',
+      hteim_allow_student_attendance_self_report: localStorage.getItem('hteim_allow_student_attendance_self_report') || 'false',
+      hteim_enable_stripe_playground_mode: localStorage.getItem('hteim_enable_stripe_playground_mode') || 'true',
+      hteim_developer_mode: localStorage.getItem('hteim_developer_mode') || 'false'
     };
   } catch (e) {}
 
@@ -248,6 +261,27 @@ export function restoreFullBackupJSON(jsonData: string, actor: string = 'Adminis
     }
     if (Array.isArray(d.auditLogs)) {
       localStorage.setItem('hteim_audit_logs', JSON.stringify(d.auditLogs));
+    }
+    if (d.settings && typeof d.settings === 'object') {
+      const s = d.settings;
+      if (s.atRiskThreshold) localStorage.setItem('atRiskThreshold', s.atRiskThreshold.toString());
+      if (s.satisfactoryThreshold) localStorage.setItem('satisfactoryThreshold', s.satisfactoryThreshold.toString());
+      if (s.autoSyncInterval) localStorage.setItem('autoSyncInterval', s.autoSyncInterval.toString());
+      if (s.syncOnTabFocus) localStorage.setItem('syncOnTabFocus', s.syncOnTabFocus.toString());
+      if (s.themeMode) localStorage.setItem('themeMode', s.themeMode.toString());
+      if (s.hteim_passing_score) localStorage.setItem('hteim_passing_score', s.hteim_passing_score.toString());
+      if (s.hteim_credit_hours_default) localStorage.setItem('hteim_credit_hours_default', s.hteim_credit_hours_default.toString());
+      if (s.hteim_tuition_per_credit) localStorage.setItem('hteim_tuition_per_credit', s.hteim_tuition_per_credit.toString());
+      if (s.hteim_default_tuition_amount) localStorage.setItem('hteim_default_tuition_amount', s.hteim_default_tuition_amount.toString());
+      if (s.hteim_late_fee_amount) localStorage.setItem('hteim_late_fee_amount', s.hteim_late_fee_amount.toString());
+      if (s.hteim_installment_plan_term) localStorage.setItem('hteim_installment_plan_term', s.hteim_installment_plan_term.toString());
+      if (s.hteim_inst_address) localStorage.setItem('hteim_inst_address', s.hteim_inst_address.toString());
+      if (s.hteim_inst_phone) localStorage.setItem('hteim_inst_phone', s.hteim_inst_phone.toString());
+      if (s.hteim_inst_email) localStorage.setItem('hteim_inst_email', s.hteim_inst_email.toString());
+      if (s.hteim_authorized_signature) localStorage.setItem('hteim_authorized_signature', s.hteim_authorized_signature.toString());
+      if (s.hteim_allow_student_attendance_self_report) localStorage.setItem('hteim_allow_student_attendance_self_report', s.hteim_allow_student_attendance_self_report.toString());
+      if (s.hteim_enable_stripe_playground_mode) localStorage.setItem('hteim_enable_stripe_playground_mode', s.hteim_enable_stripe_playground_mode.toString());
+      if (s.hteim_developer_mode) localStorage.setItem('hteim_developer_mode', s.hteim_developer_mode.toString());
     }
 
     logActivity({

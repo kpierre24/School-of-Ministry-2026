@@ -28,7 +28,8 @@ import {
   Code2,
   Smartphone,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  DollarSign
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'system' | 'high-contrast';
@@ -80,6 +81,96 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importErrorMessage, setImportErrorMessage] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Expanded Recommended Settings States
+  const [passingScore, setPassingScore] = useState<number>(() => {
+    const saved = localStorage.getItem('hteim_passing_score');
+    return saved ? parseInt(saved, 10) : 70;
+  });
+  const [creditHoursDefault, setCreditHoursDefault] = useState<number>(() => {
+    const saved = localStorage.getItem('hteim_credit_hours_default');
+    return saved ? parseInt(saved, 10) : 3;
+  });
+  const [tuitionPerCredit, setTuitionPerCredit] = useState<number>(() => {
+    const saved = localStorage.getItem('hteim_tuition_per_credit');
+    return saved ? parseInt(saved, 10) : 150;
+  });
+  const [defaultTuitionAmount, setDefaultTuitionAmount] = useState<number>(() => {
+    const saved = localStorage.getItem('hteim_default_tuition_amount');
+    return saved ? parseInt(saved, 10) : 1500;
+  });
+  const [lateFeeAmount, setLateFeeAmount] = useState<number>(() => {
+    const saved = localStorage.getItem('hteim_late_fee_amount');
+    return saved ? parseInt(saved, 10) : 50;
+  });
+  const [installmentPlanTerm, setInstallmentPlanTerm] = useState<number>(() => {
+    const saved = localStorage.getItem('hteim_installment_plan_term');
+    return saved ? parseInt(saved, 10) : 3;
+  });
+  const [instAddress, setInstAddress] = useState<string>(() => {
+    return localStorage.getItem('hteim_inst_address') || '124 Ministry Lane, NY 10001';
+  });
+  const [instPhone, setInstPhone] = useState<string>(() => {
+    return localStorage.getItem('hteim_inst_phone') || '+1 (555) 777-1212';
+  });
+  const [instEmail, setInstEmail] = useState<string>(() => {
+    return localStorage.getItem('hteim_inst_email') || 'schoolofministry@hteim.org';
+  });
+  const [authorizedSignature, setAuthorizedSignature] = useState<string>(() => {
+    return localStorage.getItem('hteim_authorized_signature') || 'Apostle Kendell Pierre';
+  });
+  const [allowStudentAttendanceSelfReport, setAllowStudentAttendanceSelfReport] = useState<boolean>(() => {
+    return localStorage.getItem('hteim_allow_student_attendance_self_report') === 'true';
+  });
+  const [enableStripePlaygroundMode, setEnableStripePlaygroundMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('hteim_enable_stripe_playground_mode');
+    return saved !== 'false'; // defaults to true
+  });
+  const [developerMode, setDeveloperMode] = useState<boolean>(() => {
+    return localStorage.getItem('hteim_developer_mode') === 'true';
+  });
+
+  // Save changes to localStorage automatically
+  React.useEffect(() => {
+    localStorage.setItem('hteim_passing_score', passingScore.toString());
+    localStorage.setItem('hteim_credit_hours_default', creditHoursDefault.toString());
+    localStorage.setItem('hteim_tuition_per_credit', tuitionPerCredit.toString());
+    localStorage.setItem('hteim_default_tuition_amount', defaultTuitionAmount.toString());
+    localStorage.setItem('hteim_late_fee_amount', lateFeeAmount.toString());
+    localStorage.setItem('hteim_installment_plan_term', installmentPlanTerm.toString());
+    localStorage.setItem('hteim_inst_address', instAddress);
+    localStorage.setItem('hteim_inst_phone', instPhone);
+    localStorage.setItem('hteim_inst_email', instEmail);
+    localStorage.setItem('hteim_authorized_signature', authorizedSignature);
+    localStorage.setItem('hteim_allow_student_attendance_self_report', allowStudentAttendanceSelfReport.toString());
+    localStorage.setItem('hteim_enable_stripe_playground_mode', enableStripePlaygroundMode.toString());
+    localStorage.setItem('hteim_developer_mode', developerMode.toString());
+
+    // Dispatch custom event to notify rest of app when critical settings change
+    window.dispatchEvent(new CustomEvent('hteim_settings_changed', {
+      detail: {
+        allowStudentAttendanceSelfReport,
+        enableStripePlaygroundMode,
+        developerMode,
+        passingScore,
+        defaultTuitionAmount
+      }
+    }));
+  }, [
+    passingScore,
+    creditHoursDefault,
+    tuitionPerCredit,
+    defaultTuitionAmount,
+    lateFeeAmount,
+    installmentPlanTerm,
+    instAddress,
+    instPhone,
+    instEmail,
+    authorizedSignature,
+    allowStudentAttendanceSelfReport,
+    enableStripePlaygroundMode,
+    developerMode
+  ]);
 
   if (!isOpen) return null;
 
@@ -396,6 +487,103 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Recommended: Course, Passing Grade & Permission Settings */}
+              <div>
+                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px] mt-4">
+                  <BookOpen className="w-4 h-4 text-emerald-600" />
+                  Academic Policies & Credits Setup
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Configure default course credit metrics and grade boundaries for assignment evaluations.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  {/* Default Credits */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Course Credit Hours Default</label>
+                    <select
+                      disabled={isStudent}
+                      value={creditHoursDefault}
+                      onChange={(e) => setCreditHoursDefault(parseInt(e.target.value, 10))}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    >
+                      <option value={1}>1 Credit Hour</option>
+                      <option value={2}>2 Credit Hours</option>
+                      <option value={3}>3 Credit Hours (Standard)</option>
+                      <option value={4}>4 Credit Hours</option>
+                      <option value={6}>6 Credit Hours (Double Module)</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Used for calculating GPA index and student graduation progress.</p>
+                  </div>
+
+                  {/* Passing Grade Score Slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="font-bold text-slate-700">Passing Grade Score Threshold</label>
+                      <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">{passingScore}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="50" 
+                      max="90" 
+                      step="5"
+                      disabled={isStudent}
+                      value={passingScore} 
+                      onChange={(e) => setPassingScore(parseInt(e.target.value, 10))}
+                      className="w-full accent-emerald-600 cursor-pointer mt-1"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Assignments scoring below this threshold are marked as "Fail / Needs Revision".</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Permission Toggles */}
+              <div>
+                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px] mt-4">
+                  <UserCheck className="w-4 h-4 text-emerald-600" />
+                  Portal Access & Operations Controls
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Configure permission parameters for self-reporting and system diagnostics.
+                </p>
+
+                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <label className="flex items-start gap-2.5 font-bold text-slate-700 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      disabled={isStudent}
+                      checked={allowStudentAttendanceSelfReport}
+                      onChange={(e) => setAllowStudentAttendanceSelfReport(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
+                    />
+                    <div>
+                      <span>Allow Student Attendance Self-Reporting</span>
+                      <p className="text-[10px] text-slate-400 font-normal mt-0.5">
+                        If enabled, students can mark their own presence for active lecture sessions directly from their candidate dashboard.
+                      </p>
+                    </div>
+                  </label>
+
+                  <hr className="border-slate-200" />
+
+                  <label className="flex items-start gap-2.5 font-bold text-slate-700 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      disabled={isStudent}
+                      checked={developerMode}
+                      onChange={(e) => setDeveloperMode(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
+                    />
+                    <div>
+                      <span>Enable Developer Diagnostic Mode</span>
+                      <p className="text-[10px] text-slate-400 font-normal mt-0.5">
+                        Exposes raw payload sizes, local database JSON structures, and developer utilities in settings and admin panels.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
           )}
 
@@ -463,6 +651,98 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <span>Auto-sync attendance data when switching browser tabs</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Financial & Tuition Policy Configuration */}
+                  <div>
+                    <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px]">
+                      <DollarSign className="w-4 h-4 text-emerald-600" />
+                      Tuition & Financial Policy Setup
+                    </h3>
+
+                    <div className="space-y-3.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Base Tuition */}
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Base Course Tuition ($)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="10000"
+                            step="50"
+                            value={defaultTuitionAmount}
+                            onChange={(e) => setDefaultTuitionAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          />
+                          <p className="text-[10px] text-slate-400 mt-0.5">Standard flat module rate for new payment ledger creation.</p>
+                        </div>
+
+                        {/* Tuition per Credit */}
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Rate per Credit Hour ($)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="2000"
+                            step="10"
+                            value={tuitionPerCredit}
+                            onChange={(e) => setTuitionPerCredit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          />
+                          <p className="text-[10px] text-slate-400 mt-0.5">Used for calculating pro-rated single-session course audits.</p>
+                        </div>
+
+                        {/* Installment Plan Term */}
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Max Installment Terms</label>
+                          <select
+                            value={installmentPlanTerm}
+                            onChange={(e) => setInstallmentPlanTerm(parseInt(e.target.value, 10))}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          >
+                            <option value={1}>Single Lump Sum Only</option>
+                            <option value={2}>2 Installments Split</option>
+                            <option value={3}>3 Installments Split (Standard)</option>
+                            <option value={4}>4 Installments Split</option>
+                            <option value={6}>6 Installments Split (Extended)</option>
+                          </select>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Maximum payment segments permitted on student payment accounts.</p>
+                        </div>
+
+                        {/* Late Fee Amount */}
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Overdue Late Fee Amount ($)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="500"
+                            step="5"
+                            value={lateFeeAmount}
+                            onChange={(e) => setLateFeeAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          />
+                          <p className="text-[10px] text-slate-400 mt-0.5">Flat penalty applied when bulk triggering overdue penalties.</p>
+                        </div>
+                      </div>
+
+                      <hr className="border-slate-200" />
+
+                      {/* Mock Stripe Toggle */}
+                      <label className="flex items-start gap-2.5 font-bold text-slate-700 cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={enableStripePlaygroundMode}
+                          onChange={(e) => setEnableStripePlaygroundMode(e.target.checked)}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
+                        />
+                        <div>
+                          <span>Enable Simulated Stripe Checkout Sandbox</span>
+                          <p className="text-[10px] text-slate-400 font-normal mt-0.5">
+                            If enabled, students accessing the payment portal will check out using a simulated sandbox visual interface. Disabling this switches payments to administrative reporting only.
+                          </p>
+                        </div>
                       </label>
                     </div>
                   </div>
@@ -610,6 +890,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <p className="text-slate-600 leading-relaxed text-xs">
                   The HTEIM School of Ministry exists to equip, empower, and commission ministerial leaders with rigorous biblical foundations, hermeneutical accuracy, and practical pastoral competencies for global Christian ministry.
                 </p>
+              </div>
+
+              {/* White-Label Custom Institutional Profile Card (Recommended) */}
+              <div>
+                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px]">
+                  <Building2 className="w-4 h-4 text-amber-500" />
+                  White-Label Institutional Customization
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Tailor the institutional profile, contact credentials, and signatures appearing on PDFs and official reports.
+                </p>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                  {isStudent && (
+                    <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg font-bold">
+                      ⚠️ Standard student role: profile customization is locked to administrative actors.
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Institution Address */}
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block font-bold text-slate-700 mb-1">Official Address</label>
+                      <input
+                        type="text"
+                        disabled={isStudent}
+                        value={instAddress}
+                        onChange={(e) => setInstAddress(e.target.value)}
+                        placeholder="e.g. 124 Ministry Lane, NY 10001"
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+
+                    {/* Phone & Email */}
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Office Contact Phone</label>
+                      <input
+                        type="text"
+                        disabled={isStudent}
+                        value={instPhone}
+                        onChange={(e) => setInstPhone(e.target.value)}
+                        placeholder="e.g. +1 (555) 777-1212"
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Contact Email Address</label>
+                      <input
+                        type="email"
+                        disabled={isStudent}
+                        value={instEmail}
+                        onChange={(e) => setInstEmail(e.target.value)}
+                        placeholder="e.g. office@school.org"
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+
+                    {/* Authorized Signatory */}
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block font-bold text-slate-700 mb-1">Authorized Certifying Signatory Name</label>
+                      <input
+                        type="text"
+                        disabled={isStudent}
+                        value={authorizedSignature}
+                        onChange={(e) => setAuthorizedSignature(e.target.value)}
+                        placeholder="e.g. Apostle Kendell Pierre"
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-normal">This name is digitally stamped on PDF receipt files and course completion certificates.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Developer & Software Technology Partner Information */}

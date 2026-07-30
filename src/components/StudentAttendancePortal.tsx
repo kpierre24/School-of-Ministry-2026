@@ -289,17 +289,17 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           </div>
 
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Quiz Score Avg</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Sessions Attended</p>
             <p className="text-2xl font-black font-mono text-amber-300 mt-1">
-              {safeAvgScore !== null ? `${Math.round(safeAvgScore)}%` : 'N/A'}
+              {safeAttended} / {safeTotalDays}
             </p>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Evaluation & Quiz Average</p>
+            <p className="text-[10px] text-indigo-300 mt-0.5">Classes Attended</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Rubric Score</p>
-            <p className="text-2xl font-black font-mono text-indigo-200 mt-1">{rubAvg}%</p>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Participation & Assignments</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Absences Recorded</p>
+            <p className="text-2xl font-black font-mono text-indigo-200 mt-1">{Math.max(0, safeTotalDays - safeAttended)}</p>
+            <p className="text-[10px] text-indigo-300 mt-0.5">Missed Sessions</p>
           </div>
         </div>
       </div>
@@ -310,10 +310,10 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <span>My Class Attendance & Submission Log</span>
+              <span>My Class Attendance Log</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Verified record of your presence and quiz completion across all ministry class sessions.
+              Verified record of your class attendance presence recorded by ministry instructors.
             </p>
           </div>
           <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono font-bold rounded-xl">
@@ -327,8 +327,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
                 <th className="p-3.5 rounded-l-xl">Class Day / Session</th>
                 <th className="p-3.5">Attendance Status</th>
-                <th className="p-3.5">Submission Timestamp</th>
-                <th className="p-3.5 rounded-r-xl text-right">Quiz Score</th>
+                <th className="p-3.5 rounded-r-xl">Attendance Date / Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -357,15 +356,6 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                       {att?.timestamp ? (
                         <span className="flex items-center gap-1 text-[11px]">
                           <Clock className="w-3.5 h-3.5 text-slate-400" /> {att.timestamp}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 italic">—</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right font-mono font-bold text-slate-900 dark:text-white">
-                      {att?.score ? (
-                        <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 rounded-lg">
-                          {att.score}
                         </span>
                       ) : (
                         <span className="text-slate-400 italic">—</span>

@@ -35,7 +35,9 @@ import {
   Lock,
   ShieldAlert,
   Image,
-  Share2
+  Share2,
+  Loader2,
+  Bookmark
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
@@ -64,6 +66,19 @@ interface ExamsTabProps {
   setCustomAssignments: React.Dispatch<React.SetStateAction<CustomAssignment[]>>;
   submissions: AssignmentSubmission[];
   setSubmissions: React.Dispatch<React.SetStateAction<AssignmentSubmission[]>>;
+
+  // Google Sheets Quiz Sync Props
+  googleUser?: any;
+  googleToken?: string | null;
+  isLoggingIn?: boolean;
+  onGoogleLogin?: () => void;
+  onGoogleLogout?: () => void;
+  sheetUrl?: string;
+  setSheetUrl?: (url: string) => void;
+  onLoadSheets?: (e?: React.FormEvent, customUrl?: string) => Promise<void>;
+  isLoadingSheets?: boolean;
+  recentSheets?: { id: string; title: string; url: string; lastLoaded?: string }[];
+  onRemoveRecentSheet?: (id: string, e: React.MouseEvent) => void;
 }
 
 export const INITIAL_ASSIGNMENTS: CustomAssignment[] = [
@@ -195,7 +210,18 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   customAssignments,
   setCustomAssignments,
   submissions,
-  setSubmissions
+  setSubmissions,
+  googleUser,
+  googleToken,
+  isLoggingIn,
+  onGoogleLogin,
+  onGoogleLogout,
+  sheetUrl = '',
+  setSheetUrl,
+  onLoadSheets,
+  isLoadingSheets,
+  recentSheets = [],
+  onRemoveRecentSheet
 }) => {
   const isStudent = userRole === 'student';
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
@@ -260,9 +286,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
   // Identify Student Profile
   const studentRecord = students.find(s => {
-    if (currentStudentName) {
-      return s.name.toLowerCase().trim() === currentStudentName.toLowerCase().trim() ||
-             s.name.toLowerCase().includes(currentStudentName.toLowerCase().trim());
+    if (currentStudentName && s && s.name) {
+      const sName = (s.name || '').toLowerCase().trim();
+      const currName = (currentStudentName || '').toLowerCase().trim();
+      return sName === currName || sName.includes(currName);
     }
     return false;
   }) || (isStudent ? students[0] : null);
@@ -281,7 +308,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const displayedStudents = useMemo(() => {
     let list = isStudent && studentRecord ? [studentRecord] : students;
     if (searchQuery.trim()) {
-      list = list.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(s => s && s.name && s.name.toLowerCase().includes(q));
     }
     if (gradeFilter === 'passed') {
       list = list.filter(s => (s.percentage || 0) >= 70 && (s.percentage || 0) < 100);
@@ -429,7 +457,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     setActiveAssignmentForStudent(asg);
     
     // Check if existing submission
-    const existing = submissions.find(s => s.assignmentId === asg.id && s.studentName.toLowerCase().trim() === activeStudentName.toLowerCase().trim());
+    const targetName = (activeStudentName || '').toLowerCase().trim();
+    const existing = submissions.find(s => s.assignmentId === asg.id && (s.studentName || '').toLowerCase().trim() === targetName);
     if (existing) {
       setUploadFileName(existing.studentFileName || '');
       setUploadFileUrl(existing.studentFileUrl || '');
@@ -454,8 +483,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     if (!activeAssignmentForStudent) return;
 
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    const targetName = (activeStudentName || '').toLowerCase().trim();
     const existingIndex = submissions.findIndex(
-      s => s.assignmentId === activeAssignmentForStudent.id && s.studentName.toLowerCase().trim() === activeStudentName.toLowerCase().trim()
+      s => s.assignmentId === activeAssignmentForStudent.id && (s.studentName || '').toLowerCase().trim() === targetName
     );
 
     const firstFile = uploadFilesList[0];
@@ -1378,6 +1408,122 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {subTab === 'quizzes' && (
         <div className="space-y-6">
           
+          {/* Google Sheets Connection / Sync Card */}
+          {isTeacherOrAdmin && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Google Forms Quiz Score Sync
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Connect your Google account and load your School of Ministry Quiz Sheets to automatically tabulate exam scores.
+                  </p>
+                </div>
+                {googleUser && (
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs self-start sm:self-center">
+                    <div className="w-5 h-5 rounded-full overflow-hidden border border-slate-300 flex-shrink-0 bg-white flex items-center justify-center">
+                      {googleUser.photoURL ? <img src={googleUser.photoURL} alt="User" className="w-full h-full object-cover" /> : <User className="w-3 h-3 text-slate-500" />}
+                    </div>
+                    <span className="font-semibold text-slate-700 truncate max-w-[120px]" title={googleUser.displayName || googleUser.email}>{googleUser.displayName || googleUser.email}</span>
+                    <button 
+                      type="button" 
+                      onClick={onGoogleLogout} 
+                      className="text-[10px] text-rose-600 hover:text-rose-700 font-bold ml-2 hover:underline cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!googleUser ? (
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-indigo-900">Sign in to pull quiz records</p>
+                    <p className="text-xs text-indigo-700">Authorise Google access to safely parse classroom exam spreadsheets.</p>
+                  </div>
+                  <button 
+                    onClick={onGoogleLogin}
+                    disabled={isLoggingIn}
+                    className="flex items-center justify-center gap-2 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all uppercase disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                  >
+                    {isLoggingIn ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+                    Sign in with Google
+                  </button>
+                </div>
+              ) : (
+                <form 
+                  onSubmit={(e) => {
+                    if (onLoadSheets) onLoadSheets(e);
+                  }} 
+                  className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end"
+                >
+                  <div className="md:col-span-8 space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Google Spreadsheet URL</label>
+                    <input 
+                      type="url" 
+                      required
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      value={sheetUrl}
+                      onChange={(e) => setSheetUrl && setSheetUrl(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400 font-medium"
+                    />
+                  </div>
+
+                  <div className="md:col-span-4">
+                    <button 
+                      type="submit"
+                      disabled={isLoadingSheets || !sheetUrl}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all uppercase disabled:opacity-50 cursor-pointer h-[38px]"
+                    >
+                      {isLoadingSheets ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Sync Quiz Scores
+                    </button>
+                  </div>
+
+                  {/* Recent Sheets Quick Select */}
+                  {recentSheets && recentSheets.length > 0 && (
+                    <div className="md:col-span-12 pt-1 border-t border-slate-100 mt-2">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 flex items-center gap-1">
+                        <Bookmark className="w-3 h-3 text-indigo-500" /> Recent Spreadsheets
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {recentSheets.map(s => (
+                          <div 
+                            key={s.id}
+                            className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 cursor-pointer transition-all ${
+                              s.url === sheetUrl 
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-bold' 
+                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                            }`}
+                            onClick={() => {
+                              if (setSheetUrl) setSheetUrl(s.url);
+                              if (onLoadSheets) onLoadSheets(undefined, s.url);
+                            }}
+                          >
+                            <span className="truncate max-w-[200px]">{s.title}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onRemoveRecentSheet) onRemoveRecentSheet(s.id, e);
+                              }}
+                              className="text-slate-400 hover:text-rose-500 rounded p-0.5"
+                              title="Remove from history"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </form>
+              )}
+            </div>
+          )}
+
           {/* Analytics Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">

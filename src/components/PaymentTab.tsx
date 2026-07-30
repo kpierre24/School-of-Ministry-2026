@@ -975,9 +975,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         const newRecords: PaymentRecord[] = [];
 
         availableStudents.forEach((st, idx) => {
+          if (!st || !st.name) return;
           const nameLower = st.name.toLowerCase().trim();
           // Check if there is any fuzzy match in existing ledger
           const alreadyExists = prev.some(p => {
+            if (!p || !p.studentName) return false;
             const pName = p.studentName.toLowerCase().trim();
             if (pName === nameLower) return true;
             // Fuzzy match checks
@@ -1033,10 +1035,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
   // Filtered Payments
   const filteredPayments = useMemo(() => {
+    const q = (searchQuery || '').toLowerCase();
     return payments.filter(p => {
-      const matchesSearch = p.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            p.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            p.moduleTrack.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (p.studentName || '').toLowerCase().includes(q) ||
+                            (p.studentId || '').toLowerCase().includes(q) ||
+                            (p.moduleTrack || '').toLowerCase().includes(q);
       const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
       return matchesSearch && matchesStatus;
     });

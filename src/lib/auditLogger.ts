@@ -149,3 +149,16 @@ export function clearAuditLogs(): void {
     console.error('Failed to clear audit logs:', e);
   }
 }
+
+export function pruneAuditLogs(maxCount: number = 30): void {
+  try {
+    const logs = getAuditLogs();
+    if (logs.length > maxCount) {
+      const pruned = logs.slice(0, maxCount);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
+      window.dispatchEvent(new CustomEvent('hteim_audit_log_updated'));
+    }
+  } catch (e) {
+    console.error('Failed to prune audit logs:', e);
+  }
+}

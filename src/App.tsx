@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import hteimLogoAsset from './assets/hteim_logo.jpg';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { User } from 'firebase/auth';
 import stringSimilarity from 'string-similarity';
 import jsPDF from 'jspdf';
@@ -67,11 +67,14 @@ import {
   Camera,
   Cloud,
   CloudOff,
-  UploadCloud
+  UploadCloud,
+  Edit3,
+  Plus
 } from 'lucide-react';
 import { loadFromFirestore, saveToFirestore } from './lib/firebaseSync';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
+import { ManageClassDaysModal } from './components/ManageClassDaysModal';
 import { usePWAInstall } from './lib/pwa';
 import {
   ResponsiveContainer,
@@ -118,7 +121,8 @@ const EXCLUDED_STUDENTS = [
   'sam selk',
 ];
 
-const isExcludedStudent = (name: string) => {
+const isExcludedStudent = (name?: string) => {
+  if (!name || typeof name !== 'string') return false;
   const lower = name.toLowerCase().trim();
   return EXCLUDED_STUDENTS.some(excluded => lower.includes(excluded));
 };
@@ -142,9 +146,9 @@ type StudentSummary = {
   levelId: string;
 };
 
-const parseScorePercentage = (scoreStr?: string): number | null => {
-  if (!scoreStr) return null;
-  const str = scoreStr.trim();
+const parseScorePercentage = (scoreStr?: any): number | null => {
+  if (scoreStr === null || scoreStr === undefined) return null;
+  const str = String(scoreStr).trim();
   if (!str) return null;
 
   if (str.includes('/')) {
@@ -197,6 +201,7 @@ export default function App() {
   });
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
+  const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
 
@@ -343,9 +348,22 @@ export default function App() {
   
   const [records, setRecords] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('attendanceRecords');
+    const savedDeleted = localStorage.getItem('deletedStudentNames');
+    let deletedList: string[] = [];
+    if (savedDeleted) {
+      try { deletedList = JSON.parse(savedDeleted); } catch {}
+    }
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const loaded: AttendanceRecord[] = JSON.parse(saved);
+        // Purge excluded students completely from records
+        return loaded.filter(r => {
+          if (!r || !r.name) return false;
+          const nameLower = r.name.toLowerCase().trim();
+          if (isExcludedStudent(r.name)) return false;
+          if (deletedList.some(d => (d || '').toLowerCase().trim() === nameLower)) return false;
+          return true;
+        });
       } catch (e) {
         return [];
       }
@@ -376,17 +394,7 @@ export default function App() {
   const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
   
   // Deleted / Excluded Students state
-  const [deletedStudentNames, setDeletedStudentNames] = useState<string[]>(() => {
-    const saved = localStorage.getItem('deletedStudentNames');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
+  const [deletedStudentNames, setDeletedStudentNames] = useState<string[]>([]);
 
   // Custom Student Notes & Excused Absences
   const [studentNotes, setStudentNotes] = useState<Record<string, string>>(() => {
@@ -438,6 +446,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showMobileDownloadModal, setShowMobileDownloadModal] = useState(false);
+  const [showClassDaysModal, setShowClassDaysModal] = useState(false);
 
   // Mobile PWA Installation Hook
   const pwaHook = usePWAInstall();
@@ -1375,14 +1384,23 @@ export default function App() {
 
       const batchData = await fetchMultipleRanges(spreadsheetId, sheets, token);
       
-      const allRecords: AttendanceRecord[] = [];
-      const updatedClassDays: ClassDay[] = [];
+      // Get the final list of student names currently in the system
+      const currentStudentNames = Array.from(new Set(
+        records.map(r => (r.name || r.studentName || '').toString().trim())
+               .filter(n => n && n !== 'Unknown' && !isExcludedStudent(n))
+      )) as string[];
+      const currentStudentNamesLower = new Set(currentStudentNames.map(n => n.toLowerCase().trim()));
+
+      let updatedRecords = [...records];
+      const updatedClassDays = [...classDays];
       
       if (batchData.valueRanges) {
         batchData.valueRanges.forEach((rangeData: any, index: number) => {
           const sheetTitle = sheets[index];
           if (!rangeData.values || rangeData.values.length === 0) {
-            updatedClassDays.push({ id: sheetTitle, name: sheetTitle });
+            if (!updatedClassDays.some(d => d.id === sheetTitle)) {
+              updatedClassDays.push({ id: sheetTitle, name: sheetTitle });
+            }
             return;
           }
           
@@ -1413,7 +1431,9 @@ export default function App() {
               }
             }
           }
-          updatedClassDays.push({ id: sheetTitle, name: displayDate });
+          if (!updatedClassDays.some(d => d.id === sheetTitle)) {
+            updatedClassDays.push({ id: sheetTitle, name: displayDate });
+          }
           
           rows.forEach(row => {
             const rawName = row[nameIndex] || 'Unknown';
@@ -1422,19 +1442,43 @@ export default function App() {
             if (/^[\d\s\/]+$/.test(name)) return;
             if (isExcludedStudent(name)) return;
             
-            allRecords.push({
-              name: name,
-              timestamp: row[timestampIndex] || '',
-              score: row[scoreIndex] || '',
-              classDay: sheetTitle,
-              present: true,
-            });
+            const nameLower = name.toLowerCase().trim();
+            // Only update or add score if the student exists in our final student list
+            if (currentStudentNamesLower.has(nameLower)) {
+              const existingRecordIdx = updatedRecords.findIndex(r => 
+                (r.name || r.studentName || '').toString().trim().toLowerCase() === nameLower && 
+                r.classDay === sheetTitle
+              );
+
+              const rowScore = row[scoreIndex] || '';
+              const rowTimestamp = row[timestampIndex] || '';
+
+              if (existingRecordIdx >= 0) {
+                // Update score/timestamp, do NOT overwrite present field
+                updatedRecords[existingRecordIdx] = {
+                  ...updatedRecords[existingRecordIdx],
+                  score: rowScore,
+                  timestamp: rowTimestamp || updatedRecords[existingRecordIdx].timestamp
+                };
+              } else {
+                // Find canonical name from our records
+                const canonicalName = currentStudentNames.find(n => n.toLowerCase().trim() === nameLower) || name;
+                // Add score record for existing student
+                updatedRecords.push({
+                  name: canonicalName,
+                  timestamp: rowTimestamp,
+                  score: rowScore,
+                  classDay: sheetTitle,
+                  present: false, // leave attendance as false (managed locally)
+                });
+              }
+            }
           });
         });
       }
       
       setClassDays(updatedClassDays);
-      setRecords(allRecords);
+      setRecords(updatedRecords);
       setDataSource('sheets');
       setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
@@ -1474,7 +1518,7 @@ export default function App() {
   }, [syncOnTabFocus, dataSource, token, isLoading, sheetUrl]);
 
   const { uniqueStudents, avgAttendance, avgScoreOverall, classDayStats } = useMemo(() => {
-    const rawNames: string[] = (Array.from(new Set(records.filter(r => r && r.name).map(r => r.name.trim()))) as string[]).filter((name: string) => !isExcludedStudent(name));
+    const rawNames: string[] = (Array.from(new Set(records.filter(r => r && (r.name || r.studentName)).map(r => (r.name || r.studentName || '').toString().trim()))) as string[]).filter((name: string) => name && !isExcludedStudent(name));
     const nameGroups: string[][] = [];
     const canonicalNames = new Map<string, string>();
 
@@ -1500,6 +1544,7 @@ export default function App() {
     };
     
     rawNames.forEach((rawName: string) => {
+      if (!rawName) return;
       let foundGroup = false;
       const lowerRaw = rawName.toLowerCase().trim();
       const explicitCanonical = MANUAL_ALIASES[lowerRaw];
@@ -1507,10 +1552,10 @@ export default function App() {
       
       for (const group of nameGroups) {
         const representative = group[0];
-        const lowerRep = representative.toLowerCase().trim();
+        const lowerRep = (representative || '').toLowerCase().trim();
         const explicitRepCanonical = MANUAL_ALIASES[lowerRep];
 
-        if (explicitCanonical && (explicitCanonical === explicitRepCanonical || group.some((n: string) => MANUAL_ALIASES[n.toLowerCase().trim()] === explicitCanonical))) {
+        if (explicitCanonical && (explicitCanonical === explicitRepCanonical || group.some((n: string) => MANUAL_ALIASES[(n || '').toLowerCase().trim()] === explicitCanonical))) {
           group.push(rawName);
           foundGroup = true;
           break;
@@ -1584,7 +1629,7 @@ export default function App() {
     nameGroups.forEach((group: string[]) => {
       let canonical = group[0];
       for (const name of group) {
-        const alias = MANUAL_ALIASES[name.toLowerCase().trim()];
+        const alias = MANUAL_ALIASES[(name || '').toLowerCase().trim()];
         if (alias) {
           canonical = alias;
           break;
@@ -1600,18 +1645,21 @@ export default function App() {
       }
 
       group.forEach((name: string) => {
-        canonicalNames.set(name, canonical);
+        if (name) canonicalNames.set((name || '').trim(), canonical);
       });
     });
 
     const studentMap = new Map<string, StudentSummary>();
     
     records.forEach(r => {
-      const canonicalName = canonicalNames.get(r.name.trim()) || r.name.trim();
-      const key = canonicalName.toLowerCase();
+      if (!r) return;
+      const recName = (r.name || r.studentName || '').toString().trim();
+      if (!recName) return;
+      const canonicalName = canonicalNames.get(recName) || recName;
+      const key = canonicalName.toLowerCase().trim();
       
       // Skip deleted students
-      if (deletedStudentNames.some(d => d.toLowerCase().trim() === key)) {
+      if (deletedStudentNames.some(d => (d || '').toLowerCase().trim() === key)) {
         return;
       }
       
@@ -1628,7 +1676,7 @@ export default function App() {
       }
       const student = studentMap.get(key)!;
       student.attendanceByDay[r.classDay] = {
-        present: true,
+        present: r.present === true,
         timestamp: r.timestamp,
         score: r.score
       };
@@ -1652,7 +1700,7 @@ export default function App() {
       });
 
       // Missed classes count as 0 (unless excused)
-      const studentKey = student.name.toLowerCase().trim();
+      const studentKey = (student.name || '').toLowerCase().trim();
       classDays.forEach(day => {
         const att = student.attendanceByDay[day.id];
         if (!att || !att.present) {
@@ -1664,12 +1712,14 @@ export default function App() {
       });
 
       // Include graded course assignments and exams
-      const studentSubs = submissions.filter(sub => 
-        (sub.studentName.toLowerCase().trim() === student.name.toLowerCase().trim() || 
-         student.name.toLowerCase().trim().includes(sub.studentName.toLowerCase().trim())) &&
-        (sub.status === 'Graded' || sub.status === 'Correction Returned') &&
-        sub.score !== undefined
-      );
+      const studentSubs = submissions.filter(sub => {
+        if (!sub || !sub.studentName || !student.name) return false;
+        const subName = sub.studentName.toLowerCase().trim();
+        const stName = student.name.toLowerCase().trim();
+        return (subName === stName || stName.includes(subName) || subName.includes(stName)) &&
+          (sub.status === 'Graded' || sub.status === 'Correction Returned') &&
+          sub.score !== undefined;
+      });
 
       studentSubs.forEach(sub => {
         const asg = customAssignments.find(a => a.id === sub.assignmentId);
@@ -1717,8 +1767,9 @@ export default function App() {
   // Find current student stats if a student is logged in
   const loggedInStudentData = useMemo(() => {
     if (appUser && appUser.role === 'student') {
-      const studentNameLower = (appUser.studentName || appUser.name).toLowerCase().trim();
-      return uniqueStudents.find(st => st.name.toLowerCase().trim() === studentNameLower);
+      const rawName = appUser.studentName || appUser.name || '';
+      const studentNameLower = rawName.toLowerCase().trim();
+      return uniqueStudents.find(st => st && st.name && st.name.toLowerCase().trim() === studentNameLower);
     }
     return null;
   }, [appUser, uniqueStudents]);
@@ -1733,6 +1784,106 @@ export default function App() {
       hashStr = hashStr.substring(0, 4);
     }
     return `HTEIM-2026-${hashStr}`;
+  };
+
+  const handleToggleStudentAttendance = (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused') => {
+    if (!studentName || !classDayId) return;
+    const studentKey = studentName.toLowerCase().trim();
+
+    // 1. Update excused absences
+    setExcusedAbsences(prev => ({
+      ...prev,
+      [studentKey]: {
+        ...(prev[studentKey] || {}),
+        [classDayId]: newStatus === 'excused'
+      }
+    }));
+
+    // 2. Update attendance records
+    setRecords(prev => {
+      const updated = [...prev];
+      const existingIdx = updated.findIndex(r => r && (r.studentName || r.name) && (r.studentName || r.name).toLowerCase().trim() === studentKey && r.classDay === classDayId);
+
+      if (newStatus === 'present') {
+        if (existingIdx >= 0) {
+          updated[existingIdx].present = true;
+        } else {
+          updated.push({
+            studentName: studentName,
+            name: studentName,
+            classDay: classDayId,
+            present: true,
+            score: '',
+            timestamp: new Date().toLocaleDateString()
+          });
+        }
+      } else {
+        if (existingIdx >= 0) {
+          updated[existingIdx].present = false;
+        } else {
+          updated.push({
+            studentName: studentName,
+            name: studentName,
+            classDay: classDayId,
+            present: false,
+            score: '',
+            timestamp: new Date().toLocaleDateString()
+          });
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleAddClassDay = (customTitle?: string) => {
+    const title = (customTitle || '').trim() || `Class Day ${classDays.length + 1}`;
+    const newDay: ClassDay = {
+      id: `day-${Date.now()}`,
+      name: title
+    };
+    setClassDays(prev => [...prev, newDay]);
+    if (!liveCheckinDayId) {
+      setLiveCheckinDayId(newDay.id);
+    }
+    logActivity({
+      actor: appUser?.name || 'Admin',
+      role: appUser?.role === 'student' ? 'student' : 'admin',
+      actionCategory: 'Attendance Override',
+      actionTitle: 'Class Session Created',
+      details: `Added new class session: ${title}`
+    });
+  };
+
+  const handleEditClassDayTitle = (dayId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    const trimmed = newTitle.trim();
+    setClassDays(prev => prev.map(d => d.id === dayId ? { ...d, name: trimmed } : d));
+    logActivity({
+      actor: appUser?.name || 'Admin',
+      role: appUser?.role === 'student' ? 'student' : 'admin',
+      actionCategory: 'Attendance Override',
+      actionTitle: 'Class Session Renamed',
+      details: `Renamed class day to: ${trimmed}`
+    });
+  };
+
+  const handleDeleteClassDay = (dayId: string) => {
+    const day = classDays.find(d => d.id === dayId);
+    if (!day) return;
+    if (window.confirm(`Are you sure you want to delete class session "${day.name}"?`)) {
+      const updated = classDays.filter(d => d.id !== dayId);
+      setClassDays(updated);
+      if (liveCheckinDayId === dayId) {
+        setLiveCheckinDayId(updated.length > 0 ? updated[0].id : '');
+      }
+      logActivity({
+        actor: appUser?.name || 'Admin',
+        role: appUser?.role === 'student' ? 'student' : 'admin',
+        actionCategory: 'Attendance Override',
+        actionTitle: 'Class Session Deleted',
+        details: `Deleted class day: ${day.name}`
+      });
+    }
   };
 
   // Find all sheets/class days that have at least one score
@@ -1982,430 +2133,457 @@ export default function App() {
       )}
 
       {/* Header */}
-      <header className="bg-slate-900/90 backdrop-blur-md border border-indigo-500/25 rounded-2xl p-4 shadow-2xl mb-4 flex-shrink-0 relative z-30 overflow-hidden group">
+      <header className="bg-slate-900/95 backdrop-blur-md border border-indigo-500/25 rounded-2xl p-3 sm:p-4 shadow-2xl mb-4 flex-shrink-0 relative z-30 group">
         {/* Futuristic Background Mesh Glows */}
-        <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl" />
+          <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl" />
+        </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+        <div className="flex items-center justify-between gap-3 relative z-10 flex-wrap sm:flex-nowrap">
           {/* Logo & Brand Info */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3.5">
-            <div className="relative group/logo">
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-indigo-500 to-amber-500 rounded-2xl blur-xs opacity-70 group-hover/logo:opacity-100 transition-opacity" />
+          <div className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group/brand" onClick={() => setActiveErpTab('home')}>
+            <div className="relative group/logo flex-shrink-0">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 via-indigo-500 to-amber-500 rounded-xl blur-2xs opacity-70 group-hover/brand:opacity-100 transition-opacity" />
               <img 
                 src={hteimLogoAsset} 
                 alt="HTEIM School of Ministry Logo" 
-                className="relative w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-2xl border-2 border-amber-400/80 shadow-xl object-contain bg-white p-1 flex-shrink-0 transition-transform group-hover/logo:scale-105 cursor-pointer"
-                onClick={() => setActiveErpTab('home')}
+                className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl border border-amber-400/80 shadow-md object-contain bg-white p-0.5 transition-transform group-hover/brand:scale-105"
               />
             </div>
-            <div onClick={() => setActiveErpTab('home')} className="cursor-pointer group">
-              <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-                <h1 className="text-base xs:text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-amber-300 via-white to-indigo-200 bg-clip-text text-transparent group-hover:from-amber-200 group-hover:to-indigo-300 transition-all">
+            <div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-sm sm:text-base font-black tracking-tight bg-gradient-to-r from-amber-300 via-white to-indigo-200 bg-clip-text text-transparent group-hover/brand:from-amber-200 group-hover/brand:to-indigo-300 transition-all">
                   HTEIM School of Ministry
                 </h1>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 rounded-full border border-amber-400/40 flex items-center gap-1 mx-auto sm:mx-0 shadow-3xs">
-                  <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" /> Futuristic Portal
+                <span className="hidden lg:inline-flex px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 rounded-full border border-amber-400/30 items-center gap-1 shadow-3xs">
+                  <Sparkles className="w-2.5 h-2.5 text-amber-400" /> Portal
                 </span>
               </div>
-              <p className="text-slate-300 text-[11px] sm:text-xs mt-0.5 font-medium flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
-                <span className="font-bold text-slate-200">Heaven Touching Earth Int'l Ministries</span>
-                <span className="text-indigo-400 hidden sm:inline">•</span>
-                <span className="italic text-amber-300/90 font-serif w-full sm:w-auto text-center sm:text-left">"Bringing Heaven to Earth, Taking People to Heaven"</span>
+              <p className="text-slate-400 text-[10px] sm:text-[11px] font-medium hidden sm:block leading-tight">
+                Heaven Touching Earth Int'l Ministries
               </p>
             </div>
           </div>
 
-          {/* Stats Badges & Header Action Controls */}
-          <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto">
-            {/* Quick KPI Stat Chips */}
-            {records.length > 0 && (
-              <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium">
-                {appUser?.role === 'student' ? (
-                  <>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md border border-emerald-200/60">
-                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>My Attendance: {loggedInStudentData ? loggedInStudentData.rate.toFixed(1) : '0.0'}%</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 text-amber-800 font-bold rounded-md border border-amber-200/60">
-                      <Award className="w-3.5 h-3.5 text-amber-600" />
-                      <span>My Score: {loggedInStudentData && loggedInStudentData.avgScore !== null ? loggedInStudentData.avgScore.toFixed(1) + '%' : 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-md border border-indigo-200/60 font-mono">
-                      <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>ID: {getStudentIdForName(appUser.studentName || appUser.name)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md border border-emerald-200/60">
-                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Att: {avgAttendance.toFixed(1)}%</span>
-                    </div>
-                    {avgScoreOverall !== null && (
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 text-amber-800 font-bold rounded-md border border-amber-200/60">
-                        <Award className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Score: {avgScoreOverall.toFixed(1)}%</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-md border border-indigo-200/60">
-                      <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Students: {uniqueStudents.length}</span>
-                    </div>
-                  </>
-                )}
-              </div>
+          {/* Quick KPI Stat Chips */}
+          {records.length > 0 && (
+            <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800/80 px-3 py-1 rounded-xl text-xs font-medium">
+              {appUser?.role === 'student' ? (
+                <>
+                  <div className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>My Att: {loggedInStudentData ? loggedInStudentData.rate.toFixed(1) : '0.0'}%</span>
+                  </div>
+                  <span className="text-slate-700">•</span>
+                  <div className="flex items-center gap-1 text-indigo-300 font-mono text-[10px]">
+                    <span>ID: {getStudentIdForName(appUser.studentName || appUser.name)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Att: {avgAttendance.toFixed(1)}%</span>
+                  </div>
+                  <span className="text-slate-700">•</span>
+                  <div className="flex items-center gap-1 text-indigo-300 font-bold text-[11px]">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>{uniqueStudents.length} Students</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Header Action Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+            {/* Live Check-In Button */}
+            {appUser?.role !== 'student' && (
+              <button
+                onClick={() => {
+                  setShowLiveCheckinModal(true);
+                  if (!liveCheckinDayId && classDays.length > 0) {
+                    setLiveCheckinDayId(classDays[classDays.length - 1].id);
+                  }
+                }}
+                className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
+                </span>
+                <Smartphone className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Live Check-In</span>
+              </button>
             )}
 
-            {/* Action Buttons Group */}
-            <div className="flex items-center justify-center lg:justify-end gap-2 flex-wrap w-full lg:w-auto">
-              {dataSource === 'sheets' && (
-                <button
-                  onClick={() => handleLoadSheets()}
-                  disabled={isLoading}
-                  className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                  title="Sync with Google Sheets"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Sync</span>
-                </button>
-              )}
+            {/* Command Palette Search Button */}
+            <button
+              onClick={() => setShowCommandPalette(true)}
+              className="px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all cursor-pointer flex items-center gap-1.5"
+              title="Global Search & Quick Jump (Ctrl+K or Cmd+K)"
+            >
+              <Search className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden lg:inline text-[11px]">Search</span>
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1 py-0.2 text-[9px] font-mono font-bold bg-slate-900 text-amber-300 rounded border border-slate-800">
+                ⌘K
+              </kbd>
+            </button>
 
-              {/* Cloud Synchronization Backup Trigger */}
+            {/* Consolidated Tools & Operations Dropdown */}
+            <div className="relative">
               <button
-                onClick={handlePushToCloud}
-                disabled={isCloudSyncing}
-                className="px-3 py-2 bg-gradient-to-r from-indigo-950 to-slate-900 hover:from-indigo-900 hover:to-slate-800 text-white font-black text-xs rounded-xl shadow-md border border-indigo-700/60 transition-all cursor-pointer flex items-center gap-2 relative active:scale-95 group"
-                title="Backup and Sync Workspace with Firestore Cloud"
+                onClick={() => setShowToolsMenu(!showToolsMenu)}
+                className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                  showToolsMenu
+                    ? 'bg-indigo-600 text-white border-indigo-500'
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border-slate-700/60'
+                }`}
+                title="Tools, Exports, Cloud & Admin Options"
               >
-                {isCloudSyncing ? (
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                ) : (
-                  <Cloud className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                )}
-                <span>Cloud Sync</span>
-                {lastSyncedTime && (
-                  <span className="text-[9px] text-indigo-300 font-mono hidden md:inline">
-                    {lastSyncedTime}
-                  </span>
-                )}
+                <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden xs:inline text-[11px]">Tools</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showToolsMenu ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Global Command Palette Trigger Button (Ctrl + K / Cmd + K) */}
-              <button
-                onClick={() => setShowCommandPalette(true)}
-                className="px-3 py-2 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white font-black text-xs rounded-xl shadow-md border border-indigo-700/60 transition-all cursor-pointer flex items-center gap-2 relative active:scale-95 group"
-                title="Global Search & Quick Jump (Ctrl+K or Cmd+K)"
-              >
-                <Search className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span className="hidden sm:inline">Search</span>
-                <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-mono font-bold bg-slate-800 text-amber-300 rounded border border-slate-700">
-                  ⌘K
-                </kbd>
-              </button>
-
-              {/* Mobile App & APK Download Center Button */}
-              <button
-                onClick={() => setShowMobileDownloadModal(true)}
-                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-xs rounded-xl shadow-xs border border-amber-500/30 transition-all cursor-pointer flex items-center gap-2 relative active:scale-95 group"
-                title="Download Android APK & Install Mobile PWA"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>Mobile App / APK</span>
-                <span className="bg-amber-500 text-slate-950 font-black text-[9px] px-1.5 py-0.2 rounded uppercase">
-                  v2.4
-                </span>
-              </button>
-
-              {appUser?.role !== 'student' && (
-                <button
-                  onClick={() => {
-                    setShowLiveCheckinModal(true);
-                    if (!liveCheckinDayId && classDays.length > 0) {
-                      setLiveCheckinDayId(classDays[classDays.length - 1].id);
-                    }
-                  }}
-                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 relative active:scale-95"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
-                  </span>
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Live Check-In</span>
-                </button>
-              )}
-
-              {/* Reports & Export Quick Buttons */}
-              {records.length > 0 && appUser?.role !== 'student' && (
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-                  <button
-                    onClick={() => setShowReportModal(true)}
-                    className="px-2.5 py-1.5 hover:bg-white text-slate-700 hover:text-emerald-700 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-                    title="Official PDF Evaluation & Attendance Report"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="hidden md:inline">PDF</span>
-                  </button>
-                  <button
-                    onClick={handleExportCSV}
-                    className="px-2.5 py-1.5 hover:bg-white text-slate-700 hover:text-slate-900 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-                    title="Export CSV Spreadsheet"
-                  >
-                    <Download className="w-3.5 h-3.5 text-slate-600" />
-                    <span className="hidden md:inline">CSV</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Utility Tools */}
-              <div className="flex items-center gap-1">
-                {appUser?.role !== 'student' && (
-                  <button
-                    onClick={() => setShowBatchBroadcastModal(true)}
-                    className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                    title="Batch Email & SMS Announcements Broadcast"
-                  >
-                    <Radio className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
-                    <span className="hidden md:inline">Broadcast</span>
-                  </button>
-                )}
-
-                <NotificationCenter
-                  notifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
-                  onMarkAsRead={handleMarkNotifAsRead}
-                  onMarkAllAsRead={handleMarkAllNotifsAsRead}
-                  onClearNotifications={handleClearNotifs}
-                  onSelectNotification={handleSelectNotif}
-                  onTriggerScan={handleRunNotificationScan}
-                  onAddTestNotification={handleAddTestNotif}
-                  currentRole={appUser?.role}
-                  currentStudentName={appUser?.studentName || appUser?.name}
-                />
-
-                {(appUser?.role === 'admin' || appUser?.role === 'teacher') ? (
-                  <button
-                    onClick={() => setShowAdminAuditModal(true)}
-                    className="p-2 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-amber-400 rounded-xl transition-all cursor-pointer shadow-2xs border border-indigo-800/60 flex items-center gap-1.5"
-                    title="Administrative & Data Tools (Audit Trail & Backup)"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-amber-400" />
-                    <span className="hidden xl:inline text-xs font-black text-white pr-0.5">Admin Tools</span>
-                  </button>
-                ) : (
-                  <div className="relative group">
-                    <button
-                      disabled
-                      className="p-2 bg-slate-100 border border-slate-200 text-slate-400 rounded-xl cursor-not-allowed opacity-75 flex items-center gap-1.5"
+              {/* Tools Dropdown Menu */}
+              {showToolsMenu && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <h4 className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                      Tools & Operations
+                    </h4>
+                    <button 
+                      onClick={() => setShowToolsMenu(false)}
+                      className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
                     >
-                      <Lock className="w-4 h-4 text-amber-500" />
-                      <span className="hidden xl:inline text-xs font-bold text-slate-500 pr-0.5">Admin Tools</span>
+                      <X className="w-3.5 h-3.5" />
                     </button>
-                    <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Requires Instructor or Administrator Privileges</span>
-                    </div>
                   </div>
-                )}
 
-                <button
-                  onClick={() => setShowSettingsModal(true)}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
-                  title="Settings & Customization"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => setShowGuideModal(true)}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 text-indigo-600 rounded-xl transition-all cursor-pointer"
-                  title="Guide & Help"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Account & Persistent Role Pill + Demo Role Switcher */}
-              <div className="flex items-center justify-center gap-2 pl-0 lg:pl-2 border-l-0 lg:border-l border-slate-200 w-full lg:w-auto mt-1 lg:mt-0">
-                {/* Contextual Active Role Pill & Role Switcher Popover */}
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowRoleMenu(!showRoleMenu)}
-                    className={`px-2.5 py-1 rounded-xl border text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs cursor-pointer select-none transition-all hover:scale-[1.02] ${
-                      appUser?.role === 'admin'
-                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-900'
-                        : appUser?.role === 'teacher'
-                        ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-900'
-                        : 'bg-blue-500/15 border-blue-500/40 text-blue-900'
-                    }`}
-                    title="Active Role Permission - Click to switch preview role"
-                  >
-                    {appUser?.role === 'admin' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500/20" />}
-                    {appUser?.role === 'teacher' && <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />}
-                    {appUser?.role === 'student' && <UserCheck className="w-3.5 h-3.5 text-blue-600" />}
-                    <span className="hidden xs:inline">{appUser?.role === 'admin' ? 'Administrator' : appUser?.role === 'teacher' ? 'Instructor' : 'Student'}</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${showRoleMenu ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Quick Role Switcher Dropdown */}
-                  {showRoleMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                        <div>
-                          <h4 className="text-xs font-black text-amber-300 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                            Demo Role Switcher
-                          </h4>
-                          <p className="text-[10px] text-slate-400">Instant portal permission preview</p>
-                        </div>
-                        <button 
-                          onClick={() => setShowRoleMenu(false)}
-                          className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="space-y-1.5 pt-1">
-                        {/* Admin Role Option */}
-                        <button
-                          onClick={() => handleQuickRoleSwitch('admin')}
-                          className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                            appUser?.role === 'admin'
-                              ? 'bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30'
-                              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 font-bold">
-                              <Crown className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-black text-white">Administrator</p>
-                              <p className="text-[9px] text-slate-400">Full System Governance & Backups</p>
-                            </div>
-                          </div>
-                          {appUser?.role === 'admin' && <Check className="w-4 h-4 text-amber-400" />}
-                        </button>
-
-                        {/* Instructor Role Option */}
-                        <button
-                          onClick={() => handleQuickRoleSwitch('teacher')}
-                          className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                            appUser?.role === 'teacher'
-                              ? 'bg-indigo-500/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
-                              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 font-bold">
-                              <GraduationCap className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-black text-white">Instructor / Faculty</p>
-                              <p className="text-[9px] text-slate-400">Class Scheduling, Attendance & Grading</p>
-                            </div>
-                          </div>
-                          {appUser?.role === 'teacher' && <Check className="w-4 h-4 text-indigo-400" />}
-                        </button>
-
-                        {/* Student Role Option */}
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => handleQuickRoleSwitch('student')}
-                            className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                              appUser?.role === 'student'
-                                ? 'bg-blue-500/20 border-blue-500/50 text-white ring-1 ring-blue-500/30'
-                                : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 font-bold">
-                                <UserCheck className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-black text-white">Student Account</p>
-                                <p className="text-[9px] text-slate-400">Student Portal & Personal Attendance</p>
-                              </div>
-                            </div>
-                            {appUser?.role === 'student' && <Check className="w-4 h-4 text-blue-400" />}
-                          </button>
-
-                          {/* Quick Student Switcher if student mode */}
-                          {appUser?.role === 'student' && uniqueStudents.length > 0 && (
-                            <div className="p-2 bg-slate-950/80 rounded-xl border border-slate-800 text-xs space-y-1">
-                              <label className="text-[9px] uppercase font-mono font-bold text-slate-400 block">Preview Specific Student:</label>
-                              <select
-                                value={appUser.studentName || appUser.name}
-                                onChange={(e) => handleQuickRoleSwitch('student', e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-1.5 text-xs font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              >
-                                {uniqueStudents.map(s => {
-                                  const nameStr = typeof s === 'string' ? s : s.name;
-                                  return (
-                                    <option key={nameStr} value={nameStr}>{nameStr}</option>
-                                  );
-                                })}
-                              </select>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>Full Credentials Portal</span>
-                        <button 
-                          onClick={() => {
-                            setShowRoleMenu(false);
-                            setShowLoginModal(true);
-                          }}
-                          className="text-amber-400 font-bold hover:underline cursor-pointer"
-                        >
-                          Open Login Modal
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button 
-                  onClick={() => setShowLoginModal(true)}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 px-2.5 py-1 rounded-xl transition-all cursor-pointer group"
-                  title="Open login portal / user details"
-                >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs ${
-                    appUser?.role === 'admin' ? 'bg-amber-500 text-slate-950' :
-                    appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' :
-                    'bg-blue-600 text-white'
-                  }`}>
-                    {appUser ? appUser.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
-                  </div>
-                  <div className="text-left hidden lg:block">
-                    <p className="text-xs font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors">
-                      {appUser ? appUser.name : 'Guest'}
-                    </p>
-                    <p className="text-[9px] uppercase font-mono font-extrabold text-slate-400">
-                      {appUser ? appUser.role : 'Logged Out'}
-                    </p>
-                  </div>
-                  {appUser ? (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAppLogout();
+                  {/* Section 1: Sync & Cloud */}
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">Sync & Cloud</p>
+                    <button
+                      onClick={() => {
+                        setShowToolsMenu(false);
+                        handlePushToCloud();
                       }}
-                      className="ml-1 text-[10px] font-bold text-slate-500 hover:text-rose-600 underline cursor-pointer"
+                      disabled={isCloudSyncing}
+                      className="w-full p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between"
                     >
-                      Logout
-                    </span>
-                  ) : (
-                    <span className="ml-1 px-2 py-0.5 bg-amber-500 text-slate-950 font-extrabold text-[10px] rounded cursor-pointer">
-                      Login
-                    </span>
-                  )}
-                </button>
-              </div>
+                      <div className="flex items-center gap-2">
+                        {isCloudSyncing ? (
+                          <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                        ) : (
+                          <Cloud className="w-3.5 h-3.5 text-indigo-400" />
+                        )}
+                        <div>
+                          <p className="text-slate-200">Cloud Sync</p>
+                          {lastSyncedTime && <p className="text-[9px] text-slate-400 font-mono">{lastSyncedTime}</p>}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-indigo-400 font-semibold">Backup</span>
+                    </button>
+
+                    {dataSource === 'sheets' && (
+                      <button
+                        onClick={() => {
+                          setShowToolsMenu(false);
+                          handleLoadSheets();
+                        }}
+                        disabled={isLoading}
+                        className="w-full p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isLoading ? 'animate-spin' : ''}`} />
+                          <span className="text-slate-200">Sync Google Sheets</span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400 font-semibold">Sheets</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Section 2: Exports & Broadcast */}
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">Exports & Broadcast</p>
+                    {records.length > 0 && appUser?.role !== 'student' && (
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          onClick={() => {
+                            setShowToolsMenu(false);
+                            setShowReportModal(true);
+                          }}
+                          className="p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-slate-200">PDF Report</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowToolsMenu(false);
+                            handleExportCSV();
+                          }}
+                          className="p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <Download className="w-3.5 h-3.5 text-slate-300" />
+                          <span className="text-slate-200">CSV Export</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {appUser?.role !== 'student' && (
+                      <button
+                        onClick={() => {
+                          setShowToolsMenu(false);
+                          setShowBatchBroadcastModal(true);
+                        }}
+                        className="w-full p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Radio className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                          <span className="text-slate-200">Batch Broadcast</span>
+                        </div>
+                        <span className="text-[10px] text-indigo-300 font-semibold">Email & SMS</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Section 3: Applications & Admin */}
+                  <div className="space-y-1 pt-1 border-t border-slate-800">
+                    <p className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">Apps & Governance</p>
+                    <button
+                      onClick={() => {
+                        setShowToolsMenu(false);
+                        setShowMobileDownloadModal(true);
+                      }}
+                      className="w-full p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-slate-200">Mobile App / APK</span>
+                      </div>
+                      <span className="bg-amber-500/20 text-amber-300 text-[9px] px-1.5 py-0.5 rounded font-black">v2.4</span>
+                    </button>
+
+                    {(appUser?.role === 'admin' || appUser?.role === 'teacher') ? (
+                      <button
+                        onClick={() => {
+                          setShowToolsMenu(false);
+                          setShowAdminAuditModal(true);
+                        }}
+                        className="w-full p-2 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="text-slate-200">Admin Audit Tools</span>
+                        </div>
+                        <span className="text-[10px] text-amber-400 font-semibold">Admin</span>
+                      </button>
+                    ) : (
+                      <div className="p-2 bg-slate-950/40 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs text-slate-500 cursor-not-allowed">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-amber-500/70" />
+                          <span>Admin Audit Tools</span>
+                        </div>
+                        <span className="text-[9px] text-slate-600 font-mono">Restricted</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Notification Center */}
+            <NotificationCenter
+              notifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
+              onMarkAsRead={handleMarkNotifAsRead}
+              onMarkAllAsRead={handleMarkAllNotifsAsRead}
+              onClearNotifications={handleClearNotifs}
+              onSelectNotification={handleSelectNotif}
+              onTriggerScan={handleRunNotificationScan}
+              onAddTestNotification={handleAddTestNotif}
+              currentRole={appUser?.role}
+              currentStudentName={appUser?.studentName || appUser?.name}
+            />
+
+            {/* Quick Utility Icon Buttons */}
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="p-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white rounded-xl border border-slate-700/60 transition-all cursor-pointer"
+              title="Settings & Customization"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowGuideModal(true)}
+              className="p-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-indigo-300 hover:text-indigo-200 rounded-xl border border-slate-700/60 transition-all cursor-pointer"
+              title="Guide & Help"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+
+            {/* Contextual Active Role Pill & Role Switcher Popover */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowRoleMenu(!showRoleMenu)}
+                className={`px-2 sm:px-2.5 py-1 rounded-xl border text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer select-none transition-all hover:scale-[1.02] ${
+                  appUser?.role === 'admin'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                    : appUser?.role === 'teacher'
+                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                    : 'bg-blue-500/15 border-blue-500/40 text-blue-300'
+                }`}
+                title="Active Role Permission - Click to switch preview role"
+              >
+                {appUser?.role === 'admin' && <Crown className="w-3.5 h-3.5 text-amber-400" />}
+                {appUser?.role === 'teacher' && <GraduationCap className="w-3.5 h-3.5 text-indigo-400" />}
+                {appUser?.role === 'student' && <UserCheck className="w-3.5 h-3.5 text-blue-400" />}
+                <span className="hidden sm:inline">{appUser?.role === 'admin' ? 'Admin' : appUser?.role === 'teacher' ? 'Faculty' : 'Student'}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showRoleMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Quick Role Switcher Dropdown */}
+              {showRoleMenu && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <div>
+                      <h4 className="text-xs font-black text-amber-300 flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        Demo Role Switcher
+                      </h4>
+                      <p className="text-[10px] text-slate-400">Instant portal permission preview</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowRoleMenu(false)}
+                      className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    {/* Admin Role Option */}
+                    <button
+                      onClick={() => handleQuickRoleSwitch('admin')}
+                      className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        appUser?.role === 'admin'
+                          ? 'bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 font-bold">
+                          <Crown className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-white">Administrator</p>
+                          <p className="text-[9px] text-slate-400">Full System Governance & Backups</p>
+                        </div>
+                      </div>
+                      {appUser?.role === 'admin' && <Check className="w-4 h-4 text-amber-400" />}
+                    </button>
+
+                    {/* Instructor Role Option */}
+                    <button
+                      onClick={() => handleQuickRoleSwitch('teacher')}
+                      className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        appUser?.role === 'teacher'
+                          ? 'bg-indigo-500/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 font-bold">
+                          <GraduationCap className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-white">Instructor / Faculty</p>
+                          <p className="text-[9px] text-slate-400">Class Scheduling, Attendance & Grading</p>
+                        </div>
+                      </div>
+                      {appUser?.role === 'teacher' && <Check className="w-4 h-4 text-indigo-400" />}
+                    </button>
+
+                    {/* Student Role Option */}
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => handleQuickRoleSwitch('student')}
+                        className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                          appUser?.role === 'student'
+                            ? 'bg-blue-500/20 border-blue-500/50 text-white ring-1 ring-blue-500/30'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 font-bold">
+                            <UserCheck className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-white">Student Account</p>
+                            <p className="text-[9px] text-slate-400">Student Portal & Personal Attendance</p>
+                          </div>
+                        </div>
+                        {appUser?.role === 'student' && <Check className="w-4 h-4 text-blue-400" />}
+                      </button>
+
+                      {/* Quick Student Switcher if student mode */}
+                      {appUser?.role === 'student' && uniqueStudents.length > 0 && (
+                        <div className="p-2 bg-slate-950/80 rounded-xl border border-slate-800 text-xs space-y-1">
+                          <label className="text-[9px] uppercase font-mono font-bold text-slate-400 block">Preview Specific Student:</label>
+                          <select
+                            value={appUser.studentName || appUser.name}
+                            onChange={(e) => handleQuickRoleSwitch('student', e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-1.5 text-xs font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            {uniqueStudents.map(s => {
+                              const nameStr = typeof s === 'string' ? s : s.name;
+                              return (
+                                <option key={nameStr} value={nameStr}>{nameStr}</option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                    <span>Full Credentials Portal</span>
+                    <button 
+                      onClick={() => {
+                        setShowRoleMenu(false);
+                        setShowLoginModal(true);
+                      }}
+                      className="text-amber-400 font-bold hover:underline cursor-pointer"
+                    >
+                      Open Login Modal
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Profile Avatar / User Login Trigger */}
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 p-1 sm:pr-2 rounded-xl transition-all cursor-pointer group"
+              title="Open login portal / user details"
+            >
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs ${
+                appUser?.role === 'admin' ? 'bg-amber-500 text-slate-950' :
+                appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' :
+                'bg-blue-600 text-white'
+              }`}>
+                {appUser ? appUser.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
+              </div>
+              <p className="text-xs font-bold text-slate-200 hidden xl:block group-hover:text-amber-300 transition-colors">
+                {appUser ? appUser.name.split(' ')[0] : 'Guest'}
+              </p>
+            </button>
           </div>
         </div>
       </header>
@@ -2561,6 +2739,7 @@ export default function App() {
         {activeErpTab === 'students' && appUser?.role !== 'student' && (
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <StudentsTab
+              classDays={classDays}
               students={uniqueStudents.map(s => ({
                 name: s.name,
                 rate: s.rate,
@@ -2572,6 +2751,7 @@ export default function App() {
                 levelId: s.levelId,
                 attendanceByDay: s.attendanceByDay
               }))}
+              onDeleteStudent={handleDeleteStudent}
               onSelectStudentForTranscript={(s) => {
                 const found = uniqueStudents.find(u => u.name === s.name);
                 if (found) {
@@ -2660,6 +2840,17 @@ export default function App() {
               setCustomAssignments={setCustomAssignments}
               submissions={submissions}
               setSubmissions={setSubmissions}
+              googleUser={user}
+              googleToken={token}
+              isLoggingIn={isLoggingIn}
+              onGoogleLogin={handleLogin}
+              onGoogleLogout={handleLogout}
+              sheetUrl={sheetUrl}
+              setSheetUrl={setSheetUrl}
+              onLoadSheets={handleLoadSheets}
+              isLoadingSheets={isLoading}
+              recentSheets={recentSheets}
+              onRemoveRecentSheet={handleRemoveRecentSheet}
             />
           </div>
         )}
@@ -2700,7 +2891,7 @@ export default function App() {
         {activeErpTab === 'payments' && (appUser?.role === 'admin' || appUser?.role === 'student') && (
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <PaymentTab
-              availableStudents={uniqueStudents.map(s => ({ name: s.name, email: `${s.name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` }))}
+              availableStudents={uniqueStudents.map(s => ({ name: s.name || '', email: `${(s.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu` }))}
               isAdmin={appUser?.role === 'admin'}
               userRole={appUser?.role}
               currentStudentName={appUser?.studentName || appUser?.name}
@@ -2765,7 +2956,7 @@ export default function App() {
                   satisfactoryThreshold={satisfactoryThreshold}
                 />
               );
-            })() : records.length > 0 ? (
+            })() : (records.length > 0 || classDays.length > 0 || uniqueStudents.length > 0) ? (
               <>
                 {/* Toolbar: Search, Filter, Date Range, View Mode & Settings */}
               <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
@@ -2904,87 +3095,29 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Trend Chart Toggle */}
-                  <button
-                    onClick={() => setShowTrendChart(prev => !prev)}
-                    className={`p-1.5 border rounded-md transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold ${
-                      showTrendChart ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                    title="Toggle Lesson-by-Lesson Attendance Trend Chart"
-                  >
-                    <BarChart2 className="w-3.5 h-3.5" />
-                    <span className="text-[11px]">Trend Chart</span>
-                  </button>
+                  {/* Add Class Day & Manage Class Days Action Buttons */}
+                  {appUser?.role !== 'student' && (
+                    <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+                      <button
+                        onClick={() => handleAddClassDay()}
+                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-extrabold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                        title="Add a new class session on the fly"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Class Day</span>
+                      </button>
+                      <button
+                        onClick={() => setShowClassDaysModal(true)}
+                        className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-md text-xs font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                        title="Manage and rename class session titles"
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Manage Days ({classDays.length})</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Lesson-by-Lesson Attendance Trend Line Chart (Recharts) */}
-              {showTrendChart && trendChartData.length > 0 && (
-                <div className="p-4 bg-slate-900 text-white border-b border-slate-800 relative transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">
-                        Lesson-by-Lesson Attendance Trends
-                      </h3>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Showing {trendChartData.length} Evaluated Sessions
-                    </span>
-                  </div>
-
-                  <div className="h-32 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="attendanceGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
-                        <XAxis 
-                          dataKey="name" 
-                          stroke="#94a3b8" 
-                          fontSize={10} 
-                          tickLine={false} 
-                        />
-                        <YAxis 
-                          domain={[0, 100]} 
-                          stroke="#94a3b8" 
-                          fontSize={10} 
-                          tickFormatter={(val) => `${val}%`}
-                          tickLine={false} 
-                        />
-                        <Tooltip 
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-800 border border-slate-700 p-2.5 rounded-lg shadow-xl text-xs text-white">
-                                  <p className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1">{data.fullName}</p>
-                                  <p className="text-emerald-400 font-bold font-mono">Attendance Rate: {data.rate}%</p>
-                                  <p className="text-slate-400 text-[10px]">Headcount: {data.present} of {data.total} students present</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="rate" 
-                          stroke="#10b981" 
-                          strokeWidth={2.5} 
-                          fillOpacity={1} 
-                          fill="url(#attendanceGradient)" 
-                          activeDot={{ r: 6, fill: '#34d399', stroke: '#064e3b' }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
 
               {/* Attendance Workspace View Mode */}
               {viewMode === 'cards' ? (
@@ -2992,89 +3125,88 @@ export default function App() {
                 <div className="flex-1 overflow-auto custom-scrollbar p-4 bg-slate-50/50">
                   {filteredAndSortedStudents.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {filteredAndSortedStudents.map((student, idx) => {
-                        const studentKey = student.name.toLowerCase().trim();
-                        const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
-                        const note = studentNotes[studentKey] || student.note;
-                        const studentBadges = getStudentBadges(student);
+                      <AnimatePresence mode="popLayout">
+                        {filteredAndSortedStudents.map((student) => {
+                          const studentKey = student.name.toLowerCase().trim();
+                          const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
+                          const note = studentNotes[studentKey] || student.note;
+                          const studentBadges = getStudentBadges(student);
 
-                        return (
-                          <div 
-                            key={idx}
-                            onClick={() => setSelectedStudent(student)}
-                            className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between group"
-                          >
-                            <div>
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {cardPhoto ? (
-                                    <img 
-                                      src={cardPhoto} 
-                                      alt={student.name} 
-                                      className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0" 
-                                    />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 font-black text-slate-700 text-xs flex items-center justify-center flex-shrink-0">
-                                      {student.name.charAt(0)}
+                          return (
+                            <motion.div 
+                              key={student.name}
+                              layout
+                              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.88, y: -12, transition: { duration: 0.18 } }}
+                              transition={{ duration: 0.22, ease: 'easeOut' }}
+                              onClick={() => setSelectedStudent(student)}
+                              className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-shadow cursor-pointer flex flex-col justify-between group"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {cardPhoto ? (
+                                      <img 
+                                        src={cardPhoto} 
+                                        alt={student.name} 
+                                        className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0" 
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 font-black text-slate-700 text-xs flex items-center justify-center flex-shrink-0">
+                                        {student.name.charAt(0)}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">{student.name}</h4>
+                                      <p className="text-[10px] text-slate-400">Attended {student.attended} of {effectiveClassDays.length} sessions</p>
                                     </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">{student.name}</h4>
-                                    <p className="text-[10px] text-slate-400">Attended {student.attended} of {effectiveClassDays.length} sessions</p>
                                   </div>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold flex-shrink-0 ${
+                                    student.rate >= satisfactoryThreshold ? 'bg-emerald-100 text-emerald-800' : student.rate >= atRiskThreshold ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800 font-extrabold'
+                                  }`}>
+                                    {Math.round(student.rate)}%
+                                  </span>
                                 </div>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold flex-shrink-0 ${
-                                  student.rate >= satisfactoryThreshold ? 'bg-emerald-100 text-emerald-800' : student.rate >= atRiskThreshold ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800 font-extrabold'
-                                }`}>
-                                  {Math.round(student.rate)}%
-                                </span>
+
+                                {/* Student Badges / Milestones */}
+                                {studentBadges.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {studentBadges.map(b => (
+                                      <span key={b.id} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
+                                        {b.icon}
+                                        <span>{b.label}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Attendance Progress Bar */}
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden my-2">
+                                  <div 
+                                    className={`h-full transition-all duration-500 ${
+                                      student.rate >= satisfactoryThreshold ? 'bg-emerald-500' : student.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
+                                    }`}
+                                    style={{ width: `${Math.min(100, Math.max(0, student.rate))}%` }}
+                                  />
+                                </div>
+
+                                {/* Note preview if available */}
+                                {note && (
+                                  <div className="mt-2 p-1.5 bg-indigo-50/60 border border-indigo-100 rounded text-[10px] text-indigo-900 line-clamp-2 italic">
+                                    "{note}"
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Student Badges / Milestones */}
-                              {studentBadges.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mb-2">
-                                  {studentBadges.map(b => (
-                                    <span key={b.id} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
-                                      {b.icon}
-                                      <span>{b.label}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Attendance Progress Bar */}
-                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden my-2">
-                                <div 
-                                  className={`h-full transition-all duration-500 ${
-                                    student.rate >= satisfactoryThreshold ? 'bg-emerald-500' : student.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
-                                  }`}
-                                  style={{ width: `${Math.min(100, Math.max(0, student.rate))}%` }}
-                                />
+                              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
+                                <span>View Breakdown & Remarks</span>
+                                <span>&rarr;</span>
                               </div>
-
-                              {/* Score badge if available */}
-                              {student.avgScore !== null && (
-                                <div className="mt-2 text-[10px] flex items-center justify-between text-slate-500">
-                                  <span>Avg Evaluation Score:</span>
-                                  <span className="font-mono font-bold text-amber-600">{Math.round(student.avgScore)}%</span>
-                                </div>
-                              )}
-
-                              {/* Note preview if available */}
-                              {note && (
-                                <div className="mt-2 p-1.5 bg-indigo-50/60 border border-indigo-100 rounded text-[10px] text-indigo-900 line-clamp-2 italic">
-                                  "{note}"
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
-                              <span>View Breakdown & Remarks</span>
-                              <span>&rarr;</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
                     </div>
                   ) : (
                     <div className="p-8 text-center text-slate-400 text-xs">
@@ -3110,13 +3242,31 @@ export default function App() {
                           return (
                             <th 
                               key={day.id} 
-                              className={`${densityMode === 'dense' ? 'p-2' : 'p-3'} border-r border-slate-200 text-center min-w-[110px] max-w-[150px] flex-1 hover:bg-slate-200/50 transition-colors`}
-                              title={`Sheet: ${day.name}\nPresent: ${stats.count} students (${Math.round(stats.percentage)}%)`}
+                              className={`${densityMode === 'dense' ? 'p-2' : 'p-3'} border-r border-slate-200 text-center min-w-[110px] max-w-[150px] flex-1 hover:bg-slate-200/50 transition-colors group/th`}
+                              title={`Sheet: ${day.name}\nPresent: ${stats.count} students (${Math.round(stats.percentage)}%)\nClick pencil to rename title`}
                             >
                               <div className="flex flex-col items-center justify-center">
-                                <span className={`${densityMode === 'dense' ? 'text-[11px]' : 'text-xs'} font-extrabold text-slate-800 truncate max-w-[130px]`} title={day.name}>
-                                  {day.name}
-                                </span>
+                                <div className="flex items-center gap-1 justify-center max-w-[135px]">
+                                  <span className={`${densityMode === 'dense' ? 'text-[11px]' : 'text-xs'} font-extrabold text-slate-800 truncate`} title={day.name}>
+                                    {day.name}
+                                  </span>
+                                  {appUser?.role !== 'student' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newName = prompt('Rename Class Day Title:', day.name);
+                                        if (newName && newName.trim() !== '') {
+                                          handleEditClassDayTitle(day.id, newName.trim());
+                                        }
+                                      }}
+                                      className="opacity-0 group-hover/th:opacity-100 p-0.5 hover:bg-slate-300/60 rounded text-slate-500 hover:text-indigo-700 transition-all cursor-pointer flex-shrink-0"
+                                      title="Click to rename class day title"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
                                 <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 border border-slate-200 text-slate-600">
                                   <span>{stats.count}/{uniqueStudents.length}</span>
                                   <span className="text-emerald-600">({Math.round(stats.percentage)}%)</span>
@@ -3125,12 +3275,6 @@ export default function App() {
                             </th>
                           );
                         })}
-
-                        {avgScoreOverall !== null && (
-                          <th className={`${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 text-center font-black uppercase text-amber-800 tracking-wider w-28 min-w-[112px] bg-amber-50/60`}>
-                            Avg Score
-                          </th>
-                        )}
 
                         <th className={`${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 text-center font-black uppercase text-emerald-800 tracking-wider w-28 min-w-[112px] bg-emerald-50/60`}>
                           Attendance Rate
@@ -3191,19 +3335,32 @@ export default function App() {
                                 const isExcused = !isPresent && !!isExcusedMap[day.id];
 
                                 return (
-                                  <td key={day.id} className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px]`}>
+                                  <td 
+                                    key={day.id} 
+                                    className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px]`}
+                                    onClick={(e) => {
+                                      if (appUser?.role === 'student') return;
+                                      e.stopPropagation();
+                                      handleToggleStudentAttendance(
+                                        student.name, 
+                                        day.id, 
+                                        isPresent ? 'excused' : isExcused ? 'absent' : 'present'
+                                      );
+                                    }}
+                                    title={appUser?.role !== 'student' ? 'Click to toggle manual attendance (Present -> Excused -> Absent)' : undefined}
+                                  >
                                     {isPresent ? (
-                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold`}>
+                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer`}>
                                         <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                         <span>Present</span>
                                       </div>
                                     ) : isExcused ? (
-                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold`}>
+                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold hover:bg-amber-100 transition-colors cursor-pointer`}>
                                         <AlertCircle className="w-3 h-3 text-amber-500" />
                                         <span>Excused</span>
                                       </div>
                                     ) : (
-                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium`}>
+                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium hover:bg-rose-100 transition-colors cursor-pointer`}>
                                         <XCircle className="w-3 h-3 text-rose-300" />
                                         <span>Absent</span>
                                       </div>
@@ -3211,21 +3368,6 @@ export default function App() {
                                   </td>
                                 );
                               })}
-
-                              {/* Avg Evaluation Score Badge */}
-                              {avgScoreOverall !== null && (
-                                <td className={`${densityMode === 'dense' ? 'py-1.5 px-2 text-[10px]' : 'p-3 text-xs'} border-r border-slate-100 text-center font-mono font-bold w-28 min-w-[112px] bg-amber-50/30`}>
-                                  {student.avgScore !== null ? (
-                                    <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                                      student.avgScore >= 80 ? 'bg-emerald-100 text-emerald-800' : student.avgScore >= 60 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
-                                    }`}>
-                                      {Math.round(student.avgScore)}%
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-300 text-[10px]">&mdash;</span>
-                                  )}
-                                </td>
-                              )}
 
                               {/* Attendance Rate Badge */}
                               <td className={`${densityMode === 'dense' ? 'py-1.5 px-2 text-[10px]' : 'p-3 text-xs'} border-r border-slate-100 text-center font-mono font-bold w-28 min-w-[112px] bg-slate-50/50`}>
@@ -3352,126 +3494,69 @@ export default function App() {
                 {isLoading && dataSource === 'demo' ? <Loader2 className="w-4 h-4 animate-spin text-slate-600" /> : <Upload className="w-4 h-4 text-slate-600" />}
                 Load Uploaded CSV
               </button>
-
-              <div className="relative flex items-center py-1">
-                <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink-0 mx-3 text-slate-400 text-[10px] font-bold uppercase">OR GOOGLE SHEETS</span>
-                <div className="flex-grow border-t border-slate-200"></div>
-              </div>
-
-              {!user ? (
-                <button 
-                  onClick={handleLogin}
-                  disabled={isLoggingIn}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all uppercase disabled:opacity-50 cursor-pointer"
-                >
-                  {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-                  Sign in with Google
-                </button>
-              ) : (
-                <form onSubmit={handleLoadSheets} className="space-y-3">
-                  <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                    <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-200 flex-shrink-0 bg-white flex items-center justify-center">
-                      {user.photoURL ? <img src={user.photoURL} alt="User" className="w-full h-full object-cover" /> : <UserIcon className="w-3.5 h-3.5 text-slate-500" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold text-slate-700 truncate">{user.displayName}</p>
-                      <p className="text-[9px] text-slate-400 truncate">{user.email}</p>
-                    </div>
-                    <button type="button" onClick={handleLogout} className="text-[10px] text-rose-600 hover:text-rose-700 uppercase font-extrabold flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-rose-50 cursor-pointer">Sign out</button>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Google Sheet URL</label>
-                    <input 
-                      type="url" 
-                      required
-                      placeholder="https://docs.google.com/spreadsheets/d/..."
-                      value={sheetUrl}
-                      onChange={(e) => setSheetUrl(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  {/* Saved Recent Sheets Shortcuts */}
-                  {recentSheets.length > 0 && (
-                    <div className="pt-1">
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <Bookmark className="w-3 h-3 text-indigo-500" />
-                          Recent Sheets
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-normal">Quick switch</span>
-                      </label>
-                      <div className="space-y-1 max-h-36 overflow-y-auto custom-scrollbar border border-slate-100 rounded-lg p-1 bg-slate-50/50">
-                        {recentSheets.map(s => (
-                          <div 
-                            key={s.id}
-                            onClick={() => handleLoadSheets(undefined, s.url)}
-                            className={`p-1.5 rounded text-xs flex items-center justify-between cursor-pointer group transition-all ${
-                              extractSpreadsheetId(s.url) === extractSpreadsheetId(sheetUrl) 
-                                ? 'bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold' 
-                                : 'hover:bg-white border border-transparent text-slate-700'
-                            }`}
-                          >
-                            <div className="min-w-0 pr-2">
-                              <p className="text-[11px] font-semibold truncate leading-tight group-hover:text-indigo-600">
-                                {s.title}
-                              </p>
-                              <p className="text-[9px] text-slate-400 font-mono">
-                                {s.lastLoaded ? `Synced ${s.lastLoaded}` : 'Saved'}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => handleRemoveRecentSheet(s.id, e)}
-                              className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 p-0.5 transition-opacity"
-                              title="Remove from saved history"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button 
-                    type="submit"
-                    disabled={isLoading || !sheetUrl}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all uppercase disabled:opacity-50 cursor-pointer"
-                  >
-                    {isLoading && dataSource === 'sheets' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                    Analyze All Sheets
-                  </button>
-                </form>
-              )}
             </div>
           </div>
 
-          {/* Loaded Class Sheets List */}
+          {/* Loaded Class Sheets / Class Sessions List */}
           {classDays.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-500" /> Evaluated Sheets ({classDays.length})
+                  <Calendar className="w-3.5 h-3.5 text-indigo-500" /> Class Sessions ({classDays.length})
                 </h3>
+                {appUser?.role !== 'student' && (
+                  <button
+                    onClick={() => handleAddClassDay()}
+                    className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Add class session on the fly"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Day</span>
+                  </button>
+                )}
               </div>
 
               <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1 flex-1">
                 {classDays.map((day, i) => {
                   const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
                   return (
-                    <div key={day.id} className="p-2 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
+                    <div key={day.id} className="p-2 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between text-xs group">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
                         <span className="w-5 h-5 rounded bg-white border border-slate-200 text-slate-500 text-[10px] font-mono font-bold flex items-center justify-center flex-shrink-0">
                           {i + 1}
                         </span>
                         <span className="font-semibold text-slate-700 truncate" title={day.name}>{day.name}</span>
                       </div>
-                      <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded flex-shrink-0">
-                        {stats.count} ({Math.round(stats.percentage)}%)
-                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          {stats.count} ({Math.round(stats.percentage)}%)
+                        </span>
+                        {appUser?.role !== 'student' && (
+                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newName = prompt('Rename Class Day Title:', day.name);
+                                if (newName && newName.trim() !== '') {
+                                  handleEditClassDayTitle(day.id, newName.trim());
+                                }
+                              }}
+                              className="p-1 hover:bg-indigo-100 text-slate-400 hover:text-indigo-700 rounded transition-colors cursor-pointer"
+                              title="Rename Title"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteClassDay(day.id)}
+                              className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                              title="Delete Class Day"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -3479,45 +3564,14 @@ export default function App() {
             </div>
           )}
 
-          {/* Excluded Students */}
-          {deletedStudentNames.length > 0 && (
-            <div className="bg-white border border-rose-200 rounded-xl p-4 shadow-sm flex-shrink-0">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-rose-500 flex items-center gap-1.5">
-                  <UserX className="w-3.5 h-3.5" /> Excluded Students ({deletedStudentNames.length})
-                </h3>
-                <button 
-                  onClick={handleRestoreAllStudents}
-                  className="text-[10px] font-bold uppercase text-slate-400 hover:text-slate-600 cursor-pointer flex items-center gap-1"
-                  title="Restore all excluded students"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Restore All
-                </button>
-              </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                {deletedStudentNames.map((name, idx) => (
-                  <div key={idx} className="p-2 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-semibold text-rose-800 truncate" title={name}>{name}</span>
-                    <button 
-                      onClick={() => handleRestoreStudent(name)}
-                      className="p-1 rounded-md text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
-                      title="Restore student"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
           </aside>
         )}
       </div>
 
       {/* Student Detail Modal */}
       {selectedStudent && (() => {
-        const studentKey = selectedStudent.name.toLowerCase().trim();
+        const studentKey = (selectedStudent.name || '').toLowerCase().trim();
         const currentNote = studentNotes[studentKey] || '';
         const isExcusedMap = excusedAbsences[studentKey] || {};
         const studentBadges = getStudentBadges(selectedStudent);
@@ -3534,7 +3588,6 @@ Current Course Attendance & Evaluation Summary:
 • Attendance Rate: ${Math.round(selectedStudent.rate)}% (Satisfactory Threshold: ${satisfactoryThreshold}%, At-Risk Threshold: ${atRiskThreshold}%)
 • Total Sessions Attended: ${selectedStudent.attended} out of ${effectiveClassDays.length}
 • Total Missed Sessions: ${missedDays.length}
-${selectedStudent.avgScore !== null ? `• Evaluation Score Average: ${Math.round(selectedStudent.avgScore)}%\n` : ''}
 ${missedDays.length > 0 ? `Missed Class Sessions:\n${missedListText}\n\n` : ''}Consistent class attendance is essential to your ministry preparation and course completion. Please contact your instructor or administration team at HTEIM School of Ministry to discuss your standing.
 
 In His Service,
@@ -3572,11 +3625,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     }`}>
                       {Math.round(selectedStudent.rate)}% Rate
                     </span>
-                    {selectedStudent.avgScore !== null && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300">
-                        {Math.round(selectedStudent.avgScore)}% Avg Score
-                      </span>
-                    )}
                   </div>
 
                   {/* Student Badges */}
@@ -4367,7 +4415,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   </p>
                 </div>
                 {(() => {
-                  const studentKey = selectedStudent.name.toLowerCase().trim();
+                  const studentKey = (selectedStudent.name || '').toLowerCase().trim();
                   const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
                   const rubAvg = Math.round((rub.participation + rub.assignment) / 2);
                   return (
@@ -4381,7 +4429,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
               {/* Rubric Evaluation Breakdown */}
               {(() => {
-                const studentKey = selectedStudent.name.toLowerCase().trim();
+                const studentKey = (selectedStudent.name || '').toLowerCase().trim();
                 const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
                 return (
                   <div>
@@ -4408,29 +4456,46 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
                       <th className="p-2 font-bold">Class Session / Date</th>
                       <th className="p-2 font-bold text-center">Attendance Status</th>
-                      <th className="p-2 font-bold text-center">Evaluation Score</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {effectiveClassDays.map(day => {
                       const att = selectedStudent.attendanceByDay[day.id];
                       const isPresent = att?.present;
-                      const isExcused = !isPresent && !!(excusedAbsences[selectedStudent.name.toLowerCase().trim()] || {})[day.id];
+                      const isExcused = !isPresent && !!(excusedAbsences[(selectedStudent.name || '').toLowerCase().trim()] || {})[day.id];
 
                       return (
                         <tr key={day.id} className="hover:bg-slate-50">
                           <td className="p-2 font-bold text-slate-900">{day.name}</td>
                           <td className="p-2 text-center">
-                            {isPresent ? (
-                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">Present</span>
-                            ) : isExcused ? (
-                              <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded">Excused</span>
+                            {appUser?.role !== 'student' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStudentAttendance(
+                                  selectedStudent.name,
+                                  day.id,
+                                  isPresent ? 'excused' : isExcused ? 'absent' : 'present'
+                                )}
+                                className="cursor-pointer inline-block"
+                                title="Click to cycle attendance status (Present -> Excused -> Absent)"
+                              >
+                                {isPresent ? (
+                                  <span className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold rounded transition-colors">Present</span>
+                                ) : isExcused ? (
+                                  <span className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-bold rounded transition-colors">Excused</span>
+                                ) : (
+                                  <span className="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-[10px] font-bold rounded transition-colors">Absent</span>
+                                )}
+                              </button>
                             ) : (
-                              <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">Absent</span>
+                              isPresent ? (
+                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">Present</span>
+                              ) : isExcused ? (
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded">Excused</span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">Absent</span>
+                              )
                             )}
-                          </td>
-                          <td className="p-2 text-center font-mono">
-                            {att?.score !== null && att?.score !== undefined ? `${att.score}%` : '—'}
                           </td>
                         </tr>
                       );
@@ -4726,6 +4791,35 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
+                {appUser?.role !== 'student' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const selected = classDays.find(d => d.id === liveCheckinDayId);
+                        if (selected) {
+                          const newName = prompt('Rename Class Day Title:', selected.name);
+                          if (newName && newName.trim() !== '') {
+                            handleEditClassDayTitle(selected.id, newName.trim());
+                          }
+                        }
+                      }}
+                      className="p-1.5 bg-white border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                      title="Rename active class day title"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddClassDay()}
+                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap shadow-sm"
+                      title="Add a new class day on the fly"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Day</span>
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Headcount Counter */}
@@ -4755,7 +4849,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               <div className="flex items-center gap-2 flex-1 w-full min-w-0">
                 {/* Select All Checkbox */}
                 {(() => {
-                  const filteredCheckinStudents = uniqueStudents.filter(s => s.name.toLowerCase().includes(liveCheckinSearch.toLowerCase()));
+                  const searchLower = (liveCheckinSearch || '').toLowerCase();
+                  const filteredCheckinStudents = uniqueStudents.filter(s => s && s.name && s.name.toLowerCase().includes(searchLower));
                   const allFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.every(s => selectedCheckinStudents.includes(s.name));
                   const someFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.some(s => selectedCheckinStudents.includes(s.name));
                   return (
@@ -4811,7 +4906,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   // Toggle mark all present
                   const updatedRecords = [...records];
                   uniqueStudents.forEach(s => {
-                    const existingIdx = updatedRecords.findIndex(r => r.studentName.toLowerCase().trim() === s.name.toLowerCase().trim() && r.classDay === liveCheckinDayId);
+                    if (!s || !s.name) return;
+                    const sNameLower = s.name.toLowerCase().trim();
+                    const existingIdx = updatedRecords.findIndex(r => r && r.studentName && r.studentName.toLowerCase().trim() === sNameLower && r.classDay === liveCheckinDayId);
                     if (existingIdx >= 0) {
                       updatedRecords[existingIdx].present = true;
                     } else {
@@ -4841,6 +4938,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 setExcusedAbsences(prev => {
                   const updatedExcused = { ...prev };
                   selectedCheckinStudents.forEach(name => {
+                    if (!name) return;
                     const studentKey = name.toLowerCase().trim();
                     updatedExcused[studentKey] = {
                       ...(updatedExcused[studentKey] || {}),
@@ -4854,9 +4952,10 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 setRecords(prev => {
                   const updated = [...prev];
                   selectedCheckinStudents.forEach(name => {
+                    if (!name) return;
                     const studentKey = name.toLowerCase().trim();
                     const existingIdx = updated.findIndex(
-                      r => r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId
+                      r => r && r.studentName && r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId
                     );
 
                     if (status === 'present') {
@@ -4937,11 +5036,12 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             {/* Live Student Card List */}
             <div className="p-3 overflow-y-auto custom-scrollbar flex-1 space-y-2 bg-slate-50 dark:bg-slate-950">
               {uniqueStudents
-                .filter(s => s.name.toLowerCase().includes(liveCheckinSearch.toLowerCase()))
+                .filter(s => s && s.name && s.name.toLowerCase().includes((liveCheckinSearch || '').toLowerCase()))
                 .map(s => {
                   const att = s.attendanceByDay[liveCheckinDayId];
                   const isPresent = att?.present;
-                  const isExcused = !isPresent && !!(excusedAbsences[s.name.toLowerCase().trim()] || {})[liveCheckinDayId];
+                  const studentKey = (s.name || '').toLowerCase().trim();
+                  const isExcused = !isPresent && !!(excusedAbsences[studentKey] || {})[liveCheckinDayId];
                   const isChecked = selectedCheckinStudents.includes(s.name);
 
                   const handleToggleSelect = () => {
@@ -4954,7 +5054,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
                   const handleSetStatus = (status: 'present' | 'absent' | 'excused') => {
                     if (!liveCheckinDayId) return;
-                    const studentKey = s.name.toLowerCase().trim();
 
                     if (status === 'excused') {
                       setExcusedAbsences(prev => ({
@@ -4975,7 +5074,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     }
 
                     const updated = [...records];
-                    const existingIdx = updated.findIndex(r => r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId);
+                    const existingIdx = updated.findIndex(r => r && r.studentName && r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId);
                     
                     if (status === 'present') {
                       if (existingIdx >= 0) {
@@ -5141,6 +5240,18 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           onOpenLogin={() => setShowLoginModal(true)}
         />
       )}
+
+      {/* Manage Class Days Modal */}
+      <ManageClassDaysModal
+        isOpen={showClassDaysModal}
+        onClose={() => setShowClassDaysModal(false)}
+        classDays={classDays}
+        onAddClassDay={handleAddClassDay}
+        onEditClassDayTitle={handleEditClassDayTitle}
+        onDeleteClassDay={handleDeleteClassDay}
+        uniqueStudentsCount={uniqueStudents.length}
+        classDayStats={classDayStats}
+      />
 
       {/* Login Portal Modal */}
       {(showLoginModal || !appUser) && (

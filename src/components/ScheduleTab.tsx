@@ -934,7 +934,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                     {PERIODS.slice(0, 5).map((p) => {
                       // Match scheduled classes corresponding to this period/day
                       const cellClasses = filteredSchedules.filter(s => {
-                        if (!s.period) return false;
+                        if (!s || !s.period || !p || !p.label) return false;
                         return s.period.toLowerCase().includes(p.label.toLowerCase().slice(0, 3));
                       });
 

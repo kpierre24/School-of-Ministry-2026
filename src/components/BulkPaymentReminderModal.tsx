@@ -112,9 +112,10 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
       else if (filterType === 'pending') matchesFilter = p.status === 'Pending Review' || p.amountPaid === 0;
 
       // Search
-      const matchesSearch = p.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            p.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            (p.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const q = (searchQuery || '').toLowerCase();
+      const matchesSearch = (p.studentName || '').toLowerCase().includes(q) ||
+                            (p.studentId || '').toLowerCase().includes(q) ||
+                            (p.email || '').toLowerCase().includes(q);
 
       return matchesFilter && matchesSearch;
     });

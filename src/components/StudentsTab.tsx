@@ -1,26 +1,31 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
   GraduationCap, 
   Award, 
   Mail, 
-  UserCheck, 
   AlertCircle, 
   CheckCircle2, 
   FileText, 
-  Phone, 
-  BookOpen, 
-  ShieldCheck, 
   Trophy,
   Sliders,
   Sparkles,
   Filter,
   Lock,
   Camera,
-  Layers,
-  ChevronDown
+  Trash2,
+  UserX,
+  X,
+  History,
+  Clock,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  CalendarDays,
+  Check
 } from 'lucide-react';
-import { ACADEMIC_LEVELS, getDefaultLevelForStudent } from '../types';
 
 export type StudentSummaryData = {
   name: string;
@@ -30,17 +35,18 @@ export type StudentSummaryData = {
   avgScore: number | null;
   note?: string;
   photoUrl?: string;
-  levelId?: string;
   attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }>;
 };
 
 interface StudentsTabProps {
   students: StudentSummaryData[];
+  classDays?: { id: string; name: string }[];
   onSelectStudentForTranscript: (student: StudentSummaryData) => void;
   onSelectStudentForCertificate: (student: StudentSummaryData) => void;
   onSelectStudentForEmail: (student: StudentSummaryData) => void;
-  rubricScores: Record<string, { participation: number; scripture: number; assignment: number }>;
-  onUpdateRubric: (studentName: string, key: 'participation' | 'scripture' | 'assignment', val: number) => void;
+  onDeleteStudent?: (studentName: string) => void;
+  rubricScores?: Record<string, { participation: number; scripture: number; assignment: number }>;
+  onUpdateRubric?: (studentName: string, key: 'participation' | 'scripture' | 'assignment', val: number) => void;
   studentNotes: Record<string, string>;
   onUpdateNote: (studentName: string, note: string) => void;
   studentPhotos?: Record<string, string>;
@@ -55,34 +61,76 @@ interface StudentsTabProps {
 
 export const StudentsTab: React.FC<StudentsTabProps> = ({
   students,
+  classDays,
   onSelectStudentForTranscript,
   onSelectStudentForCertificate,
   onSelectStudentForEmail,
-  rubricScores,
-  onUpdateRubric,
+  onDeleteStudent,
   studentNotes,
   onUpdateNote,
   studentPhotos = {},
   onUpdateStudentPhoto,
-  studentLevels = {},
-  onUpdateStudentLevel,
-  onOpenReportForLevel,
   onOpenAttendanceReport,
   atRiskThreshold,
   satisfactoryThreshold
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'perfect' | 'satisfactory' | 'at_risk' | 'fifty_percent'>('all');
-  const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc'>('name_asc');
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState('');
+  const [confirmingDeleteFor, setConfirmingDeleteFor] = useState<string | null>(null);
   
+  const [expandedTimelineStudent, setExpandedTimelineStudent] = useState<string | null>(null);
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'present' | 'absent' | 'quizzes'>('all');
+
   const activeFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedStudentForPhotoUpload, setSelectedStudentForPhotoUpload] = useState<string | null>(null);
 
-  const getStudentLevel = (studentName: string, index: number) => {
-    const key = studentName.toLowerCase().trim();
-    return studentLevels[key] || getDefaultLevelForStudent(studentName, index);
+  const getTimelineItems = (s: StudentSummaryData) => {
+    const dayMap = new Map<string, { id: string; name: string }>();
+    if (classDays && classDays.length > 0) {
+      classDays.forEach(d => dayMap.set(d.id, d));
+    }
+    Object.keys(s.attendanceByDay || {}).forEach(k => {
+      if (!dayMap.has(k)) {
+        dayMap.set(k, { id: k, name: k });
+      }
+    });
+
+    return Array.from(dayMap.values()).map(day => {
+      const rec = s.attendanceByDay?.[day.id];
+      const isPresent = rec?.present === true;
+      const rawTimestamp = rec?.timestamp;
+      let formattedTime = 'No timestamp recorded';
+      if (rawTimestamp) {
+        try {
+          const dateObj = new Date(rawTimestamp);
+          if (!isNaN(dateObj.getTime())) {
+            formattedTime = dateObj.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          } else {
+            formattedTime = rawTimestamp;
+          }
+        } catch {
+          formattedTime = rawTimestamp;
+        }
+      }
+
+      return {
+        id: day.id,
+        name: day.name,
+        present: isPresent,
+        timestamp: formattedTime,
+        rawTimestamp,
+        score: rec?.score || (isPresent ? 'N/A' : '0%')
+      };
+    });
   };
 
   const handleTriggerUpload = (studentName: string) => {
@@ -133,21 +181,30 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     e.target.value = '';
   };
 
-  // Filtering
-  const filteredStudents = students.filter((s, idx) => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
+  // Filtering & Sorting
+  const filteredAndSortedStudents = useMemo(() => {
+    const filtered = students.filter((s) => {
+      if (!s || !s.name) return false;
+      const matchesSearch = s.name.toLowerCase().includes((searchQuery || '').toLowerCase());
+      if (!matchesSearch) return false;
 
-    if (statusFilter === 'perfect' && s.rate < 100) return false;
-    if (statusFilter === 'satisfactory' && s.rate < satisfactoryThreshold) return false;
-    if (statusFilter === 'at_risk' && s.rate >= atRiskThreshold) return false;
-    if (statusFilter === 'fifty_percent' && s.rate > 50) return false;
+      if (statusFilter === 'perfect' && s.rate < 100) return false;
+      if (statusFilter === 'satisfactory' && s.rate < satisfactoryThreshold) return false;
+      if (statusFilter === 'at_risk' && s.rate >= atRiskThreshold) return false;
+      if (statusFilter === 'fifty_percent' && s.rate > 50) return false;
 
-    const sLevel = getStudentLevel(s.name, idx);
-    if (levelFilter !== 'all' && sLevel !== levelFilter) return false;
+      return true;
+    });
 
-    return true;
-  });
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
+      if (sortBy === 'name_desc') return b.name.localeCompare(a.name);
+      if (sortBy === 'rate_desc') return b.rate - a.rate;
+      if (sortBy === 'rate_asc') return a.rate - b.rate;
+      if (sortBy === 'score_desc') return (b.avgScore || 0) - (a.avgScore || 0);
+      return 0;
+    });
+  }, [students, searchQuery, statusFilter, satisfactoryThreshold, atRiskThreshold, sortBy]);
 
   // Calculate high level stats
   const totalStudents = students.length;
@@ -164,10 +221,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <GraduationCap className="w-6 h-6 text-indigo-400" />
-              <h2 className="text-xl font-black tracking-tight">Student Enrolment Directory & Academic Profiles</h2>
+              <h2 className="text-xl font-black tracking-tight">Student Enrolment Directory</h2>
             </div>
             <p className="text-xs text-indigo-200 mt-1">
-              Centralized management of student ministerial progress, academic standing, composite rubrics, and certified transcripts.
+              Centralized management of student profiles, attendance records, academic standing, and official transcripts.
             </p>
           </div>
           <div className="flex items-center gap-2 bg-indigo-900/60 border border-indigo-700/50 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-indigo-200">
@@ -186,7 +243,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 rounded-xl p-3.5">
             <p className="text-[10px] font-bold uppercase text-emerald-200">Satisfactory Standing</p>
             <p className="text-2xl font-black font-mono mt-1 text-emerald-300">{satisfactoryStudents}</p>
-            <p className="text-[10px] text-emerald-200 mt-0.5">≥ {satisfactoryThreshold}% Attendance</p>
+            <p className="text-[10px] text-emerald-200 mt-0.5">&ge; {satisfactoryThreshold}% Attendance</p>
           </div>
           <div className="bg-amber-500/20 backdrop-blur-md border border-amber-500/30 rounded-xl p-3.5">
             <p className="text-[10px] font-bold uppercase text-amber-200">Perfect Attendance</p>
@@ -203,7 +260,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col space-y-3">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -215,7 +272,26 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 w-full md:w-auto flex-shrink-0">
+            <span className="text-xs font-extrabold text-slate-600 flex items-center gap-1">
+              <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Sort:
+            </span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs w-full md:w-auto"
+            >
+              <option value="name_asc">Name (A &rarr; Z)</option>
+              <option value="name_desc">Name (Z &rarr; A)</option>
+              <option value="rate_desc">Attendance (High &rarr; Low)</option>
+              <option value="rate_asc">Attendance (Low &rarr; High)</option>
+              <option value="score_desc">Avg Score (High &rarr; Low)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full overflow-x-auto pb-1 justify-between flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto">
             <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
               <Filter className="w-3.5 h-3.5 text-slate-400" /> Standing:
             </span>
@@ -269,61 +345,27 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             >
               Low Attendance (&le;50%) ({fiftyPercentStudents})
             </button>
-            {onOpenAttendanceReport && (
-              <button
-                onClick={() => onOpenAttendanceReport('fifty_percent')}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5 ml-auto"
-                title="Generate printable/downloadable official report for candidates with 50% or lower attendance"
-              >
-                <FileText className="w-3.5 h-3.5 text-slate-900" />
-                <span>Export &le;50% Attendance Report</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Academic Level Filter Bar & Level Report Generator Launcher */}
-        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5 text-indigo-600" /> Academic Level:
-            </span>
-            <button
-              onClick={() => setLevelFilter('all')}
-              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                levelFilter === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              All Levels
-            </button>
-            {ACADEMIC_LEVELS.map(lvl => {
-              const countInLvl = students.filter((s, i) => getStudentLevel(s.name, i) === lvl.id).length;
-              return (
-                <button
-                  key={lvl.id}
-                  onClick={() => setLevelFilter(lvl.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                    levelFilter === lvl.id ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <span>{lvl.code}</span>
-                  <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-mono ${levelFilter === lvl.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
-                    {countInLvl}
-                  </span>
-                </button>
-              );
-            })}
           </div>
 
           {onOpenAttendanceReport && (
-            <button
-              onClick={() => onOpenAttendanceReport('all')}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 flex-shrink-0"
-              title="Generate Printable Full Attendance Report"
-            >
-              <FileText className="w-3.5 h-3.5 text-white" />
-              <span>Generate Full Attendance Report</span>
-            </button>
+            <div className="flex items-center gap-2 pt-1 sm:pt-0">
+              <button
+                onClick={() => onOpenAttendanceReport('fifty_percent')}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5"
+                title="Generate printable/downloadable official report for candidates with 50% or lower attendance"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-900" />
+                <span>Export &le;50% Report</span>
+              </button>
+              <button
+                onClick={() => onOpenAttendanceReport('all')}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 flex-shrink-0"
+                title="Generate Printable Full Attendance Report"
+              >
+                <FileText className="w-3.5 h-3.5 text-white" />
+                <span>Full Attendance Report</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -339,246 +381,426 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
       {/* Student Profile Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredStudents.map((s) => {
-          const studentKey = s.name.toLowerCase().trim();
-          const photoUrl = studentPhotos[studentKey] || s.photoUrl;
-          const rubric = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-          const rubAvg = Math.round((rubric.participation + rubric.assignment) / 2);
-          const currentNote = studentNotes[studentKey] || s.note || '';
-          const canIssueDocs = s.rate >= 80;
+        <AnimatePresence mode="popLayout">
+          {filteredAndSortedStudents.map((s) => {
+            const studentKey = (s.name || '').toLowerCase().trim();
+            const photoUrl = studentPhotos[studentKey] || s.photoUrl;
+            const currentNote = studentNotes[studentKey] || s.note || '';
+            const canIssueDocs = s.rate >= 80;
 
-          return (
-            <div 
-              key={s.name} 
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
-            >
-              {/* Card Header: Student Avatar & Basic Info */}
-              <div>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    {/* Interactive Profile Photo Avatar */}
-                    <div 
-                      onClick={() => handleTriggerUpload(s.name)}
-                      className="relative w-11 h-11 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 text-white font-black text-sm flex items-center justify-center shadow-md flex-shrink-0 uppercase cursor-pointer group/avatar border border-slate-200"
-                      title="Click to upload/change student profile photo"
-                    >
-                      {photoUrl ? (
-                        <img 
-                          src={photoUrl} 
-                          alt={s.name} 
-                          className="w-full h-full object-cover transition-transform group-hover/avatar:scale-105" 
-                        />
-                      ) : (
-                        <span>{s.name.charAt(0)}{s.name.split(' ')[1] ? s.name.split(' ')[1].charAt(0) : ''}</span>
-                      )}
+            return (
+              <motion.div 
+                key={s.name}
+                layout
+                initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.88, y: -12, transition: { duration: 0.18 } }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-4 relative group"
+              >
+                {/* Delete Confirmation Overlay */}
+                {confirmingDeleteFor === s.name && (
+                  <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-xs rounded-2xl p-5 z-20 flex flex-col justify-between text-white animate-fadeIn">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-rose-400 font-extrabold text-xs">
+                        <UserX className="w-4 h-4" />
+                        <span>Delete Student Confirmation</span>
+                      </div>
+                      <p className="text-xs text-slate-200 leading-relaxed">
+                        Are you sure you want to remove <strong className="text-white">{s.name}</strong> completely from all courses and directory records?
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        You can restore excluded students at any time from the Excluded Students section in the sidebar.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-3">
+                      <button
+                        onClick={() => setConfirmingDeleteFor(null)}
+                        className="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (onDeleteStudent) onDeleteStudent(s.name);
+                          setConfirmingDeleteFor(null);
+                        }}
+                        className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Card Header: Student Avatar & Basic Info */}
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      {/* Interactive Profile Photo Avatar */}
+                      <div 
+                        onClick={() => handleTriggerUpload(s.name)}
+                        className="relative w-11 h-11 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 text-white font-black text-sm flex items-center justify-center shadow-md flex-shrink-0 uppercase cursor-pointer group/avatar border border-slate-200"
+                        title="Click to upload/change student profile photo"
+                      >
+                        {photoUrl ? (
+                          <img 
+                            src={photoUrl} 
+                            alt={s.name} 
+                            className="w-full h-full object-cover transition-transform group-hover/avatar:scale-105" 
+                          />
+                        ) : (
+                          <span>{s.name.charAt(0)}{s.name.split(' ')[1] ? s.name.split(' ')[1].charAt(0) : ''}</span>
+                        )}
 
-                      {/* Camera icon overlay */}
-                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white">
-                        <Camera className="w-4 h-4 text-amber-300" />
+                        {/* Camera icon overlay */}
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Camera className="w-4 h-4 text-amber-300" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                            {s.name}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(s.name)}
+                            className="text-slate-400 hover:text-indigo-600 p-0.5 rounded transition-colors cursor-pointer"
+                            title="Upload profile photo"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          ID: HTEIM-2026-{Math.abs(s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}
+                        </p>
                       </div>
                     </div>
 
+                    {/* Standing Badge */}
                     <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">
-                          {s.name}
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => handleTriggerUpload(s.name)}
-                          className="text-slate-400 hover:text-indigo-600 p-0.5 rounded transition-colors cursor-pointer"
-                          title="Upload profile photo"
-                        >
-                          <Camera className="w-3.5 h-3.5" />
-                        </button>
+                      {s.rate >= 100 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                          <Trophy className="w-3 h-3 text-amber-600" /> 100% Perfect
+                        </span>
+                      ) : s.rate >= satisfactoryThreshold ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Good Standing
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                          <AlertCircle className="w-3 h-3 text-rose-600" /> At-Risk
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress & Stats Bar */}
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[11px] font-bold text-slate-600">Attendance Standing</span>
+                      <span className="font-mono font-bold text-slate-900">{Math.round(s.rate)}% ({s.attended}/{s.totalDays})</span>
+                    </div>
+                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ${
+                          s.rate >= satisfactoryThreshold ? 'bg-emerald-500' : s.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, s.rate))}%` }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-[11px]">
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Quiz / Academic Avg</span>
+                        <span className="font-mono font-extrabold text-indigo-700">
+                          {s.avgScore !== null ? `${Math.round(s.avgScore)}%` : 'N/A'}
+                        </span>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        ID: HTEIM-2026-{Math.abs(s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}
-                      </p>
-                      
-                      {/* Academic Level Tag Dropdown */}
-                      <div className="mt-1 flex items-center gap-1">
-                        <select
-                          value={getStudentLevel(s.name, students.indexOf(s))}
-                          onChange={(e) => onUpdateStudentLevel && onUpdateStudentLevel(s.name, e.target.value)}
-                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-indigo-200 bg-indigo-50/90 text-indigo-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs"
-                          title="Change Student Academic Level"
-                        >
-                          {ACADEMIC_LEVELS.map(lvl => (
-                            <option key={lvl.id} value={lvl.id}>
-                              {lvl.badge} — {lvl.code}
-                            </option>
-                          ))}
-                        </select>
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Sessions Attended</span>
+                        <span className="font-mono font-extrabold text-slate-800">{s.attended} / {s.totalDays}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Standing Badge */}
-                  <div>
-                    {s.rate >= 100 ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                        <Trophy className="w-3 h-3 text-amber-600" /> 100% Perfect
-                      </span>
-                    ) : s.rate >= satisfactoryThreshold ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Good Standing
-                      </span>
+                  {/* Note Field */}
+                  <div className="mt-3">
+                    {editingNoteFor === studentKey ? (
+                      <div className="space-y-1.5">
+                        <textarea
+                          rows={2}
+                          value={tempNoteText}
+                          onChange={(e) => setTempNoteText(e.target.value)}
+                          placeholder="Add faculty note or advisory comment..."
+                          className="w-full p-2 bg-slate-50 border border-indigo-200 rounded-lg text-xs text-slate-800 focus:outline-none"
+                        />
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => setEditingNoteFor(null)}
+                            className="px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              onUpdateNote(s.name, tempNoteText);
+                              setEditingNoteFor(null);
+                            }}
+                            className="px-2.5 py-1 text-[10px] font-bold bg-indigo-600 text-white rounded-md cursor-pointer"
+                          >
+                            Save Note
+                          </button>
+                        </div>
+                      </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
-                        <AlertCircle className="w-3 h-3 text-rose-600" /> At-Risk
-                      </span>
+                      <div 
+                        onClick={() => {
+                          setEditingNoteFor(studentKey);
+                          setTempNoteText(currentNote);
+                        }}
+                        className="p-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-between"
+                      >
+                        <span className="text-[11px] italic truncate">
+                          {currentNote || '+ Click to add faculty comment / advisory note'}
+                        </span>
+                      </div>
                     )}
                   </div>
-                </div>
 
-                {/* Progress & Stats Bar */}
-                <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[11px] font-bold text-slate-600">Attendance Standing</span>
-                    <span className="font-mono font-bold text-slate-900">{Math.round(s.rate)}% ({s.attended}/{s.totalDays})</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 ${
-                        s.rate >= satisfactoryThreshold ? 'bg-emerald-500' : s.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
-                      }`}
-                      style={{ width: `${Math.min(100, Math.max(0, s.rate))}%` }}
-                    />
-                  </div>
+                  {/* Attendance History Timeline Bar & Feed Toggle */}
+                  {(() => {
+                    const timelineItems = getTimelineItems(s);
+                    const isExpanded = expandedTimelineStudent === s.name;
+                    const filteredItems = timelineItems.filter(item => {
+                      if (timelineFilter === 'present') return item.present;
+                      if (timelineFilter === 'absent') return !item.present;
+                      if (timelineFilter === 'quizzes') return item.score && item.score !== 'N/A' && item.score !== '0%';
+                      return true;
+                    });
 
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-[11px]">
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Quiz Average</span>
-                      <span className="font-mono font-extrabold text-slate-800">
-                        {s.avgScore !== null ? `${Math.round(s.avgScore)}%` : 'N/A'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Rubric Average</span>
-                      <span className="font-mono font-extrabold text-indigo-700">{rubAvg}%</span>
-                    </div>
-                  </div>
-                </div>
+                    return (
+                      <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          {/* Mini Visual Dot Strip */}
+                          <div className="flex items-center gap-1 overflow-x-auto py-1 max-w-[160px] sm:max-w-[190px]">
+                            {timelineItems.length === 0 ? (
+                              <span className="text-[10px] text-slate-400 italic">No history</span>
+                            ) : (
+                              timelineItems.slice(0, 10).map((item, idx) => (
+                                <div
+                                  key={item.id || idx}
+                                  onClick={() => setExpandedTimelineStudent(isExpanded ? null : s.name)}
+                                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all hover:scale-125 cursor-pointer ${
+                                    item.present ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-rose-500 ring-2 ring-rose-100'
+                                  }`}
+                                  title={`${item.name}: ${item.present ? 'Attended' : 'Absent'} (${item.score})`}
+                                />
+                              ))
+                            )}
+                            {timelineItems.length > 10 && (
+                              <span className="text-[9px] font-extrabold text-slate-400">+{timelineItems.length - 10}</span>
+                            )}
+                          </div>
 
-                {/* Rubric Evaluator Sliders */}
-                <div className="mt-3 space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                    <Sliders className="w-3 h-3 text-indigo-500" /> Ministerial Rubric Score Breakdown
-                  </p>
-                  
-                  <div className="space-y-1.5 text-[10px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600 flex items-center gap-1"><BookOpen className="w-3 h-3 text-emerald-600"/> Class Participation</span>
-                      <span className="font-mono font-bold text-slate-800">{rubric.participation}%</span>
-                    </div>
-                    <input 
-                      type="range" min="0" max="100" value={rubric.participation}
-                      onChange={(e) => onUpdateRubric(studentKey, 'participation', parseInt(e.target.value, 10))}
-                      className="w-full accent-emerald-600 h-1 cursor-pointer"
-                    />
+                          {/* Toggle History Button */}
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTimelineStudent(isExpanded ? null : s.name)}
+                            className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                              isExpanded 
+                                ? 'bg-indigo-600 text-white shadow-xs' 
+                                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80'
+                            }`}
+                          >
+                            <History className="w-3.5 h-3.5" />
+                            <span>Timeline Feed ({timelineItems.length})</span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-slate-600 flex items-center gap-1"><FileText className="w-3 h-3 text-indigo-500"/> Course Readings & Assignments</span>
-                      <span className="font-mono font-bold text-slate-800">{rubric.assignment}%</span>
-                    </div>
-                    <input 
-                      type="range" min="0" max="100" value={rubric.assignment}
-                      onChange={(e) => onUpdateRubric(studentKey, 'assignment', parseInt(e.target.value, 10))}
-                      className="w-full accent-indigo-600 h-1 cursor-pointer"
-                    />
-                  </div>
-                </div>
+                        {/* Expandable Chronological Activity Feed Panel */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.22 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="bg-slate-900 rounded-xl p-3.5 text-white space-y-3 mt-2 border border-slate-800 shadow-inner">
+                                {/* Feed Header & Filter Tabs */}
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-800 flex-wrap gap-2">
+                                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                    <span>Attendance & Quiz Feed</span>
+                                  </div>
 
-                {/* Note Field */}
-                <div className="mt-3">
-                  {editingNoteFor === studentKey ? (
-                    <div className="space-y-1.5">
-                      <textarea
-                        rows={2}
-                        value={tempNoteText}
-                        onChange={(e) => setTempNoteText(e.target.value)}
-                        placeholder="Add faculty note or advisory comment..."
-                        className="w-full p-2 bg-slate-50 border border-indigo-200 rounded-lg text-xs text-slate-800 focus:outline-none"
-                      />
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          onClick={() => setEditingNoteFor(null)}
-                          className="px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            onUpdateNote(s.name, tempNoteText);
-                            setEditingNoteFor(null);
-                          }}
-                          className="px-2.5 py-1 text-[10px] font-bold bg-indigo-600 text-white rounded-md cursor-pointer"
-                        >
-                          Save Note
-                        </button>
+                                  <div className="flex items-center gap-1 text-[10px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => setTimelineFilter('all')}
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                                        timelineFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                      }`}
+                                    >
+                                      All ({timelineItems.length})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTimelineFilter('present')}
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                                        timelineFilter === 'present' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                      }`}
+                                    >
+                                      Attended
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTimelineFilter('absent')}
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                                        timelineFilter === 'absent' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                      }`}
+                                    >
+                                      Absences
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Chronological Activity Line */}
+                                <div className="relative pl-5 border-l-2 border-indigo-900/80 space-y-3.5 my-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                  {filteredItems.length === 0 ? (
+                                    <p className="text-[11px] text-slate-400 italic py-2">No records found for this filter.</p>
+                                  ) : (
+                                    filteredItems.map((item, idx) => (
+                                      <div key={item.id || idx} className="relative group/timeline">
+                                        {/* Node Icon on Timeline Line */}
+                                        <div 
+                                          className={`absolute -left-[27px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900 ${
+                                            item.present 
+                                              ? 'bg-emerald-500 text-slate-950 shadow-xs' 
+                                              : 'bg-rose-500 text-white shadow-xs'
+                                          }`}
+                                        >
+                                          {item.present ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <X className="w-2.5 h-2.5 stroke-[3]" />}
+                                        </div>
+
+                                        {/* Activity Content Card */}
+                                        <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60 space-y-1">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs font-extrabold text-slate-100">
+                                              {item.name}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                              item.present ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50' : 'bg-rose-950 text-rose-300 border border-rose-800/50'
+                                            }`}>
+                                              {item.present ? 'Attended' : 'Absent'}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                                            <span className="flex items-center gap-1">
+                                              <CalendarDays className="w-3 h-3 text-indigo-400" />
+                                              {item.timestamp}
+                                            </span>
+
+                                            {item.score && (
+                                              <span className={`font-mono font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                                                item.present 
+                                                  ? 'bg-indigo-900/60 text-indigo-200 border border-indigo-700/50' 
+                                                  : 'bg-slate-900 text-slate-500'
+                                              }`}>
+                                                Quiz: {item.score}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
+                                  <span>Total Sessions Tracked: {timelineItems.length}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedTimelineStudent(null)}
+                                    className="text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
+                                  >
+                                    Collapse Feed
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => {
-                        setEditingNoteFor(studentKey);
-                        setTempNoteText(currentNote);
-                      }}
-                      className="p-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="text-[11px] italic truncate">
-                        {currentNote || '+ Click to add faculty comment / advisory note'}
-                      </span>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button
-                  onClick={() => canIssueDocs && onSelectStudentForTranscript(s)}
-                  disabled={!canIssueDocs}
-                  className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
-                    canIssueDocs 
-                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 cursor-pointer' 
-                      : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
-                  }`}
-                  title={canIssueDocs ? "Generate Official Transcript PDF" : `Disabled: Requires ≥80% class completion (Current: ${Math.round(s.rate)}%)`}
-                >
-                  {canIssueDocs ? <FileText className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
-                  Transcript PDF
-                </button>
-
-                <button
-                  onClick={() => canIssueDocs && onSelectStudentForCertificate(s)}
-                  disabled={!canIssueDocs}
-                  className={`py-1.5 px-2 text-[11px] font-black rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs ${
-                    canIssueDocs 
-                      ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer' 
-                      : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 shadow-none'
-                  }`}
-                  title={canIssueDocs ? "Award Milestone Certificate" : `Disabled: Requires ≥80% class completion (Current: ${Math.round(s.rate)}%)`}
-                >
-                  {canIssueDocs ? <Award className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
-                  Certificate
-                </button>
-
-                {s.rate < atRiskThreshold && (
+                {/* Action Buttons */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => onSelectStudentForEmail(s)}
-                    className="py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                    title="Send Email Warning Notice"
+                    onClick={() => canIssueDocs && onSelectStudentForTranscript(s)}
+                    disabled={!canIssueDocs}
+                    className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
+                      canIssueDocs 
+                        ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 cursor-pointer' 
+                        : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                    }`}
+                    title={canIssueDocs ? "Generate Official Transcript PDF" : `Disabled: Requires ≥80% class completion (Current: ${Math.round(s.rate)}%)`}
                   >
-                    <Mail className="w-3.5 h-3.5" />
+                    {canIssueDocs ? <FileText className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                    Transcript PDF
                   </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+
+                  <button
+                    onClick={() => canIssueDocs && onSelectStudentForCertificate(s)}
+                    disabled={!canIssueDocs}
+                    className={`py-1.5 px-2 text-[11px] font-black rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs ${
+                      canIssueDocs 
+                        ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer' 
+                        : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                    }`}
+                    title={canIssueDocs ? "Award Milestone Certificate" : `Disabled: Requires ≥80% class completion (Current: ${Math.round(s.rate)}%)`}
+                  >
+                    {canIssueDocs ? <Award className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                    Certificate
+                  </button>
+
+                  {s.rate < atRiskThreshold && (
+                    <button
+                      onClick={() => onSelectStudentForEmail(s)}
+                      className="py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      title="Send Email Warning Notice"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
+
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
+
+      {filteredAndSortedStudents.length === 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-2xs space-y-2"
+        >
+          <AlertCircle className="w-8 h-8 text-slate-300 mx-auto" />
+          <p className="text-sm font-extrabold text-slate-700">No student profiles match your search or filter options</p>
+          <p className="text-xs text-slate-400">Try adjusting your keyword search or standing filter.</p>
+        </motion.div>
+      )}
     </div>
   );
 };
