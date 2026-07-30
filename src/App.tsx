@@ -71,7 +71,7 @@ import {
   Edit3,
   Plus
 } from 'lucide-react';
-import { loadFromFirestore, saveToFirestore } from './lib/firebaseSync';
+import { loadFromSupabase, saveToSupabase } from './lib/supabaseSync';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
@@ -940,6 +940,7 @@ export default function App() {
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+  const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
 
   // Pull from cloud on startup / login user change
   useEffect(() => {
@@ -947,8 +948,9 @@ export default function App() {
     const initialPull = async () => {
       setIsCloudSyncing(true);
       setCloudSyncError(null);
+      setSupabaseTableMissing(false);
       try {
-        const cloudState = await loadFromFirestore(user?.email);
+        const cloudState = await loadFromSupabase(user?.email);
         if (cloudState && active) {
           if (cloudState.records !== undefined) setRecords(cloudState.records);
           if (cloudState.classDays !== undefined) setClassDays(cloudState.classDays);
@@ -979,10 +981,10 @@ export default function App() {
             });
             setLastSyncedTime(timeStr);
           }
-          setSyncedBannerMessage("☁️ Cloud Sync: Successfully pulled latest school database from Firestore.");
+          setSyncedBannerMessage("⚡ Supabase Sync: Successfully pulled latest school database from Supabase.");
           setTimeout(() => setSyncedBannerMessage(null), 4500);
         } else if (cloudState === null && active) {
-          // If no cloud data is present, immediately upload the existing local storage database to Firestore
+          // If no cloud data is present, immediately upload the existing local storage database to Supabase
           const stateToSave = {
             records,
             classDays,
@@ -1004,7 +1006,7 @@ export default function App() {
             zoomExceptionNote,
             hasZoomException
           };
-          const success = await saveToFirestore(user?.email, stateToSave);
+          const success = await saveToSupabase(user?.email, stateToSave);
           if (success) {
             const timeStr = new Date().toLocaleTimeString('en-US', { 
               hour: '2-digit', 
@@ -1012,13 +1014,18 @@ export default function App() {
               second: '2-digit' 
             });
             setLastSyncedTime(timeStr);
-            setSyncedBannerMessage("☁️ Firestore Cloud Connected: Successfully uploaded existing local database.");
+            setSyncedBannerMessage("⚡ Supabase Cloud Connected: Successfully uploaded existing database.");
             setTimeout(() => setSyncedBannerMessage(null), 5000);
           }
         }
       } catch (err: any) {
         console.error("Cloud pull error:", err);
-        setCloudSyncError("Could not retrieve cloud sync data.");
+        if (err.message === 'TABLE_NOT_FOUND') {
+          setSupabaseTableMissing(true);
+          setCloudSyncError("Supabase setup required: 'app_states' table not found.");
+        } else {
+          setCloudSyncError("Could not retrieve cloud sync data.");
+        }
       } finally {
         if (active) setIsCloudSyncing(false);
       }
@@ -1033,6 +1040,7 @@ export default function App() {
   const handlePushToCloud = async () => {
     setIsCloudSyncing(true);
     setCloudSyncError(null);
+    setSupabaseTableMissing(false);
     try {
       const stateToSave = {
         records,
@@ -1055,21 +1063,26 @@ export default function App() {
         zoomExceptionNote,
         hasZoomException
       };
-      const success = await saveToFirestore(user?.email, stateToSave);
+      const success = await saveToSupabase(user?.email, stateToSave);
       if (success) {
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit', 
           second: '2-digit' 
         }));
-        setSyncedBannerMessage("☁️ Cloud Backup Saved: Your workspace is fully synchronized in Firestore.");
+        setSyncedBannerMessage("⚡ Cloud Backup Saved: Your workspace is fully synchronized in Supabase.");
         setTimeout(() => setSyncedBannerMessage(null), 4000);
       } else {
         setCloudSyncError("Cloud save failed.");
       }
     } catch (err: any) {
       console.error("Cloud push error:", err);
-      setCloudSyncError("Failed to save backup to Firestore.");
+      if (err.message === 'TABLE_NOT_FOUND') {
+        setSupabaseTableMissing(true);
+        setCloudSyncError("Supabase setup required: 'app_states' table not found.");
+      } else {
+        setCloudSyncError("Failed to save backup to Supabase.");
+      }
     } finally {
       setIsCloudSyncing(false);
     }
@@ -1104,14 +1117,17 @@ export default function App() {
           zoomExceptionNote,
           hasZoomException
         };
-        await saveToFirestore(user?.email, stateToSave);
+        await saveToSupabase(user?.email, stateToSave);
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit', 
           second: '2-digit' 
         }));
-      } catch (err) {
+      } catch (err: any) {
         console.error("Auto-sync save failed:", err);
+        if (err.message === 'TABLE_NOT_FOUND') {
+          setSupabaseTableMissing(true);
+        }
       }
     }, 5000);
 
@@ -2091,6 +2107,58 @@ export default function App() {
           <span className="px-2.5 py-0.5 bg-slate-950 text-amber-400 rounded-md text-[10px] font-mono uppercase font-black">
             PWA Offline Ready
           </span>
+        </div>
+      )}
+
+      {supabaseTableMissing && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-3 text-slate-800 animate-fadeIn flex-shrink-0">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-rose-100 text-rose-700 rounded-lg shrink-0">
+              <Database className="w-5 h-5" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <h4 className="font-bold text-sm text-rose-950">Supabase Table Setup Required</h4>
+              <p className="text-xs text-rose-800">
+                The connection is configured successfully, but the <strong className="font-black">app_states</strong> table does not exist in your Supabase database.
+              </p>
+              <div className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs font-mono select-all max-h-40 overflow-y-auto">
+                {`create table if not exists app_states (
+  id text primary key,
+  state jsonb not null default '{}'::jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_by text
+);
+
+-- Enable RLS and create public policies
+alter table app_states enable row level security;
+
+create policy "Allow public read access" on app_states for select using (true);
+create policy "Allow public insert" on app_states for insert with check (true);
+create policy "Allow public update" on app_states for update using (true) with check (true);`}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <p className="text-xs text-rose-700 font-medium">
+                  👉 Go to your Supabase Dashboard, open the <strong className="font-bold">SQL Editor</strong>, paste the query above, and click <strong className="font-bold">Run</strong>.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { loadFromSupabase } = await import('./lib/supabaseSync');
+                      await loadFromSupabase(user?.email);
+                      setSupabaseTableMissing(false);
+                      setSyncedBannerMessage("⚡ Supabase Connected: Table verified, workspace synced successfully.");
+                      setTimeout(() => setSyncedBannerMessage(null), 4000);
+                    } catch (e) {
+                      console.log("Still table missing:", e);
+                    }
+                  }}
+                  className="ml-auto px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg cursor-pointer transition-all shrink-0"
+                >
+                  Verify Setup
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
