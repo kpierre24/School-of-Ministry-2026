@@ -89,63 +89,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scriptureIndex, setScriptureIndex] = useState(0);
 
-  // Auto-populate initial credentials on mount or tab change
+  // Do not auto-populate initial credentials to maintain a clean, secure login form
   React.useEffect(() => {
-    if (!usernameInput) {
-      if (activeTab === 'admin') {
-        setUsernameInput('admin');
-        setPasswordInput('5678');
-      } else if (activeTab === 'teacher') {
-        setUsernameInput('teacher');
-        setPasswordInput('12345');
-      } else {
-        if (studentList.length > 0) {
-          const firstStudent = studentList[0];
-          const generated = generateStudentUsername(firstStudent);
-          setUsernameInput(generated);
-          setPasswordInput('12345');
-          setSelectedStudentPreset(firstStudent);
-        } else {
-          setUsernameInput('ABurke');
-          setPasswordInput('12345');
-        }
-      }
-    }
+    setUsernameInput('');
+    setPasswordInput('');
   }, []);
 
-  // Quick preset selector handler
+  // Quick tab switch handler
   const handleSelectTab = (tab: UserRole) => {
     setActiveTab(tab);
     setErrorMessage(null);
-    if (tab === 'admin') {
-      setUsernameInput('admin');
-      setPasswordInput('5678');
-      setSelectedStudentPreset('');
-    } else if (tab === 'teacher') {
-      setUsernameInput('teacher');
-      setPasswordInput('12345');
-      setSelectedStudentPreset('');
-    } else {
-      if (studentList.length > 0) {
-        const firstStudent = studentList[0];
-        const generated = generateStudentUsername(firstStudent);
-        setUsernameInput(generated);
-        setPasswordInput('12345');
-        setSelectedStudentPreset(firstStudent);
-      } else {
-        setUsernameInput('ABurke');
-        setPasswordInput('12345');
-        setSelectedStudentPreset('');
-      }
-    }
-  };
-
-  const handleSelectStudentPreset = (fullName: string) => {
-    setSelectedStudentPreset(fullName);
-    const generated = generateStudentUsername(fullName);
-    setUsernameInput(generated);
-    setPasswordInput('12345');
-    setErrorMessage(null);
+    setUsernameInput('');
+    setPasswordInput('');
+    setSelectedStudentPreset('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -371,90 +327,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               )}
 
-              {/* STUDENT ROLE HELPER / PRESET SELECTOR */}
-              {activeTab === 'student' && (
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-indigo-950 flex items-center gap-1">
-                      <GraduationCap className="w-3.5 h-3.5 text-indigo-600" /> Choose Registered Student:
-                    </span>
-                    <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded">
-                      Pass: 12345
-                    </span>
-                  </div>
-
-                  {studentList.length > 0 ? (
-                    <select
-                      value={selectedStudentPreset}
-                      onChange={(e) => handleSelectStudentPreset(e.target.value)}
-                      className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
-                    >
-                      <option value="">-- Click to choose student --</option>
-                      {studentList.map(sName => {
-                        const uName = generateStudentUsername(sName);
-                        return (
-                          <option key={sName} value={sName}>
-                            {sName} ({uName})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  ) : (
-                    <p className="text-[10px] text-slate-500 italic">Enter student credentials manually (e.g., ABurke / 12345)</p>
-                  )}
-
-                  {featuredSampleStudents.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-extrabold uppercase text-indigo-950 tracking-wider">
-                        One-Click Preset Students:
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {featuredSampleStudents.map(sName => {
-                          const uName = generateStudentUsername(sName);
-                          const isSelected = selectedStudentPreset === sName || usernameInput.toLowerCase() === uName.toLowerCase();
-                          return (
-                            <button
-                              key={sName}
-                              type="button"
-                              onClick={() => handleSelectStudentPreset(sName)}
-                              className={`px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 border ${
-                                isSelected
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                                  : 'bg-white hover:bg-indigo-100/50 text-indigo-900 border-indigo-200'
-                              }`}
-                            >
-                              <span>{sName.split(' ')[0]}</span>
-                              <span className="opacity-75 font-mono">({uName})</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TEACHER ROLE CREDENTIALS BOX */}
-              {activeTab === 'teacher' && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-xs flex items-center gap-2.5">
-                  <UserCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-[11px] text-blue-950">Faculty Preset Account:</p>
-                    <p className="text-[10px] font-mono text-blue-800 mt-0.5">Username: <strong>teacher</strong> | Password: <strong>12345</strong></p>
-                  </div>
-                </div>
-              )}
-
-              {/* ADMIN ROLE CREDENTIALS BOX */}
-              {activeTab === 'admin' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2.5">
-                  <ShieldCheck className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-[11px] text-amber-950">System Administrator Account:</p>
-                    <p className="text-[10px] font-mono text-amber-800 mt-0.5">Username: <strong>admin</strong> | Password: <strong>5678</strong></p>
-                  </div>
-                </div>
-              )}
+              {/* Credentials information and list of students removed for absolute security and privacy */}
 
               {/* Credentials Fields */}
               <div className="space-y-3 pt-1">
@@ -473,7 +346,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       type="text"
                       value={usernameInput}
                       onChange={(e) => setUsernameInput(e.target.value)}
-                      placeholder={activeTab === 'admin' ? 'admin' : activeTab === 'teacher' ? 'teacher' : 'e.g. ABurke'}
+                      placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
                       className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                       required
                     />
@@ -483,9 +356,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
                     <span>Password</span>
-                    <span className="text-[8px] text-slate-400 font-mono">
-                      {activeTab === 'admin' ? 'Default: 5678' : 'Default: 12345'}
-                    </span>
                   </label>
                   <div className="relative">
                     <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -625,90 +495,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           )}
 
-          {/* Student Specific Helper / Quick Presets */}
-          {activeTab === 'student' && (
-            <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
-                  <GraduationCap className="w-4 h-4 text-indigo-600" /> Choose Student Candidate:
-                </span>
-                <span className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
-                  Password: 12345
-                </span>
-              </div>
-
-              {/* Student Dropdown */}
-              {studentList.length > 0 ? (
-                <select
-                  value={selectedStudentPreset}
-                  onChange={(e) => handleSelectStudentPreset(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
-                >
-                  <option value="">-- Select student from Directory --</option>
-                  {studentList.map(sName => {
-                    const uName = generateStudentUsername(sName);
-                    return (
-                      <option key={sName} value={sName}>
-                        {sName} (Username: {uName})
-                      </option>
-                    );
-                  })}
-                </select>
-              ) : (
-                <p className="text-xs text-slate-500 italic">Enter student username manually (e.g., ABurke)</p>
-              )}
-
-              {/* Quick Sample Chips */}
-              {featuredSampleStudents.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase text-indigo-900 tracking-wider mb-1.5">
-                    Quick Sample Student Logins:
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {featuredSampleStudents.map(sName => {
-                      const uName = generateStudentUsername(sName);
-                      const isSelected = selectedStudentPreset === sName || usernameInput.toLowerCase() === uName.toLowerCase();
-                      return (
-                        <button
-                          key={sName}
-                          type="button"
-                          onClick={() => handleSelectStudentPreset(sName)}
-                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                            isSelected
-                              ? 'bg-indigo-600 text-white shadow-xs'
-                              : 'bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-200'
-                          }`}
-                        >
-                          <span>{sName.split(' ')[0]}</span>
-                          <span className="font-mono text-[9px] opacity-80">({uName})</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'admin' && (
-            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs leading-relaxed flex items-center gap-3">
-              <ShieldCheck className="w-6 h-6 text-amber-600 flex-shrink-0" />
-              <div>
-                <p className="font-bold">Administrator Credentials:</p>
-                <p className="text-[11px] font-mono text-amber-800 mt-0.5">Username: <strong>admin</strong> | Password: <strong>5678</strong></p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'teacher' && (
-            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-blue-900 text-xs leading-relaxed flex items-center gap-3">
-              <UserCheck className="w-6 h-6 text-blue-600 flex-shrink-0" />
-              <div>
-                <p className="font-bold">Teacher / Faculty Credentials:</p>
-                <p className="text-[11px] font-mono text-blue-800 mt-0.5">Username: <strong>teacher</strong> | Password: <strong>12345</strong></p>
-              </div>
-            </div>
-          )}
+          {/* Credentials and quick presets completely hidden for secure access */}
 
           {/* Username Input */}
           <div className="space-y-1.5">
@@ -726,7 +513,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 type="text"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
-                placeholder={activeTab === 'admin' ? 'admin' : activeTab === 'teacher' ? 'teacher' : 'e.g. ABurke'}
+                placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                 required
               />
@@ -737,9 +524,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="space-y-1.5">
             <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
               <span>Password</span>
-              <span className="text-[10px] text-slate-400 font-mono normal-case">
-                {activeTab === 'admin' ? 'Default: 5678' : 'Default: 12345'}
-              </span>
             </label>
             <div className="relative">
               <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />

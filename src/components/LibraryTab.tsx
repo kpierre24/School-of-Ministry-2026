@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
+import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
 
 interface LibraryTabProps {
@@ -533,15 +534,21 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         // Extract clean text from file (using Mammoth for DOCX / Word files)
         let fileContentText = await extractCleanTextFromFile(file);
 
-        // Also create Data URL for full download persistence
-        const fileDataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            resolve((event.target?.result as string) || '');
-          };
-          reader.onerror = () => resolve('');
-          reader.readAsDataURL(file);
-        });
+        // Upload lesson/media files directly to Supabase storage with a fallback to local Base64
+        let fileDataUrl = '';
+        try {
+          fileDataUrl = await uploadToSupabaseStorage('library', file.name, file);
+        } catch (err) {
+          console.error("Failed to upload library resource to Supabase Storage:", err);
+          fileDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              resolve((event.target?.result as string) || '');
+            };
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+        }
 
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
         const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');

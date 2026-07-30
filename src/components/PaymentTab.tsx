@@ -38,6 +38,7 @@ import {
 import { PaymentRecord } from '../types';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
+import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 
 interface PaymentTabProps {
   availableStudents: { name: string; email?: string }[];
@@ -1092,7 +1093,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   }, [availableStudents, payments]);
 
   // Handlers
-  const handleFileProcess = (file: File) => {
+  const handleFileProcess = async (file: File) => {
     setUploadError('');
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
@@ -1105,17 +1106,34 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        setReceiptFileUrl(reader.result);
+    try {
+      const publicUrl = await uploadToSupabaseStorage('receipts', file.name, file);
+      if (publicUrl) {
+        setReceiptFileUrl(publicUrl);
         setReceiptFileName(file.name);
+      } else {
+        // Fallback to Data URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setReceiptFileUrl(reader.result);
+            setReceiptFileName(file.name);
+          }
+        };
+        reader.readAsDataURL(file);
       }
-    };
-    reader.onerror = () => {
-      setUploadError('Failed to read the file.');
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Failed to upload receipt to Supabase Storage:", err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setReceiptFileUrl(reader.result);
+          setReceiptFileName(file.name);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {

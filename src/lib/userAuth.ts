@@ -46,9 +46,9 @@ export const authenticateUser = (
     return { success: false, error: 'Please enter a password.' };
   }
 
-  // 1. Check Admin credentials (admin / 5678)
+  // 1. Check Admin credentials (admin / 12345)
   if (u.toLowerCase() === 'admin') {
-    if (p === '5678') {
+    if (p === '12345') {
       return {
         success: true,
         user: {
@@ -60,7 +60,7 @@ export const authenticateUser = (
         }
       };
     } else {
-      return { success: false, error: 'Incorrect password for Admin (Default is 5678).' };
+      return { success: false, error: 'Incorrect password for Admin (Default is 12345).' };
     }
   }
 
@@ -82,7 +82,7 @@ export const authenticateUser = (
     }
   }
 
-  // 3. Check Student accounts (First Initial + Last Name / 12345)
+  // 3. Check Student accounts (First Initial + Last Name / 1234)
   // Match input username against all students in directory
   const normalizedInput = u.toLowerCase();
 
@@ -93,7 +93,7 @@ export const authenticateUser = (
   });
 
   if (matchedStudentName) {
-    if (p === '12345') {
+    if (p === '1234') {
       const canonicalUsername = generateStudentUsername(matchedStudentName);
       return {
         success: true,
@@ -107,12 +107,12 @@ export const authenticateUser = (
         }
       };
     } else {
-      return { success: false, error: `Incorrect password for student ${u} (Default is 12345).` };
+      return { success: false, error: `Incorrect password for student ${u} (Default is 1234).` };
     }
   }
 
   return { 
     success: false, 
-    error: `Username "${u}" not found in system. (For Admin use 'admin' / 5678, for Teacher use 'teacher' / 12345, or a Student username e.g. 'ABurke' / 12345).` 
+    error: `Username "${u}" not found in system. (For Admin use 'admin' / 12345, for Teacher use 'teacher' / 12345, or a Student username e.g. 'ABurke' / 1234).` 
   };
 };

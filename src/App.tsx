@@ -72,6 +72,7 @@ import {
   Plus
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
+import { uploadToSupabaseStorage } from './lib/supabaseClient';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
@@ -413,10 +414,16 @@ export default function App() {
     return saved ? JSON.parse(saved) : {};
   });
 
-  const handleUpdateStudentPhoto = (studentName: string, photoDataUrl: string) => {
+  const handleUpdateStudentPhoto = async (studentName: string, photoDataUrl: string) => {
     const key = studentName.toLowerCase().trim();
+    let finalUrl = photoDataUrl;
+    try {
+      finalUrl = await uploadToSupabaseStorage('profile-pictures', `${key}.jpg`, photoDataUrl);
+    } catch (err) {
+      console.error("Failed to upload profile photo to Supabase storage:", err);
+    }
     setStudentPhotos(prev => {
-      const updated = { ...prev, [key]: photoDataUrl };
+      const updated = { ...prev, [key]: finalUrl };
       localStorage.setItem('hteim_student_photos', JSON.stringify(updated));
       return updated;
     });

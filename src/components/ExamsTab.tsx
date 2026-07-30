@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
+import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { CustomAssignment, AssignmentSubmission, AppNotification } from '../types';
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 
@@ -269,6 +270,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [uploadFilesList, setUploadFilesList] = useState<{ name: string; url: string; type?: string }[]>([]);
   const [uploadNotes, setUploadNotes] = useState('');
   const [uploadTypedResponse, setUploadTypedResponse] = useState('');
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   // 3. Teacher Correction Form
   const [correctionScore, setCorrectionScore] = useState<number>(95);
@@ -331,20 +333,35 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     return 'F';
   };
 
-  // Helper File Upload Handler
-  const handleFileUpload = (
+  // Helper File Upload Handler with Supabase Storage Integration
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    onComplete: (fileDataUrl: string, fileName: string, fileType: string) => void
+    onComplete: (fileUrl: string, fileName: string, fileType: string) => void,
+    bucketName: string = 'assignments'
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const resultUrl = event.target?.result as string;
-      onComplete(resultUrl, file.name, file.type);
-    };
-    reader.readAsDataURL(file);
+    setIsUploadingFile(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Url = event.target?.result as string;
+        try {
+          const publicUrl = await uploadToSupabaseStorage(bucketName, file.name, file);
+          onComplete(publicUrl || base64Url, file.name, file.type);
+        } catch (err) {
+          console.error("Supabase Storage upload failed, using local fallback URL:", err);
+          onComplete(base64Url, file.name, file.type);
+        } finally {
+          setIsUploadingFile(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("File upload error:", err);
+      setIsUploadingFile(false);
+    }
   };
 
   // HANDLERS:
