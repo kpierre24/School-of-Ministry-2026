@@ -71,7 +71,7 @@ import {
   Edit3,
   Plus
 } from 'lucide-react';
-import { loadFromSupabase, saveToSupabase } from './lib/supabaseSync';
+import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
@@ -1083,6 +1083,57 @@ export default function App() {
       } else {
         setCloudSyncError("Failed to save backup to Supabase.");
       }
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleVerifySupabase = async () => {
+    setIsCloudSyncing(true);
+    setCloudSyncError(null);
+    setSupabaseTableMissing(false);
+    try {
+      const isConnected = await testSupabaseConnection();
+      if (isConnected) {
+        setSupabaseTableMissing(false);
+        // Table verified, let's load data
+        const cloudState = await loadFromSupabase(user?.email);
+        if (cloudState) {
+          if (cloudState.records !== undefined) setRecords(cloudState.records);
+          if (cloudState.classDays !== undefined) setClassDays(cloudState.classDays);
+          if (cloudState.studentNotes !== undefined) setStudentNotes(cloudState.studentNotes);
+          if (cloudState.excusedAbsences !== undefined) setExcusedAbsences(cloudState.excusedAbsences);
+          if (cloudState.rubricScores !== undefined) setRubricScores(cloudState.rubricScores);
+          if (cloudState.deletedStudentNames !== undefined) setDeletedStudentNames(cloudState.deletedStudentNames);
+          if (cloudState.studentPhotos !== undefined) setStudentPhotos(cloudState.studentPhotos);
+          if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
+          if (cloudState.customAssignments !== undefined) setCustomAssignments(cloudState.customAssignments);
+          if (cloudState.submissions !== undefined) setSubmissions(cloudState.submissions);
+          if (cloudState.notifications !== undefined) setNotifications(cloudState.notifications);
+          if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
+          if (cloudState.courses !== undefined) setCourses(cloudState.courses);
+          if (cloudState.schedules !== undefined) setSchedules(cloudState.schedules);
+          if (cloudState.libraryResources !== undefined) setLibraryResources(cloudState.libraryResources);
+          if (cloudState.classroomMedia !== undefined) setClassroomMedia(cloudState.classroomMedia);
+          if (cloudState.payments !== undefined) setPayments(cloudState.payments);
+          if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
+          if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
+          
+          setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
+          }));
+        }
+        setSyncedBannerMessage("⚡ Supabase Connected: Table verified, workspace synced successfully.");
+        setTimeout(() => setSyncedBannerMessage(null), 5000);
+      } else {
+        setSupabaseTableMissing(true);
+        setCloudSyncError("Verification failed: 'app_states' table still missing.");
+      }
+    } catch (err: any) {
+      console.error("Verification error:", err);
+      setCloudSyncError("Connection failed. Check your network or credentials.");
     } finally {
       setIsCloudSyncing(false);
     }
@@ -2799,6 +2850,8 @@ create policy "Allow public update" on app_states for update using (true) with c
               lastSyncedTime={lastSyncedTime}
               onPushToCloud={handlePushToCloud}
               userEmail={user?.email}
+              supabaseTableMissing={supabaseTableMissing}
+              onVerifySetup={handleVerifySupabase}
             />
           </div>
         )}

@@ -23,7 +23,11 @@ import {
   PenSquare,
   DollarSign,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Database,
+  Copy,
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { TabType } from '../types';
 import { AppUser } from '../lib/userAuth';
@@ -49,6 +53,8 @@ interface HomeTabProps {
   lastSyncedTime?: string | null;
   onPushToCloud?: () => Promise<void>;
   userEmail?: string | null;
+  supabaseTableMissing?: boolean;
+  onVerifySetup?: () => Promise<void>;
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -65,7 +71,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   cloudSyncError = null,
   lastSyncedTime = null,
   onPushToCloud,
-  userEmail = null
+  userEmail = null,
+  supabaseTableMissing = false,
+  onVerifySetup
 }) => {
   const isStudent = appUser?.role === 'student';
   const [activePillarTab, setActivePillarTab] = useState(0);
@@ -88,6 +96,31 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   });
 
   const [showCustomizerModal, setShowCustomizerModal] = useState(false);
+
+  // Supabase copy sql & verification state at the top level of the component
+  const [showSqlSetup, setShowSqlSetup] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  const sqlSetupCode = `create table if not exists app_states (
+  id text primary key,
+  state jsonb not null default '{}'::jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_by text
+);
+
+-- Enable Row Level Security (RLS)
+alter table app_states enable row level security;
+
+-- Create open public access policies
+create policy "Allow public read access" on app_states for select using (true);
+create policy "Allow public insert" on app_states for insert with check (true);
+create policy "Allow public update" on app_states for update using (true) with check (true);`;
+
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(sqlSetupCode);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 2500);
+  };
 
   const handleSaveWidgetLayout = (newOrder: string[], newEnabled: string[]) => {
     setWidgetOrder(newOrder);
@@ -266,60 +299,127 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* Prominent Firestore Cloud database synchronization panel */}
+      {/* Prominent Supabase Cloud database synchronization panel */}
       <section className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 border border-indigo-500/20 rounded-3xl p-5 md:p-6 text-white shadow-xl relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute right-0 top-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 bottom-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold tracking-wider">
-                Firestore Cloud Active
-              </span>
-              {userEmail && (
-                <span className="px-2 py-0.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 rounded-full text-[9px] font-mono font-bold">
-                  👤 Logged in as: {userEmail}
+        <div className="flex flex-col gap-6 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex h-2 w-2 relative">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${supabaseTableMissing ? 'bg-rose-400' : 'bg-emerald-400'} opacity-75`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${supabaseTableMissing ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                </span>
+                <span className={`text-[10px] font-mono uppercase font-bold tracking-wider ${supabaseTableMissing ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {supabaseTableMissing ? 'Supabase Table Required' : 'Supabase Cloud Active'}
+                </span>
+                {userEmail && (
+                  <span className="px-2 py-0.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 rounded-full text-[9px] font-mono font-bold">
+                    👤 Logged in as: {userEmail}
+                  </span>
+                )}
+              </div>
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                <Database className="w-5 h-5 text-indigo-400 shrink-0" />
+                Supabase Realtime Cloud Database
+              </h3>
+              <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+                Your School of Ministry portal is fully linked to your custom Supabase database instance: 
+                <code className="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded ml-1 font-mono text-[10px] select-all border border-slate-800">
+                  https://mjaloptcpeytvecbxbza.supabase.co
+                </code>.
+              </p>
+              {lastSyncedTime ? (
+                <p className="text-[11px] text-slate-400 font-medium">
+                  ✅ Last successfully backed up: <strong className="text-indigo-300 font-mono">{lastSyncedTime}</strong>. All devices logged into your account will instantly sync this exact data.
+                </p>
+              ) : supabaseTableMissing ? (
+                <p className="text-[11px] text-rose-300 font-bold flex items-center gap-1.5">
+                  ⚠️ Your Supabase 'app_states' table does not exist yet. Please paste the SQL query below in your Supabase SQL Editor.
+                </p>
+              ) : (
+                <p className="text-[11px] text-amber-300 font-bold flex items-center gap-1.5 animate-pulse">
+                  ⚠️ Your Cloud Database is currently empty! Click "Upload Local Data to Cloud" on the right to upload your local records to Supabase.
+                </p>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-2.5 items-center shrink-0">
+              <button
+                onClick={async () => {
+                  if (onVerifySetup) {
+                    await onVerifySetup();
+                  }
+                }}
+                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer border border-slate-700"
+              >
+                Verify Table Setup
+              </button>
+
+              <button
+                onClick={() => onPushToCloud?.()}
+                disabled={isCloudSyncing || supabaseTableMissing}
+                className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.25)] hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed border border-indigo-400"
+              >
+                {isCloudSyncing ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                ) : (
+                  <Cloud className="w-3.5 h-3.5 text-white" />
+                )}
+                <span>{isCloudSyncing ? "Saving Backup..." : "Upload Local Data"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table missing setup alert or toggle manual SQL instructions */}
+          <div className="border-t border-slate-800 pt-4 mt-1">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowSqlSetup(!showSqlSetup)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>{showSqlSetup ? "Hide SQL Setup Instructions" : "Show SQL Setup Instructions"}</span>
+                <span className="text-[10px] bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-900">
+                  {showSqlSetup ? "▲" : "▼"}
+                </span>
+              </button>
+              
+              {supabaseTableMissing && (
+                <span className="text-[11px] bg-rose-500/15 text-rose-300 px-2 py-1 rounded-lg border border-rose-500/30 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 text-rose-400 shrink-0" />
+                  Table missing in your database!
                 </span>
               )}
             </div>
-            <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-              Firestore Cloud Database Backup
-            </h3>
-            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-              Your School of Ministry portal is fully linked to your Google Cloud Firestore database: 
-              <code className="bg-slate-950 text-amber-300 px-1.5 py-0.5 rounded ml-1 font-mono text-[10px] select-all border border-slate-800">
-                ai-studio-studentportal-c93c3080-9ed6-4ab3-b27e-c6e6444aa9a8
-              </code>.
-            </p>
-            {lastSyncedTime ? (
-              <p className="text-[11px] text-slate-400 font-medium">
-                ✅ Last successfully backed up: <strong className="text-indigo-300 font-mono">{lastSyncedTime}</strong>. All devices logged into your account will instantly sync this exact data.
-              </p>
-            ) : (
-              <p className="text-[11px] text-amber-300 font-bold flex items-center gap-1.5 animate-pulse">
-                ⚠️ Your Cloud Database is currently empty! Click "Upload Local Data to Cloud" on the right to upload your local records to Firestore now.
-              </p>
+
+            {(showSqlSetup || supabaseTableMissing) && (
+              <div className="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-slate-300 space-y-3.5 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider">
+                    👉 Supabase SQL Editor Script
+                  </span>
+                  <button
+                    onClick={handleCopySql}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white rounded-lg text-[11px] font-bold border border-slate-800 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedSql ? "Copied!" : "Copy SQL Code"}</span>
+                  </button>
+                </div>
+                
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Go to your <strong className="text-slate-200">Supabase Dashboard</strong>, open the <strong className="text-slate-200 font-bold">SQL Editor</strong>, paste this script, and click <strong className="text-slate-200 font-bold">Run</strong>:
+                </p>
+
+                <pre className="bg-slate-900 p-3.5 rounded-xl text-indigo-300 text-xs font-mono select-all overflow-x-auto max-h-48 custom-scrollbar border border-slate-800">
+                  {sqlSetupCode}
+                </pre>
+              </div>
             )}
           </div>
-          
-          <button
-            onClick={() => onPushToCloud?.()}
-            disabled={isCloudSyncing}
-            className="w-full md:w-auto px-5 py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 flex-shrink-0 border border-amber-300"
-          >
-            {isCloudSyncing ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-            ) : (
-              <Cloud className="w-3.5 h-3.5 text-slate-950" />
-            )}
-            <span>{isCloudSyncing ? "Saving Backup..." : "Upload Local Data to Cloud"}</span>
-          </button>
         </div>
       </section>
 
