@@ -1042,22 +1042,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   });
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
       
       {/* Top Banner & Sub-Tab Switcher */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 text-white border border-indigo-900/50 shadow-xl sticky top-0 z-30 backdrop-blur-md">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 sm:p-5 text-white border border-indigo-900/50 shadow-xl relative md:sticky md:top-0 z-30 backdrop-blur-md">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
-              <Award className="w-6 h-6 text-amber-400" />
-              <h2 className="text-xl font-black tracking-tight">Exams, Written Assignments & Evaluations</h2>
+              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 shrink-0" />
+              <h2 className="text-lg sm:text-xl font-black tracking-tight leading-snug">Exams, Written Assignments & Evaluations</h2>
             </div>
-            <p className="text-xs text-indigo-200 mt-1">
+            <p className="text-xs text-indigo-200 mt-1 leading-relaxed">
               HTEIM School of Ministry portal for manual course assignments, student document uploads, instructor corrections, and Google Forms quiz logs.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
             {isTeacherOrAdmin && (
               <>
                 <button
@@ -1065,33 +1065,35 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     setEditingQuizData(null);
                     setShowQuizCreatorModal(true);
                   }}
-                  className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-900" /> Create Class Day Quiz
+                  <Sparkles className="w-4 h-4 text-slate-900 shrink-0" />
+                  <span>Create Class Day Quiz</span>
                 </button>
 
                 {subTab === 'assignments' && (
                   <button
                     onClick={handleOpenCreateAssignment}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                    className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" /> Add New Assignment
+                    <Plus className="w-4 h-4 shrink-0" />
+                    <span>Add Assignment</span>
                   </button>
                 )}
               </>
             )}
 
             {isStudent && subTab === 'assignments' && (
-              <div className="relative group flex-shrink-0">
+              <div className="relative group flex-1 sm:flex-none">
                 <button
                   disabled
-                  className="px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs rounded-xl flex items-center gap-2 cursor-not-allowed opacity-80"
+                  className="w-full sm:w-auto px-3.5 sm:px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-not-allowed opacity-80"
                 >
-                  <Lock className="w-4 h-4 text-amber-400" />
-                  <span>Add New Assignment</span>
+                  <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Add Assignment</span>
                 </button>
                 <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Requires Instructor or Administrator Privileges</span>
                 </div>
               </div>
@@ -1099,49 +1101,61 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
             <button
               onClick={exportExamsCSV}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer flex-shrink-0"
+              className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
-              <Download className="w-4 h-4" /> Export Grades CSV
+              <Download className="w-4 h-4 shrink-0" />
+              <span>Export CSV</span>
             </button>
           </div>
         </div>
 
         {/* Sub Navigation Switcher */}
-        <div className="flex items-center gap-2 bg-white/10 p-1 rounded-xl border border-white/10 w-full md:w-auto md:max-w-max overflow-x-auto custom-scrollbar flex-shrink-0">
+        <div className="grid grid-cols-3 md:flex md:items-center gap-1 sm:gap-2 bg-white/10 p-1 rounded-xl border border-white/10 w-full shrink-0">
           <button
             onClick={() => setSubTab('assignments')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            className={`px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'assignments'
                 ? 'bg-amber-400 text-slate-950 shadow-sm'
                 : 'text-white/80 hover:text-white hover:bg-white/10'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Written Assignments & Submissions ({customAssignments.length})</span>
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Written Assignments</span>
+              <span className="sm:hidden">Assignments</span>
+              <span> ({customAssignments.length})</span>
+            </span>
           </button>
 
           <button
             onClick={() => setSubTab('quizzes')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            className={`px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'quizzes'
                 ? 'bg-amber-400 text-slate-950 shadow-sm'
                 : 'text-white/80 hover:text-white hover:bg-white/10'
             }`}
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Quiz Score Matrix ({allQuizSheets.length})</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Quiz Score Matrix</span>
+              <span className="sm:hidden">Matrix</span>
+              <span> ({allQuizSheets.length})</span>
+            </span>
           </button>
 
           <button
             onClick={() => setSubTab('admin_dashboard')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            className={`px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'admin_dashboard'
                 ? 'bg-amber-400 text-slate-950 shadow-sm'
                 : 'text-white/80 hover:text-white hover:bg-white/10'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Admin Quizzes Dashboard</span>
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              <span className="hidden sm:inline">Admin Quizzes Dashboard</span>
+              <span className="sm:hidden">Quizzes</span>
+            </span>
           </button>
         </div>
       </div>
@@ -1152,15 +1166,15 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           
           {/* TEACHER / ADMIN QUICK ACTION BAR */}
           {isTeacherOrAdmin && (
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                  <Filter className="w-4 h-4 text-indigo-600" /> Filter Assignment:
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
+                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 shrink-0">
+                  <Filter className="w-4 h-4 text-indigo-600 shrink-0" /> Filter Assignment:
                 </span>
                 <select
                   value={selectedAssignmentId}
                   onChange={(e) => setSelectedAssignmentId(e.target.value)}
-                  className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="p-2.5 sm:p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-auto"
                 >
                   <option value="all">All Course Assignments ({customAssignments.length})</option>
                   {customAssignments.map(asg => (
@@ -1176,15 +1190,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   placeholder="Search student submission by name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
               <button
                 onClick={() => handleOpenDirectStudentUpload()}
-                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-2xs"
+                className="px-3.5 py-2.5 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 shadow-2xs w-full sm:w-auto"
               >
-                <FileUp className="w-4 h-4 text-amber-400" /> Upload for Specific Student
+                <FileUp className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Upload for Specific Student</span>
               </button>
             </div>
           )}
@@ -1542,21 +1557,31 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           {/* TEACHER / ADMIN SUBMISSIONS MATRIX TABLE */}
           {isTeacherOrAdmin && (
             <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden space-y-0">
-              <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <FileCheck className="w-4.5 h-4.5 text-amber-400" />
                   <h3 className="text-xs font-extrabold uppercase tracking-wider">Student Assignment Submissions & Corrections Matrix</h3>
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {filteredSubmissions.length} Record(s) Shown
-                </span>
+                <div className="flex items-center justify-between sm:justify-end gap-2 text-[10px] sm:text-[11px] text-slate-400">
+                  <span className="sm:hidden text-amber-300 font-bold bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700/80 flex items-center gap-1">
+                    <span>← Swipe horizontally →</span>
+                  </span>
+                  <span className="font-mono text-slate-400">
+                    {filteredSubmissions.length} Record(s) Shown
+                  </span>
+                </div>
               </div>
 
-              <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200">
+              <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 touch-pan-x overscroll-x-contain">
                 <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[950px]">
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                      <th className="p-3 pl-4 sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200 shadow-2xs min-w-[170px]">Student Name</th>
+                      <th className="p-3 pl-3 sm:pl-4 min-w-[140px] sm:min-w-[170px] max-w-[150px] sm:max-w-none sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <User className="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" />
+                          <span>Student Name</span>
+                        </div>
+                      </th>
                       <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[200px]">Assignment Title</th>
                       <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[140px]">Submission Status</th>
                       <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Student's Uploaded Response</th>
@@ -1583,8 +1608,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
                         return (
                           <tr key={`${std.name}-${asg.id}`} className="group hover:bg-slate-50/80 transition-colors">
-                            <td className="p-3 pl-4 font-black text-slate-900 sticky left-0 z-10 bg-white border-b border-r border-slate-200 shadow-2xs group-hover:bg-slate-50 transition-colors">
-                              {std.name}
+                            <td className="p-3 pl-3 sm:pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] transition-colors min-w-[140px] sm:min-w-[170px] max-w-[150px] sm:max-w-none">
+                              <div className="truncate font-bold text-slate-900 text-xs" title={std.name}>
+                                {std.name}
+                              </div>
                             </td>
                             <td className="p-3 text-slate-700 font-medium max-w-[220px] border-b border-slate-200" title={asg.title}>
                               <div className="font-bold text-slate-900 truncate">{asg.title}</div>
@@ -1988,31 +2015,31 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           )}
 
           {/* Analytics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-2xs">
               <p className="text-[10px] font-bold uppercase text-slate-500">Evaluated Candidates</p>
-              <p className="text-2xl font-black font-mono mt-1 text-slate-900">{totalEvaluated}</p>
-              <p className="text-[10px] text-indigo-600 font-medium mt-0.5">Quiz Submissions Logged</p>
+              <p className="text-xl sm:text-2xl font-black font-mono mt-1 text-slate-900">{totalEvaluated}</p>
+              <p className="text-[10px] text-indigo-600 font-medium mt-0.5 truncate">Quiz Submissions Logged</p>
             </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-2xs">
               <p className="text-[10px] font-bold uppercase text-slate-500">Class Exam Average</p>
-              <p className="text-2xl font-black font-mono mt-1 text-indigo-700">{classExamAvg}%</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Overall Knowledge Pass Rate</p>
+              <p className="text-xl sm:text-2xl font-black font-mono mt-1 text-indigo-700">{classExamAvg}%</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 truncate">Overall Pass Rate</p>
             </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-2xs">
               <p className="text-[10px] font-bold uppercase text-slate-500">Perfect 100% Scores</p>
-              <p className="text-2xl font-black font-mono mt-1 text-emerald-600">{perfectScores}</p>
-              <p className="text-[10px] text-emerald-700 font-bold mt-0.5">A+ Distinctions</p>
+              <p className="text-xl sm:text-2xl font-black font-mono mt-1 text-emerald-600">{perfectScores}</p>
+              <p className="text-[10px] text-emerald-700 font-bold mt-0.5 truncate">A+ Distinctions</p>
             </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-2xs">
               <p className="text-[10px] font-bold uppercase text-slate-500">Needs Review (&lt;70%)</p>
-              <p className="text-2xl font-black font-mono mt-1 text-rose-600">{failedScores}</p>
-              <p className="text-[10px] text-rose-700 font-medium mt-0.5">Recommended Retake</p>
+              <p className="text-xl sm:text-2xl font-black font-mono mt-1 text-rose-600">{failedScores}</p>
+              <p className="text-[10px] text-rose-700 font-medium mt-0.5 truncate">Recommended Retake</p>
             </div>
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -2020,14 +2047,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 placeholder="Search student exam record by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full pl-10 pr-4 py-2.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto custom-scrollbar">
               <button
                 onClick={() => setGradeFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex-1 sm:flex-none text-center ${
                   gradeFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
                 }`}
               >
@@ -2035,7 +2062,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </button>
               <button
                 onClick={() => setGradeFilter('passed')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex-1 sm:flex-none text-center ${
                   gradeFilter === 'passed' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'
                 }`}
               >
@@ -2046,33 +2073,43 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           {/* Main Quiz Table */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                 <h3 className="text-xs font-extrabold uppercase tracking-wider">Exam, Quiz & Written Assignment Score Matrix</h3>
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">
-                {allQuizSheets.length} Quizzes & {customAssignments.length} Written Assignments Logged
-              </span>
+              <div className="flex items-center justify-between sm:justify-end gap-2 text-[10px] sm:text-[11px] text-slate-400">
+                <span className="sm:hidden text-amber-300 font-bold bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700/80 flex items-center gap-1">
+                  <span>← Swipe horizontally →</span>
+                </span>
+                <span className="font-mono text-slate-300">
+                  {allQuizSheets.length} Quizzes & {customAssignments.length} Assignments
+                </span>
+              </div>
             </div>
 
-            <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200">
-              <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[1200px]">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 touch-pan-x overscroll-x-contain">
+              <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[1000px] sm:min-w-[1200px]">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                    <th className="p-3 pl-4 min-w-[180px] sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200 shadow-2xs">Student Candidate</th>
+                    <th className="p-3 pl-3 sm:pl-4 min-w-[140px] sm:min-w-[180px] max-w-[160px] sm:max-w-none sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <User className="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" />
+                        <span>Student Candidate</span>
+                      </div>
+                    </th>
                     {allQuizSheets.map(qs => (
-                      <th key={qs} className="p-3 text-center min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>
+                      <th key={qs} className="p-3 text-center min-w-[120px] sm:min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>
                     ))}
                     {customAssignments.map(asg => (
-                      <th key={asg.id} className="p-3 text-center min-w-[150px] sticky top-0 z-20 bg-indigo-50/95 text-indigo-900 border-b border-indigo-200 shadow-2xs" title={asg.title}>
+                      <th key={asg.id} className="p-3 text-center min-w-[140px] sm:min-w-[150px] sticky top-0 z-20 bg-indigo-50/95 text-indigo-900 border-b border-indigo-200 shadow-2xs" title={asg.title}>
                         {asg.title} ({asg.maxPoints} pts)
                       </th>
                     ))}
                     <th className="p-3 text-center min-w-[90px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Overall Avg</th>
                     <th className="p-3 text-center min-w-[70px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Grade</th>
-                    <th className="p-3 text-center min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Participation</th>
-                    <th className="p-3 text-center min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Assignments</th>
+                    <th className="p-3 text-center min-w-[100px] sm:min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Participation</th>
+                    <th className="p-3 text-center min-w-[100px] sm:min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Assignments</th>
                     <th className="p-3 text-center min-w-[105px] sticky top-0 z-20 bg-indigo-100/90 text-indigo-950 border-b border-indigo-200 shadow-2xs">Composite Avg</th>
                   </tr>
                 </thead>
@@ -2086,7 +2123,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
                     return (
                       <tr key={s.name} className="group hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3 pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white border-b border-r border-slate-200 shadow-2xs group-hover:bg-slate-50 transition-colors">{s.name}</td>
+                        <td className="p-3 pl-3 sm:pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] transition-colors min-w-[140px] sm:min-w-[180px] max-w-[160px] sm:max-w-none">
+                          <div className="truncate font-bold text-slate-900 text-xs" title={s.name}>
+                            {s.name}
+                          </div>
+                        </td>
                         {allQuizSheets.map(qs => {
                           const score = s.attendanceByDay?.[qs]?.score || '—';
                           const hasScore = score !== '—';
@@ -2184,22 +2225,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL 1: ADD/EDIT ASSIGNMENT (TEACHER / ADMIN) */}
       {/* ========================================================= */}
       {showAddAssignmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                {editingAssignmentId ? <Edit3 className="w-5 h-5 text-amber-400" /> : <Plus className="w-5 h-5 text-amber-400" />}
-                <h3 className="text-base font-extrabold">{editingAssignmentId ? 'Edit Course Assignment' : 'Create Manual Course Assignment'}</h3>
+                {editingAssignmentId ? <Edit3 className="w-5 h-5 text-amber-400 shrink-0" /> : <Plus className="w-5 h-5 text-amber-400 shrink-0" />}
+                <h3 className="text-sm sm:text-base font-extrabold">{editingAssignmentId ? 'Edit Course Assignment' : 'Create Manual Course Assignment'}</h3>
               </div>
               <button
                 onClick={handleCloseAddAssignmentModal}
-                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
- 
-            <form onSubmit={handleSaveAssignment} className="p-6 space-y-4 text-xs font-medium">
+
+            <form onSubmit={handleSaveAssignment} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">Assignment Title *</label>
                 <input
@@ -2211,10 +2252,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
- 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Module / Course Track</label>
+                  <label className="font-bold text-slate-700">Module / Track</label>
                   <input
                     type="text"
                     value={newAsgModule}
@@ -2225,7 +2266,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-500" /> Start Date (Optional)
+                    <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" /> Start Date
                   </label>
                   <input
                     type="date"
@@ -2233,14 +2274,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     onChange={(e) => setNewAsgStartDate(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <p className="text-[10px] text-slate-500">
-                    Start of the submission period.
-                  </p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-600" /> Due Date *
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Due Date *
                   </label>
                   <input
                     type="date"
@@ -2249,12 +2287,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     onChange={(e) => setNewAsgDueDate(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <p className="text-[10px] text-slate-500">
-                    Submissions after this are overdue.
-                  </p>
                 </div>
               </div>
- 
+
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">Description / Instructions</label>
                 <textarea
@@ -2265,16 +2300,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
- 
+
               {/* Optional Teacher Reference File Upload */}
               <div className="space-y-1 pt-1">
                 <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <Paperclip className="w-3.5 h-3.5 text-indigo-600" /> Optional Reference Worksheet / Rubric File
+                  <Paperclip className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Optional Worksheet / Rubric File
                 </label>
                 <div className="flex items-center gap-2">
                   {isUploadingFile ? (
-                    <div className="flex items-center gap-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse text-[11px] font-bold">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <div className="flex items-center gap-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse text-[11px] font-bold w-full">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                       <span>Uploading worksheet reference...</span>
                     </div>
                   ) : (
@@ -2284,28 +2319,28 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         setNewAsgAttachmentUrl(url);
                         setNewAsgAttachmentName(name);
                       })}
-                      className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                      className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                     />
                   )}
                 </div>
                 {newAsgAttachmentName && (
                   <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
-                    <Check className="w-3.5 h-3.5" /> Attached: {newAsgAttachmentName}
+                    <Check className="w-3.5 h-3.5 shrink-0" /> Attached: {newAsgAttachmentName}
                   </p>
                 )}
               </div>
- 
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+
+              <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={handleCloseAddAssignmentModal}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer"
+                  className="px-5 py-2.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer text-center"
                 >
                   {editingAssignmentId ? 'Save Changes' : 'Create Assignment'}
                 </button>
@@ -2319,36 +2354,36 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL 2: STUDENT UPLOAD RESPONSE */}
       {/* ========================================================= */}
       {showUploadModal && activeAssignmentForStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Upload className="w-5 h-5 text-indigo-400" />
-                <div>
-                  <h3 className="text-base font-extrabold">Upload Assignment Response</h3>
-                  <p className="text-[11px] text-slate-300 truncate max-w-xs">{activeAssignmentForStudent.title}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 overflow-hidden pr-2">
+                <Upload className="w-5 h-5 text-indigo-400 shrink-0" />
+                <div className="overflow-hidden">
+                  <h3 className="text-sm sm:text-base font-extrabold truncate">Upload Assignment Response</h3>
+                  <p className="text-[11px] text-slate-300 truncate">{activeAssignmentForStudent.title}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveStudentSubmission} className="p-6 space-y-4 text-xs font-medium">
+            <form onSubmit={handleSaveStudentSubmission} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
               <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-900">
-                <p className="font-bold">Student Candidate: <strong>{activeStudentName}</strong></p>
+                <p className="font-bold text-xs">Student Candidate: <strong>{activeStudentName}</strong></p>
                 <p className="text-[11px] text-indigo-700 mt-0.5">Due Date: {activeAssignmentForStudent.dueDate} | Max Points: {activeAssignmentForStudent.maxPoints}</p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <Edit3 className="w-4 h-4 text-indigo-600" /> Type Out Assignment Response Directly
+                  <Edit3 className="w-4 h-4 text-indigo-600 shrink-0" /> Type Out Assignment Response Directly
                 </label>
                 <textarea
-                  rows={6}
+                  rows={5}
                   placeholder="Type or paste your assignment essay, theological reflections, or exam answers directly here..."
                   value={uploadTypedResponse}
                   onChange={(e) => setUploadTypedResponse(e.target.value)}
@@ -2359,12 +2394,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
               <div className="space-y-1.5 pt-1 border-t border-slate-100">
                 <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <FileUp className="w-4 h-4 text-indigo-600" /> Upload Documents or Image Submissions (Multiple Allowed)
+                  <FileUp className="w-4 h-4 text-indigo-600 shrink-0" /> Upload Documents or Images (Multiple Allowed)
                 </label>
                 {isUploadingFile ? (
-                  <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse font-bold text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                    <span>Uploading assignment document to Supabase Storage...</span>
+                  <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse font-bold text-xs w-full">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0" />
+                    <span>Uploading assignment document...</span>
                   </div>
                 ) : (
                   <input
@@ -2380,30 +2415,29 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         setUploadFileUrl(url);
                         setUploadFileType(type || '');
                       }
-                      e.target.value = ''; // Reset input to allow re-uploading or uploading another file
+                      e.target.value = '';
                     })}
-                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
+                    className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
                   />
                 )}
                 
-                {/* List of uploaded files with preview and delete capability */}
                 {uploadFilesList.length > 0 ? (
                   <div className="space-y-2 mt-2">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ready for Submission ({uploadFilesList.length})</p>
-                    <div className="grid grid-cols-1 gap-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                    <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                       {uploadFilesList.map((file, idx) => {
                         const isImage = file.url?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
                         return (
                           <div key={idx} className="flex flex-col p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100/70 transition-all gap-2 animate-fadeIn">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 overflow-hidden">
-                                <span className="text-base flex-shrink-0">{isImage ? '🖼️' : '📄'}</span>
+                                <span className="text-base shrink-0">{isImage ? '🖼️' : '📄'}</span>
                                 <div className="text-left overflow-hidden">
                                   <p className="text-xs font-bold text-slate-800 truncate" title={file.name}>{file.name}</p>
                                   <p className="text-[10px] text-slate-500 capitalize">{file.type?.split('/')[1] || 'document'}</p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => setPreviewFile({ name: file.name, url: file.url })}
@@ -2437,13 +2471,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                               </div>
                             </div>
                             
-                            {/* Inline miniature preview for images to be highly visual */}
                             {isImage && file.url && (
                               <div className="p-1.5 bg-white border border-slate-200 rounded-lg text-center">
                                 <img 
                                   src={file.url} 
                                   alt={file.name} 
-                                  className="max-h-24 mx-auto rounded border border-slate-200 object-contain"
+                                  className="max-h-20 mx-auto rounded border border-slate-200 object-contain"
                                   referrerPolicy="no-referrer"
                                 />
                               </div>
@@ -2461,7 +2494,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">Student Notes / Reflections (Optional)</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Add any comments for the instructor regarding your submission..."
                   value={uploadNotes}
                   onChange={(e) => setUploadNotes(e.target.value)}
@@ -2469,19 +2502,20 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer flex items-center gap-1"
+                  className="px-5 py-2.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Upload className="w-4 h-4" /> Submit Response
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span>Submit Response</span>
                 </button>
               </div>
             </form>
@@ -2493,52 +2527,52 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL 3: TEACHER GRADE & UPLOAD CORRECTED ASSIGNMENT */}
       {/* ========================================================= */}
       {showCorrectionModal && activeSubmissionForCorrection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-emerald-400" />
-                <div>
-                  <h3 className="text-base font-extrabold">Grade & Attach Corrected Assignment</h3>
-                  <p className="text-[11px] text-slate-300">Student: <strong>{activeSubmissionForCorrection.studentName}</strong></p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 overflow-hidden pr-2">
+                <FileCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div className="overflow-hidden">
+                  <h3 className="text-sm sm:text-base font-extrabold truncate">Grade & Attach Correction</h3>
+                  <p className="text-[11px] text-slate-300 truncate">Student: <strong>{activeSubmissionForCorrection.studentName}</strong></p>
                 </div>
               </div>
               <button
                 onClick={() => setShowCorrectionModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveCorrection} className="p-6 space-y-4 text-xs font-medium">
+            <form onSubmit={handleSaveCorrection} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
               {/* Student Submission Quick View */}
               {activeSubmissionForCorrection.submission?.studentFiles && activeSubmissionForCorrection.submission.studentFiles.length > 0 ? (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                   <p className="text-[10px] font-bold text-slate-500 uppercase">Student's Uploaded Documents ({activeSubmissionForCorrection.submission.studentFiles.length})</p>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
                     {activeSubmissionForCorrection.submission.studentFiles.map((file, fIdx) => (
                       <div key={fIdx} className="flex items-center justify-between gap-2 bg-white p-2 rounded-lg border border-slate-100">
-                        <p className="font-bold text-slate-900 truncate max-w-[220px]" title={file.name}>📄 {file.name}</p>
+                        <p className="font-bold text-slate-900 truncate flex-1" title={file.name}>📄 {file.name}</p>
                         <button
                           type="button"
                           onClick={() => setPreviewFile({
                             name: file.name,
                             url: file.url
                           })}
-                          className="px-2.5 py-1 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 font-bold rounded-lg flex items-center gap-1 cursor-pointer text-[11px] transition-colors"
+                          className="px-2.5 py-1 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 font-bold rounded-lg flex items-center gap-1 cursor-pointer text-[11px] transition-colors shrink-0"
                         >
-                          <Eye className="w-3.5 h-3.5" /> Inspect File
+                          <Eye className="w-3.5 h-3.5" /> Inspect
                         </button>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : activeSubmissionForCorrection.submission?.studentFileName ? (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Student's Uploaded Document</p>
-                    <p className="font-bold text-slate-900 truncate max-w-xs">{activeSubmissionForCorrection.submission.studentFileName}</p>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+                  <div className="space-y-0.5 overflow-hidden">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Student's Document</p>
+                    <p className="font-bold text-slate-900 truncate">{activeSubmissionForCorrection.submission.studentFileName}</p>
                   </div>
                   <button
                     type="button"
@@ -2546,18 +2580,18 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       name: activeSubmissionForCorrection.submission!.studentFileName!,
                       url: activeSubmissionForCorrection.submission!.studentFileUrl
                     })}
-                    className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-100 flex items-center gap-1 cursor-pointer shrink-0"
                   >
-                    <Eye className="w-3.5 h-3.5 text-indigo-600" /> Inspect File
+                    <Eye className="w-3.5 h-3.5 text-indigo-600" /> Inspect
                   </button>
                 </div>
               ) : null}
 
               {activeSubmissionForCorrection.submission?.studentTypedResponse && (
-                <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="text-[10px] font-bold text-indigo-900 uppercase flex items-center gap-1">
-                      <Edit3 className="w-3.5 h-3.5 text-indigo-600" /> Student's Typed Assignment Response
+                      <Edit3 className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Student's Typed Response
                     </p>
                     <button
                       type="button"
@@ -2565,12 +2599,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         name: `Typed Response - ${activeSubmissionForCorrection.studentName}`,
                         content: activeSubmissionForCorrection.submission!.studentTypedResponse
                       })}
-                      className="text-[10px] bg-white text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-300 hover:bg-indigo-50 cursor-pointer flex items-center gap-1"
+                      className="text-[10px] bg-white text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-300 hover:bg-indigo-50 cursor-pointer flex items-center gap-1 shrink-0"
                     >
-                      <Eye className="w-3 h-3" /> Expand Full View
+                      <Eye className="w-3 h-3" /> Expand
                     </button>
                   </div>
-                  <div className="max-h-32 overflow-y-auto bg-white p-2.5 rounded-lg border border-indigo-100 text-[11px] text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">
+                  <div className="max-h-24 overflow-y-auto bg-white p-2 rounded-lg border border-indigo-100 text-[11px] text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">
                     {activeSubmissionForCorrection.submission.studentTypedResponse}
                   </div>
                 </div>
@@ -2592,7 +2626,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">Teacher Feedback & Evaluation Notes</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Provide constructive feedback, commendations, or theological guidance..."
                   value={correctionFeedback}
                   onChange={(e) => setCorrectionFeedback(e.target.value)}
@@ -2603,11 +2637,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               {/* UPLOAD CORRECTED ASSIGNMENT FILE */}
               <div className="space-y-1.5 pt-1 border-t border-slate-100">
                 <label className="font-bold text-slate-800 flex items-center gap-1 text-xs">
-                  <FileCheck className="w-4 h-4 text-emerald-600" /> Upload Corrected Assignment Document
+                  <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" /> Upload Corrected Document
                 </label>
-                <p className="text-[11px] text-slate-500">
-                  Attach a corrected PDF or document with instructor red-pen annotations, rubric breakdown, or grade certificate.
-                </p>
                 <input
                   type="file"
                   onChange={(e) => handleFileUpload(e, (url, name, type) => {
@@ -2615,28 +2646,29 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     setCorrectedFileName(name);
                     setCorrectedFileType(type);
                   })}
-                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                  className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
                 />
                 {correctedFileName && (
                   <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 mt-1 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Attached Corrected File: {correctedFileName}
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Attached: {correctedFileName}
                   </p>
                 )}
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowCorrectionModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer flex items-center gap-1"
+                  className="px-5 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5 text-center"
                 >
-                  <Check className="w-4 h-4" /> Save Grade & Return Correction
+                  <Check className="w-4 h-4 shrink-0" />
+                  <span>Save Grade & Return</span>
                 </button>
               </div>
             </form>
@@ -2648,23 +2680,23 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL 4: TEACHER DIRECT UPLOAD TO SPECIFIC STUDENT / EDIT UPLOAD */}
       {/* ========================================================= */}
       {showDirectStudentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <FileUp className="w-5 h-5 text-amber-400" />
-                <h3 className="text-base font-extrabold">Upload or Edit Student Assignment File</h3>
+                <FileUp className="w-5 h-5 text-amber-400 shrink-0" />
+                <h3 className="text-sm sm:text-base font-extrabold">Upload or Edit Student Assignment File</h3>
               </div>
               <button
                 onClick={() => setShowDirectStudentModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveDirectStudentUpload} className="p-6 space-y-4 text-xs font-medium">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleSaveDirectStudentUpload} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Select Target Student</label>
                   <select
@@ -2700,7 +2732,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     setDirectStudentFileUrl(url);
                     setDirectStudentFileName(name);
                   })}
-                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer"
+                  className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer"
                 />
                 {directStudentFileName && (
                   <p className="text-[11px] text-emerald-700 font-bold mt-1">Selected File: {directStudentFileName}</p>
@@ -2718,17 +2750,17 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowDirectStudentModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer"
+                  className="px-5 py-2.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer text-center"
                 >
                   Save Student Upload
                 </button>
@@ -2742,28 +2774,28 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL 5: DOCUMENT PREVIEW MODAL */}
       {/* ========================================================= */}
       {previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eye className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-base font-extrabold truncate max-w-md">{previewFile.name}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 overflow-hidden pr-2">
+                <Eye className="w-5 h-5 text-indigo-400 shrink-0" />
+                <h3 className="text-sm sm:text-base font-extrabold truncate">{previewFile.name}</h3>
               </div>
               <button
                 onClick={() => setPreviewFile(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
               {previewFile.content && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                   <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                    <Edit3 className="w-4 h-4 text-indigo-600" /> Student Typed Response Content
+                    <Edit3 className="w-4 h-4 text-indigo-600 shrink-0" /> Student Typed Response Content
                   </p>
-                  <div className="p-4 bg-white rounded-xl border border-slate-200 text-xs text-slate-900 font-sans leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                  <div className="p-3 sm:p-4 bg-white rounded-xl border border-slate-200 text-xs text-slate-900 font-sans leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
                     {previewFile.content}
                   </div>
                 </div>
@@ -2772,23 +2804,23 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               {previewFile.url && (() => {
                 const isImage = previewFile.url?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(previewFile.name);
                 return isImage ? (
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                     <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                      <Image className="w-4 h-4 text-indigo-600" /> Image Submission Preview
+                      <Image className="w-4 h-4 text-indigo-600 shrink-0" /> Image Submission Preview
                     </p>
-                    <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+                    <div className="p-2 sm:p-4 bg-white rounded-xl border border-slate-200 text-center overflow-auto">
                       <img 
                         src={previewFile.url} 
                         alt={previewFile.name} 
-                        className="max-h-[350px] mx-auto rounded-xl border border-slate-300 object-contain shadow-md bg-slate-50"
+                        className="max-h-[300px] sm:max-h-[350px] mx-auto rounded-xl border border-slate-300 object-contain shadow-md bg-slate-50"
                         referrerPolicy="no-referrer"
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                     <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-indigo-600" /> Document Stream Ready
+                      <FileText className="w-4 h-4 text-indigo-600 shrink-0" /> Document Stream Ready
                     </p>
                     <p className="text-xs text-slate-600 leading-relaxed">
                       File <strong>"{previewFile.name}"</strong> is securely encoded in the School of Ministry repository. Click download below to save the full document locally.
@@ -2799,25 +2831,25 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             </div>
 
             {previewFile.url && (
-              <div className="p-6 pt-0">
-                <div className="text-center py-5 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-2.5">
-                  <FolderOpen className="w-10 h-10 text-indigo-400 mx-auto" />
-                  <p className="text-xs text-slate-700 font-bold">{previewFile.name}</p>
+              <div className="p-4 sm:p-6 pt-0 shrink-0">
+                <div className="text-center py-4 sm:py-5 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-2.5">
+                  <FolderOpen className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-400 mx-auto" />
+                  <p className="text-xs text-slate-700 font-bold truncate max-w-xs mx-auto">{previewFile.name}</p>
                   <a
                     href={previewFile.url}
                     download={previewFile.name}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer"
                   >
-                    <Download className="w-4 h-4" /> Download Complete File
+                    <Download className="w-4 h-4 shrink-0" /> Download Complete File
                   </a>
                 </div>
               </div>
             )}
 
-            <div className="p-4 bg-slate-100 border-t border-slate-200 flex justify-end">
+            <div className="p-3 sm:p-4 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
               <button
                 onClick={() => setPreviewFile(null)}
-                className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer text-center"
               >
                 Close Preview
               </button>
@@ -2857,19 +2889,19 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL: QUIZ COLLATION & ANSWER MATRIX */}
       {/* ========================================================= */}
       {activeCollatingQuiz && activeCollatingQuiz.quizData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-amber-400" />
-                <div>
-                  <h3 className="text-sm font-extrabold">{activeCollatingQuiz.quizData.title} — Answers & Scores Matrix</h3>
-                  <p className="text-[11px] text-slate-300">Collated student submission analytics and item difficulty analysis</p>
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fadeIn overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] my-auto overflow-hidden flex flex-col">
+            <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 overflow-hidden pr-2">
+                <FileSpreadsheet className="w-5 h-5 text-amber-400 shrink-0" />
+                <div className="overflow-hidden">
+                  <h3 className="text-xs sm:text-sm font-extrabold truncate">{activeCollatingQuiz.quizData.title} — Answers Matrix</h3>
+                  <p className="text-[11px] text-slate-300 truncate">Collated student submission analytics</p>
                 </div>
               </div>
               <button 
                 onClick={() => setActiveCollatingQuiz(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer shrink-0"
               >
                 ✕
               </button>
@@ -2907,17 +2939,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
               {/* Student Collation Response Matrix */}
               <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Student Response Collation Grid</h4>
-                <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-2xs">
-                  <table className="w-full text-left text-xs min-w-[700px]">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Student Response Collation Grid</h4>
+                  <span className="sm:hidden text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    ← Swipe matrix →
+                  </span>
+                </div>
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto custom-scrollbar shadow-2xs touch-pan-x max-h-[450px]">
+                  <table className="w-full text-left text-xs min-w-[700px] border-separate border-spacing-0">
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-extrabold text-[10px] uppercase">
-                        <th className="p-3 border-b">Student Name</th>
-                        <th className="p-3 border-b">Submitted At</th>
-                        <th className="p-3 text-center border-b">Tally Score</th>
-                        <th className="p-3 text-center border-b">Pct</th>
+                        <th className="p-3 sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px]">Student Name</th>
+                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[120px]">Submitted At</th>
+                        <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[90px]">Tally Score</th>
+                        <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[70px]">Pct</th>
                         {activeCollatingQuiz.quizData.questions.map((q, i) => (
-                          <th key={q.id} className="p-3 text-center border-b">Q{i + 1}</th>
+                          <th key={q.id} className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[80px]">Q{i + 1}</th>
                         ))}
                       </tr>
                     </thead>
@@ -2925,16 +2962,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       {quizSubmissionsList
                         .filter(s => s.quizId === activeCollatingQuiz.quizData!.id)
                         .map(sub => (
-                          <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="p-3 font-bold text-slate-900">{sub.studentName}</td>
-                            <td className="p-3 text-slate-500 font-mono text-[11px]">{sub.submittedAt}</td>
-                            <td className="p-3 text-center font-mono font-bold text-indigo-700">{sub.score} / {sub.totalPossible}</td>
-                            <td className="p-3 text-center font-mono font-extrabold text-emerald-700">{sub.percentage}%</td>
+                          <tr key={sub.id} className="group hover:bg-slate-50 transition-colors">
+                            <td className="p-3 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] truncate max-w-[160px]">{sub.studentName}</td>
+                            <td className="p-3 text-slate-500 font-mono text-[11px] border-b border-slate-100">{sub.submittedAt}</td>
+                            <td className="p-3 text-center font-mono font-bold text-indigo-700 border-b border-slate-100">{sub.score} / {sub.totalPossible}</td>
+                            <td className="p-3 text-center font-mono font-extrabold text-emerald-700 border-b border-slate-100">{sub.percentage}%</td>
                             {activeCollatingQuiz.quizData!.questions.map(q => {
                               const resp = sub.responses.find(r => r.questionId === q.id);
                               const isCorrect = resp?.selectedOptionId === q.correctOptionId;
                               return (
-                                <td key={q.id} className="p-3 text-center">
+                                <td key={q.id} className="p-3 text-center border-b border-slate-100">
                                   {isCorrect ? (
                                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">✓ Correct</span>
                                   ) : (

@@ -1495,54 +1495,55 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
         {/* Modal display portal within student context */}
         {receiptRecord && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
-              <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-                <h3 className="font-extrabold text-sm flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-emerald-400" /> Official Tuition Statement & Receipt
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl my-auto flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
+              <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-emerald-400 shrink-0" /> Official Tuition Statement & Receipt
                 </h3>
                 <button
                   onClick={() => setReceiptRecord(null)}
-                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
+                  className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                  title="Close Modal"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div id="printable-tuition-receipt" className="p-8 space-y-6 text-slate-800">
-                <div className="flex justify-between items-start border-b border-slate-200 pb-4">
-                  <div className="flex items-center gap-3">
+              <div id="printable-tuition-receipt" className="p-4 sm:p-8 space-y-4 sm:space-y-6 text-slate-800 overflow-y-auto custom-scrollbar flex-1">
+                <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-4 gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
                     <img 
                       src={hteimLogoAsset} 
                       alt="HTEIM Logo" 
-                      className="w-14 h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
+                      className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
                     />
                     <div>
-                      <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
-                      <p className="text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>
-                      <p className="text-[10px] italic font-serif text-amber-900">"Bringing Heaven to Earth, Taking People to Heaven"</p>
+                      <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
+                      <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>
+                      <p className="text-[9px] sm:text-[10px] italic font-serif text-amber-900">"Bringing Heaven to Earth, Taking People to Heaven"</p>
                     </div>
                   </div>
-                  <div className="text-right font-mono text-xs">
+                  <div className="text-left sm:text-right font-mono text-xs">
                     <p className="font-extrabold text-emerald-700">Receipt #{receiptRecord.id.toUpperCase()}</p>
                     <p className="text-slate-400 text-[10px]">{new Date().toLocaleDateString()}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase text-slate-400">Student Name</p>
-                    <p className="font-black text-slate-900 text-base">{receiptRecord.studentName}</p>
+                    <p className="font-black text-slate-900 text-sm sm:text-base">{receiptRecord.studentName}</p>
                     <p className="font-mono text-emerald-700 text-xs font-bold">{receiptRecord.studentId}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase text-slate-400">Enrolled Program Track</p>
                     <p className="font-bold text-slate-800">{receiptRecord.moduleTrack}</p>
-                    <p className="text-slate-500 text-[11px]">{receiptRecord.email}</p>
+                    <p className="text-slate-500 text-[11px] break-all">{receiptRecord.email}</p>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3">
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
                   <div className="flex justify-between text-xs font-bold">
                     <span>Semester Academic Tuition</span>
                     <span className="font-mono">${receiptRecord.totalTuition.toLocaleString()}</span>
@@ -1551,7 +1552,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                     <span>Total Amount Paid To Date</span>
                     <span className="font-mono">${receiptRecord.amountPaid.toLocaleString()}</span>
                   </div>
-                  <div className="border-t border-slate-200 pt-2 flex justify-between text-sm font-black text-slate-900">
+                  <div className="border-t border-slate-200 pt-2 flex justify-between text-xs sm:text-sm font-black text-slate-900">
                     <span>Balance Outstanding</span>
                     <span className="font-mono text-amber-700">${(receiptRecord.totalTuition - receiptRecord.amountPaid).toLocaleString()}</span>
                   </div>
@@ -1564,16 +1565,16 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 {receiptRecord.receiptUrl && (
                   <div className="border-t border-slate-200 pt-4 space-y-2 print:hidden">
                     <p className="text-[10px] font-extrabold uppercase text-slate-400">Attached Payment Receipt</p>
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between flex-wrap gap-2">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                           <Paperclip className="w-4 h-4" />
                         </div>
-                        <span className="text-xs font-bold text-slate-700 truncate max-w-[180px]" title={receiptRecord.receiptName}>
+                        <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]" title={receiptRecord.receiptName}>
                           {receiptRecord.receiptName || 'receipt_attached.file'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 justify-end">
                         {receiptRecord.receiptUrl.startsWith('data:image/') && (
                           <button
                             type="button"
@@ -1583,7 +1584,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                                 w.document.write(`<img src="${receiptRecord.receiptUrl}" style="max-width:100%; height:auto; margin:auto; display:block;" />`);
                               }
                             }}
-                            className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[10px] rounded-lg border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
+                            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[10px] rounded-lg border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" /> View Full
                           </button>
@@ -1591,7 +1592,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                         <a
                           href={receiptRecord.receiptUrl}
                           download={receiptRecord.receiptName || 'receipt_attached'}
-                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" /> Download
                         </a>
@@ -1611,16 +1612,16 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 )}
 
                 {/* Rockproxy Technology Mark */}
-                <div className="pt-3 border-t border-slate-200 text-center text-[10px] text-slate-500 font-mono">
+                <div className="pt-3 border-t border-slate-200 text-center text-[10px] text-slate-500 font-mono flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                   <span>Software Powered by <strong className="text-slate-800">Rockproxy Technologies</strong></span>
-                  <span className="mx-1.5">•</span>
+                  <span>•</span>
                   <span>Director: Kendell Pierre</span>
-                  <span className="mx-1.5">•</span>
+                  <span>•</span>
                   <span className="text-indigo-600">rockproxytechnologies@gmail.com</span>
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1632,12 +1633,12 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                       studentRecords.length > 0 ? studentRecords : [receiptRecord]
                     );
                   }}
-                  className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5 text-indigo-600" /> Account Statement PDF
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setReceiptRecord(null)}
@@ -2011,22 +2012,23 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 2: Record Tuition Payment */}
       {showRecordPaymentModal && selectedPaymentForModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleConfirmAddPayment} className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-emerald-900 text-white flex items-center justify-between">
-              <h3 className="font-extrabold text-sm flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-400" /> Log Tuition Payment
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <form onSubmit={handleConfirmAddPayment} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md my-auto flex flex-col max-h-[90vh] overflow-hidden animate-scaleUp">
+            <div className="p-3.5 sm:p-4 bg-emerald-900 text-white flex items-center justify-between shrink-0">
+              <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" /> Log Tuition Payment
               </h3>
               <button
                 type="button"
                 onClick={() => setShowRecordPaymentModal(false)}
-                className="p-1 hover:bg-emerald-800 rounded-lg text-emerald-200 hover:text-white"
+                className="p-1.5 hover:bg-emerald-800 rounded-lg text-emerald-200 hover:text-white cursor-pointer"
+                title="Close Modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs text-slate-700">
+            <div className="p-4 sm:p-6 space-y-3.5 text-xs text-slate-700 overflow-y-auto custom-scrollbar flex-1">
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
                 <p className="text-[10px] uppercase font-extrabold text-slate-400">Student</p>
                 <p className="font-black text-slate-900 text-sm">{selectedPaymentForModal.studentName}</p>
@@ -2094,7 +2096,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   onDragLeave={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                  className={`border-2 border-dashed rounded-2xl p-3 sm:p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
                     dragActive 
                       ? 'border-emerald-500 bg-emerald-50/40' 
                       : receiptFileUrl 
@@ -2111,10 +2113,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   />
 
                   {isUploading ? (
-                    <div className="flex flex-col items-center justify-center gap-2 py-4 animate-pulse" onClick={(e) => e.stopPropagation()}>
-                      <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-                      <p className="text-xs font-bold text-slate-700">Uploading receipt to Supabase...</p>
-                      <p className="text-[10px] text-slate-400">Please do not close this window</p>
+                    <div className="flex flex-col items-center justify-center gap-2 py-3 animate-pulse" onClick={(e) => e.stopPropagation()}>
+                      <Loader2 className="w-7 h-7 text-emerald-600 animate-spin" />
+                      <p className="text-xs font-bold text-slate-700">Uploading receipt...</p>
+                      <p className="text-[10px] text-slate-400">Please wait</p>
                     </div>
                   ) : receiptFileUrl ? (
                     <div className="w-full flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -2122,17 +2124,17 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                         <img 
                           src={receiptFileUrl} 
                           alt="Receipt Preview" 
-                          className="max-h-24 rounded-lg object-contain border border-slate-200 shadow-xs" 
+                          className="max-h-20 sm:max-h-24 rounded-lg object-contain border border-slate-200 shadow-xs" 
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center">
-                          <FileText className="w-5 h-5" />
+                        <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center">
+                          <FileText className="w-4 h-4" />
                         </div>
                       )}
                       
                       <div className="text-center">
-                        <p className="text-xs font-bold text-slate-800 break-all max-w-[280px]">
+                        <p className="text-xs font-bold text-slate-800 break-all max-w-[240px]">
                           {receiptFileName || 'receipt_attached'}
                         </p>
                         <p className="text-[10px] text-emerald-600 font-extrabold flex items-center justify-center gap-1 mt-0.5">
@@ -2143,7 +2145,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                       <button
                         type="button"
                         onClick={handleRemoveReceipt}
-                        className="mt-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 hover:text-rose-900 rounded-lg font-bold text-[10px] flex items-center gap-1 transition-colors"
+                        className="mt-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 hover:text-rose-900 rounded-lg font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" /> Remove File
                       </button>
@@ -2158,7 +2160,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                           <span className="text-emerald-700 hover:underline font-black">Click to upload</span> or drag and drop
                         </p>
                         <p className="text-[9px] text-slate-400 mt-0.5">
-                          Supports PNG, JPG, PDF (Max 1.5 MB)
+                          PNG, JPG, PDF (Max 1.5 MB)
                         </p>
                       </div>
                     </>
@@ -2173,17 +2175,17 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowRecordPaymentModal(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer"
               >
                 Confirm & Log Payment
               </button>
@@ -2194,54 +2196,55 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 3: Printable Official Tuition Receipt & Statement */}
       {receiptRecord && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <h3 className="font-extrabold text-sm flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-emerald-400" /> Official Tuition Statement & Receipt
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl my-auto flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-emerald-400 shrink-0" /> Official Tuition Statement & Receipt
               </h3>
               <button
                 onClick={() => setReceiptRecord(null)}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                title="Close Modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div id="printable-tuition-receipt" className="p-8 space-y-6 text-slate-800">
-              <div className="flex justify-between items-start border-b border-slate-200 pb-4">
-                <div className="flex items-center gap-3">
+            <div id="printable-tuition-receipt" className="p-4 sm:p-8 space-y-4 sm:space-y-6 text-slate-800 overflow-y-auto custom-scrollbar flex-1">
+              <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-4 gap-3">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                   <img 
                     src={hteimLogoAsset} 
                     alt="HTEIM Logo" 
-                    className="w-14 h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
+                    className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
                   />
                   <div>
-                    <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
-                    <p className="text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>
-                    <p className="text-[10px] italic font-serif text-amber-900">"Bringing Heaven to Earth, Taking People to Heaven"</p>
+                    <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>
+                    <p className="text-[9px] sm:text-[10px] italic font-serif text-amber-900">"Bringing Heaven to Earth, Taking People to Heaven"</p>
                   </div>
                 </div>
-                <div className="text-right font-mono text-xs">
+                <div className="text-left sm:text-right font-mono text-xs">
                   <p className="font-extrabold text-emerald-700">Receipt #{receiptRecord.id.toUpperCase()}</p>
                   <p className="text-slate-400 text-[10px]">{new Date().toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
                 <div>
                   <p className="text-[10px] font-extrabold uppercase text-slate-400">Student Name</p>
-                  <p className="font-black text-slate-900 text-base">{receiptRecord.studentName}</p>
+                  <p className="font-black text-slate-900 text-sm sm:text-base">{receiptRecord.studentName}</p>
                   <p className="font-mono text-emerald-700 text-xs font-bold">{receiptRecord.studentId}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-extrabold uppercase text-slate-400">Enrolled Program Track</p>
                   <p className="font-bold text-slate-800">{receiptRecord.moduleTrack}</p>
-                  <p className="text-slate-500 text-[11px]">{receiptRecord.email}</p>
+                  <p className="text-slate-500 text-[11px] break-all">{receiptRecord.email}</p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3">
+              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
                 <div className="flex justify-between text-xs font-bold">
                   <span>Semester Academic Tuition</span>
                   <span className="font-mono">${receiptRecord.totalTuition.toLocaleString()}</span>
@@ -2250,7 +2253,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   <span>Total Amount Paid To Date</span>
                   <span className="font-mono">${receiptRecord.amountPaid.toLocaleString()}</span>
                 </div>
-                <div className="border-t border-slate-200 pt-2 flex justify-between text-sm font-black text-slate-900">
+                <div className="border-t border-slate-200 pt-2 flex justify-between text-xs sm:text-sm font-black text-slate-900">
                   <span>Balance Outstanding</span>
                   <span className="font-mono text-amber-700">${(receiptRecord.totalTuition - receiptRecord.amountPaid).toLocaleString()}</span>
                 </div>
@@ -2263,16 +2266,16 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               {receiptRecord.receiptUrl && (
                 <div className="border-t border-slate-200 pt-4 space-y-2 print:hidden">
                   <p className="text-[10px] font-extrabold uppercase text-slate-400">Attached Payment Receipt</p>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between flex-wrap gap-2">
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                         <Paperclip className="w-4 h-4" />
                       </div>
-                      <span className="text-xs font-bold text-slate-700 truncate max-w-[180px]" title={receiptRecord.receiptName}>
+                      <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]" title={receiptRecord.receiptName}>
                         {receiptRecord.receiptName || 'receipt_attached.file'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 justify-end">
                       {receiptRecord.receiptUrl.startsWith('data:image/') && (
                         <button
                           type="button"
@@ -2282,7 +2285,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                               w.document.write(`<img src="${receiptRecord.receiptUrl}" style="max-width:100%; height:auto; margin:auto; display:block;" />`);
                             }
                           }}
-                          className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[10px] rounded-lg border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[10px] rounded-lg border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" /> View Full
                         </button>
@@ -2290,7 +2293,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                       <a
                         href={receiptRecord.receiptUrl}
                         download={receiptRecord.receiptName || 'receipt_attached'}
-                        className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" /> Download
                       </a>
@@ -2310,18 +2313,18 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               )}
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setReceiptRecord(null)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" /> Print Statement
               </button>
@@ -2332,22 +2335,23 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 4: Add New Tuition Record */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleAddStudentTuition} className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <h3 className="font-extrabold text-sm flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-400" /> Log Student Tuition Agreement
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <form onSubmit={handleAddStudentTuition} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md my-auto flex flex-col max-h-[90vh] overflow-hidden animate-scaleUp">
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-400 shrink-0" /> Log Student Tuition Agreement
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddStudentModal(false)}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                title="Close Modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs text-slate-700">
+            <div className="p-4 sm:p-6 space-y-3.5 text-xs text-slate-700 overflow-y-auto custom-scrollbar flex-1">
               <div>
                 <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
                   Student Name
@@ -2379,7 +2383,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
                     Total Tuition ($)
@@ -2406,17 +2410,17 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddStudentModal(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer"
               >
                 Save Record
               </button>

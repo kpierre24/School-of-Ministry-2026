@@ -32,6 +32,9 @@ import {
   PenSquare,
   Settings,
   Clock,
+  Timer,
+  Play,
+  Pause,
   LayoutGrid,
   List,
   Bookmark,
@@ -893,6 +896,43 @@ export default function App() {
   const [liveCheckinDayId, setLiveCheckinDayId] = useState<string>('');
   const [liveCheckinSearch, setLiveCheckinSearch] = useState<string>('');
   const [selectedCheckinStudents, setSelectedCheckinStudents] = useState<string[]>([]);
+
+  // Live Check-in Session Stopwatch Timer State
+  const [checkinTimerSeconds, setCheckinTimerSeconds] = useState<number>(0);
+  const [isCheckinTimerRunning, setIsCheckinTimerRunning] = useState<boolean>(false);
+
+  // Auto-start stopwatch timer when live check-in modal opens if not running
+  useEffect(() => {
+    if (showLiveCheckinModal) {
+      setIsCheckinTimerRunning(true);
+    }
+  }, [showLiveCheckinModal]);
+
+  // Stopwatch timer ticker
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (showLiveCheckinModal && isCheckinTimerRunning) {
+      interval = setInterval(() => {
+        setCheckinTimerSeconds(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showLiveCheckinModal, isCheckinTimerRunning]);
+
+  // Format stopwatch seconds into HH:MM:SS or MM:SS
+  const formatStopwatch = (totalSecs: number) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+
+    if (hrs > 0) {
+      return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    }
+    return `${pad(mins)}:${pad(secs)}`;
+  };
 
   // Clear selections when the active check-in day or the modal visibility changes
   useEffect(() => {
@@ -5314,28 +5354,93 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl h-full max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp">
             {/* Live Checkin Header */}
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
-                  <Smartphone className="w-4 h-4" />
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 flex-shrink-0 border-b border-slate-800">
+              <div className="flex items-center justify-between sm:justify-start gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-black tracking-tight">Live Ministry Check-In</h2>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Active Session
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">Single-touch student check-in optimized for mobile & tablet</p>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-black tracking-tight">Live Ministry Check-In</h2>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Active Session
+                <button 
+                  onClick={() => setShowLiveCheckinModal(false)}
+                  className="sm:hidden w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer shrink-0"
+                  title="Close Live Check-In"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Live Session Stopwatch Timer Widget */}
+              <div className="flex items-center justify-between sm:justify-end gap-2.5 bg-slate-950/80 p-1.5 sm:p-2 px-3 rounded-xl border border-indigo-900/50 shadow-inner">
+                <div className="flex items-center gap-2">
+                  <div className={`p-1 rounded-lg ${isCheckinTimerRunning ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'}`}>
+                    <Timer className={`w-3.5 h-3.5 ${isCheckinTimerRunning ? 'animate-pulse text-amber-400' : ''}`} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-none">Session Duration</span>
+                    <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-amber-300 leading-tight">
+                      {formatStopwatch(checkinTimerSeconds)}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400">Single-touch student check-in optimized for mobile & tablet</p>
                 </div>
+
+                {/* Timer Control Buttons */}
+                <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsCheckinTimerRunning(!isCheckinTimerRunning)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                      isCheckinTimerRunning 
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40' 
+                        : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                    }`}
+                    title={isCheckinTimerRunning ? 'Pause Stopwatch' : 'Resume Stopwatch'}
+                  >
+                    {isCheckinTimerRunning ? (
+                      <>
+                        <Pause className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span>Pause</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>Start</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCheckinTimerRunning(false);
+                      setCheckinTimerSeconds(0);
+                    }}
+                    className="p-1 sm:px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 border border-slate-700"
+                    title="Reset Session Timer to 00:00"
+                  >
+                    <RotateCcw className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setShowLiveCheckinModal(false)}
+                  className="hidden sm:flex w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 items-center justify-center cursor-pointer shrink-0 ml-1"
+                  title="Close Live Check-In"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button 
-                onClick={() => setShowLiveCheckinModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             {/* Live Session Toolbar */}

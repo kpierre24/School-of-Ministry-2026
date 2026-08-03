@@ -413,63 +413,80 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
                 </div>
 
                 {/* ACTION BUTTONS (EDIT & DELETE MANDATORY) */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 flex-wrap">
-                  {/* EDIT QUIZ BUTTON */}
-                  <button
-                    onClick={() => {
-                      setQuizToEdit(quiz);
-                      setShowCreatorModal(true);
-                    }}
-                    className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95"
-                    title="Edit Quiz Questions & Details"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" /> Edit Quiz
-                  </button>
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                  {/* Row 1: Primary actions */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* EDIT QUIZ BUTTON */}
+                    <button
+                      onClick={() => {
+                        setQuizToEdit(quiz);
+                        setShowCreatorModal(true);
+                      }}
+                      className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95"
+                      title="Edit Quiz Questions & Details"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" /> <span>Edit Quiz</span>
+                    </button>
 
-                  {/* PREVIEW / TEST */}
-                  <button
-                    onClick={() => setPreviewQuiz(quiz)}
-                    className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                    title="Test Quiz View"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-indigo-500" /> Test
-                  </button>
+                    {/* PREVIEW / TEST */}
+                    <button
+                      onClick={() => setPreviewQuiz(quiz)}
+                      className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                      title="Test Quiz View"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-indigo-500" /> <span>Test View</span>
+                    </button>
+                  </div>
 
-                  {/* SHARE LINK */}
-                  <button
-                    onClick={() => handleCopyShareLink(quiz)}
-                    className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                    title="Copy Share Link"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-purple-500" />
-                  </button>
+                  {/* Row 2: Secondary / Admin utility tools */}
+                  <div className="grid grid-cols-5 gap-2">
+                    {/* SHARE LINK */}
+                    <button
+                      onClick={() => handleCopyShareLink(quiz)}
+                      className="py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                      title="Copy Share Link"
+                    >
+                      <Share2 className="w-4 h-4 text-purple-500" />
+                    </button>
 
-                  {/* DUPLICATE QUIZ */}
-                  <button
-                    onClick={() => handleDuplicate(quiz)}
-                    className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                    title="Duplicate Quiz"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-emerald-500" />
-                  </button>
+                    {/* DUPLICATE QUIZ */}
+                    <button
+                      onClick={() => handleDuplicate(quiz)}
+                      className="py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                      title="Duplicate Quiz"
+                    >
+                      <Copy className="w-4 h-4 text-emerald-500" />
+                    </button>
 
-                  {/* VIEW MATRIX */}
-                  <button
-                    onClick={() => setCollatingQuiz(quiz)}
-                    className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                    title="View Submissions Matrix"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-amber-500" />
-                  </button>
+                    {/* VIEW MATRIX */}
+                    <button
+                      onClick={() => setCollatingQuiz(quiz)}
+                      className="py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                      title="View Submissions Matrix"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+                    </button>
 
-                  {/* DELETE QUIZ BUTTON */}
-                  <button
-                    onClick={() => setQuizToDelete(quiz)}
-                    className="p-2 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1 border border-rose-200 dark:border-rose-800"
-                    title="Delete Quiz"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    {/* TAKE QUIZ */}
+                    <button
+                      onClick={() => {
+                        if (onTakeQuiz) onTakeQuiz(quiz);
+                      }}
+                      className="py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                      title="Take Quiz as Candidate"
+                    >
+                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                    </button>
+
+                    {/* DELETE QUIZ BUTTON */}
+                    <button
+                      onClick={() => setQuizToDelete(quiz)}
+                      className="py-2.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 border border-rose-100 dark:border-rose-900/60"
+                      title="Delete Quiz"
+                    >
+                      <Trash2 className="w-4 h-4 animate-pulse" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
