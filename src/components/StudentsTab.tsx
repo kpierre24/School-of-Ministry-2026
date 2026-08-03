@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -24,7 +24,15 @@ import {
   ChevronUp,
   XCircle,
   CalendarDays,
-  Check
+  Check,
+  LayoutGrid,
+  Image,
+  UserCheck,
+  CheckCheck,
+  Upload,
+  Grid,
+  Users,
+  User
 } from 'lucide-react';
 
 export type StudentSummaryData = {
@@ -57,6 +65,9 @@ interface StudentsTabProps {
   onOpenAttendanceReport?: (filter?: 'all' | 'fifty_percent' | 'at_risk') => void;
   atRiskThreshold: number;
   satisfactoryThreshold: number;
+  onToggleAttendance?: (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused') => void;
+  excusedAbsences?: Record<string, Record<string, boolean>>;
+  appRole?: string;
 }
 
 export const StudentsTab: React.FC<StudentsTabProps> = ({
@@ -72,7 +83,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   onUpdateStudentPhoto,
   onOpenAttendanceReport,
   atRiskThreshold,
-  satisfactoryThreshold
+  satisfactoryThreshold,
+  onToggleAttendance,
+  excusedAbsences = {},
+  appRole
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'perfect' | 'satisfactory' | 'at_risk' | 'fifty_percent'>('all');
@@ -83,6 +97,18 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   
   const [expandedTimelineStudent, setExpandedTimelineStudent] = useState<string | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'present' | 'absent' | 'quizzes'>('all');
+
+  // View mode state for directory view: 'cards' or 'gallery'
+  const [directoryViewMode, setDirectoryViewMode] = useState<'cards' | 'gallery'>('cards');
+  const [selectedGalleryDayId, setSelectedGalleryDayId] = useState<string>('');
+
+  useEffect(() => {
+    if (classDays && classDays.length > 0 && !selectedGalleryDayId) {
+      setSelectedGalleryDayId(classDays[classDays.length - 1].id);
+    }
+  }, [classDays, selectedGalleryDayId]);
+
+  const activeGalleryDayId = selectedGalleryDayId || (classDays && classDays.length > 0 ? classDays[classDays.length - 1].id : '');
 
   const activeFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedStudentForPhotoUpload, setSelectedStudentForPhotoUpload] = useState<string | null>(null);
@@ -206,6 +232,37 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     });
   }, [students, searchQuery, statusFilter, satisfactoryThreshold, atRiskThreshold, sortBy]);
 
+  // Gallery view stats for active session
+  const gallerySessionStats = useMemo(() => {
+    if (!activeGalleryDayId) return { present: 0, absent: 0, excused: 0 };
+    let present = 0;
+    let absent = 0;
+    let excused = 0;
+
+    filteredAndSortedStudents.forEach(s => {
+      const studentKey = (s.name || '').toLowerCase().trim();
+      const isExcused = !!(excusedAbsences?.[studentKey]?.[activeGalleryDayId]);
+      const att = s.attendanceByDay?.[activeGalleryDayId];
+
+      if (isExcused) {
+        excused++;
+      } else if (att?.present) {
+        present++;
+      } else {
+        absent++;
+      }
+    });
+
+    return { present, absent, excused };
+  }, [filteredAndSortedStudents, activeGalleryDayId, excusedAbsences]);
+
+  const handleMarkAllGalleryStudents = (status: 'present' | 'absent') => {
+    if (!onToggleAttendance || !activeGalleryDayId) return;
+    filteredAndSortedStudents.forEach(s => {
+      onToggleAttendance(s.name, activeGalleryDayId, status);
+    });
+  };
+
   // Calculate high level stats
   const totalStudents = students.length;
   const perfectStudents = students.filter(s => s.rate >= 100).length;
@@ -272,21 +329,52 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-1.5 w-full md:w-auto flex-shrink-0">
-            <span className="text-xs font-extrabold text-slate-600 flex items-center gap-1">
-              <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Sort:
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs w-full md:w-auto"
-            >
-              <option value="name_asc">Name (A &rarr; Z)</option>
-              <option value="name_desc">Name (Z &rarr; A)</option>
-              <option value="rate_desc">Attendance (High &rarr; Low)</option>
-              <option value="rate_asc">Attendance (Low &rarr; High)</option>
-              <option value="score_desc">Avg Score (High &rarr; Low)</option>
-            </select>
+          <div className="flex items-center gap-2 w-full md:w-auto flex-shrink-0 flex-wrap justify-end">
+            {/* View Mode Toggle: Cards vs Photo Gallery */}
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs shrink-0">
+              <button
+                onClick={() => setDirectoryViewMode('cards')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  directoryViewMode === 'cards'
+                    ? 'bg-white text-indigo-700 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Detailed Student Profile Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Profile Cards</span>
+              </button>
+              <button
+                onClick={() => setDirectoryViewMode('gallery')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  directoryViewMode === 'gallery'
+                    ? 'bg-indigo-600 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Visual Photo Gallery View with Thumbnail Attendance Marking"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Photo Gallery</span>
+              </button>
+            </div>
+
+            {/* Sorting Dropdown */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs font-extrabold text-slate-600 flex items-center gap-1">
+                <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Sort:
+              </span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs"
+              >
+                <option value="name_asc">Name (A &rarr; Z)</option>
+                <option value="name_desc">Name (Z &rarr; A)</option>
+                <option value="rate_desc">Attendance (High &rarr; Low)</option>
+                <option value="rate_asc">Attendance (Low &rarr; High)</option>
+                <option value="score_desc">Avg Score (High &rarr; Low)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -379,9 +467,291 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         onChange={handleFileSelected} 
       />
 
-      {/* Student Profile Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <AnimatePresence mode="popLayout">
+      {/* View Mode Content Switcher */}
+      {directoryViewMode === 'gallery' ? (
+        /* Visual Student Photo Gallery View */
+        <div className="space-y-5 animate-fadeIn">
+          {/* Gallery Header Banner: Active Class Session Selector, Stats & Batch Actions */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl border border-indigo-800/50 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
+                <Camera className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <span>Student Photo Gallery</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-mono font-bold">
+                    {filteredAndSortedStudents.length} Profiles
+                  </span>
+                </h3>
+                <p className="text-xs text-indigo-200 mt-0.5">
+                  Visual thumbnail grid for rapid identification, photo management, and manual attendance marking.
+                </p>
+              </div>
+            </div>
+
+            {/* Session Selector & Batch Actions */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+              {classDays && classDays.length > 0 && (
+                <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-slate-200 w-full sm:w-auto">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="font-bold text-slate-400 text-[11px]">Marking Session:</span>
+                  <select
+                    value={activeGalleryDayId}
+                    onChange={(e) => setSelectedGalleryDayId(e.target.value)}
+                    className="bg-transparent font-extrabold text-xs text-white focus:outline-none cursor-pointer w-full sm:w-auto pr-2"
+                  >
+                    {classDays.map(day => (
+                      <option key={day.id} value={day.id} className="bg-slate-900 text-white">
+                        {day.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {onToggleAttendance && activeGalleryDayId && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleMarkAllGalleryStudents('present')}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition-all shadow-sm cursor-pointer active:scale-95 flex items-center gap-1"
+                    title="Mark all displayed students as Present for this session"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Mark All Present</span>
+                  </button>
+                  <button
+                    onClick={() => handleMarkAllGalleryStudents('absent')}
+                    className="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer active:scale-95 flex items-center gap-1"
+                    title="Mark all displayed students as Absent for this session"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Mark All Absent</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Active Session Stats Banner */}
+          {activeGalleryDayId && (
+            <div className="flex items-center justify-between gap-3 flex-wrap bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs text-xs font-bold">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-slate-500 font-extrabold flex items-center gap-1">
+                  <CalendarDays className="w-3.5 h-3.5 text-indigo-600" /> Session Status:
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{gallerySessionStats.present} Present</span>
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-rose-100 text-rose-800 font-extrabold flex items-center gap-1">
+                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>{gallerySessionStats.absent} Absent</span>
+                </span>
+                {gallerySessionStats.excused > 0 && (
+                  <span className="px-2.5 py-1 rounded-xl bg-amber-100 text-amber-900 font-extrabold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{gallerySessionStats.excused} Excused</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 italic">
+                Use action buttons on any card to toggle student attendance in real time.
+              </p>
+            </div>
+          )}
+
+          {/* Photo Gallery Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <AnimatePresence mode="popLayout">
+              {filteredAndSortedStudents.map((s) => {
+                const studentKey = (s.name || '').toLowerCase().trim();
+                const photoUrl = studentPhotos[studentKey] || s.photoUrl;
+                const isExcused = !!(excusedAbsences?.[studentKey]?.[activeGalleryDayId]);
+                const dayRecord = s.attendanceByDay?.[activeGalleryDayId];
+                const isPresent = !isExcused && dayRecord?.present === true;
+                const isAbsent = !isExcused && (!dayRecord || dayRecord.present === false);
+
+                return (
+                  <motion.div
+                    key={s.name}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.18 }}
+                    className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group/photoCard relative"
+                  >
+                    {/* Thumbnail Container */}
+                    <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 text-white font-black text-xl flex items-center justify-center border border-slate-200 shadow-inner group/thumb">
+                      {photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt={s.name}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center p-2">
+                          <span className="text-2xl font-black uppercase tracking-wider mb-1">
+                            {s.name.charAt(0)}
+                          </span>
+                          <span className="text-[9px] text-indigo-200 font-bold opacity-80 group-hover/thumb:opacity-100 transition-opacity">
+                            Upload Photo
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Photo Upload Hover Trigger */}
+                      <div
+                        onClick={() => handleTriggerUpload(s.name)}
+                        className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] opacity-0 group-hover/thumb:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer p-2 text-center"
+                        title="Click to upload or change photo"
+                      >
+                        <Camera className="w-5 h-5 mb-1 text-amber-400" />
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-600 px-2 py-0.5 rounded-full shadow-sm">
+                          {photoUrl ? 'Change Photo' : 'Upload Photo'}
+                        </span>
+                      </div>
+
+                      {/* Top Left Overall Attendance Badge */}
+                      <div className="absolute top-2 left-2 z-10">
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-black shadow-md border ${
+                          s.rate >= satisfactoryThreshold
+                            ? 'bg-emerald-600/90 text-white border-emerald-400/50'
+                            : s.rate >= atRiskThreshold
+                            ? 'bg-amber-500/90 text-slate-950 border-amber-300/50'
+                            : 'bg-rose-600/90 text-white border-rose-400/50'
+                        }`}>
+                          {Math.round(s.rate)}%
+                        </span>
+                      </div>
+
+                      {/* Top Right Active Session Status Badge */}
+                      <div className="absolute top-2 right-2 z-10">
+                        {isExcused ? (
+                          <span className="px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-amber-500 text-slate-950 shadow-md border border-amber-300 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Excused
+                          </span>
+                        ) : isPresent ? (
+                          <span className="px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-emerald-600 text-white shadow-md border border-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Present
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-rose-600 text-white shadow-md border border-rose-400 flex items-center gap-1">
+                            <XCircle className="w-3 h-3" /> Absent
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Student Name & Info */}
+                    <div className="mt-2.5 mb-2">
+                      <h4 
+                        className="text-xs font-black text-slate-900 line-clamp-1 group-hover/photoCard:text-indigo-600 transition-colors"
+                        title={s.name}
+                      >
+                        {s.name}
+                      </h4>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 mt-0.5">
+                        <span>{s.attended} sessions attended</span>
+                        {s.avgScore !== null && (
+                          <span className="text-indigo-600 font-mono font-extrabold">{Math.round(s.avgScore)}% Score</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Manual Attendance Action Buttons */}
+                    {onToggleAttendance && activeGalleryDayId ? (
+                      <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-1">
+                        <button
+                          onClick={() => onToggleAttendance(s.name, activeGalleryDayId, 'present')}
+                          className={`py-1 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                            isPresent
+                              ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400'
+                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                          }`}
+                          title={`Mark ${s.name} as Present`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span className="hidden xs:inline">Present</span>
+                        </button>
+
+                        <button
+                          onClick={() => onToggleAttendance(s.name, activeGalleryDayId, 'absent')}
+                          className={`py-1 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                            isAbsent
+                              ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-400'
+                              : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                          }`}
+                          title={`Mark ${s.name} as Absent`}
+                        >
+                          <XCircle className="w-3 h-3" />
+                          <span className="hidden xs:inline">Absent</span>
+                        </button>
+
+                        <button
+                          onClick={() => onToggleAttendance(s.name, activeGalleryDayId, 'excused')}
+                          className={`py-1 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                            isExcused
+                              ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300'
+                              : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                          }`}
+                          title={`Mark ${s.name} as Excused`}
+                        >
+                          <AlertCircle className="w-3 h-3" />
+                          <span className="hidden xs:inline">Excused</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 text-center font-bold">
+                        Read Only
+                      </div>
+                    )}
+
+                    {/* Quick Document Actions Bar */}
+                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                      <button
+                        onClick={() => handleTriggerUpload(s.name)}
+                        className="hover:text-indigo-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Upload/Update Photo"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-indigo-500" />
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onSelectStudentForTranscript(s)}
+                          className="p-1 text-slate-600 hover:text-indigo-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Transcript"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onSelectStudentForCertificate(s)}
+                          className="p-1 text-slate-600 hover:text-amber-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Certificate"
+                        >
+                          <Award className="w-3.5 h-3.5 text-amber-500" />
+                        </button>
+                        <button
+                          onClick={() => onSelectStudentForEmail(s)}
+                          className="p-1 text-slate-600 hover:text-rose-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Email Notice"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        </div>
+      ) : (
+        /* Detailed Student Profile Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <AnimatePresence mode="popLayout">
           {filteredAndSortedStudents.map((s) => {
             const studentKey = (s.name || '').toLowerCase().trim();
             const photoUrl = studentPhotos[studentKey] || s.photoUrl;
@@ -789,6 +1159,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           })}
         </AnimatePresence>
       </div>
+      )}
 
       {filteredAndSortedStudents.length === 0 && (
         <motion.div 

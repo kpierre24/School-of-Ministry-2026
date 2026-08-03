@@ -37,9 +37,24 @@
 }
 
 @layer utilities {
+  /* Mobile touch & accessibility enhancements */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  }
+
+  .pb-mobile-nav {
+    padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom, 1rem)));
+  }
+
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+    -webkit-overflow-scrolling: touch;
   }
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
@@ -332,5 +347,22 @@
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(148, 163, 184, 0.8) !important;
+}
+
+/* Mobile tap & input scaling overrides */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 

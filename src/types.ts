@@ -107,6 +107,63 @@ export type Course = {
   topics: string[];
   enrolledCount: number;
   mediaResources?: MediaResource[];
+  expiryDate?: string; // YYYY-MM-DD
+};
+
+export type QuizQuestionOption = {
+  id: string;
+  text: string;
+};
+
+export type QuizQuestion = {
+  id: string;
+  questionText: string;
+  type?: 'multiple_choice' | 'true_false';
+  options: QuizQuestionOption[];
+  correctOptionId: string;
+  weight: number; // points for this question (e.g. 5, 10, 20)
+  explanation?: string;
+};
+
+export type QuizAssignment = {
+  id: string;
+  title: string;
+  courseCode?: string;
+  moduleTrack?: string;
+  description?: string;
+  classDayId?: string;
+  questions: QuizQuestion[];
+  totalPoints: number; // sum of weights
+  dueDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+  isPublished?: boolean;
+  isTemplate?: boolean;
+  shareCode: string; // e.g. "qz_9f8a2" for shareable links
+  timeLimitMinutes?: number;
+};
+
+export type QuizSubmissionResponse = {
+  questionId: string;
+  selectedOptionId: string;
+  isCorrect: boolean;
+  pointsEarned: number;
+};
+
+export type QuizSubmission = {
+  id: string;
+  quizId: string;
+  quizTitle?: string;
+  studentName: string;
+  studentEmail?: string;
+  submittedAt: string;
+  responses: QuizSubmissionResponse[];
+  totalScore?: number;
+  maxPoints?: number;
+  scorePercentage?: number;
+  score: number;
+  totalPossible: number;
+  percentage: number;
 };
 
 export type ExamItem = {
@@ -165,6 +222,8 @@ export type CustomAssignment = {
   createdAt: string;
   teacherAttachmentUrl?: string;
   teacherAttachmentName?: string;
+  type?: 'document' | 'quiz';
+  quizData?: QuizAssignment;
 };
 
 export type AssignmentSubmission = {
@@ -181,6 +240,9 @@ export type AssignmentSubmission = {
   studentNotes?: string;
   studentTypedResponse?: string;
   
+  // Quiz auto-graded responses
+  quizSubmissionData?: QuizSubmission;
+
   // Teacher's correction, evaluation, and corrected document upload
   teacherCorrectedFileUrl?: string;
   teacherCorrectedFileName?: string;
@@ -203,5 +265,21 @@ export type AppNotification = {
   read: boolean;
   priority?: 'high' | 'normal' | 'low';
   actionTab?: TabType;
+};
+
+export type ClassDay = {
+  id: string;
+  name: string;
+};
+
+export type StudentSummary = {
+  name: string;
+  attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }>;
+  rate: number;
+  attended: number;
+  avgScore: number | null;
+  note?: string;
+  photoUrl?: string;
+  levelId: string;
 };
 

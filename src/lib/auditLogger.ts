@@ -4,6 +4,8 @@ export type AuditLogCategory =
   | 'Payment Entry'
   | 'Student Record'
   | 'Assignment Action'
+  | 'Quiz Management'
+  | 'Quiz Completed'
   | 'System Settings'
   | 'Backup & Data';
 

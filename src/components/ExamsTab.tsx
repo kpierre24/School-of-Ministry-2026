@@ -37,13 +37,17 @@ import {
   Image,
   Share2,
   Loader2,
-  Bookmark
+  Bookmark,
+  ShieldCheck
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
-import { CustomAssignment, AssignmentSubmission, AppNotification } from '../types';
+import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment, QuizSubmission } from '../types';
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
+import { QuizCreatorModal } from './QuizCreatorModal';
+import { QuizTakerView } from './QuizTakerView';
+import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
 
 type StudentScoreRecord = {
   name: string;
@@ -83,6 +87,86 @@ interface ExamsTabProps {
 }
 
 export const INITIAL_ASSIGNMENTS: CustomAssignment[] = [
+  {
+    id: 'ASG-Q100',
+    title: 'Daily Class Quiz: Hermeneutics & Covenant Theology',
+    courseCode: 'MIN-101',
+    moduleTrack: 'Biblical Foundations & Hermeneutics',
+    description: 'Class day interactive quiz. Choose the correct answer from options available. Questions are weighted and scores tallied upon submission.',
+    dueDate: '2026-08-15',
+    maxPoints: 100,
+    createdAt: '2026-08-01',
+    type: 'quiz',
+    quizData: {
+      id: 'quiz_100',
+      title: 'Daily Class Quiz: Hermeneutics & Covenant Theology',
+      courseCode: 'MIN-101',
+      moduleTrack: 'Biblical Foundations & Hermeneutics',
+      description: 'Class day interactive quiz. Choose the correct answer from options available. Questions are weighted and scores tallied.',
+      shareCode: 'qz_herm101',
+      totalPoints: 100,
+      createdAt: '2026-08-01',
+      dueDate: '2026-08-15',
+      questions: [
+        {
+          id: 'q1',
+          questionText: 'What is the literal meaning of the Greek word "Hermeneuo" in biblical exegesis?',
+          type: 'multiple_choice',
+          options: [
+            { id: 'opt_1a', text: 'To translate, interpret, or explain scripture context' },
+            { id: 'opt_1b', text: 'To memorize chapter numbers strictly' },
+            { id: 'opt_1c', text: 'To write poetic music' },
+            { id: 'opt_1d', text: 'To debate secular historical timelines' }
+          ],
+          correctOptionId: 'opt_1a',
+          weight: 25,
+          explanation: '"Hermeneuo" means to interpret or translate.'
+        },
+        {
+          id: 'q2',
+          questionText: 'Which chapter in the Book of Romans contains the primary treatise on life in the Spirit and sonship?',
+          type: 'multiple_choice',
+          options: [
+            { id: 'opt_2a', text: 'Romans 1' },
+            { id: 'opt_2b', text: 'Romans 8' },
+            { id: 'opt_2c', text: 'Romans 14' },
+            { id: 'opt_2d', text: 'Romans 16' }
+          ],
+          correctOptionId: 'opt_2b',
+          weight: 25,
+          explanation: 'Romans 8 focuses on divine adoption and freedom in the Spirit.'
+        },
+        {
+          id: 'q3',
+          questionText: 'What is the primary biblical reference for the Great Commission in the Gospel of Matthew?',
+          type: 'multiple_choice',
+          options: [
+            { id: 'opt_3a', text: 'Matthew 28:18-20' },
+            { id: 'opt_3b', text: 'Matthew 5:1-3' },
+            { id: 'opt_3c', text: 'Matthew 12:15' },
+            { id: 'opt_3d', text: 'Matthew 18:20' }
+          ],
+          correctOptionId: 'opt_3a',
+          weight: 25,
+          explanation: 'Matthew 28:18-20 commands believers to make disciples of all nations.'
+        },
+        {
+          id: 'q4',
+          questionText: 'According to Ephesians 4:11-12, why are five-fold ministry leadership gifts given to the church?',
+          type: 'multiple_choice',
+          options: [
+            { id: 'opt_4a', text: 'To equip the saints for ministry work and build up the Body of Christ' },
+            { id: 'opt_4b', text: 'To perform all church duties exclusively without member participation' },
+            { id: 'opt_4c', text: 'To collect administrative record fees' },
+            { id: 'opt_4d', text: 'To replace congregational fellowship' }
+          ],
+          correctOptionId: 'opt_4a',
+          weight: 25,
+          explanation: 'Ephesians 4:12 states leaders equip believers to do the work of ministry.'
+        }
+      ]
+    }
+  },
   {
     id: 'ASG-100',
     title: 'Biblical Worldview & Apologetics Reflection Paper',
@@ -227,10 +311,188 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const isStudent = userRole === 'student';
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
 
-  // Sub tab view: 'assignments' (default) vs 'quizzes'
-  const [subTab, setSubTab] = useState<'assignments' | 'quizzes'>('assignments');
+  // Sub tab view: 'assignments' (default) vs 'quizzes' vs 'admin_dashboard'
+  const [subTab, setSubTab] = useState<'assignments' | 'quizzes' | 'admin_dashboard'>('assignments');
 
-  // Filters & Selected Assignment
+  // Quiz Creator & Quiz Taker State
+  const [showQuizCreatorModal, setShowQuizCreatorModal] = useState(false);
+  const [editingQuizData, setEditingQuizData] = useState<QuizAssignment | null>(null);
+  const [activeQuizTaker, setActiveQuizTaker] = useState<QuizAssignment | null>(null);
+  const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<QuizAssignment | null>(null);
+  const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
+
+  // Stored Quiz Submissions List
+  const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>([
+    {
+      id: 'qsub_1',
+      quizId: 'quiz_100',
+      studentName: 'A. Burke',
+      submittedAt: '2026-08-01 10:15',
+      score: 100,
+      totalPossible: 100,
+      percentage: 100,
+      responses: [
+        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25 },
+        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25 },
+        { questionId: 'q3', selectedOptionId: 'opt_3a', pointsEarned: 25 },
+        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25 }
+      ]
+    },
+    {
+      id: 'qsub_2',
+      quizId: 'quiz_100',
+      studentName: 'D. Miller',
+      submittedAt: '2026-08-01 11:30',
+      score: 75,
+      totalPossible: 100,
+      percentage: 75,
+      responses: [
+        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25 },
+        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25 },
+        { questionId: 'q3', selectedOptionId: 'opt_3b', pointsEarned: 0 },
+        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25 }
+      ]
+    }
+  ]);
+
+  // Quiz Management Handlers
+  const handleSaveQuiz = (quizData: QuizAssignment) => {
+    const existingIndex = customAssignments.findIndex(
+      a => a.id === quizData.id || a.quizData?.id === quizData.id
+    );
+
+    const asgObj: CustomAssignment = {
+      id: quizData.id,
+      title: quizData.title,
+      courseCode: quizData.courseCode,
+      moduleTrack: quizData.moduleTrack,
+      description: quizData.description || 'Interactive Google Forms style class day quiz.',
+      dueDate: quizData.dueDate || '2026-08-30',
+      maxPoints: quizData.totalPoints || 100,
+      createdAt: quizData.createdAt,
+      type: 'quiz',
+      quizData
+    };
+
+    if (existingIndex >= 0) {
+      const updated = [...customAssignments];
+      updated[existingIndex] = asgObj;
+      setCustomAssignments(updated);
+    } else {
+      setCustomAssignments([asgObj, ...customAssignments]);
+    }
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
+      role: userRole === 'admin' ? 'admin' : 'teacher',
+      actionCategory: 'Quiz Management',
+      actionTitle: existingIndex >= 0 ? 'Quiz Assignment Updated' : 'Class Day Quiz Created',
+      details: `Saved weighted quiz "${quizData.title}" (${quizData.questions.length} questions, ${quizData.totalPoints} points max). Share Code: ${quizData.shareCode}`
+    });
+
+    setShowQuizCreatorModal(false);
+    setEditingQuizData(null);
+  };
+
+  const handleDuplicateQuiz = (asg: CustomAssignment) => {
+    if (!asg.quizData) return;
+
+    const newShareCode = `qz_${Math.random().toString(36).substring(2, 8)}`;
+    const newQuizId = `quiz_${Date.now()}`;
+    const duplicatedQuiz: QuizAssignment = {
+      ...asg.quizData,
+      id: newQuizId,
+      title: `${asg.quizData.title} (Copy)`,
+      shareCode: newShareCode,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    const newAsg: CustomAssignment = {
+      ...asg,
+      id: `ASG-${newQuizId}`,
+      title: duplicatedQuiz.title,
+      quizData: duplicatedQuiz
+    };
+
+    setCustomAssignments([newAsg, ...customAssignments]);
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
+      role: userRole === 'admin' ? 'admin' : 'teacher',
+      actionCategory: 'Quiz Management',
+      actionTitle: 'Class Day Quiz Duplicated',
+      details: `Duplicated "${asg.title}" to create "${newAsg.title}". New Share Code: ${newShareCode}`
+    });
+  };
+
+  const handleCopyQuizLink = (quiz: QuizAssignment) => {
+    const link = `${window.location.origin}/#quiz/${quiz.shareCode || quiz.id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopiedLinkToast(`Quiz link copied! (${link})`);
+      setTimeout(() => setCopiedLinkToast(null), 3000);
+    }).catch(() => {
+      setCopiedLinkToast(`Share Code: ${quiz.shareCode}`);
+      setTimeout(() => setCopiedLinkToast(null), 3000);
+    });
+  };
+
+  const handleQuizSubmissionComplete = (submission: QuizSubmission) => {
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+
+    // Save into quizSubmissionsList
+    setQuizSubmissionsList(prev => [submission, ...prev]);
+
+    // Match quiz assignment maxPoints
+    const matchingAsg = customAssignments.find(a => a.quizData?.id === submission.quizId || a.id === submission.quizId);
+    const maxPoints = matchingAsg ? matchingAsg.maxPoints : submission.totalPossible;
+
+    // Convert into standard AssignmentSubmission so it updates student score matrix
+    const newAssignmentSub: AssignmentSubmission = {
+      id: `SUB-${submission.id}`,
+      assignmentId: matchingAsg?.id || submission.quizId,
+      studentName: submission.studentName,
+      submittedAt: submission.submittedAt || nowStr,
+      score: submission.score,
+      studentFileName: `Quiz_AutoGraded_${submission.quizId}.json`,
+      studentNotes: `Completed Google Forms Class Day Quiz (${submission.percentage}% score). Correct tally: ${submission.score}/${submission.totalPossible} pts.`,
+      status: 'Graded',
+      teacherFeedback: `Automated quiz tally: ${submission.score}/${submission.totalPossible} points (${submission.percentage}%). Completed on ${submission.submittedAt}.`,
+      updatedAt: nowStr
+    };
+
+    setSubmissions(prev => {
+      const filtered = prev.filter(s => !(s.assignmentId === newAssignmentSub.assignmentId && s.studentName.toLowerCase().trim() === submission.studentName.toLowerCase().trim()));
+      return [newAssignmentSub, ...filtered];
+    });
+
+    logActivity({
+      actor: submission.studentName,
+      role: 'student',
+      actionCategory: 'Quiz Completed',
+      actionTitle: 'Class Day Quiz Submitted',
+      details: `Submitted quiz answers. Score: ${submission.score}/${submission.totalPossible} (${submission.percentage}%).`,
+      targetStudent: submission.studentName
+    });
+
+    // Notify teacher/admin
+    if (onNotificationCreated) {
+      onNotificationCreated({
+        id: `NOTIF-QUIZ-${Date.now()}`,
+        title: `📝 Quiz Submitted: ${submission.studentName}`,
+        message: `${submission.studentName} completed class day quiz with score ${submission.score}/${submission.totalPossible} (${submission.percentage}%).`,
+        type: 'submission',
+        targetRole: 'admin',
+        studentName: submission.studentName,
+        assignmentId: matchingAsg?.id || submission.quizId,
+        createdAt: nowStr,
+        read: false,
+        priority: 'normal',
+        actionTab: 'exams'
+      });
+    }
+
+    setActiveQuizTaker(null);
+  };
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState<'all' | 'perfect' | 'passed' | 'failed'>('all');
@@ -796,13 +1058,27 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {isTeacherOrAdmin && subTab === 'assignments' && (
-              <button
-                onClick={handleOpenCreateAssignment}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" /> Add New Assignment
-              </button>
+            {isTeacherOrAdmin && (
+              <>
+                <button
+                  onClick={() => {
+                    setEditingQuizData(null);
+                    setShowQuizCreatorModal(true);
+                  }}
+                  className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-slate-900" /> Create Class Day Quiz
+                </button>
+
+                {subTab === 'assignments' && (
+                  <button
+                    onClick={handleOpenCreateAssignment}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Add New Assignment
+                  </button>
+                )}
+              </>
             )}
 
             {isStudent && subTab === 'assignments' && (
@@ -854,6 +1130,18 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Quiz Score Matrix ({allQuizSheets.length})</span>
+          </button>
+
+          <button
+            onClick={() => setSubTab('admin_dashboard')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+              subTab === 'admin_dashboard'
+                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                : 'text-white/80 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Admin Quizzes Dashboard</span>
           </button>
         </div>
       </div>
@@ -1421,9 +1709,167 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         </div>
       )}
 
-      {/* SUB TAB 2: GOOGLE FORMS & QUIZ SCORE MATRIX (Existing Tab content) */}
+      {/* SUB TAB 2: GOOGLE FORMS & QUIZ SCORE MATRIX */}
       {subTab === 'quizzes' && (
         <div className="space-y-6">
+
+          {/* Toast Notification Banner */}
+          {copiedLinkToast && (
+            <div className="p-3 bg-amber-400 text-slate-950 font-bold text-xs rounded-2xl shadow-lg border border-amber-500 flex items-center justify-between animate-fadeIn">
+              <span className="flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-slate-900" />
+                <span>{copiedLinkToast}</span>
+              </span>
+              <button onClick={() => setCopiedLinkToast(null)} className="text-slate-900 font-black hover:opacity-80">✕</button>
+            </div>
+          )}
+
+          {/* CLASS DAY INTERACTIVE QUIZ MANAGEMENT DECK */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black uppercase tracking-wider rounded-md">
+                    Google Forms Format
+                  </span>
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    Class Day Quizzes & Student Assignments
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Students choose correct answers from weighted options. Link-accessible quizzes tally automatically and aggregate directly into the Quiz Scores Matrix below.
+                </p>
+              </div>
+
+              {isTeacherOrAdmin && (
+                <button
+                  onClick={() => {
+                    setEditingQuizData(null);
+                    setShowQuizCreatorModal(true);
+                  }}
+                  className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer whitespace-nowrap self-start sm:self-center"
+                >
+                  <Plus className="w-4 h-4" /> Create New Class Quiz
+                </button>
+              )}
+            </div>
+
+            {/* Quiz Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {customAssignments
+                .filter(a => a.type === 'quiz' || a.quizData)
+                .map(asg => {
+                  const quiz = asg.quizData || {
+                    id: asg.id,
+                    title: asg.title,
+                    courseCode: asg.courseCode,
+                    moduleTrack: asg.moduleTrack,
+                    description: asg.description,
+                    totalPoints: asg.maxPoints,
+                    createdAt: asg.createdAt || '2026-08-01',
+                    dueDate: asg.dueDate,
+                    shareCode: `qz_${asg.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
+                    questions: []
+                  };
+
+                  const submissionCount = quizSubmissionsList.filter(s => s.quizId === quiz.id).length;
+
+                  return (
+                    <div 
+                      key={asg.id} 
+                      className="bg-slate-50/80 border border-slate-200 hover:border-indigo-300 rounded-2xl p-5 shadow-2xs space-y-3.5 transition-all flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-900 text-[10px] font-mono font-black rounded-md">
+                            {quiz.courseCode || 'MIN-101'}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 font-mono">
+                            Code: <span className="text-indigo-600 font-extrabold">{quiz.shareCode}</span>
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                          {quiz.title}
+                        </h4>
+
+                        <p className="text-xs text-slate-600 line-clamp-2">
+                          {quiz.description}
+                        </p>
+
+                        <div className="flex items-center justify-between text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200">
+                          <span className="font-bold flex items-center gap-1">
+                            <FileText className="w-3.5 h-3.5 text-indigo-600" /> {quiz.questions.length} Questions
+                          </span>
+                          <span className="font-bold flex items-center gap-1 text-amber-700">
+                            <Award className="w-3.5 h-3.5 text-amber-600" /> {quiz.totalPoints} Total Points
+                          </span>
+                          <span className="font-bold text-slate-700">
+                            {submissionCount} Submissions
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="pt-2 border-t border-slate-200/80 flex items-center gap-1.5 flex-wrap">
+                        {/* Take / Practice Quiz */}
+                        <button
+                          onClick={() => setActiveQuizTaker(quiz)}
+                          className="flex-1 py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" /> {isStudent ? 'Take Quiz' : 'Test Quiz View'}
+                        </button>
+
+                        {/* Copy Link */}
+                        <button
+                          onClick={() => handleCopyQuizLink(quiz)}
+                          className="p-1.5 bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                          title="Copy Share Link for Students"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-indigo-600" />
+                        </button>
+
+                        {/* Copy / Duplicate Quiz for Future Class Days */}
+                        {isTeacherOrAdmin && (
+                          <button
+                            onClick={() => handleDuplicateQuiz(asg)}
+                            className="p-1.5 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                            title="Duplicate Quiz for Future Class Day"
+                          >
+                            <Bookmark className="w-3.5 h-3.5 text-emerald-600" />
+                          </button>
+                        )}
+
+                        {/* Edit Quiz */}
+                        {isTeacherOrAdmin && (
+                          <button
+                            onClick={() => {
+                              setEditingQuizData(quiz);
+                              setShowQuizCreatorModal(true);
+                            }}
+                            className="p-1.5 bg-white border border-slate-200 hover:border-amber-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                            title="Edit Questions & Options"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                          </button>
+                        )}
+
+                        {/* Collation Matrix View */}
+                        {isTeacherOrAdmin && (
+                          <button
+                            onClick={() => setActiveCollatingQuiz(asg)}
+                            className="py-1.5 px-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                            title="View Collated Answers & Item Analysis"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-amber-400" /> Matrix
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
           
           {/* Google Sheets Connection / Sync Card */}
           {isTeacherOrAdmin && (
@@ -1708,6 +2154,32 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         </div>
       )}
 
+      {/* SUB TAB 3: ADMIN QUIZZES DASHBOARD */}
+      {subTab === 'admin_dashboard' && (
+        <AdminQuizzesDashboard
+          userRole={userRole}
+          quizzes={customAssignments.filter(a => a.type === 'quiz' || a.quizData).map(a => a.quizData || {
+            id: a.id,
+            title: a.title,
+            courseCode: a.courseCode,
+            moduleTrack: a.moduleTrack,
+            description: a.description,
+            totalPoints: a.maxPoints,
+            createdAt: a.createdAt || '2026-08-01',
+            dueDate: a.dueDate,
+            shareCode: `qz_${a.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
+            questions: []
+          })}
+          submissions={quizSubmissionsList}
+          onSaveQuiz={handleSaveQuiz}
+          onDeleteQuiz={(quizId) => {
+            setCustomAssignments(prev => prev.filter(a => a.id !== quizId && a.quizData?.id !== quizId));
+          }}
+          onDuplicateQuiz={handleDuplicateQuiz}
+          onTakeQuiz={(quiz) => setActiveQuizTaker(quiz)}
+        />
+      )}
+
       {/* ========================================================= */}
       {/* MODAL 1: ADD/EDIT ASSIGNMENT (TEACHER / ADMIN) */}
       {/* ========================================================= */}
@@ -1800,14 +2272,21 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   <Paperclip className="w-3.5 h-3.5 text-indigo-600" /> Optional Reference Worksheet / Rubric File
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    onChange={(e) => handleFileUpload(e, (url, name) => {
-                      setNewAsgAttachmentUrl(url);
-                      setNewAsgAttachmentName(name);
-                    })}
-                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                  />
+                  {isUploadingFile ? (
+                    <div className="flex items-center gap-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse text-[11px] font-bold">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading worksheet reference...</span>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      onChange={(e) => handleFileUpload(e, (url, name) => {
+                        setNewAsgAttachmentUrl(url);
+                        setNewAsgAttachmentName(name);
+                      })}
+                      className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                    />
+                  )}
                 </div>
                 {newAsgAttachmentName && (
                   <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
@@ -1882,23 +2361,30 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <label className="font-bold text-slate-700 flex items-center gap-1">
                   <FileUp className="w-4 h-4 text-indigo-600" /> Upload Documents or Image Submissions (Multiple Allowed)
                 </label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,image/*"
-                  onChange={(e) => handleFileUpload(e, (url, name, type) => {
-                    if (url && name) {
-                      setUploadFilesList(prev => {
-                        if (prev.some(f => f.name === name)) return prev;
-                        return [...prev, { name, url, type }];
-                      });
-                      setUploadFileName(name);
-                      setUploadFileUrl(url);
-                      setUploadFileType(type || '');
-                    }
-                    e.target.value = ''; // Reset input to allow re-uploading or uploading another file
-                  })}
-                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
-                />
+                {isUploadingFile ? (
+                  <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse font-bold text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                    <span>Uploading assignment document to Supabase Storage...</span>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,image/*"
+                    onChange={(e) => handleFileUpload(e, (url, name, type) => {
+                      if (url && name) {
+                        setUploadFilesList(prev => {
+                          if (prev.some(f => f.name === name)) return prev;
+                          return [...prev, { name, url, type }];
+                        });
+                        setUploadFileName(name);
+                        setUploadFileUrl(url);
+                        setUploadFileType(type || '');
+                      }
+                      e.target.value = ''; // Reset input to allow re-uploading or uploading another file
+                    })}
+                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
+                  />
+                )}
                 
                 {/* List of uploaded files with preview and delete capability */}
                 {uploadFilesList.length > 0 ? (
@@ -2334,6 +2820,143 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
               >
                 Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: GOOGLE FORMS QUIZ CREATOR */}
+      {/* ========================================================= */}
+      {showQuizCreatorModal && (
+        <QuizCreatorModal
+          isOpen={showQuizCreatorModal}
+          onClose={() => {
+            setShowQuizCreatorModal(false);
+            setEditingQuizData(null);
+          }}
+          onSaveQuiz={handleSaveQuiz}
+          initialData={editingQuizData}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: QUIZ TAKER VIEW (STUDENT / PRACTICE) */}
+      {/* ========================================================= */}
+      {activeQuizTaker && (
+        <QuizTakerView
+          quiz={activeQuizTaker}
+          studentName={activeStudentName}
+          onClose={() => setActiveQuizTaker(null)}
+          onComplete={handleQuizSubmissionComplete}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: QUIZ COLLATION & ANSWER MATRIX */}
+      {/* ========================================================= */}
+      {activeCollatingQuiz && activeCollatingQuiz.quizData && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="text-sm font-extrabold">{activeCollatingQuiz.quizData.title} — Answers & Scores Matrix</h3>
+                  <p className="text-[11px] text-slate-300">Collated student submission analytics and item difficulty analysis</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveCollatingQuiz(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+              {/* Question Item Analysis Summary */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Question Item Analytics ({activeCollatingQuiz.quizData.questions.length} Questions)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeCollatingQuiz.quizData.questions.map((q, idx) => {
+                    const quizSubs = quizSubmissionsList.filter(s => s.quizId === activeCollatingQuiz.quizData!.id);
+                    const correctCount = quizSubs.filter(s => {
+                      const resp = s.responses.find(r => r.questionId === q.id);
+                      return resp && resp.selectedOptionId === q.correctOptionId;
+                    }).length;
+                    const correctPct = quizSubs.length > 0 ? Math.round((correctCount / quizSubs.length) * 100) : 0;
+
+                    return (
+                      <div key={q.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-extrabold text-slate-900">Q{idx + 1}. Weight: {q.weight} pts</span>
+                          <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-extrabold ${
+                            correctPct >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {correctPct}% Correct ({correctCount}/{quizSubs.length})
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 font-medium leading-snug">{q.questionText}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Student Collation Response Matrix */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Student Response Collation Grid</h4>
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-2xs">
+                  <table className="w-full text-left text-xs min-w-[700px]">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700 font-extrabold text-[10px] uppercase">
+                        <th className="p-3 border-b">Student Name</th>
+                        <th className="p-3 border-b">Submitted At</th>
+                        <th className="p-3 text-center border-b">Tally Score</th>
+                        <th className="p-3 text-center border-b">Pct</th>
+                        {activeCollatingQuiz.quizData.questions.map((q, i) => (
+                          <th key={q.id} className="p-3 text-center border-b">Q{i + 1}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quizSubmissionsList
+                        .filter(s => s.quizId === activeCollatingQuiz.quizData!.id)
+                        .map(sub => (
+                          <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="p-3 font-bold text-slate-900">{sub.studentName}</td>
+                            <td className="p-3 text-slate-500 font-mono text-[11px]">{sub.submittedAt}</td>
+                            <td className="p-3 text-center font-mono font-bold text-indigo-700">{sub.score} / {sub.totalPossible}</td>
+                            <td className="p-3 text-center font-mono font-extrabold text-emerald-700">{sub.percentage}%</td>
+                            {activeCollatingQuiz.quizData!.questions.map(q => {
+                              const resp = sub.responses.find(r => r.questionId === q.id);
+                              const isCorrect = resp?.selectedOptionId === q.correctOptionId;
+                              return (
+                                <td key={q.id} className="p-3 text-center">
+                                  {isCorrect ? (
+                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">✓ Correct</span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">✕ Incorrect</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button 
+                onClick={() => setActiveCollatingQuiz(null)}
+                className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close Matrix
               </button>
             </div>
           </div>

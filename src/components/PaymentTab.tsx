@@ -33,7 +33,8 @@ import {
   MessageSquare,
   Phone,
   Mail,
-  Share2
+  Share2,
+  Loader2
 } from 'lucide-react';
 import { PaymentRecord } from '../types';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
@@ -939,6 +940,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const [receiptFileName, setReceiptFileName] = useState<string>('');
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Receipt Modal State
@@ -1106,11 +1108,13 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       return;
     }
 
+    setIsUploading(true);
     try {
       const publicUrl = await uploadToSupabaseStorage('receipts', file.name, file);
       if (publicUrl) {
         setReceiptFileUrl(publicUrl);
         setReceiptFileName(file.name);
+        setIsUploading(false);
       } else {
         // Fallback to Data URL
         const reader = new FileReader();
@@ -1119,6 +1123,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             setReceiptFileUrl(reader.result);
             setReceiptFileName(file.name);
           }
+          setIsUploading(false);
+        };
+        reader.onerror = () => {
+          setUploadError('Failed to read the file.');
+          setIsUploading(false);
         };
         reader.readAsDataURL(file);
       }
@@ -1131,6 +1140,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           setReceiptFileUrl(reader.result);
           setReceiptFileName(file.name);
         }
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setUploadError('Failed to read the file.');
+        setIsUploading(false);
       };
       reader.readAsDataURL(file);
     }
@@ -2096,7 +2110,13 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                     onChange={handleFileChange}
                   />
 
-                  {receiptFileUrl ? (
+                  {isUploading ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-4 animate-pulse" onClick={(e) => e.stopPropagation()}>
+                      <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                      <p className="text-xs font-bold text-slate-700">Uploading receipt to Supabase...</p>
+                      <p className="text-[10px] text-slate-400">Please do not close this window</p>
+                    </div>
+                  ) : receiptFileUrl ? (
                     <div className="w-full flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       {receiptFileUrl.startsWith('data:image/') ? (
                         <img 

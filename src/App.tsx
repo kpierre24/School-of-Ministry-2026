@@ -69,7 +69,9 @@ import {
   CloudOff,
   UploadCloud,
   Edit3,
-  Plus
+  Plus,
+  Menu,
+  LogOut
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
 import { uploadToSupabaseStorage } from './lib/supabaseClient';
@@ -89,7 +91,7 @@ import {
 import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId } from './lib/sheets';
 import { getDemoAttendance } from './data';
-import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord } from './types';
+import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary } from './types';
 import { AppUser, generateStudentUsername } from './lib/userAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
@@ -106,15 +108,11 @@ import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { HomeTab } from './components/HomeTab';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
 import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
+import { SwipeableAttendanceCard } from './components/SwipeableAttendanceCard';
 import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
-
-type ClassDay = {
-  id: string;
-  name: string;
-};
 
 const EXCLUDED_STUDENTS = [
   'gale agrant',
@@ -134,17 +132,6 @@ type AttendanceRecord = {
   score: string;
   classDay: string;
   present: boolean;
-};
-
-type StudentSummary = {
-  name: string;
-  attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }>;
-  rate: number;
-  attended: number;
-  avgScore: number | null;
-  note?: string;
-  photoUrl?: string;
-  levelId: string;
 };
 
 const parseScorePercentage = (scoreStr?: any): number | null => {
@@ -205,6 +192,26 @@ export default function App() {
   const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
+  const [isNavHovered, setIsNavHovered] = useState<boolean>(false);
+  const navHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleNavMouseEnter = () => {
+    if (navHoverTimeoutRef.current) {
+      clearTimeout(navHoverTimeoutRef.current);
+      navHoverTimeoutRef.current = null;
+    }
+    setIsNavHovered(true);
+  };
+
+  const handleNavMouseLeave = () => {
+    if (navHoverTimeoutRef.current) {
+      clearTimeout(navHoverTimeoutRef.current);
+    }
+    navHoverTimeoutRef.current = setTimeout(() => {
+      setIsNavHovered(false);
+    }, 500); // 500ms delay before hiding menu
+  };
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -388,7 +395,7 @@ export default function App() {
 
   // Search, Filter & Sort State
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'at_risk' | 'moderate' | 'perfect' | 'fifty_percent'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'at_risk' | 'moderate' | 'perfect' | 'fifty_percent' | 'unpaid' | 'honor_roll'>('all');
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'rate_desc' | 'rate_asc'>('name_asc');
   
   // Selected Student for Detail Modal
@@ -1848,6 +1855,49 @@ export default function App() {
     return null;
   }, [appUser, uniqueStudents]);
 
+  const currentStudentPortalData = useMemo(() => {
+    const sName = appUser?.studentName || appUser?.name || 'Student';
+    if (loggedInStudentData) {
+      return {
+        name: loggedInStudentData.name,
+        rate: loggedInStudentData.rate,
+        attended: loggedInStudentData.attended,
+        totalDays: loggedInStudentData.totalDays,
+        avgScore: loggedInStudentData.avgScore,
+        attendanceByDay: loggedInStudentData.attendanceByDay,
+        note: loggedInStudentData.note,
+        photoUrl: studentPhotos[sName.toLowerCase().trim()] || loggedInStudentData.photoUrl
+      };
+    }
+    return {
+      name: sName,
+      rate: 100,
+      attended: classDays.length,
+      totalDays: classDays.length || 1,
+      avgScore: 95,
+      attendanceByDay: {},
+      photoUrl: studentPhotos[sName.toLowerCase().trim()] || ''
+    };
+  }, [appUser, loggedInStudentData, studentPhotos, classDays.length]);
+
+  const uncollectedTuitionAmount = useMemo(() => {
+    return payments.reduce((sum, p) => sum + Math.max(0, (p.totalTuition || 0) - (p.amountPaid || 0)), 0);
+  }, [payments]);
+
+  const pendingAssignmentsCount = useMemo(() => {
+    if (appUser?.role === 'student') {
+      const studentNameLower = (appUser.studentName || appUser.name || '').toLowerCase().trim();
+      const submittedIds = new Set(
+        submissions
+          .filter(s => s.studentName && s.studentName.toLowerCase().trim() === studentNameLower)
+          .map(s => s.assignmentId)
+      );
+      return customAssignments.filter(a => !submittedIds.has(a.id)).length;
+    }
+    const unGraded = submissions.filter(s => s.status === 'Submitted' || s.status === 'Pending Review' || s.status === 'Needs Review').length;
+    return unGraded > 0 ? unGraded : customAssignments.length;
+  }, [appUser, submissions, customAssignments]);
+
   const getStudentIdForName = (studentName: string): string => {
     const nameClean = studentName.trim();
     const hash = Math.abs(nameClean.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
@@ -2090,6 +2140,14 @@ export default function App() {
         if (statusFilter === 'moderate' && (student.rate < atRiskThreshold || student.rate >= satisfactoryThreshold)) return false;
         if (statusFilter === 'perfect' && student.rate < satisfactoryThreshold) return false;
         if (statusFilter === 'fifty_percent' && student.rate > 50) return false;
+        if (statusFilter === 'honor_roll') {
+          const isHonor = student.rate >= 100 || (student.avgScore !== null && student.avgScore >= 85);
+          if (!isHonor) return false;
+        }
+        if (statusFilter === 'unpaid') {
+          const pDetails = getStudentPaymentDetails(student.name);
+          if (!pDetails.hasOutstanding) return false;
+        }
 
         return true;
       })
@@ -2154,7 +2212,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen md:h-screen w-full bg-slate-50 text-slate-900 font-sans p-3 sm:p-5 md:p-6 overflow-y-auto md:overflow-hidden">
+    <div className="flex flex-col min-h-[100dvh] md:h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-24 md:pb-6 overflow-y-auto md:overflow-hidden select-none sm:select-text">
       {/* Mobile PWA & Offline Status Banners */}
       {isOffline && (
         <div className="bg-amber-500 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-xs border border-amber-600 animate-fadeIn flex-shrink-0">
@@ -2259,27 +2317,27 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* Header */}
-      <header className="bg-slate-900/95 backdrop-blur-md border border-indigo-500/25 rounded-2xl p-3 sm:p-4 shadow-2xl mb-4 flex-shrink-0 relative z-30 group">
+      <header className="bg-slate-900/95 backdrop-blur-md border border-indigo-500/25 rounded-2xl p-2.5 sm:p-4 shadow-2xl mb-4 flex-shrink-0 relative z-30 group max-w-full overflow-visible">
         {/* Futuristic Background Mesh Glows */}
         <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
           <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl" />
           <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl" />
         </div>
 
-        <div className="flex items-center justify-between gap-3 relative z-10 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 relative z-10 flex-wrap sm:flex-nowrap">
           {/* Logo & Brand Info */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group/brand" onClick={() => setActiveErpTab('home')}>
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer group/brand min-w-0 max-w-full shrink-0" onClick={() => setActiveErpTab('home')}>
             <div className="relative group/logo flex-shrink-0">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 via-indigo-500 to-amber-500 rounded-xl blur-2xs opacity-70 group-hover/brand:opacity-100 transition-opacity" />
               <img 
                 src={hteimLogoAsset} 
                 alt="HTEIM School of Ministry Logo" 
-                className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl border border-amber-400/80 shadow-md object-contain bg-white p-0.5 transition-transform group-hover/brand:scale-105"
+                className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl border border-amber-400/80 shadow-md object-contain bg-white p-0.5 transition-transform group-hover/brand:scale-105"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h1 className="text-sm sm:text-base font-black tracking-tight bg-gradient-to-r from-amber-300 via-white to-indigo-200 bg-clip-text text-transparent group-hover/brand:from-amber-200 group-hover/brand:to-indigo-300 transition-all">
+                <h1 className="text-xs sm:text-base font-black tracking-tight bg-gradient-to-r from-amber-300 via-white to-indigo-200 bg-clip-text text-transparent group-hover/brand:from-amber-200 group-hover/brand:to-indigo-300 transition-all truncate max-w-[140px] min-[380px]:max-w-[200px] xs:max-w-none">
                   HTEIM School of Ministry
                 </h1>
                 <span className="hidden lg:inline-flex px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 rounded-full border border-amber-400/30 items-center gap-1 shadow-3xs">
@@ -2294,7 +2352,7 @@ create policy "Allow public update" on app_states for update using (true) with c
 
           {/* Quick KPI Stat Chips */}
           {records.length > 0 && (
-            <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800/80 px-3 py-1 rounded-xl text-xs font-medium">
+            <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800/80 px-3 py-1 rounded-xl text-xs font-medium shrink-0">
               {appUser?.role === 'student' ? (
                 <>
                   <div className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
@@ -2323,7 +2381,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           )}
 
           {/* Header Action Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+          <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0 max-w-full flex-wrap sm:flex-nowrap justify-end">
             {/* Live Check-In Button */}
             {appUser?.role !== 'student' && (
               <button
@@ -2333,7 +2391,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     setLiveCheckinDayId(classDays[classDays.length - 1].id);
                   }
                 }}
-                className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="px-2 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
               >
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -2347,7 +2405,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Command Palette Search Button */}
             <button
               onClick={() => setShowCommandPalette(true)}
-              className="px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all cursor-pointer flex items-center gap-1.5"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
               title="Global Search & Quick Jump (Ctrl+K or Cmd+K)"
             >
               <Search className="w-3.5 h-3.5 text-amber-400" />
@@ -2358,10 +2416,10 @@ create policy "Allow public update" on app_states for update using (true) with c
             </button>
 
             {/* Consolidated Tools & Operations Dropdown */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setShowToolsMenu(!showToolsMenu)}
-                className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shadow-xs ${
                   showToolsMenu
                     ? 'bg-indigo-600 text-white border-indigo-500'
                     : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border-slate-700/60'
@@ -2375,7 +2433,7 @@ create policy "Allow public update" on app_states for update using (true) with c
 
               {/* Tools Dropdown Menu */}
               {showToolsMenu && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2.5">
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2.5">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                     <h4 className="text-xs font-black text-amber-300 flex items-center gap-1.5">
                       <Sliders className="w-3.5 h-3.5 text-amber-400" />
@@ -2535,10 +2593,39 @@ create policy "Allow public update" on app_states for update using (true) with c
               currentStudentName={appUser?.studentName || appUser?.name}
             />
 
+            {/* Sync Status Badge */}
+            <div className="flex items-center shrink-0">
+              {isOffline ? (
+                <div 
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 shadow-2xs select-none"
+                  title="Offline mode active. Data is safely cached locally and will sync when reconnected."
+                >
+                  <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="hidden md:inline">Offline</span>
+                </div>
+              ) : isCloudSyncing ? (
+                <div 
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 bg-indigo-500/15 border border-indigo-500/40 rounded-xl text-indigo-300 text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 shadow-2xs select-none animate-pulse"
+                  title="Synchronizing data with Supabase Cloud Database..."
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                  <span className="hidden md:inline">Syncing...</span>
+                </div>
+              ) : (
+                <div 
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 shadow-2xs select-none"
+                  title={lastSyncedTime ? `Data fully synchronized with Supabase. Last sync: ${lastSyncedTime}` : "Data fully synchronized with Supabase"}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden md:inline">Synced</span>
+                </div>
+              )}
+            </div>
+
             {/* Quick Utility Icon Buttons */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              className="p-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white rounded-xl border border-slate-700/60 transition-all cursor-pointer"
+              className="p-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white rounded-xl border border-slate-700/60 transition-all cursor-pointer shrink-0 hidden xs:flex"
               title="Settings & Customization"
             >
               <Settings className="w-4 h-4" />
@@ -2546,17 +2633,17 @@ create policy "Allow public update" on app_states for update using (true) with c
 
             <button
               onClick={() => setShowGuideModal(true)}
-              className="p-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-indigo-300 hover:text-indigo-200 rounded-xl border border-slate-700/60 transition-all cursor-pointer"
+              className="p-1.5 bg-slate-800/80 hover:bg-slate-700/80 text-indigo-300 hover:text-indigo-200 rounded-xl border border-slate-700/60 transition-all cursor-pointer shrink-0 hidden xs:flex"
               title="Guide & Help"
             >
               <HelpCircle className="w-4 h-4" />
             </button>
 
             {/* Contextual Active Role Pill & Role Switcher Popover */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button 
                 onClick={() => setShowRoleMenu(!showRoleMenu)}
-                className={`px-2 sm:px-2.5 py-1 rounded-xl border text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer select-none transition-all hover:scale-[1.02] ${
+                className={`px-1.5 sm:px-2.5 py-1 rounded-xl border text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer select-none transition-all hover:scale-[1.02] ${
                   appUser?.role === 'admin'
                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
                     : appUser?.role === 'teacher'
@@ -2574,7 +2661,7 @@ create policy "Allow public update" on app_states for update using (true) with c
 
               {/* Quick Role Switcher Dropdown */}
               {showRoleMenu && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2">
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 animate-scaleUp space-y-2">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                     <div>
                       <h4 className="text-xs font-black text-amber-300 flex items-center gap-1">
@@ -2677,16 +2764,35 @@ create policy "Allow public update" on app_states for update using (true) with c
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                    <span>Full Credentials Portal</span>
+                  <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between gap-3">
                     <button 
                       onClick={() => {
                         setShowRoleMenu(false);
                         setShowLoginModal(true);
                       }}
-                      className="text-amber-400 font-bold hover:underline cursor-pointer"
+                      className="text-amber-400 font-bold hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      Open Login Modal
+                      <span>Credentials Portal</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const prevUser = appUser;
+                        setShowRoleMenu(false);
+                        setAppUser(null);
+                        localStorage.removeItem('hteim_app_user');
+                        logActivity({
+                          actor: prevUser ? prevUser.name : 'Guest',
+                          role: prevUser ? prevUser.role : 'student',
+                          actionCategory: 'System Settings',
+                          actionTitle: 'User Logged Out',
+                          details: `User signed out of session: ${prevUser ? prevUser.name : 'Guest'}`
+                        });
+                      }}
+                      className="text-rose-400 hover:text-rose-300 font-extrabold flex items-center gap-1 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all cursor-pointer shrink-0 shadow-sm"
+                      title="Sign out of current active session"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Logout</span>
                     </button>
                   </div>
                 </div>
@@ -2696,7 +2802,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Profile Avatar / User Login Trigger */}
             <button 
               onClick={() => setShowLoginModal(true)}
-              className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 p-1 sm:pr-2 rounded-xl transition-all cursor-pointer group"
+              className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 p-1 sm:pr-2 rounded-xl transition-all cursor-pointer group shrink-0"
               title="Open login portal / user details"
             >
               <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs ${
@@ -2714,130 +2820,344 @@ create policy "Allow public update" on app_states for update using (true) with c
         </div>
       </header>
 
-      {/* ERP Classroom System Navigation Tabs */}
-      <div className="bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur-md border border-slate-200 dark:border-indigo-500/20 rounded-2xl p-2 flex items-center justify-between overflow-x-auto custom-scrollbar shadow-md dark:shadow-2xl flex-shrink-0 relative z-20">
-        <div className="flex items-center gap-2 min-w-max">
-          <button
-            onClick={() => setActiveErpTab('home')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              activeErpTab === 'home'
-                ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-300 scale-105'
-                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-slate-950" />
-            <span>Home Page</span>
-          </button>
- 
-          <button
-            onClick={() => setActiveErpTab('attendance')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeErpTab === 'attendance'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>Attendance Portal</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'attendance' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-              {uniqueStudents.length}
-            </span>
-          </button>
- 
-          {appUser?.role !== 'student' && (
-            <button
-              onClick={() => setActiveErpTab('students')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeErpTab === 'students'
-                  ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-              }`}
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-200" />
-              <span>Students Directory</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'students' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-                {uniqueStudents.length}
-              </span>
-            </button>
-          )}
- 
-          <button
-            onClick={() => setActiveErpTab('courses')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeErpTab === 'courses'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
-            <span>Courses & Curriculum</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'courses' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-              6 Modules
-            </span>
-          </button>
- 
-          <button
-            onClick={() => setActiveErpTab('exams')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeErpTab === 'exams'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <Award className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300" />
-            <span>Exams & Evaluation</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'exams' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-              {uniqueStudents.filter(s => s.avgScore !== null).length}
-            </span>
-          </button>
- 
-          <button
-            onClick={() => setActiveErpTab('schedule')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeErpTab === 'schedule'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5 text-blue-500 dark:text-blue-300" />
-            <span>Class Schedule</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'schedule' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-              {classDays.length} Days
-            </span>
-          </button>
- 
-          <button
-            onClick={() => setActiveErpTab('library')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeErpTab === 'library'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <Bookmark className="w-3.5 h-3.5 text-teal-500 dark:text-teal-300" />
-            <span>Library & Resources</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'library' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-              6 Files
-            </span>
-          </button>
- 
-          {(appUser?.role === 'admin' || appUser?.role === 'student') && (
-            <button
-              onClick={() => setActiveErpTab('payments')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeErpTab === 'payments'
-                  ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] font-black border border-indigo-400/60 scale-105'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/80 border border-transparent'
-              }`}
-            >
-              <DollarSign className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
-              <span>{appUser?.role === 'student' ? 'My Payments' : 'Student Payments'}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeErpTab === 'payments' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-                {appUser?.role === 'student' ? 'Statement' : 'Admin'}
-              </span>
-            </button>
-          )}
+      {/* Mobile Active Tab Header Pill (Visible on small screens < 768px) */}
+      <div className="md:hidden bg-slate-900/90 border border-indigo-500/30 rounded-2xl p-2.5 mb-3 flex items-center justify-between shadow-lg text-white">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-amber-400">
+            {activeErpTab === 'home' && <Sparkles className="w-4 h-4 animate-pulse" />}
+            {activeErpTab === 'attendance' && <UserCheck className="w-4 h-4" />}
+            {activeErpTab === 'students' && <GraduationCap className="w-4 h-4" />}
+            {activeErpTab === 'courses' && <BookOpen className="w-4 h-4 text-emerald-400" />}
+            {activeErpTab === 'exams' && <Award className="w-4 h-4 text-purple-400" />}
+            {activeErpTab === 'schedule' && <Calendar className="w-4 h-4 text-blue-400" />}
+            {activeErpTab === 'library' && <Bookmark className="w-4 h-4 text-teal-400" />}
+            {activeErpTab === 'payments' && <DollarSign className="w-4 h-4 text-emerald-400" />}
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wider text-amber-300">
+              {activeErpTab === 'home' && 'Home Page'}
+              {activeErpTab === 'attendance' && 'Attendance Portal'}
+              {activeErpTab === 'students' && 'Students Directory'}
+              {activeErpTab === 'courses' && 'Courses & Curriculum'}
+              {activeErpTab === 'exams' && 'Exams & Evaluation'}
+              {activeErpTab === 'schedule' && 'Class Schedule'}
+              {activeErpTab === 'library' && 'Library & Resources'}
+              {activeErpTab === 'payments' && 'Tuition & Payments'}
+            </p>
+            <p className="text-[9px] text-slate-400 font-mono">HTEIM School of Ministry Portal</p>
+          </div>
         </div>
+
+        <button
+          onClick={() => setShowMobileMoreMenu(true)}
+          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-[10px] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
+        >
+          <Sliders className="w-3 h-3 text-amber-400" />
+          <span>Menu</span>
+        </button>
+      </div>
+
+      {/* ERP Classroom System Navigation - Desktop Vertical Hover Menu */}
+      <div 
+        className="hidden md:block relative z-40 mb-4"
+        onMouseEnter={handleNavMouseEnter}
+        onMouseLeave={handleNavMouseLeave}
+      >
+        {/* Trigger Bar (Collapsed view showing active module & hover hint) */}
+        <div 
+          onClick={() => {
+            if (isNavHovered) {
+              setIsNavHovered(false);
+            } else {
+              handleNavMouseEnter();
+            }
+          }}
+          className="bg-slate-900/60 dark:bg-slate-950/60 backdrop-blur-xl border border-indigo-400/20 hover:border-amber-400/70 rounded-2xl p-2.5 sm:px-4 shadow-lg shadow-indigo-950/20 flex items-center justify-between cursor-pointer group transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-amber-400 via-indigo-500 to-purple-600 p-0.5 shadow-md flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-full h-full bg-slate-950/80 rounded-[10px] flex items-center justify-center">
+                <Menu className="w-4 h-4 text-amber-400" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">Modules Menu</span>
+                <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-mono text-[9px] font-bold rounded-full border border-indigo-500/30 backdrop-blur-md">
+                  {isNavHovered ? 'Hovering • Smooth auto-collapse on exit' : 'Hover mouse over to reveal vertical menu'}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-slate-200 flex items-center gap-2 mt-0.5">
+                <span className="text-slate-400 text-[11px]">Active Tab:</span>
+                <span className="text-white font-extrabold flex items-center gap-1.5">
+                  {activeErpTab === 'home' && <Sparkles className="w-3.5 h-3.5 text-amber-400" />}
+                  {activeErpTab === 'attendance' && <UserCheck className="w-3.5 h-3.5 text-indigo-400" />}
+                  {activeErpTab === 'students' && <GraduationCap className="w-3.5 h-3.5 text-indigo-400" />}
+                  {activeErpTab === 'courses' && <BookOpen className="w-3.5 h-3.5 text-emerald-400" />}
+                  {activeErpTab === 'exams' && <Award className="w-3.5 h-3.5 text-purple-400" />}
+                  {activeErpTab === 'schedule' && <Calendar className="w-3.5 h-3.5 text-blue-400" />}
+                  {activeErpTab === 'library' && <Bookmark className="w-3.5 h-3.5 text-teal-400" />}
+                  {activeErpTab === 'payments' && <DollarSign className="w-3.5 h-3.5 text-emerald-400" />}
+                  
+                  {activeErpTab === 'home' && 'Home Page'}
+                  {activeErpTab === 'attendance' && 'Attendance Portal'}
+                  {activeErpTab === 'students' && 'Students Directory'}
+                  {activeErpTab === 'courses' && 'Courses & Curriculum'}
+                  {activeErpTab === 'exams' && 'Exams & Evaluation'}
+                  {activeErpTab === 'schedule' && 'Class Schedule'}
+                  {activeErpTab === 'library' && 'Library & Resources'}
+                  {activeErpTab === 'payments' && (appUser?.role === 'student' ? 'My Payments' : 'Student Payments')}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-300 group-hover:text-amber-300 transition-colors">
+            <span className="text-[11px] font-mono hidden lg:inline">
+              {isNavHovered ? 'Expanded' : 'Hover to Expand Menu'}
+            </span>
+            <div className={`p-1 bg-slate-800/80 rounded-lg border border-slate-700/80 transition-transform duration-200 ${isNavHovered ? 'rotate-180 bg-amber-500 text-slate-950 border-amber-400' : ''}`}>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        </div>
+
+        {/* Floating Vertical Stacked Menu (Translucent Glassmorphism with Smooth Ease-In-Out Transitions) */}
+        <div 
+          onMouseEnter={handleNavMouseEnter}
+          onMouseLeave={handleNavMouseLeave}
+          className={`absolute top-full left-0 mt-2 w-80 max-w-full bg-slate-900/75 dark:bg-slate-950/80 text-white border border-indigo-400/20 rounded-2xl shadow-lg shadow-indigo-950/40 p-3.5 z-50 backdrop-blur-xl space-y-2 transition-all duration-300 ease-in-out transform origin-top-left ${
+            isNavHovered 
+              ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' 
+              : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+          }`}
+        >
+            <div className="flex items-center justify-between pb-2 border-b border-white/10 dark:border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-black uppercase tracking-wider text-amber-300">All Modules Menu</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-500/30 backdrop-blur-md">
+                Translucent Vertical
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
+              {/* 1. Home Page */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('home');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'home'
+                    ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black shadow-md border border-amber-300'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className={`w-4 h-4 ${activeErpTab === 'home' ? 'text-slate-950' : 'text-amber-400'}`} />
+                  <span className="font-bold">Home Page</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${activeErpTab === 'home' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
+                  Main
+                </span>
+              </button>
+
+              {/* 2. Attendance Portal */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('attendance');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'attendance'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <UserCheck className={`w-4 h-4 ${activeErpTab === 'attendance' ? 'text-white' : 'text-indigo-400'}`} />
+                  <span className="font-bold">Attendance Portal</span>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'attendance' ? 'bg-white/20 text-white' : 'bg-slate-800 text-indigo-300'}`}>
+                  {uniqueStudents.length} Students
+                </span>
+              </button>
+
+              {/* 3. Students Directory */}
+              {appUser?.role !== 'student' && (
+                <button
+                  onClick={() => {
+                    setActiveErpTab('students');
+                    setIsNavHovered(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                    activeErpTab === 'students'
+                      ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <GraduationCap className={`w-4 h-4 ${activeErpTab === 'students' ? 'text-white' : 'text-indigo-400'}`} />
+                    <span className="font-bold">Students Directory</span>
+                  </div>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'students' ? 'bg-white/20 text-white' : 'bg-slate-800 text-indigo-300'}`}>
+                    {uniqueStudents.length} Profiles
+                  </span>
+                </button>
+              )}
+
+              {/* 4. Courses & Curriculum */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('courses');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'courses'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className={`w-4 h-4 ${activeErpTab === 'courses' ? 'text-white' : 'text-emerald-400'}`} />
+                  <span className="font-bold">Courses & Curriculum</span>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'courses' ? 'bg-white/20 text-white' : 'bg-slate-800 text-emerald-300'}`}>
+                  6 Modules
+                </span>
+              </button>
+
+              {/* 5. Exams & Evaluation */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('exams');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'exams'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Award className={`w-4 h-4 ${activeErpTab === 'exams' ? 'text-white' : 'text-purple-400'}`} />
+                  <span className="font-bold">Exams & Evaluation</span>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'exams' ? 'bg-white/20 text-white' : 'bg-slate-800 text-purple-300'}`}>
+                  {uniqueStudents.filter(s => s.avgScore !== null).length} Records
+                </span>
+              </button>
+
+              {/* 6. Class Schedule */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('schedule');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'schedule'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Calendar className={`w-4 h-4 ${activeErpTab === 'schedule' ? 'text-white' : 'text-blue-400'}`} />
+                  <span className="font-bold">Class Schedule</span>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'schedule' ? 'bg-white/20 text-white' : 'bg-slate-800 text-blue-300'}`}>
+                  {classDays.length} Days
+                </span>
+              </button>
+
+              {/* 7. Library & Resources */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('library');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'library'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Bookmark className={`w-4 h-4 ${activeErpTab === 'library' ? 'text-white' : 'text-teal-400'}`} />
+                  <span className="font-bold">Library & Resources</span>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'library' ? 'bg-white/20 text-white' : 'bg-slate-800 text-teal-300'}`}>
+                  6 Files
+                </span>
+              </button>
+
+              {/* 8. Tuition & Payments */}
+              {(appUser?.role === 'admin' || appUser?.role === 'student') && (
+                <button
+                  onClick={() => {
+                    setActiveErpTab('payments');
+                    setIsNavHovered(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                    activeErpTab === 'payments'
+                      ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <DollarSign className={`w-4 h-4 ${activeErpTab === 'payments' ? 'text-white' : 'text-emerald-400'}`} />
+                    <span className="font-bold">{appUser?.role === 'student' ? 'My Payments' : 'Student Payments'}</span>
+                  </div>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'payments' ? 'bg-white/20 text-white' : 'bg-slate-800 text-emerald-300'}`}>
+                    {appUser?.role === 'student' ? 'Statement' : 'Admin'}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Active Session & Logout Quick Switcher block */}
+            <div className="pt-2.5 border-t border-white/10 dark:border-slate-800/80 mt-1.5 flex items-center justify-between gap-2.5 bg-slate-950/40 p-2.5 rounded-xl border border-indigo-500/10 backdrop-blur-md">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] shrink-0 ${
+                  appUser?.role === 'admin' ? 'bg-amber-500 text-slate-950' :
+                  appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' :
+                  'bg-blue-600 text-white'
+                }`}>
+                  {appUser ? appUser.name.charAt(0).toUpperCase() : '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black text-slate-200 truncate leading-tight">
+                    {appUser ? appUser.name : 'Guest Session'}
+                  </p>
+                  <p className="text-[9px] text-slate-400 uppercase tracking-widest leading-none font-bold mt-0.5">
+                    {appUser?.role === 'admin' ? 'Admin' : appUser?.role === 'teacher' ? 'Faculty' : 'Student'}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => {
+                  const prevUser = appUser;
+                  setIsNavHovered(false);
+                  setAppUser(null);
+                  localStorage.removeItem('hteim_app_user');
+                  logActivity({
+                    actor: prevUser ? prevUser.name : 'Guest',
+                    role: prevUser ? prevUser.role : 'student',
+                    actionCategory: 'System Settings',
+                    actionTitle: 'User Logged Out',
+                    details: `User signed out of session: ${prevUser ? prevUser.name : 'Guest'} from vertical navigation switcher`
+                  });
+                }}
+                className="px-2.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 hover:border-rose-500/50 rounded-lg text-rose-300 hover:text-white text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all shrink-0 shadow-sm"
+                title="Quick Logout"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
       </div>
 
       {/* Main Workspace */}
@@ -2849,9 +3169,13 @@ create policy "Allow public update" on app_states for update using (true) with c
               appUser={appUser}
               onOpenLogin={() => setShowLoginModal(true)}
               studentsCount={uniqueStudents.length}
-              coursesCount={6}
+              coursesCount={courses.length || 6}
               classDaysCount={classDays.length}
               avgAttendanceRate={avgAttendance}
+              pendingAssignmentsCount={pendingAssignmentsCount}
+              uncollectedTuitionAmount={uncollectedTuitionAmount}
+              libraryResourcesCount={libraryResources.length}
+              nextClassTitle={classDays.length > 0 ? classDays[classDays.length - 1].name : 'Session 1'}
               isCloudSyncing={isCloudSyncing}
               cloudSyncError={cloudSyncError}
               lastSyncedTime={lastSyncedTime}
@@ -2929,6 +3253,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               }}
               atRiskThreshold={atRiskThreshold}
               satisfactoryThreshold={satisfactoryThreshold}
+              onToggleAttendance={handleToggleStudentAttendance}
+              excusedAbsences={excusedAbsences}
+              appRole={appUser?.role}
             />
           </div>
         )}
@@ -3031,72 +3358,51 @@ create policy "Allow public update" on app_states for update using (true) with c
 
         {activeErpTab === 'attendance' && (
           <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
-            {appUser?.role === 'student' ? (() => {
-              const sName = appUser.studentName || appUser.name || 'Student';
-              const found = uniqueStudents.find(s => s && s.name && s.name.toLowerCase().trim() === sName.toLowerCase().trim());
-              const studentObj = found ? {
-                name: found.name,
-                rate: found.rate,
-                attended: found.attended,
-                totalDays: found.totalDays,
-                avgScore: found.avgScore,
-                attendanceByDay: found.attendanceByDay,
-                note: found.note,
-                photoUrl: studentPhotos[sName.toLowerCase().trim()] || found.photoUrl
-              } : {
-                name: sName,
-                rate: 100,
-                attended: classDays.length,
-                totalDays: classDays.length || 1,
-                avgScore: 95,
-                attendanceByDay: {},
-                photoUrl: studentPhotos[sName.toLowerCase().trim()] || ''
-              };
-
-              return (
-                <StudentAttendancePortal
-                  student={studentObj}
-                  classDays={classDays}
-                  rubricScores={rubricScores}
-                  onUpdateStudentPhoto={handleUpdateStudentPhoto}
-                  onRequestTranscript={(s) => {
-                    setSelectedStudent({
-                      name: s.name,
-                      rate: s.rate,
-                      attended: s.attended,
-                      totalDays: s.totalDays,
-                      avgScore: s.avgScore || 90,
-                      attendanceByDay: s.attendanceByDay
-                    });
-                    setShowStudentTranscriptModal(true);
-                  }}
-                  onRequestCertificate={(s) => {
-                    setCertificateData({
-                      studentName: s.name,
-                      awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
-                      criteria: `Demonstrated commitment with ${s.rate.toFixed(1)}% class attendance.`,
-                      rate: s.rate,
-                      avgScore: s.avgScore || 90
-                    });
-                    setShowCertificateModal(true);
-                  }}
-                  atRiskThreshold={atRiskThreshold}
-                  satisfactoryThreshold={satisfactoryThreshold}
-                />
-              );
-            })() : (records.length > 0 || classDays.length > 0 || uniqueStudents.length > 0) ? (
+            {appUser?.role === 'student' ? (
+              <StudentAttendancePortal
+                student={currentStudentPortalData}
+                classDays={classDays}
+                rubricScores={rubricScores}
+                onUpdateStudentPhoto={handleUpdateStudentPhoto}
+                onRequestTranscript={(s) => {
+                  setSelectedStudent({
+                    name: s.name,
+                    rate: s.rate,
+                    attended: s.attended,
+                    totalDays: s.totalDays,
+                    avgScore: s.avgScore || 90,
+                    attendanceByDay: s.attendanceByDay
+                  });
+                  setShowStudentTranscriptModal(true);
+                }}
+                onRequestCertificate={(s) => {
+                  setCertificateData({
+                    studentName: s.name,
+                    awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
+                    criteria: `Demonstrated commitment with ${s.rate.toFixed(1)}% class attendance.`,
+                    rate: s.rate,
+                    avgScore: s.avgScore || 90
+                  });
+                  setShowCertificateModal(true);
+                }}
+                atRiskThreshold={atRiskThreshold}
+                satisfactoryThreshold={satisfactoryThreshold}
+              />
+            ) : (records.length > 0 || classDays.length > 0 || uniqueStudents.length > 0) ? (
               <>
                 {/* Toolbar: Search, Filter, Date Range, View Mode & Settings */}
-              <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-                <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-sm">
-                  <div className="relative w-full">
+              {/* Sticky Search Header & Mobile Quick Filter Chips Toolbar */}
+              <div className="sticky top-0 z-20 p-2.5 sm:p-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2.5 flex-shrink-0 shadow-2xs">
+                {/* Search Bar & Primary Actions Row */}
+                <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                  <div className="relative flex-1 min-w-[180px] max-w-md">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       placeholder="Search student by name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-1.5 bg-white border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      className="w-full pl-9 pr-8 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     />
                     {searchQuery && (
                       <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -3104,146 +3410,204 @@ create policy "Allow public update" on app_states for update using (true) with c
                       </button>
                     )}
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Status Filters */}
-                  <div className="flex bg-slate-200/60 p-0.5 rounded-md text-xs font-medium text-slate-600 max-w-full overflow-x-auto custom-scrollbar whitespace-nowrap">
-                    <button
-                      onClick={() => setStatusFilter('all')}
-                      className={`px-2.5 py-1 rounded-sm text-[11px] font-bold transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'hover:text-slate-900'}`}
-                    >
-                      All ({uniqueStudents.length})
-                    </button>
-                    <button
-                      onClick={() => setStatusFilter('perfect')}
-                      className={`px-2.5 py-1 rounded-sm text-[11px] font-bold transition-all cursor-pointer ${statusFilter === 'perfect' ? 'bg-white text-emerald-700 shadow-sm' : 'hover:text-slate-900'}`}
-                    >
-                      Satisfactory (&ge;{satisfactoryThreshold}%)
-                    </button>
-                    <button
-                      onClick={() => setStatusFilter('moderate')}
-                      className={`px-2.5 py-1 rounded-sm text-[11px] font-bold transition-all cursor-pointer ${statusFilter === 'moderate' ? 'bg-white text-amber-700 shadow-sm' : 'hover:text-slate-900'}`}
-                    >
-                      {atRiskThreshold}%–{satisfactoryThreshold - 1}%
-                    </button>
-                    <button
-                      onClick={() => setStatusFilter('at_risk')}
-                      className={`px-2.5 py-1 rounded-sm text-[11px] font-bold transition-all cursor-pointer ${statusFilter === 'at_risk' ? 'bg-white text-rose-700 shadow-sm' : 'hover:text-slate-900'}`}
-                    >
-                      At Risk (&lt;{atRiskThreshold}%)
-                    </button>
-                    <button
-                      onClick={() => setStatusFilter('fifty_percent')}
-                      className={`px-2.5 py-1 rounded-sm text-[11px] font-bold transition-all cursor-pointer ${statusFilter === 'fifty_percent' ? 'bg-purple-700 text-white shadow-sm' : 'hover:text-slate-900 text-purple-700 font-extrabold'}`}
-                    >
-                      &le;50% Attendance ({uniqueStudents.filter(s => s.rate <= 50).length})
-                    </button>
-                  </div>
-
-                  {/* Date Range Filter */}
-                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-600">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <select
-                      value={dateRangeFilter}
-                      onChange={(e: any) => setDateRangeFilter(e.target.value)}
-                      className="bg-transparent focus:outline-none font-semibold text-xs text-slate-700 cursor-pointer"
-                    >
-                      <option value="all">All Dates / Sheets</option>
-                      <option value="30days">Last 30 Days</option>
-                      <option value="month">This Month</option>
-                    </select>
-                  </div>
-
-                  {/* Academic Module / Semester Filter */}
-                  <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200/80 rounded-md px-2 py-1 text-xs text-amber-900">
-                    <Layers className="w-3.5 h-3.5 text-amber-600" />
-                    <select
-                      value={selectedModule}
-                      onChange={(e: any) => setSelectedModule(e.target.value)}
-                      className="bg-transparent focus:outline-none font-bold text-xs text-amber-900 cursor-pointer"
-                    >
-                      <option value="all">All Modules</option>
-                      <option value="m1">Module 1: Foundations</option>
-                      <option value="m2">Module 2: Leadership</option>
-                      <option value="m3">Module 3: Biblical Studies</option>
-                    </select>
-                  </div>
-
-                  {/* Sorting */}
-                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-600">
-                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-                    <select
-                      value={sortBy}
-                      onChange={(e: any) => setSortBy(e.target.value)}
-                      className="bg-transparent focus:outline-none font-semibold text-xs text-slate-700 cursor-pointer"
-                    >
-                      <option value="name_asc">Name (A-Z)</option>
-                      <option value="name_desc">Name (Z-A)</option>
-                      <option value="rate_desc">Rate (Highest First)</option>
-                      <option value="rate_asc">Rate (Lowest First)</option>
-                    </select>
-                  </div>
-
-                  {/* View Mode Toggle (Grid vs Cards) */}
-                  <div className="flex bg-slate-200/60 p-0.5 rounded-md text-xs text-slate-600">
-                    <button
-                      onClick={() => setViewMode('matrix')}
-                      className={`p-1 rounded-sm transition-all cursor-pointer ${viewMode === 'matrix' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      title="Visual Attendance Matrix (Grid)"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode('cards')}
-                      className={`p-1 rounded-sm transition-all cursor-pointer ${viewMode === 'cards' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      title="Student Profile Cards View"
-                    >
-                      <List className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Dense / Comfortable View Toggle */}
-                  <div className="flex bg-slate-200/60 p-0.5 rounded-md text-xs text-slate-600">
-                    <button
-                      onClick={() => setDensityMode('comfortable')}
-                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer flex items-center gap-1 ${densityMode === 'comfortable' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      title="Comfortable spacing"
-                    >
-                      <Maximize2 className="w-3 h-3" />
-                      <span className="text-[10px]">Comfortable</span>
-                    </button>
-                    <button
-                      onClick={() => setDensityMode('dense')}
-                      className={`px-2 py-1 rounded-sm transition-all cursor-pointer flex items-center gap-1 ${densityMode === 'dense' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      title="Dense compact matrix view"
-                    >
-                      <Minimize2 className="w-3 h-3" />
-                      <span className="text-[10px]">Dense</span>
-                    </button>
-                  </div>
-
-                  {/* Add Class Day & Manage Class Days Action Buttons */}
-                  {appUser?.role !== 'student' && (
-                    <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
-                      <button
-                        onClick={() => handleAddClassDay()}
-                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-extrabold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
-                        title="Add a new class session on the fly"
+                  {/* Secondary Controls: Date Range, Modules, Sorting & View Modes */}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+                    {/* Date Range Filter */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300">
+                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                      <select
+                        value={dateRangeFilter}
+                        onChange={(e: any) => setDateRangeFilter(e.target.value)}
+                        className="bg-transparent focus:outline-none font-bold text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>+ Class Day</span>
+                        <option value="all">All Dates</option>
+                        <option value="30days">Last 30 Days</option>
+                        <option value="month">This Month</option>
+                      </select>
+                    </div>
+
+                    {/* Academic Module Filter */}
+                    <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl px-2 py-1 text-xs text-amber-900 dark:text-amber-200">
+                      <Layers className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <select
+                        value={selectedModule}
+                        onChange={(e: any) => setSelectedModule(e.target.value)}
+                        className="bg-transparent focus:outline-none font-bold text-xs text-amber-900 dark:text-amber-200 cursor-pointer"
+                      >
+                        <option value="all">All Modules</option>
+                        <option value="m1">Module 1</option>
+                        <option value="m2">Module 2</option>
+                        <option value="m3">Module 3</option>
+                      </select>
+                    </div>
+
+                    {/* Sorting */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300">
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 shrink-0" />
+                      <select
+                        value={sortBy}
+                        onChange={(e: any) => setSortBy(e.target.value)}
+                        className="bg-transparent focus:outline-none font-bold text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
+                      >
+                        <option value="name_asc">Name (A-Z)</option>
+                        <option value="name_desc">Name (Z-A)</option>
+                        <option value="rate_desc">Rate (Highest)</option>
+                        <option value="rate_asc">Rate (Lowest)</option>
+                      </select>
+                    </div>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-xl text-xs text-slate-600 dark:text-slate-300">
+                      <button
+                        onClick={() => setViewMode('matrix')}
+                        className={`p-1 rounded-lg transition-all cursor-pointer ${viewMode === 'matrix' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="Visual Attendance Matrix (Grid)"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => setShowClassDaysModal(true)}
-                        className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-md text-xs font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
-                        title="Manage and rename class session titles"
+                        onClick={() => setViewMode('cards')}
+                        className={`p-1 rounded-lg transition-all cursor-pointer ${viewMode === 'cards' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="Student Profile Cards View"
                       >
-                        <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Manage Days ({classDays.length})</span>
+                        <List className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  )}
+
+                    {/* Dense / Comfortable View Toggle */}
+                    <div className="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-xl text-xs text-slate-600 dark:text-slate-300 hidden md:flex">
+                      <button
+                        onClick={() => setDensityMode('comfortable')}
+                        className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${densityMode === 'comfortable' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="Comfortable spacing"
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                        <span className="text-[10px]">Comfortable</span>
+                      </button>
+                      <button
+                        onClick={() => setDensityMode('dense')}
+                        className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${densityMode === 'dense' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="Dense compact matrix view"
+                      >
+                        <Minimize2 className="w-3 h-3" />
+                        <span className="text-[10px]">Dense</span>
+                      </button>
+                    </div>
+
+                    {/* Add Class Day & Manage Class Days Action Buttons */}
+                    {appUser?.role !== 'student' && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleAddClassDay()}
+                          className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                          title="Add a new class session"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">+ Class Day</span>
+                        </button>
+                        <button
+                          onClick={() => setShowClassDaysModal(true)}
+                          className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                          title="Manage class session titles"
+                        >
+                          <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          <span className="hidden sm:inline">Days ({classDays.length})</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile & Desktop Quick Scrollable Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 text-xs font-bold max-w-full whitespace-nowrap touch-pan-x">
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      statusFilter === 'all' 
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs font-extrabold' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>All</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                      {uniqueStudents.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setStatusFilter('at_risk')}
+                    className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      statusFilter === 'at_risk' 
+                        ? 'bg-rose-600 text-white shadow-2xs font-extrabold' 
+                        : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100'
+                    }`}
+                  >
+                    <AlertCircle className="w-3 h-3 text-rose-500" />
+                    <span>At-Risk (&lt;{atRiskThreshold}%)</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
+                      {uniqueStudents.filter(s => s.rate < atRiskThreshold).length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setStatusFilter('perfect')}
+                    className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      statusFilter === 'perfect' 
+                        ? 'bg-emerald-600 text-white shadow-2xs font-extrabold' 
+                        : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                    <span>Satisfactory (&ge;{satisfactoryThreshold}%)</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
+                      {uniqueStudents.filter(s => s.rate >= satisfactoryThreshold).length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setStatusFilter('unpaid')}
+                    className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      statusFilter === 'unpaid' 
+                        ? 'bg-amber-500 text-slate-950 shadow-2xs font-extrabold' 
+                        : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100'
+                    }`}
+                  >
+                    <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <span>Unpaid Tuition</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+                      {uniqueStudents.filter(s => getStudentPaymentDetails(s.name).hasOutstanding).length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setStatusFilter('honor_roll')}
+                    className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      statusFilter === 'honor_roll' 
+                        ? 'bg-indigo-600 text-white shadow-2xs font-extrabold' 
+                        : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100'
+                    }`}
+                  >
+                    <Trophy className="w-3 h-3 text-amber-400" />
+                    <span>100% Honor Roll</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                      {uniqueStudents.filter(s => s.rate >= 100 || (s.avgScore !== null && s.avgScore >= 85)).length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setStatusFilter('fifty_percent')}
+                    className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      statusFilter === 'fifty_percent' 
+                        ? 'bg-purple-700 text-white shadow-2xs font-extrabold' 
+                        : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 hover:bg-purple-100'
+                    }`}
+                  >
+                    <span>&le;50% Attendance</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                      {uniqueStudents.filter(s => s.rate <= 50).length}
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -3343,184 +3707,217 @@ create policy "Allow public update" on app_states for update using (true) with c
                   )}
                 </div>
               ) : (
-                /* Attendance Matrix Scrollable Container */
-                <div className="flex-1 overflow-auto custom-scrollbar relative">
-                  <table className="w-full text-left border-collapse min-w-max">
-                    {/* Table Sticky Header */}
-                    <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
-                      <tr>
-                        <th className={`sticky left-0 z-30 bg-slate-100 border-r border-slate-200 ${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} font-black uppercase text-slate-700 tracking-wider w-64 min-w-[256px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]`}>
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="checkbox"
-                                checked={selectedStudentNames.length > 0 && selectedStudentNames.length >= filteredAndSortedStudents.length}
-                                onChange={handleSelectAllDisplayed}
-                                className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer"
-                                title="Select / Deselect all displayed students for batch operations"
-                              />
-                              <span>Student Name</span>
-                            </div>
-                            <span className="text-[10px] font-semibold text-slate-400 normal-case">({filteredAndSortedStudents.length} shown)</span>
-                          </div>
-                        </th>
+                /* Attendance Matrix View Container */
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0 relative">
+                  
+                  {/* Mobile Attendance Matrix Card Format (< 768px / md:hidden) */}
+                  <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
+                    {filteredAndSortedStudents.length > 0 ? (
+                      filteredAndSortedStudents.map((student) => (
+                        <SwipeableAttendanceCard
+                          key={student.name}
+                          student={student}
+                          effectiveClassDays={effectiveClassDays}
+                          activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
+                          studentPhotos={studentPhotos}
+                          studentNotes={studentNotes}
+                          excusedAbsences={excusedAbsences}
+                          isSelected={selectedStudentNames.includes(student.name)}
+                          satisfactoryThreshold={satisfactoryThreshold}
+                          atRiskThreshold={atRiskThreshold}
+                          studentBadges={getStudentBadges(student)}
+                          onToggleAttendance={handleToggleStudentAttendance}
+                          onSelectStudent={setSelectedStudent}
+                          onToggleSelectStudent={toggleSelectStudent}
+                          appRole={appUser?.role}
+                        />
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-slate-400 text-xs">
+                        No students found matching your search or filter criteria.
+                      </div>
+                    )}
+                  </div>
 
-                        {effectiveClassDays.map(day => {
-                          const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
-                          return (
-                            <th 
-                              key={day.id} 
-                              className={`${densityMode === 'dense' ? 'p-2' : 'p-3'} border-r border-slate-200 text-center min-w-[110px] max-w-[150px] flex-1 hover:bg-slate-200/50 transition-colors group/th`}
-                              title={`Sheet: ${day.name}\nPresent: ${stats.count} students (${Math.round(stats.percentage)}%)\nClick pencil to rename title`}
-                            >
-                              <div className="flex flex-col items-center justify-center">
-                                <div className="flex items-center gap-1 justify-center max-w-[135px]">
-                                  <span className={`${densityMode === 'dense' ? 'text-[11px]' : 'text-xs'} font-extrabold text-slate-800 truncate`} title={day.name}>
-                                    {day.name}
-                                  </span>
-                                  {appUser?.role !== 'student' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const newName = prompt('Rename Class Day Title:', day.name);
-                                        if (newName && newName.trim() !== '') {
-                                          handleEditClassDayTitle(day.id, newName.trim());
-                                        }
-                                      }}
-                                      className="opacity-0 group-hover/th:opacity-100 p-0.5 hover:bg-slate-300/60 rounded text-slate-500 hover:text-indigo-700 transition-all cursor-pointer flex-shrink-0"
-                                      title="Click to rename class day title"
-                                    >
-                                      <Edit3 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                                <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 border border-slate-200 text-slate-600">
-                                  <span>{stats.count}/{uniqueStudents.length}</span>
-                                  <span className="text-emerald-600">({Math.round(stats.percentage)}%)</span>
-                                </div>
-                              </div>
-                            </th>
-                          );
-                        })}
-
-                        <th className={`${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 text-center font-black uppercase text-emerald-800 tracking-wider w-28 min-w-[112px] bg-emerald-50/60`}>
-                          Attendance Rate
-                        </th>
-                      </tr>
-                    </thead>
-
-                    {/* Table Body */}
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredAndSortedStudents.length > 0 ? (
-                        filteredAndSortedStudents.map((student, idx) => {
-                          const studentKey = student.name.toLowerCase().trim();
-                          const isExcusedMap = excusedAbsences[studentKey] || {};
-                          const studentBadges = getStudentBadges(student);
-
-                          return (
-                            <tr 
-                              key={idx} 
-                              onClick={() => setSelectedStudent(student)}
-                              className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
-                            >
-                              {/* Student Name Sticky Column */}
-                              <td className={`sticky left-0 z-10 ${densityMode === 'dense' ? 'py-1.5 px-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 font-bold text-slate-800 bg-white group-hover:bg-indigo-50/80 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] w-64 min-w-[256px] truncate ${student.rate < atRiskThreshold ? 'text-rose-700' : ''}`} title="Click to view student detail">
-                                <div className="flex items-center justify-between gap-1 min-w-0">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedStudentNames.includes(student.name)}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        toggleSelectStudent(student.name);
-                                      }}
-                                      className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer flex-shrink-0"
-                                    />
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${student.rate >= satisfactoryThreshold ? 'bg-emerald-500' : student.rate >= atRiskThreshold ? 'bg-amber-400' : 'bg-rose-500'}`} />
-                                    <span className="truncate">{student.name}</span>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-1 flex-shrink-0">
-                                    {studentBadges.map(b => (
-                                      <span key={b.id} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
-                                        {b.icon}
-                                      </span>
-                                    ))}
-                                    {student.note && (
-                                      <span className="text-indigo-500 bg-indigo-50 p-1 rounded" title={`Note: ${student.note}`}>
-                                        <PenSquare className="w-3 h-3" />
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* Attendance Status Per Sheet/Day */}
-                              {effectiveClassDays.map(day => {
-                                const attendance = student.attendanceByDay[day.id];
-                                const isPresent = attendance?.present;
-                                const isExcused = !isPresent && !!isExcusedMap[day.id];
-
-                                return (
-                                  <td 
-                                    key={day.id} 
-                                    className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px]`}
-                                    onClick={(e) => {
-                                      if (appUser?.role === 'student') return;
-                                      e.stopPropagation();
-                                      handleToggleStudentAttendance(
-                                        student.name, 
-                                        day.id, 
-                                        isPresent ? 'excused' : isExcused ? 'absent' : 'present'
-                                      );
-                                    }}
-                                    title={appUser?.role !== 'student' ? 'Click to toggle manual attendance (Present -> Excused -> Absent)' : undefined}
-                                  >
-                                    {isPresent ? (
-                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer`}>
-                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                        <span>Present</span>
-                                      </div>
-                                    ) : isExcused ? (
-                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold hover:bg-amber-100 transition-colors cursor-pointer`}>
-                                        <AlertCircle className="w-3 h-3 text-amber-500" />
-                                        <span>Excused</span>
-                                      </div>
-                                    ) : (
-                                      <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium hover:bg-rose-100 transition-colors cursor-pointer`}>
-                                        <XCircle className="w-3 h-3 text-rose-300" />
-                                        <span>Absent</span>
-                                      </div>
-                                    )}
-                                  </td>
-                                );
-                              })}
-
-                              {/* Attendance Rate Badge */}
-                              <td className={`${densityMode === 'dense' ? 'py-1.5 px-2 text-[10px]' : 'p-3 text-xs'} border-r border-slate-100 text-center font-mono font-bold w-28 min-w-[112px] bg-slate-50/50`}>
-                                <span className={`inline-block px-2.5 py-0.5 rounded ${
-                                  student.rate >= satisfactoryThreshold 
-                                    ? 'bg-emerald-100 text-emerald-800' 
-                                    : student.rate >= atRiskThreshold 
-                                    ? 'bg-amber-100 text-amber-800' 
-                                    : 'bg-rose-100 text-rose-800 font-extrabold'
-                                }`}>
-                                  {Math.round(student.rate)}%
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
+                  {/* Desktop Attendance Matrix Table (>= 768px / hidden md:block) */}
+                  <div className="hidden md:block flex-1 overflow-auto custom-scrollbar relative">
+                    <table className="w-full text-left border-collapse min-w-max">
+                      {/* Table Sticky Header */}
+                      <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
                         <tr>
-                          <td colSpan={effectiveClassDays.length + 2} className="p-8 text-center text-slate-400 text-xs">
-                            No students found matching your search or filter criteria.
-                          </td>
+                          <th className={`sticky left-0 z-30 bg-slate-100 border-r border-slate-200 ${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} font-black uppercase text-slate-700 tracking-wider w-64 min-w-[256px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <input 
+                                  type="checkbox"
+                                  checked={selectedStudentNames.length > 0 && selectedStudentNames.length >= filteredAndSortedStudents.length}
+                                  onChange={handleSelectAllDisplayed}
+                                  className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer"
+                                  title="Select / Deselect all displayed students for batch operations"
+                                />
+                                <span>Student Name</span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-slate-400 normal-case">({filteredAndSortedStudents.length} shown)</span>
+                            </div>
+                          </th>
+
+                          {effectiveClassDays.map(day => {
+                            const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
+                            return (
+                              <th 
+                                key={day.id} 
+                                className={`${densityMode === 'dense' ? 'p-2' : 'p-3'} border-r border-slate-200 text-center min-w-[110px] max-w-[150px] flex-1 hover:bg-slate-200/50 transition-colors group/th`}
+                                title={`Sheet: ${day.name}\nPresent: ${stats.count} students (${Math.round(stats.percentage)}%)\nClick pencil to rename title`}
+                              >
+                                <div className="flex flex-col items-center justify-center">
+                                  <div className="flex items-center gap-1 justify-center max-w-[135px]">
+                                    <span className={`${densityMode === 'dense' ? 'text-[11px]' : 'text-xs'} font-extrabold text-slate-800 truncate`} title={day.name}>
+                                      {day.name}
+                                    </span>
+                                    {appUser?.role !== 'student' && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const newName = prompt('Rename Class Day Title:', day.name);
+                                          if (newName && newName.trim() !== '') {
+                                            handleEditClassDayTitle(day.id, newName.trim());
+                                          }
+                                        }}
+                                        className="opacity-0 group-hover/th:opacity-100 p-0.5 hover:bg-slate-300/60 rounded text-slate-500 hover:text-indigo-700 transition-all cursor-pointer flex-shrink-0"
+                                        title="Click to rename class day title"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 border border-slate-200 text-slate-600">
+                                    <span>{stats.count}/{uniqueStudents.length}</span>
+                                    <span className="text-emerald-600">({Math.round(stats.percentage)}%)</span>
+                                  </div>
+                                </div>
+                              </th>
+                            );
+                          })}
+
+                          <th className={`${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 text-center font-black uppercase text-emerald-800 tracking-wider w-28 min-w-[112px] bg-emerald-50/60`}>
+                            Attendance Rate
+                          </th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+
+                      {/* Table Body */}
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredAndSortedStudents.length > 0 ? (
+                          filteredAndSortedStudents.map((student, idx) => {
+                            const studentKey = student.name.toLowerCase().trim();
+                            const isExcusedMap = excusedAbsences[studentKey] || {};
+                            const studentBadges = getStudentBadges(student);
+
+                            return (
+                              <tr 
+                                key={idx} 
+                                onClick={() => setSelectedStudent(student)}
+                                className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
+                              >
+                                {/* Student Name Sticky Column */}
+                                <td className={`sticky left-0 z-10 ${densityMode === 'dense' ? 'py-1.5 px-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 font-bold text-slate-800 bg-white group-hover:bg-indigo-50/80 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] w-64 min-w-[256px] truncate ${student.rate < atRiskThreshold ? 'text-rose-700' : ''}`} title="Click to view student detail">
+                                  <div className="flex items-center justify-between gap-1 min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedStudentNames.includes(student.name)}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleSelectStudent(student.name);
+                                        }}
+                                        className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer flex-shrink-0"
+                                      />
+                                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${student.rate >= satisfactoryThreshold ? 'bg-emerald-500' : student.rate >= atRiskThreshold ? 'bg-amber-400' : 'bg-rose-500'}`} />
+                                      <span className="truncate">{student.name}</span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      {studentBadges.map(b => (
+                                        <span key={b.id} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
+                                          {b.icon}
+                                        </span>
+                                      ))}
+                                      {student.note && (
+                                        <span className="text-indigo-500 bg-indigo-50 p-1 rounded" title={`Note: ${student.note}`}>
+                                          <PenSquare className="w-3 h-3" />
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Attendance Status Per Sheet/Day */}
+                                {effectiveClassDays.map(day => {
+                                  const attendance = student.attendanceByDay[day.id];
+                                  const isPresent = attendance?.present;
+                                  const isExcused = !isPresent && !!isExcusedMap[day.id];
+
+                                  return (
+                                    <td 
+                                      key={day.id} 
+                                      className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px]`}
+                                      onClick={(e) => {
+                                        if (appUser?.role === 'student') return;
+                                        e.stopPropagation();
+                                        handleToggleStudentAttendance(
+                                          student.name, 
+                                          day.id, 
+                                          isPresent ? 'excused' : isExcused ? 'absent' : 'present'
+                                        );
+                                      }}
+                                      title={appUser?.role !== 'student' ? 'Click to toggle manual attendance (Present -> Excused -> Absent)' : undefined}
+                                    >
+                                      {isPresent ? (
+                                        <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer`}>
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                          <span>Present</span>
+                                        </div>
+                                      ) : isExcused ? (
+                                        <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold hover:bg-amber-100 transition-colors cursor-pointer`}>
+                                          <AlertCircle className="w-3 h-3 text-amber-500" />
+                                          <span>Excused</span>
+                                        </div>
+                                      ) : (
+                                        <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium hover:bg-rose-100 transition-colors cursor-pointer`}>
+                                          <XCircle className="w-3 h-3 text-rose-300" />
+                                          <span>Absent</span>
+                                        </div>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+
+                                {/* Attendance Rate Badge */}
+                                <td className={`${densityMode === 'dense' ? 'py-1.5 px-2 text-[10px]' : 'p-3 text-xs'} border-r border-slate-100 text-center font-mono font-bold w-28 min-w-[112px] bg-slate-50/50`}>
+                                  <span className={`inline-block px-2.5 py-0.5 rounded ${
+                                    student.rate >= satisfactoryThreshold 
+                                      ? 'bg-emerald-100 text-emerald-800' 
+                                      : student.rate >= atRiskThreshold 
+                                      ? 'bg-amber-100 text-amber-800' 
+                                      : 'bg-rose-100 text-rose-800 font-extrabold'
+                                  }`}>
+                                    {Math.round(student.rate)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={effectiveClassDays.length + 2} className="p-8 text-center text-slate-400 text-xs">
+                              No students found matching your search or filter criteria.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -3698,17 +4095,18 @@ create policy "Allow public update" on app_states for update using (true) with c
       </div>
 
       {/* Student Detail Modal */}
-      {selectedStudent && (() => {
-        const studentKey = (selectedStudent.name || '').toLowerCase().trim();
-        const currentNote = studentNotes[studentKey] || '';
-        const isExcusedMap = excusedAbsences[studentKey] || {};
-        const studentBadges = getStudentBadges(selectedStudent);
+      <AnimatePresence>
+        {selectedStudent && (() => {
+          const studentKey = (selectedStudent.name || '').toLowerCase().trim();
+          const currentNote = studentNotes[studentKey] || '';
+          const isExcusedMap = excusedAbsences[studentKey] || {};
+          const studentBadges = getStudentBadges(selectedStudent);
 
-        const missedDays = effectiveClassDays.filter(day => !selectedStudent.attendanceByDay[day.id]?.present);
-        const missedListText = missedDays.map(d => ` • ${d.name}`).join('\n');
-        
-        const emailSubject = `[HTEIM School of Ministry] Academic Attendance Notice for ${selectedStudent.name}`;
-        const emailBody = `Dear ${selectedStudent.name},
+          const missedDays = effectiveClassDays.filter(day => !selectedStudent.attendanceByDay[day.id]?.present);
+          const missedListText = missedDays.map(d => ` • ${d.name}`).join('\n');
+          
+          const emailSubject = `[HTEIM School of Ministry] Academic Attendance Notice for ${selectedStudent.name}`;
+          const emailBody = `Dear ${selectedStudent.name},
 
 This is an official academic notice from HTEIM School of Ministry regarding your class attendance record.
 
@@ -3722,19 +4120,36 @@ In His Service,
 Faculty & Academic Administration Team
 HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
-        const handleCopyEmail = () => {
-          navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailBody}`);
-          setCopiedEmail(true);
-          setTimeout(() => setCopiedEmail(false), 2500);
-        };
+          const handleCopyEmail = () => {
+            navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailBody}`);
+            setCopiedEmail(true);
+            setTimeout(() => setCopiedEmail(false), 2500);
+          };
 
-        const mailtoUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+          const mailtoUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
-        const modalPhoto = studentPhotos[studentKey] || selectedStudent.photoUrl;
+          const modalPhoto = studentPhotos[studentKey] || selectedStudent.photoUrl;
 
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-xl overflow-hidden animate-scaleUp max-h-[90vh] flex flex-col">
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => {
+                  setSelectedStudent(null);
+                  setShowEmailDraftModal(false);
+                }}
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                className="relative z-10 bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
+              >
               {/* Modal Header */}
               <div className="p-5 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
@@ -4036,10 +4451,11 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   Close
                 </button>
               </div>
-            </div>
+            </motion.div>
           </div>
         );
       })()}
+      </AnimatePresence>
 
       {/* Printable Report Modal */}
       {showReportModal && (() => {
@@ -4456,9 +4872,24 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       )}
 
       {/* Individual Student Academic Transcript PDF Modal */}
-      {showStudentTranscriptModal && selectedStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp">
+      <AnimatePresence>
+        {showStudentTranscriptModal && selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setShowStudentTranscriptModal(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative z-10 bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden"
+            >
             {/* Modal Toolbar */}
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
@@ -4665,9 +5096,10 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+    </AnimatePresence>
       {showCertificateModal && certificateData && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white border-8 border-double border-amber-600 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden my-auto animate-scaleUp p-8 text-center relative text-slate-900 print:border-8 print:shadow-none print:m-0" id="printable-certificate">
@@ -5394,6 +5826,286 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           }}
         />
       )}
+
+      {/* Mobile Slide-Up "More" Options Drawer */}
+      <AnimatePresence>
+        {showMobileMoreMenu && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileMoreMenu(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              className="relative z-10 w-full bg-slate-900 border-t-2 border-indigo-500/40 rounded-t-3xl shadow-2xl p-4 text-white max-h-[85dvh] overflow-y-auto custom-scrollbar pb-safe"
+            >
+              {/* Drawer Drag Handle / Header */}
+              <div className="flex flex-col items-center mb-3">
+                <div className="w-12 h-1.5 bg-slate-700 rounded-full mb-3" />
+                <div className="flex items-center justify-between w-full pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-black text-amber-300">HTEIM Mobile Navigation & Tools</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowMobileMoreMenu(false)}
+                    className="p-1 bg-slate-800 rounded-xl text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Mobile Quick Modules Section */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Portal Academic Modules</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        setActiveErpTab('library');
+                        setShowMobileMoreMenu(false);
+                      }}
+                      className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                        activeErpTab === 'library'
+                          ? 'bg-indigo-600 border-indigo-400 text-white font-bold'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-200'
+                      }`}
+                    >
+                      <Bookmark className="w-4 h-4 text-teal-400" />
+                      <div>
+                        <p className="text-xs font-bold">Library & Files</p>
+                        <p className="text-[9px] text-slate-400">PDFs & Audio</p>
+                      </div>
+                    </button>
+
+                    {(appUser?.role === 'admin' || appUser?.role === 'student') && (
+                      <button
+                        onClick={() => {
+                          setActiveErpTab('payments');
+                          setShowMobileMoreMenu(false);
+                        }}
+                        className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                          activeErpTab === 'payments'
+                            ? 'bg-indigo-600 border-indigo-400 text-white font-bold'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-200'
+                        }`}
+                      >
+                        <DollarSign className="w-4 h-4 text-emerald-400" />
+                        <div>
+                          <p className="text-xs font-bold">Payments</p>
+                          <p className="text-[9px] text-slate-400">Tuition Statement</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {appUser?.role !== 'student' && (
+                      <button
+                        onClick={() => {
+                          setActiveErpTab('students');
+                          setShowMobileMoreMenu(false);
+                        }}
+                        className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                          activeErpTab === 'students'
+                            ? 'bg-indigo-600 border-indigo-400 text-white font-bold'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-200'
+                        }`}
+                      >
+                        <GraduationCap className="w-4 h-4 text-indigo-400" />
+                        <div>
+                          <p className="text-xs font-bold">Students Roster</p>
+                          <p className="text-[9px] text-slate-400">{uniqueStudents.length} Enrolled</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile Quick Actions for Teachers / Students */}
+                <div>
+                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Mobile Class Operations</p>
+                  <div className="space-y-1.5">
+                    {appUser?.role !== 'student' && (
+                      <button
+                        onClick={() => {
+                          setShowMobileMoreMenu(false);
+                          setShowLiveCheckinModal(true);
+                          if (!liveCheckinDayId && classDays.length > 0) {
+                            setLiveCheckinDayId(classDays[classDays.length - 1].id);
+                          }
+                        }}
+                        className="w-full p-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs rounded-xl flex items-center justify-between shadow-sm cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-slate-950" />
+                          <span>Launch Mobile Live Check-In</span>
+                        </div>
+                        <span className="px-2 py-0.5 bg-slate-950 text-amber-300 rounded text-[9px] font-mono">1-TAP</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setShowMobileMoreMenu(false);
+                        setShowCommandPalette(true);
+                      }}
+                      className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Search className="w-4 h-4 text-amber-400" />
+                        <span>Search & Jump (Cmd+K)</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">Quick Search</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowMobileMoreMenu(false);
+                        setShowSettingsModal(true);
+                      }}
+                      className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Settings className="w-4 h-4 text-indigo-400" />
+                        <span>Display & Portal Settings</span>
+                      </div>
+                      <span className="text-[10px] text-indigo-300 font-mono">Theme & Fonts</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowMobileMoreMenu(false);
+                        setShowMobileDownloadModal(true);
+                      }}
+                      className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-emerald-400" />
+                        <span>Install PWA / Download APK</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono">Offline Ready</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Role & Account Section */}
+                <div className="pt-2 border-t border-slate-800">
+                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Active User & Role</p>
+                  <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+                        appUser?.role === 'admin' ? 'bg-amber-500 text-slate-950' :
+                        appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'
+                      }`}>
+                        {appUser ? appUser.name.charAt(0).toUpperCase() : 'G'}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">{appUser ? appUser.name : 'Guest User'}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-mono">{appUser?.role || 'Guest'}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShowMobileMoreMenu(false);
+                        setShowRoleMenu(true);
+                      }}
+                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all"
+                    >
+                      Switch Role
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Mobile Bottom Navigation Bar (Visible on mobile/tablets < 768px) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-indigo-500/30 text-white shadow-2xl p-1 px-1 sm:px-2 flex items-center justify-around md:hidden pb-safe">
+        <button
+          onClick={() => setActiveErpTab('home')}
+          className={`flex-1 min-w-0 min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer ${
+            activeErpTab === 'home'
+              ? 'text-amber-400 font-black bg-amber-500/10 border border-amber-500/30'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sparkles className={`w-4 h-4 shrink-0 ${activeErpTab === 'home' ? 'text-amber-400 animate-pulse' : ''}`} />
+          <span className="text-[9px] sm:text-[10px] mt-0.5 font-bold leading-none truncate max-w-full">Home</span>
+        </button>
+
+        <button
+          onClick={() => setActiveErpTab('attendance')}
+          className={`flex-1 min-w-0 min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer relative ${
+            activeErpTab === 'attendance'
+              ? 'text-indigo-300 font-black bg-indigo-500/15 border border-indigo-500/40'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <UserCheck className={`w-4 h-4 shrink-0 ${activeErpTab === 'attendance' ? 'text-indigo-400' : ''}`} />
+          <span className="text-[9px] sm:text-[10px] mt-0.5 font-bold leading-none truncate max-w-full">Attendance</span>
+          {uniqueStudents.length > 0 && (
+            <span className="absolute top-1 right-1 sm:right-2 w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveErpTab('courses')}
+          className={`flex-1 min-w-0 min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer ${
+            activeErpTab === 'courses'
+              ? 'text-emerald-300 font-black bg-emerald-500/15 border border-emerald-500/40'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <BookOpen className={`w-4 h-4 shrink-0 ${activeErpTab === 'courses' ? 'text-emerald-400' : ''}`} />
+          <span className="text-[9px] sm:text-[10px] mt-0.5 font-bold leading-none truncate max-w-full">Courses</span>
+        </button>
+
+        <button
+          onClick={() => setActiveErpTab('exams')}
+          className={`flex-1 min-w-0 min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer ${
+            activeErpTab === 'exams'
+              ? 'text-purple-300 font-black bg-purple-500/15 border border-purple-500/40'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Award className={`w-4 h-4 shrink-0 ${activeErpTab === 'exams' ? 'text-purple-400' : ''}`} />
+          <span className="text-[9px] sm:text-[10px] mt-0.5 font-bold leading-none truncate max-w-full">Exams</span>
+        </button>
+
+        <button
+          onClick={() => setActiveErpTab('schedule')}
+          className={`flex-1 min-w-0 min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer ${
+            activeErpTab === 'schedule'
+              ? 'text-blue-300 font-black bg-blue-500/15 border border-blue-500/40'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Calendar className={`w-4 h-4 shrink-0 ${activeErpTab === 'schedule' ? 'text-blue-400' : ''}`} />
+          <span className="text-[9px] sm:text-[10px] mt-0.5 font-bold leading-none truncate max-w-full">Schedule</span>
+        </button>
+
+        <button
+          onClick={() => setShowMobileMoreMenu(true)}
+          className={`flex-1 min-w-0 min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center rounded-lg transition-all cursor-pointer ${
+            showMobileMoreMenu || activeErpTab === 'library' || activeErpTab === 'payments'
+              ? 'text-amber-300 font-black bg-slate-800 border border-slate-700'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sliders className="w-4 h-4 shrink-0 text-amber-400" />
+          <span className="text-[9px] sm:text-[10px] mt-0.5 font-bold leading-none truncate max-w-full">More</span>
+        </button>
+      </nav>
     </div>
   );
 }

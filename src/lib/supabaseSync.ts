@@ -9,11 +9,11 @@ export async function testSupabaseConnection(): Promise<boolean> {
         console.warn("app_states table does not exist in Supabase yet.");
         return false;
       }
-      throw error;
+      return false;
     }
     return true;
   } catch (err) {
-    console.error("Error testing Supabase connection:", err);
+    console.warn("Supabase connection unavailable:", err);
     return false;
   }
 }
@@ -38,7 +38,7 @@ export async function loadFromSupabase(userEmail: string | null | undefined): Pr
       if (error.code === '42P01') {
         throw new Error('TABLE_NOT_FOUND');
       }
-      throw error;
+      return null;
     }
 
     return data?.state || null;
@@ -46,7 +46,7 @@ export async function loadFromSupabase(userEmail: string | null | undefined): Pr
     if (error.message === 'TABLE_NOT_FOUND') {
       throw error;
     }
-    console.error("Error loading state from Supabase:", error);
+    console.warn("Unable to load state from Supabase:", error?.message || error);
     return null;
   }
 }
@@ -76,7 +76,7 @@ export async function saveToSupabase(
       if (error.code === '42P01') {
         throw new Error('TABLE_NOT_FOUND');
       }
-      throw error;
+      return false;
     }
 
     return true;
@@ -84,7 +84,7 @@ export async function saveToSupabase(
     if (error.message === 'TABLE_NOT_FOUND') {
       throw error;
     }
-    console.error("Error saving state to Supabase:", error);
+    console.warn("Unable to save state to Supabase:", error?.message || error);
     return false;
   }
 }
