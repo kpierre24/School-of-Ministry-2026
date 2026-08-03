@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.jpg';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 
 interface LogoImageProps {
   className?: string;
@@ -38,6 +38,7 @@ export const LogoImage: React.FC<LogoImageProps> = ({
       className={className}
       onError={() => setHasError(true)}
       onClick={onClick}
+      referrerPolicy="no-referrer"
     />
   );
 };

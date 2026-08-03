@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { PaymentRecord } from '../types';
-import hteimLogoAsset from '../assets/hteim_logo.jpg';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 
 /**
  * Converts image file to base64 for jsPDF inclusion if available

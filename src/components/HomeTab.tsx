@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.jpg';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -42,6 +42,7 @@ interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
   appUser: AppUser | null;
   onOpenLogin: () => void;
+  onOpenPresentationDemo?: () => void;
   studentsCount: number;
   coursesCount: number;
   classDaysCount: number;
@@ -63,6 +64,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onNavigate,
   appUser,
   onOpenLogin,
+  onOpenPresentationDemo,
   studentsCount,
   coursesCount,
   classDaysCount,
@@ -264,7 +266,16 @@ create policy "Allow public update" on app_states for update using (true) with c
               HTEIM School of Ministry provides structured, biblically-centered teaching designed to help you grow in faith, develop high standards of character, and activate your spiritual calling.
             </p>
             
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-1 sm:pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-1 sm:pt-2 flex-wrap">
+              {onOpenPresentationDemo && (
+                <button
+                  onClick={onOpenPresentationDemo}
+                  className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400/50 animate-pulse"
+                >
+                  <Play className="w-4 h-4 text-amber-300 fill-amber-300" /> Play 30s Student Presentation Demo
+                </button>
+              )}
+
               <button
                 onClick={() => onNavigate('courses')}
                 className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-300"

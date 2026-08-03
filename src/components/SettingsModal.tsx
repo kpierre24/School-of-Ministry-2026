@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.jpg';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 import { 
   Settings, 
   X, 
@@ -869,6 +869,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   src={hteimLogoAsset} 
                   alt="HTEIM Logo" 
                   className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
+                  referrerPolicy="no-referrer"
                 />
                 <div>
                   <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">

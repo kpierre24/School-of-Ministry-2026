@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import hteimLogoAsset from './assets/hteim_logo.jpg';
+import hteimLogoAsset from './assets/hteim_logo.png';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from 'firebase/auth';
 import stringSimilarity from 'string-similarity';
@@ -114,6 +114,7 @@ import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUt
 import { SwipeableAttendanceCard } from './components/SwipeableAttendanceCard';
 import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
+import { AppPresentationModal } from './components/AppPresentationModal';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
 
@@ -559,6 +560,7 @@ export default function App() {
 
   // Batch Announcements & PWA Mobile Offline Sync State
   const [showBatchBroadcastModal, setShowBatchBroadcastModal] = useState(false);
+  const [showPresentationModal, setShowPresentationModal] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncedBannerMessage, setSyncedBannerMessage] = useState<string | null>(null);
 
@@ -2373,6 +2375,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 src={hteimLogoAsset} 
                 alt="HTEIM School of Ministry Logo" 
                 className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl border border-amber-400/80 shadow-md object-contain bg-white p-0.5 transition-transform group-hover/brand:scale-105"
+                referrerPolicy="no-referrer"
               />
             </div>
             <div className="min-w-0">
@@ -2441,6 +2444,17 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <span className="hidden sm:inline">Live Check-In</span>
               </button>
             )}
+
+            {/* 30-Second Animated Presentation Demo Button */}
+            <button
+              onClick={() => setShowPresentationModal(true)}
+              className="px-2.5 py-1.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs rounded-xl shadow-md border border-indigo-400/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0 animate-pulse"
+              title="Launch 30-Second Student Presentation Demo Video"
+            >
+              <Play className="w-3.5 h-3.5 fill-amber-300 text-amber-300 shrink-0" />
+              <span className="hidden sm:inline">30s Demo Video</span>
+              <span className="sm:hidden text-[10px]">30s Demo</span>
+            </button>
 
             {/* Command Palette Search Button */}
             <button
@@ -2575,9 +2589,23 @@ create policy "Allow public update" on app_states for update using (true) with c
                     )}
                   </div>
 
-                  {/* Section 3: Applications & Admin */}
+                  {/* Section 3: Applications & Governance */}
                   <div className="space-y-1 pt-1 border-t border-slate-800">
-                    <p className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">Apps & Governance</p>
+                    <p className="text-[9px] uppercase font-mono font-bold text-slate-400 px-1">Presentation & Mobile</p>
+                    <button
+                      onClick={() => {
+                        setShowToolsMenu(false);
+                        setShowPresentationModal(true);
+                      }}
+                      className="w-full p-2 bg-gradient-to-r from-indigo-950 to-purple-950 hover:from-indigo-900 hover:to-purple-900 border border-indigo-500/40 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Play className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                        <span className="text-white">30s Student Demo Video</span>
+                      </div>
+                      <span className="bg-amber-400 text-slate-950 text-[9px] px-1.5 py-0.5 rounded font-black">PLAY</span>
+                    </button>
+
                     <button
                       onClick={() => {
                         setShowToolsMenu(false);
@@ -3208,6 +3236,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               onNavigate={(tab) => setActiveErpTab(tab)}
               appUser={appUser}
               onOpenLogin={() => setShowLoginModal(true)}
+              onOpenPresentationDemo={() => setShowPresentationModal(true)}
               studentsCount={uniqueStudents.length}
               coursesCount={courses.length || 6}
               classDaysCount={classDays.length}
@@ -4019,6 +4048,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                   src={hteimLogoAsset} 
                   alt="HTEIM School of Ministry" 
                   className="relative w-20 h-20 rounded-full border-2 border-white shadow-xl object-contain bg-white p-1"
+                  referrerPolicy="no-referrer"
                 />
               </div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">HTEIM School of Ministry</h2>
@@ -4643,6 +4673,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       src={hteimLogoAsset} 
                       alt="HTEIM School of Ministry Logo" 
                       className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
+                      referrerPolicy="no-referrer"
                     />
                     <div>
                       <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
@@ -4771,7 +4802,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 {/* Report Footer & Official Seal */}
                 <div className="pt-6 mt-6 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
                   <div className="flex items-center gap-2">
-                    <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-6 h-6 rounded-full border border-amber-400 p-0.5 object-contain bg-white" />
+                    <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-6 h-6 rounded-full border border-amber-400 p-0.5 object-contain bg-white" referrerPolicy="no-referrer" />
                     <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
                     <span>•</span>
                     <span>Heaven Touching Earth Int'l Ministries</span>
@@ -4971,6 +5002,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     src={hteimLogoAsset} 
                     alt="HTEIM Logo" 
                     className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
+                    referrerPolicy="no-referrer"
                   />
                   <div>
                     <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
@@ -5128,7 +5160,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               {/* Letterhead Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
                 <div className="flex items-center gap-2">
-                  <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-5 h-5 rounded-full border border-amber-400 p-0.5 object-contain bg-white" />
+                  <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-5 h-5 rounded-full border border-amber-400 p-0.5 object-contain bg-white" referrerPolicy="no-referrer" />
                   <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
                 </div>
                 <div className="italic font-serif text-slate-600">
@@ -5149,6 +5181,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 src={hteimLogoAsset} 
                 alt="HTEIM School of Ministry Logo" 
                 className="w-20 h-20 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-1 mb-2"
+                referrerPolicy="no-referrer"
               />
               <h1 className="text-2xl font-black tracking-wider text-slate-900 uppercase">HTEIM SCHOOL OF MINISTRY</h1>
               <p className="text-xs font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
@@ -6087,6 +6120,20 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     <button
                       onClick={() => {
                         setShowMobileMoreMenu(false);
+                        setShowPresentationModal(true);
+                      }}
+                      className="w-full p-2.5 bg-gradient-to-r from-indigo-950 to-purple-950 border border-indigo-500/40 hover:bg-indigo-900 text-white text-xs font-black rounded-xl flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
+                        <span>30s Student Presentation Demo</span>
+                      </div>
+                      <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black font-mono">VIDEO</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowMobileMoreMenu(false);
                         setShowMobileDownloadModal(true);
                       }}
                       className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
@@ -6133,6 +6180,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           </div>
         )}
       </AnimatePresence>
+
+      {/* 30-Second Student Presentation Demo Video Modal */}
+      <AppPresentationModal
+        isOpen={showPresentationModal}
+        onClose={() => setShowPresentationModal(false)}
+        onNavigateTab={(tab) => setActiveErpTab(tab)}
+      />
 
       {/* Floating Mobile Bottom Navigation Bar (Visible on mobile/tablets < 768px) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-indigo-500/30 text-white shadow-2xl p-1 px-1 sm:px-2 flex items-center justify-around md:hidden pb-safe">

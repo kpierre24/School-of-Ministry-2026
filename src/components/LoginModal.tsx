@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.jpg';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 import { 
   ShieldCheck, 
   GraduationCap, 
