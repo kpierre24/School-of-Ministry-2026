@@ -3426,7 +3426,7 @@ create policy "Allow public update" on app_states for update using (true) with c
         )}
 
         {activeErpTab === 'attendance' && (
-          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto md:overflow-hidden">
             {appUser?.role === 'student' ? (
               <StudentAttendancePortal
                 student={currentStudentPortalData}
@@ -4066,7 +4066,7 @@ create policy "Allow public update" on app_states for update using (true) with c
 
         {/* Sidebar Controls */}
         {activeErpTab === 'attendance' && appUser?.role !== 'student' && (
-          <aside className="w-80 flex flex-col gap-4 overflow-y-auto pb-4 flex-shrink-0">
+          <aside className="hidden lg:flex w-80 flex-col gap-4 overflow-y-auto pb-4 flex-shrink-0">
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 shadow-sm animate-fadeIn">
                 <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />

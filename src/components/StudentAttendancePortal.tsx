@@ -126,7 +126,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
   };
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6 animate-fadeIn custom-scrollbar">
+    <div className="h-full overflow-y-auto p-3.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 pb-12 animate-fadeIn custom-scrollbar">
       {/* Weekly Tuesday Live Zoom Class Notice Card */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-5 text-white border border-blue-500/30 shadow-lg relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -305,7 +305,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       </div>
 
       {/* Class Attendance History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
