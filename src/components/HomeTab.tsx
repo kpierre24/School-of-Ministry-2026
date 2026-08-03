@@ -236,7 +236,7 @@ create policy "Allow public update" on app_states for update using (true) with c
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-12 animate-fadeIn" id="som-home-container">
+    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-28 sm:pb-24 md:pb-12 animate-fadeIn" id="som-home-container">
       
       {/* Futuristic Mesh Hero Section */}
       <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl futuristic-hero-bg text-white border border-indigo-500/30 shadow-2xl cyber-grid-pattern">

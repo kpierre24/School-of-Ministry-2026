@@ -76,9 +76,14 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = touch.clientY - touchStartRef.current.y;
 
-    // Determine direction on first significant movement
-    if (!isHorizontalSwipe.current && Math.abs(deltaX) > 8) {
-      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    // If user is scrolling vertically, cancel horizontal swipe drag
+    if (!isHorizontalSwipe.current) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+        setIsDragging(false);
+        setDragOffset(0);
+        return;
+      }
+      if (Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY)) {
         isHorizontalSwipe.current = true;
       }
     }
@@ -259,7 +264,12 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
             </span>
           </div>
 
-          <div className="overflow-x-auto custom-scrollbar flex gap-1.5 sm:gap-2 pb-1 pt-0.5 touch-pan-x">
+          <div 
+            className="overflow-x-auto custom-scrollbar flex gap-1.5 sm:gap-2 pb-1 pt-0.5 touch-pan-x"
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
             {effectiveClassDays.map(day => {
               const attendance = student.attendanceByDay[day.id];
               const dayPresent = attendance?.present;

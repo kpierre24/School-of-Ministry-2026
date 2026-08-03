@@ -1042,7 +1042,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   });
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       
       {/* Top Banner & Sub-Tab Switcher */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 sm:p-5 text-white border border-indigo-900/50 shadow-xl relative md:sticky md:top-0 z-30 backdrop-blur-md">

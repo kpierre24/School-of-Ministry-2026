@@ -586,7 +586,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   return (
-    <div className="space-y-6 animate-fadeIn text-slate-100">
+    <div className="space-y-6 animate-fadeIn text-slate-100 pb-28 sm:pb-24 md:pb-8">
       {/* Sleek Dark Header Bar matching uploaded mockup */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>

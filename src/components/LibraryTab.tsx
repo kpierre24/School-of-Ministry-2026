@@ -596,7 +596,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>

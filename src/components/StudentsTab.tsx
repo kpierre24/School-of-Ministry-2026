@@ -271,7 +271,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const satisfactoryStudents = students.filter(s => s.rate >= satisfactoryThreshold).length;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Banner & Quick Metrics */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">

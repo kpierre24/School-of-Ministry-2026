@@ -1320,7 +1320,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     const progressPercent = Math.min(100, Math.round((studentPayment.amountPaid / studentPayment.totalTuition) * 100));
 
     return (
-      <div className="space-y-6 animate-fadeIn pb-8">
+      <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
         {/* Student Welcome Banner */}
         <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
@@ -1670,7 +1670,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-8">
+    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
