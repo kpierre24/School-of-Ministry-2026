@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.png';
+import LogoImage from './LogoImage';
 import { logActivity } from '../lib/auditLogger';
 import {
   CreditCard,
@@ -1513,11 +1513,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               <div id="printable-tuition-receipt" className="p-4 sm:p-8 space-y-4 sm:space-y-6 text-slate-800 overflow-y-auto custom-scrollbar flex-1">
                 <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-4 gap-3">
                   <div className="flex items-center gap-2.5 sm:gap-3">
-                    <img 
-                      src={hteimLogoAsset} 
-                      alt="HTEIM Logo" 
-                      className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
-                    />
+                    <LogoImage size="md" shape="circle" wrapperClassName="flex-shrink-0" />
                     <div>
                       <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
                       <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>
@@ -2214,11 +2210,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             <div id="printable-tuition-receipt" className="p-4 sm:p-8 space-y-4 sm:space-y-6 text-slate-800 overflow-y-auto custom-scrollbar flex-1">
               <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-4 gap-3">
                 <div className="flex items-center gap-2.5 sm:gap-3">
-                  <img 
-                    src={hteimLogoAsset} 
-                    alt="HTEIM Logo" 
-                    className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
-                  />
+                  <LogoImage size="md" shape="circle" wrapperClassName="flex-shrink-0" />
                   <div>
                     <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
                     <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>

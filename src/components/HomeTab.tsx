@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.png';
+import LogoImage from './LogoImage';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -298,11 +298,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           {/* MD3 Logo Card */}
           <div className="hidden md:flex flex-shrink-0 w-56 h-56 bg-white/10 border border-white/20 rounded-3xl items-center justify-center relative p-4 shadow-xl">
             <div className="flex flex-col items-center text-center gap-3">
-              <img
-                src={hteimLogoAsset}
-                alt="HTEIM logo"
-                className="w-24 h-24 rounded-2xl border-2 border-amber-400 shadow-lg object-contain bg-white p-1.5"
-              />
+              <LogoImage size="2xl" shape="rounded" />
               <span className="font-serif italic text-amber-300 text-xs">"Bringing Heaven to Earth"</span>
               <span className="text-[10px] font-semibold tracking-widest text-white/60 uppercase">Apostolic School of Ministry</span>
             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.png';
+import LogoImage from './LogoImage';
 import { 
   ShieldCheck, 
   GraduationCap, 
@@ -140,11 +140,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Top Minimalist Brand Banner */}
         <div className="w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-between border-b border-slate-200/60 relative z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img 
-              src={hteimLogoAsset} 
-              alt="HTEIM Logo" 
-              className="w-14 h-14 rounded-xl border-2 border-amber-300 shadow-sm object-contain bg-white p-0.5 flex-shrink-0"
-            />
+            <LogoImage size="md" shape="rounded" wrapperClassName="flex-shrink-0" />
             <div>
               <p className="text-xs font-black text-slate-800 uppercase tracking-wider leading-none">HTEIM</p>
               <p className="text-[10px] font-bold text-amber-700 font-serif tracking-tight mt-0.5">Heaven Touching Earth International Ministries</p>
@@ -426,11 +422,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </button>
           )}
           <div className="flex items-center gap-3 mb-2">
-            <img
-              src={hteimLogoAsset}
-              alt="HTEIM Logo"
-              className="w-12 h-12 rounded-full border-2 border-amber-400 object-contain shadow-md bg-white p-0.5"
-            />
+            <LogoImage size="md" shape="circle" />
             <div>
               <h2 className="text-xl font-bold text-white">HTEIM School of Ministry</h2>
               <p className="text-xs text-amber-300 flex items-center gap-1 mt-0.5">

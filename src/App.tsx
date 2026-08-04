@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import hteimLogoAsset from './assets/hteim_logo.png';
+import LogoImage from './components/LogoImage';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from 'firebase/auth';
 import stringSimilarity from 'string-similarity';
@@ -2462,12 +2462,7 @@ create policy "Allow public update" on app_states for update using (true) with c
         <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3 cursor-pointer min-w-0 shrink-0" onClick={() => setActiveErpTab('home')}>
-            <img
-              src={hteimLogoAsset}
-              alt="HTEIM Logo"
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl border-2 border-amber-400 shadow-sm object-contain bg-white p-0.5"
-              referrerPolicy="no-referrer"
-            />
+            <LogoImage size="sm" shape="rounded" wrapperClassName="flex-shrink-0" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[160px] sm:max-w-none">
@@ -3917,12 +3912,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             <div className="flex flex-col items-center justify-center flex-1 text-slate-400 p-8 text-center animate-fadeIn">
               <div className="relative mb-4">
                 <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-400 to-emerald-500 blur-sm opacity-60"></div>
-                <img 
-                  src={hteimLogoAsset} 
-                  alt="HTEIM School of Ministry" 
-                  className="relative w-20 h-20 rounded-full border-2 border-white shadow-xl object-contain bg-white p-1"
-                  referrerPolicy="no-referrer"
-                />
+                <LogoImage size="xl" shape="circle" className="relative w-20 h-20 rounded-full border-2 border-white shadow-xl object-contain bg-white p-1" />
               </div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">HTEIM School of Ministry</h2>
               <p className="text-xs font-bold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
@@ -4542,12 +4532,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 {/* Document Header with HTEIM Logo & Ministry Letterhead */}
                 <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
                   <div className="flex items-center gap-4">
-                    <img 
-                      src={hteimLogoAsset} 
-                      alt="HTEIM School of Ministry Logo" 
-                      className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                      referrerPolicy="no-referrer"
-                    />
+                    <LogoImage size="lg" shape="circle" wrapperClassName="flex-shrink-0" />
                     <div>
                       <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
                       <p className="text-xs font-bold text-amber-900 tracking-wide">HEAVEN TOUCHING EARTH INT'L MINISTRIES</p>
@@ -4675,7 +4660,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 {/* Report Footer & Official Seal */}
                 <div className="pt-6 mt-6 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
                   <div className="flex items-center gap-2">
-                    <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-6 h-6 rounded-full border border-amber-400 p-0.5 object-contain bg-white" referrerPolicy="no-referrer" />
+                    <LogoImage size="xs" shape="circle" />
                     <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
                     <span>•</span>
                     <span>Heaven Touching Earth Int'l Ministries</span>
@@ -4871,12 +4856,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               {/* Document Letterhead */}
               <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
                 <div className="flex items-center gap-4">
-                  <img 
-                    src={hteimLogoAsset} 
-                    alt="HTEIM Logo" 
-                    className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                    referrerPolicy="no-referrer"
-                  />
+                  <LogoImage size="lg" shape="circle" wrapperClassName="flex-shrink-0" />
                   <div>
                     <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
                     <p className="text-xs font-bold text-amber-900 tracking-wide">HEAVEN TOUCHING EARTH INT'L MINISTRIES</p>
@@ -5033,7 +5013,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               {/* Letterhead Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
                 <div className="flex items-center gap-2">
-                  <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-5 h-5 rounded-full border border-amber-400 p-0.5 object-contain bg-white" referrerPolicy="no-referrer" />
+                  <LogoImage size="xs" shape="circle" />
                   <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
                 </div>
                 <div className="italic font-serif text-slate-600">
@@ -5050,12 +5030,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           <div className="bg-white border-8 border-double border-amber-600 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden my-auto animate-scaleUp p-8 text-center relative text-slate-900 print:border-8 print:shadow-none print:m-0" id="printable-certificate">
             {/* Top Certificate Header */}
             <div className="flex flex-col items-center justify-center mb-6">
-              <img 
-                src={hteimLogoAsset} 
-                alt="HTEIM School of Ministry Logo" 
-                className="w-20 h-20 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-1 mb-2"
-                referrerPolicy="no-referrer"
-              />
+              <LogoImage size="xl" shape="circle" wrapperClassName="mb-2" />
               <h1 className="text-2xl font-black tracking-wider text-slate-900 uppercase">HTEIM SCHOOL OF MINISTRY</h1>
               <p className="text-xs font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
               <p className="text-xs italic font-serif text-slate-600 mt-1">"Bringing Heaven to Earth, Taking People to Heaven"</p>
