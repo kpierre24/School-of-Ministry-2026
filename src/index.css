@@ -123,6 +123,17 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+
+  /* Active navigation pill for Material Design 3 Bottom Nav */
+  .md-nav-pill {
+    background-color: rgb(224, 231, 255) !important; /* bg-indigo-100 */
+    color: rgb(67, 56, 202) !important; /* text-indigo-700 */
+  }
+}
+
+.dark .md-nav-pill {
+  background-color: rgba(99, 102, 241, 0.25) !important; /* bg-indigo-950/25 */
+  color: rgb(129, 140, 248) !important; /* text-indigo-400 */
 }
 
 @media print {

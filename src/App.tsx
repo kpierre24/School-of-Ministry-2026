@@ -2542,27 +2542,27 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 shadow-sm mb-4 flex-shrink-0 relative z-30 max-w-full overflow-visible"
+      <header className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm mb-4 flex-shrink-0 relative z-30 max-w-full overflow-visible"
         style={{ boxShadow: 'var(--md-elev-1)' }}>
-        <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3 cursor-pointer min-w-0 shrink-0" onClick={() => setActiveErpTab('home')}>
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink-0" onClick={() => setActiveErpTab('home')}>
             <img
               src={hteimLogoAsset}
               alt="HTEIM Logo"
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl border-2 border-amber-400 shadow-sm object-contain bg-white p-0.5"
+              className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl border-2 border-amber-400 shadow-sm object-contain bg-white p-0.5"
               referrerPolicy="no-referrer"
             />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[160px] sm:max-w-none">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-xs xs:text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
                   HTEIM School of Ministry
                 </h1>
-                <span className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200">
-                  <Sparkles className="w-2.5 h-2.5" /> Portal
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 shrink-0">
+                  <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> Portal
                 </span>
               </div>
-              <p className="text-slate-500 text-[10px] hidden sm:block">Heaven Touching Earth Int'l Ministries</p>
+              <p className="text-slate-500 text-[9px] sm:text-[10px] hidden sm:block">Heaven Touching Earth Int'l Ministries</p>
             </div>
           </div>
 
@@ -2597,7 +2597,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           )}
 
           {/* MD3 AppBar Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0 max-w-full flex-wrap sm:flex-nowrap justify-end">
+          <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0 flex-nowrap justify-end">
             {/* Live Check-In */}
             {appUser?.role !== 'student' && (
               <button
@@ -2607,7 +2607,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     setLiveCheckinDayId(classDays[classDays.length - 1].id);
                   }
                 }}
-                className="md-btn-filled flex items-center gap-1.5 text-xs px-3 py-2"
+                className="md-btn-filled hidden md:flex items-center gap-1.5 text-xs px-3 py-2"
                 style={{ background: '#d97706' }}
               >
                 <span className="relative flex h-2 w-2 shrink-0">
@@ -2622,7 +2622,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Demo Video */}
             <button
               onClick={() => setShowPresentationModal(true)}
-              className="md-btn-tonal flex items-center gap-1.5 text-xs px-3 py-2 shrink-0"
+              className="md-btn-tonal hidden md:flex items-center gap-1.5 text-xs px-3 py-2 shrink-0"
               title="30-Second Student Presentation Demo"
             >
               <Play className="w-3.5 h-3.5 shrink-0" />
@@ -2632,14 +2632,14 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Search */}
             <button
               onClick={() => setShowCommandPalette(true)}
-              className="md-icon-btn border border-slate-200 dark:border-slate-700"
+              className="md-icon-btn hidden md:flex border border-slate-200 dark:border-slate-700"
               title="Global Search (⌘K)"
             >
               <Search className="w-4 h-4" />
             </button>
 
             {/* Tools Dropdown */}
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 hidden md:block">
               <button
                 onClick={() => setShowToolsMenu(!showToolsMenu)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
@@ -2823,17 +2823,17 @@ create policy "Allow public update" on app_states for update using (true) with c
             </div>
 
             {/* Settings */}
-            <button onClick={() => setShowSettingsModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden xs:flex" title="Settings">
+            <button onClick={() => setShowSettingsModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" title="Settings">
               <Settings className="w-4 h-4" />
             </button>
 
             {/* Help */}
-            <button onClick={() => setShowGuideModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden xs:flex" title="Help">
+            <button onClick={() => setShowGuideModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" title="Help">
               <HelpCircle className="w-4 h-4" />
             </button>
 
             {/* Role Switcher */}
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 hidden md:block">
               <button
                 onClick={() => setShowRoleMenu(!showRoleMenu)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
@@ -2992,7 +2992,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       </header>
 
       {/* MD3 Mobile breadcrumb bar */}
-      <div className="md:hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 mb-3 flex items-center justify-between shadow-sm">
+      <div className="md:hidden bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl px-3.5 py-2 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600">
             {activeErpTab === 'home' && <Sparkles className="w-4 h-4" />}
@@ -6275,15 +6275,15 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             className="flex-1 min-w-0 min-h-[56px] py-2 px-1 flex flex-col items-center justify-center relative cursor-pointer transition-all"
           >
             <div className={`relative flex items-center justify-center w-12 h-7 rounded-full transition-all ${
-              activeErpTab === tab ? 'md-nav-pill' : ''
+              activeErpTab === tab ? 'md-nav-pill' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/30'
             }`}>
-              <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-indigo-700' : 'text-slate-400'}`} />
+              <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
               {dot && activeErpTab !== tab && (
                 <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900" />
               )}
             </div>
-            <span className={`text-[10px] mt-0.5 font-medium leading-none truncate max-w-full transition-all ${
-              activeErpTab === tab ? 'text-indigo-700 font-semibold' : 'text-slate-400'
+            <span className={`text-[10px] mt-1 font-medium leading-none truncate max-w-full transition-all ${
+              activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-400 font-bold' : 'text-slate-400 dark:text-slate-500'
             }`}>{label}</span>
           </button>
         ))}
@@ -6295,16 +6295,16 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         >
           <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${
             showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
-              ? 'md-nav-pill' : ''
+              ? 'md-nav-pill' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/30'
           }`}>
             <Menu className={`w-5 h-5 ${
               showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
-                ? 'text-indigo-700' : 'text-slate-400'
+                ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
             }`} />
           </div>
-          <span className={`text-[10px] mt-0.5 font-medium leading-none ${
+          <span className={`text-[10px] mt-1 font-medium leading-none ${
             showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
-              ? 'text-indigo-700 font-semibold' : 'text-slate-400'
+              ? 'text-indigo-700 dark:text-indigo-400 font-bold' : 'text-slate-400 dark:text-slate-500'
           }`}>More</span>
         </button>
       </nav>
