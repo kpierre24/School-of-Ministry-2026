@@ -3230,6 +3230,20 @@ create policy "Allow public update" on app_states for update using (true) with c
               userEmail={user?.email}
               supabaseTableMissing={supabaseTableMissing}
               onVerifySetup={handleVerifySupabase}
+              students={uniqueStudents}
+              customAssignments={customAssignments}
+              submissions={submissions}
+              payments={payments}
+              onSelectStudentForCertificate={(s) => {
+                setCertificateData({
+                  studentName: s.name,
+                  awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
+                  criteria: `Demonstrated exceptional commitment with ${s.rate.toFixed(1)}% class attendance and full course completion.`,
+                  rate: s.rate,
+                  avgScore: s.avgScore || 90
+                });
+                setShowCertificateModal(true);
+              }}
             />
           </div>
         )}
