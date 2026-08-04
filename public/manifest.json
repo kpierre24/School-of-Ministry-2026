@@ -4,14 +4,14 @@
   "description": "Official Academic Ministry Portal, Mobile Attendance Tracker & Financial Tuition Management System powered by Rockproxy Technologies.",
   "icons": [
     {
-      "src": "/hteim_logo.jpg",
-      "type": "image/jpeg",
+      "src": "/hteim_logo.png",
+      "type": "image/png",
       "sizes": "192x192 512x512",
       "purpose": "any maskable"
     },
     {
-      "src": "/hteim_logo.png",
-      "type": "image/png",
+      "src": "/hteim_logo.jpg",
+      "type": "image/jpeg",
       "sizes": "192x192 512x512",
       "purpose": "any maskable"
     }

@@ -3697,8 +3697,13 @@ create policy "Allow public update" on app_states for update using (true) with c
                               layout
                               initial={{ opacity: 0, scale: 0.92, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.88, y: -12, transition: { duration: 0.18 } }}
-                              transition={{ duration: 0.22, ease: 'easeOut' }}
+                              exit={{ opacity: 0, scale: 0.88, y: -12 }}
+                              transition={{
+                                layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
+                                opacity: { duration: 0.2 },
+                                scale: { duration: 0.2 },
+                                y: { duration: 0.2 }
+                              }}
                               onClick={() => setSelectedStudent(student)}
                               className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-shadow cursor-pointer flex flex-col justify-between group"
                             >
@@ -3780,25 +3785,40 @@ create policy "Allow public update" on app_states for update using (true) with c
                   {/* Mobile Attendance Matrix Card Format (< 768px / md:hidden) */}
                   <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
                     {filteredAndSortedStudents.length > 0 ? (
-                      filteredAndSortedStudents.map((student) => (
-                        <SwipeableAttendanceCard
-                          key={student.name}
-                          student={student}
-                          effectiveClassDays={effectiveClassDays}
-                          activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
-                          studentPhotos={studentPhotos}
-                          studentNotes={studentNotes}
-                          excusedAbsences={excusedAbsences}
-                          isSelected={selectedStudentNames.includes(student.name)}
-                          satisfactoryThreshold={satisfactoryThreshold}
-                          atRiskThreshold={atRiskThreshold}
-                          studentBadges={getStudentBadges(student)}
-                          onToggleAttendance={handleToggleStudentAttendance}
-                          onSelectStudent={setSelectedStudent}
-                          onToggleSelectStudent={toggleSelectStudent}
-                          appRole={appUser?.role}
-                        />
-                      ))
+                      <AnimatePresence mode="popLayout">
+                        {filteredAndSortedStudents.map((student) => (
+                          <motion.div
+                            key={student.name}
+                            layout
+                            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                            transition={{
+                              layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
+                              opacity: { duration: 0.2 },
+                              scale: { duration: 0.2 },
+                              y: { duration: 0.2 }
+                            }}
+                          >
+                            <SwipeableAttendanceCard
+                              student={student}
+                              effectiveClassDays={effectiveClassDays}
+                              activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
+                              studentPhotos={studentPhotos}
+                              studentNotes={studentNotes}
+                              excusedAbsences={excusedAbsences}
+                              isSelected={selectedStudentNames.includes(student.name)}
+                              satisfactoryThreshold={satisfactoryThreshold}
+                              atRiskThreshold={atRiskThreshold}
+                              studentBadges={getStudentBadges(student)}
+                              onToggleAttendance={handleToggleStudentAttendance}
+                              onSelectStudent={setSelectedStudent}
+                              onToggleSelectStudent={toggleSelectStudent}
+                              appRole={appUser?.role}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                     ) : (
                       <div className="p-8 text-center text-slate-400 text-xs">
                         No students found matching your search or filter criteria.

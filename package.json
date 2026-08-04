@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
+    "esbuild": "^0.25.0",
     "express": "^4.21.2",
     "firebase": "^12.16.0",
     "html2canvas": "^1.4.1",
@@ -30,6 +31,7 @@
     "react-dom": "^19.0.1",
     "recharts": "^3.10.0",
     "string-similarity": "^4.0.4",
+    "typescript": "~5.8.2",
     "vite": "^6.2.3"
   },
   "devDependencies": {
@@ -38,9 +40,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/string-similarity": "^4.0.2",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2"
+    "tsx": "^4.21.0"
   }
 }
