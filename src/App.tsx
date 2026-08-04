@@ -1442,16 +1442,62 @@ export default function App() {
   };
 
   const handleDeleteStudent = (studentName: string) => {
+    if (!studentName || !studentName.trim()) return;
+    const targetLower = studentName.toLowerCase().trim();
+
+    // 1. Add to deletedStudentNames registry
     setDeletedStudentNames(prev => {
-      const lower = studentName.toLowerCase().trim();
-      if (prev.some(n => n.toLowerCase().trim() === lower)) {
+      if (prev.some(n => n.toLowerCase().trim() === targetLower)) {
         return prev;
       }
       return [...prev, studentName];
     });
-    if (selectedStudent && selectedStudent.name.toLowerCase().trim() === studentName.toLowerCase().trim()) {
+
+    // 2. Filter out corresponding attendance records across all class sessions
+    setRecords(prev => {
+      const filtered = prev.filter(r => {
+        if (!r) return false;
+        const rName = (r.name || (r as any).studentName || '').toString().toLowerCase().trim();
+        return rName !== targetLower && !rName.includes(targetLower) && !targetLower.includes(rName);
+      });
+      localStorage.setItem('attendanceRecords', JSON.stringify(filtered));
+      return filtered;
+    });
+
+    // 3. Filter out corresponding payment/tuition fee records
+    setPayments(prev => {
+      const filtered = prev.filter(p => {
+        if (!p) return false;
+        const pName = (p.studentName || '').toString().toLowerCase().trim();
+        return pName !== targetLower && !pName.includes(targetLower) && !targetLower.includes(pName);
+      });
+      localStorage.setItem('hteim_student_payments', JSON.stringify(filtered));
+      return filtered;
+    });
+
+    // 4. Filter out corresponding assignment and exam submissions
+    setSubmissions(prev => {
+      const filtered = prev.filter(s => {
+        if (!s) return false;
+        const sName = (s.studentName || '').toString().toLowerCase().trim();
+        return sName !== targetLower && !sName.includes(targetLower) && !targetLower.includes(sName);
+      });
+      return filtered;
+    });
+
+    // 5. Deselect from detail modal if currently open
+    if (selectedStudent && selectedStudent.name.toLowerCase().trim() === targetLower) {
       setSelectedStudent(null);
     }
+
+    logActivity({
+      actor: appUser?.role === 'admin' ? 'Administrator' : appUser?.name || 'Staff User',
+      role: 'admin',
+      actionCategory: 'Student Record',
+      actionTitle: 'Student & Records Purged',
+      details: `Student "${studentName}" was removed from system. Attendance logs and tuition records updated across portal.`,
+      targetStudent: studentName
+    });
   };
 
   const handleRestoreStudent = (studentName: string) => {
@@ -3296,6 +3342,8 @@ create policy "Allow public update" on app_states for update using (true) with c
               currentStudentName={appUser?.studentName || appUser?.name}
               payments={payments}
               setPayments={setPayments}
+              onDeleteStudent={handleDeleteStudent}
+              onRestoreStudent={handleRestoreStudent}
             />
           </div>
         )}

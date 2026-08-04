@@ -48,6 +48,8 @@ interface PaymentTabProps {
   userRole?: string;
   payments?: PaymentRecord[];
   setPayments?: React.Dispatch<React.SetStateAction<PaymentRecord[]>>;
+  onDeleteStudent?: (studentName: string) => void;
+  onRestoreStudent?: (studentName: string) => void;
 }
 
 export const INITIAL_PAYMENTS: PaymentRecord[] = [
@@ -826,7 +828,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   currentStudentName, 
   userRole = 'admin',
   payments: propPayments,
-  setPayments: propSetPayments
+  setPayments: propSetPayments,
+  onDeleteStudent,
+  onRestoreStudent
 }) => {
   const isStudent = userRole === 'student';
 
@@ -957,6 +961,37 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   // Bulk Payment Reminder Modal State
   const [showBulkReminderModal, setShowBulkReminderModal] = useState(false);
 
+  // Student Removal Verification Modal State
+  const [studentToRemove, setStudentToRemove] = useState<PaymentRecord | null>(null);
+  const [showRemoveVerificationModal, setShowRemoveVerificationModal] = useState(false);
+  const [removeVerificationInput, setRemoveVerificationInput] = useState('');
+  const [removalReason, setRemovalReason] = useState('No longer a student / Withdrawn');
+  const [customRemovalReason, setCustomRemovalReason] = useState('');
+  const [showRemovedArchiveModal, setShowRemovedArchiveModal] = useState(false);
+
+  // Archive of Removed / Excluded Student Records
+  const [removedStudentRecords, setRemovedStudentRecords] = useState<{
+    record: PaymentRecord;
+    removedAt: string;
+    reason: string;
+    removedBy: string;
+  }[]>(() => {
+    const saved = localStorage.getItem('hteim_removed_payment_students');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Sync removed students with localStorage
+  useEffect(() => {
+    localStorage.setItem('hteim_removed_payment_students', JSON.stringify(removedStudentRecords));
+  }, [removedStudentRecords]);
+
   const handleUpdatePaymentPhone = (studentId: string, phone: string) => {
     setPayments(prev => prev.map(p => {
       if (p.id === studentId || p.studentId === studentId) {
@@ -966,12 +1001,80 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     }));
   };
 
+  const handleInitiateRemoveStudent = (p: PaymentRecord) => {
+    setStudentToRemove(p);
+    setRemoveVerificationInput('');
+    setRemovalReason('No longer a student / Withdrawn');
+    setCustomRemovalReason('');
+    setShowRemoveVerificationModal(true);
+  };
+
+  const handleConfirmRemoveStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentToRemove) return;
+
+    const inputClean = removeVerificationInput.trim().toUpperCase();
+    const nameClean = studentToRemove.studentName.trim().toUpperCase();
+    const isVerified = inputClean === 'REMOVE' || inputClean === nameClean;
+
+    if (!isVerified) return;
+
+    const finalReason = removalReason === 'Other' ? (customRemovalReason.trim() || 'Administrative removal') : removalReason;
+    const actorName = userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User';
+
+    const removedEntry = {
+      record: studentToRemove,
+      removedAt: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      reason: finalReason,
+      removedBy: actorName
+    };
+
+    setRemovedStudentRecords(prev => [removedEntry, ...prev]);
+    setPayments(prev => prev.filter(p => p.id !== studentToRemove.id));
+
+    // Synchronize removal across the app (attendance records, student directory, etc.)
+    if (onDeleteStudent) {
+      onDeleteStudent(studentToRemove.studentName);
+    }
+
+    logActivity({
+      actor: actorName,
+      role: 'admin',
+      actionCategory: 'Payment Entry',
+      actionTitle: 'Student & Fees Removed',
+      details: `Removed student "${studentToRemove.studentName}" (${studentToRemove.studentId}) and purged tuition schedule of $${studentToRemove.totalTuition} ($${studentToRemove.amountPaid} paid, $${studentToRemove.totalTuition - studentToRemove.amountPaid} balance). Reason: ${finalReason}.`,
+      targetStudent: studentToRemove.studentName
+    });
+
+    setShowRemoveVerificationModal(false);
+    setStudentToRemove(null);
+    setRemoveVerificationInput('');
+  };
+
+  const handleRestoreRemovedStudent = (entryToRestore: { record: PaymentRecord; removedAt: string; reason: string; removedBy: string }) => {
+    setPayments(prev => [entryToRestore.record, ...prev]);
+    setRemovedStudentRecords(prev => prev.filter(r => r.record.id !== entryToRestore.record.id));
+
+    if (onRestoreStudent) {
+      onRestoreStudent(entryToRestore.record.studentName);
+    }
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
+      role: 'admin',
+      actionCategory: 'Payment Entry',
+      actionTitle: 'Student Restored to Payment Schedule',
+      details: `Restored student "${entryToRestore.record.studentName}" (${entryToRestore.record.studentId}) back to tuition ledger.`,
+      targetStudent: entryToRestore.record.studentName
+    });
+  };
+
   // Sync with localStorage
   useEffect(() => {
     localStorage.setItem('hteim_student_payments', JSON.stringify(payments));
   }, [payments]);
 
-  // Ensure any newly added unique students are included in payments ledger
+  // Ensure any newly added unique students are included in payments ledger (ignoring removed/archived students)
   useEffect(() => {
     if (availableStudents && availableStudents.length > 0) {
       setPayments(prev => {
@@ -980,6 +1083,17 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         availableStudents.forEach((st, idx) => {
           if (!st || !st.name) return;
           const nameLower = st.name.toLowerCase().trim();
+
+          // Check if student was explicitly removed/archived by admin
+          const isArchived = removedStudentRecords.some(r => {
+            const rName = r.record.studentName.toLowerCase().trim();
+            if (rName === nameLower) return true;
+            const n1 = nameLower.replace(/[^a-z]/g, '');
+            const n2 = rName.replace(/[^a-z]/g, '');
+            return n1 !== '' && n2 !== '' && (n1.includes(n2) || n2.includes(n1));
+          });
+          if (isArchived) return;
+
           // Check if there is any fuzzy match in existing ledger
           const alreadyExists = prev.some(p => {
             if (!p || !p.studentName) return false;
@@ -1012,7 +1126,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         return newRecords.length > 0 ? [...prev, ...newRecords] : prev;
       });
     }
-  }, [availableStudents]);
+  }, [availableStudents, removedStudentRecords]);
 
   // Financial Statistics
   const stats = useMemo(() => {
@@ -1763,6 +1877,19 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
+          {removedStudentRecords.length > 0 && (
+            <button
+              onClick={() => setShowRemovedArchiveModal(true)}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="View or restore previously removed students and fees"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>Removed Archive</span>
+              <span className="px-1.5 py-0.5 bg-rose-600 text-white font-black text-[10px] rounded-full ml-0.5">
+                {removedStudentRecords.length}
+              </span>
+            </button>
+          )}
           <button
             onClick={() => setShowAddStudentModal(true)}
             className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -1921,6 +2048,14 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                             title="Generate Receipt / Statement"
                           >
                             <Receipt className="w-3 h-3 text-indigo-600" /> Statement
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInitiateRemoveStudent(p)}
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Remove student and corresponding fees from payment schedule with verification"
+                          >
+                            <Trash2 className="w-3 h-3 text-rose-600" /> Remove
                           </button>
                         </div>
                       </td>
@@ -2436,6 +2571,234 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         payments={payments}
         onUpdatePaymentPhone={handleUpdatePaymentPhone}
       />
+
+      {/* Student Removal Verification Modal */}
+      {showRemoveVerificationModal && studentToRemove && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white border border-rose-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg my-auto flex flex-col overflow-hidden animate-scaleUp">
+            
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-rose-950 text-white flex items-center justify-between shrink-0 border-b border-rose-800/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-400 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-white">Verify Student & Fee Removal</h3>
+                  <p className="text-[10px] text-rose-200">Financial Ledger Purge Verification</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRemoveVerificationModal(false);
+                  setStudentToRemove(null);
+                }}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmRemoveStudent} className="p-5 space-y-4 text-xs text-slate-800 overflow-y-auto custom-scrollbar">
+              
+              {/* Warning Context */}
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+                <p className="font-bold text-rose-900 text-xs flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  Are you sure you want to remove this student?
+                </p>
+                <p className="text-[11px] text-rose-800 leading-relaxed">
+                  This will purge <strong>{studentToRemove.studentName}</strong> and their corresponding tuition fees from the active payment schedule and financial analytics.
+                </p>
+              </div>
+
+              {/* Student Summary Card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-extrabold text-slate-900 text-sm">{studentToRemove.studentName}</p>
+                    <p className="font-mono text-emerald-700 text-xs font-bold">{studentToRemove.studentId}</p>
+                  </div>
+                  <span className="px-2.5 py-1 bg-slate-200 text-slate-800 font-bold rounded-lg text-[10px]">
+                    {studentToRemove.moduleTrack}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center">
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <p className="text-[9px] font-extrabold uppercase text-slate-400">Total Tuition</p>
+                    <p className="font-mono font-black text-slate-900 mt-0.5">${studentToRemove.totalTuition.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <p className="text-[9px] font-extrabold uppercase text-slate-400">Amount Paid</p>
+                    <p className="font-mono font-black text-emerald-700 mt-0.5">${studentToRemove.amountPaid.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-slate-200">
+                    <p className="text-[9px] font-extrabold uppercase text-slate-400">Balance Due</p>
+                    <p className="font-mono font-black text-amber-600 mt-0.5">${(studentToRemove.totalTuition - studentToRemove.amountPaid).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reason for Removal */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-extrabold uppercase text-slate-500">
+                  Reason for Student Removal
+                </label>
+                <select
+                  value={removalReason}
+                  onChange={(e) => setRemovalReason(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-xs focus:ring-2 focus:ring-rose-500/20"
+                >
+                  <option value="No longer a student / Withdrawn">No longer a student / Withdrawn</option>
+                  <option value="Graduated / Completed Studies">Graduated / Completed Studies</option>
+                  <option value="Transferred / Inactive">Transferred / Inactive</option>
+                  <option value="Duplicate Record">Duplicate Record</option>
+                  <option value="Administrative Correction">Administrative Correction</option>
+                  <option value="Other">Other (Specify below)</option>
+                </select>
+
+                {removalReason === 'Other' && (
+                  <input
+                    type="text"
+                    placeholder="Enter custom removal reason..."
+                    value={customRemovalReason}
+                    onChange={(e) => setCustomRemovalReason(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium mt-1 focus:ring-2 focus:ring-rose-500/20"
+                  />
+                )}
+              </div>
+
+              {/* Verification Code Input */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                <label className="block text-[10px] font-extrabold uppercase text-rose-700">
+                  Security Verification Step *
+                </label>
+                <p className="text-[11px] text-slate-600">
+                  To confirm verification, please type <strong className="font-mono text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300">REMOVE</strong> or the student's full name (<strong className="text-slate-900">{studentToRemove.studentName}</strong>):
+                </p>
+                <input
+                  type="text"
+                  required
+                  placeholder="Type REMOVE or student name..."
+                  value={removeVerificationInput}
+                  onChange={(e) => setRemoveVerificationInput(e.target.value)}
+                  className="w-full p-2.5 bg-rose-50/50 border border-rose-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRemoveVerificationModal(false);
+                    setStudentToRemove(null);
+                  }}
+                  className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    removeVerificationInput.trim().toUpperCase() !== 'REMOVE' &&
+                    removeVerificationInput.trim().toLowerCase() !== studentToRemove.studentName.toLowerCase().trim()
+                  }
+                  className={`px-4 py-2.5 font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                    removeVerificationInput.trim().toUpperCase() === 'REMOVE' ||
+                    removeVerificationInput.trim().toLowerCase() === studentToRemove.studentName.toLowerCase().trim()
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Confirm Permanent Removal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Removed Students Archive Modal */}
+      {showRemovedArchiveModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl my-auto flex flex-col max-h-[85vh] overflow-hidden animate-scaleUp">
+            
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/30 text-rose-400 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-white">Removed Students & Fees Archive</h3>
+                  <p className="text-[10px] text-slate-300">Audited List of Excluded & Purged Financial Records ({removedStudentRecords.length})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRemovedArchiveModal(false)}
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+              {removedStudentRecords.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="font-bold text-xs text-slate-600">No removed student records found.</p>
+                  <p className="text-[11px]">All active student tuition ledgers are currently in the primary schedule.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {removedStudentRecords.map((item, idx) => (
+                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-300 transition-colors">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900 text-sm">{item.record.studentName}</span>
+                          <span className="font-mono text-emerald-700 text-xs font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {item.record.studentId}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600">
+                          Track: <strong className="text-slate-800">{item.record.moduleTrack}</strong> • Tuition Fee: <strong className="text-slate-900">${item.record.totalTuition.toLocaleString()}</strong> (${item.record.amountPaid.toLocaleString()} paid)
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 flex-wrap">
+                          <span className="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold">Reason: {item.reason}</span>
+                          <span>Removed on: {item.removedAt}</span>
+                          <span>By: {item.removedBy}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreRemovedStudent(item)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                        title="Restore student and tuition record back to payment schedule"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Restore Record
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRemovedArchiveModal(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
