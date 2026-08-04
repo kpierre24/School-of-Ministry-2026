@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import hteimLogoAsset from '../assets/hteim_logo.png';
+import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { 
   ShieldCheck, 
   GraduationCap, 
@@ -161,8 +162,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <main className="w-full max-w-7xl mx-auto px-6 py-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
           
           {/* LEFT PANEL: Welcoming Information, Mission, Pillars & Scriptures */}
-          <div className="lg:col-span-7 space-y-8 text-left">
+          <div className="lg:col-span-7 space-y-6 text-left">
             
+            {/* Official HTEIM Banner Display */}
+            <div className="rounded-2xl overflow-hidden border border-amber-300/50 shadow-lg bg-white p-1">
+              <img 
+                src={hteimBannerAsset} 
+                alt="HTEIM School of Ministry Banner" 
+                referrerPolicy="no-referrer"
+                className="w-full h-auto max-h-[180px] object-contain bg-white rounded-xl"
+              />
+            </div>
+
             {/* Main Welcome Hero */}
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-200 rounded-full text-[10px] font-black tracking-wider uppercase shadow-2xs">

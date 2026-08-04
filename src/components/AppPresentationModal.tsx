@@ -26,6 +26,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import hteimLogoAsset from '../assets/hteim_logo.png';
+import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { TabType } from '../types';
 
 interface AppPresentationModalProps {
@@ -350,13 +351,13 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
             <div className="bg-slate-950/90 border border-slate-800/90 rounded-xl p-4 sm:p-5 space-y-3 shadow-inner">
               
               {currentScene.visualType === 'welcome' && (
-                <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-                  <div className="w-16 h-16 rounded-2xl bg-white p-1 border-2 border-amber-400 shadow-xl shrink-0">
-                    <img src={hteimLogoAsset} alt="Logo" className="w-full h-full object-contain rounded-xl" referrerPolicy="no-referrer" />
+                <div className="space-y-3 text-center sm:text-left">
+                  <div className="rounded-xl overflow-hidden border border-amber-400/50 shadow-md bg-white p-1">
+                    <img src={hteimBannerAsset} alt="HTEIM Official Banner" className="w-full h-auto max-h-[140px] object-contain rounded-lg bg-white" referrerPolicy="no-referrer" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-amber-300">Heaven Touching Earth Int'l Ministries</h4>
-                    <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                    <h4 className="text-xs font-black text-amber-300">Heaven Touching Earth Int'l Ministries</h4>
+                    <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
                       Equipping ministers and theological scholars with world-class biblical curriculum, live attendance tracking, and instant digital academic records.
                     </p>
                   </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import hteimLogoAsset from '../assets/hteim_logo.png';
+import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -238,6 +239,18 @@ create policy "Allow public update" on app_states for update using (true) with c
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-28 sm:pb-24 md:pb-12 animate-fadeIn" id="som-home-container">
       
+      {/* Official HTEIM School of Ministry Institution Banner */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-amber-400/40 shadow-xl group transition-all">
+        <div className="relative w-full bg-white flex items-center justify-center overflow-hidden p-1 sm:p-2">
+          <img 
+            src={hteimBannerAsset} 
+            alt="HTEIM School of Ministry Official Banner" 
+            referrerPolicy="no-referrer"
+            className="w-full h-auto max-h-[320px] sm:max-h-[380px] object-contain rounded-xl sm:rounded-2xl transition-transform duration-700 group-hover:scale-[1.01]"
+          />
+        </div>
+      </section>
+
       {/* Futuristic Mesh Hero Section */}
       <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl futuristic-hero-bg text-white border border-indigo-500/30 shadow-2xl cyber-grid-pattern">
         {/* Futuristic glowing ambient background lights */}
