@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import hteimLogoAsset from '../assets/hteim_logo.png';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { 
   BookOpen, 
@@ -19,6 +18,8 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Play,
   Sliders,
   PenSquare,
@@ -84,6 +85,19 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 }) => {
   const isStudent = appUser?.role === 'student';
   const [activePillarTab, setActivePillarTab] = useState(0);
+
+  // Collapsible banner state
+  const [isBannerCollapsed, setIsBannerCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('hteim_home_banner_collapsed') === 'true';
+  });
+
+  const toggleBannerCollapse = () => {
+    setIsBannerCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('hteim_home_banner_collapsed', String(next));
+      return next;
+    });
+  };
 
   // Widget customizer local state
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
@@ -239,51 +253,69 @@ create policy "Allow public update" on app_states for update using (true) with c
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-28 sm:pb-24 md:pb-12 animate-fadeIn" id="som-home-container">
       
-      {/* Official HTEIM School of Ministry Institution Banner */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-amber-400/40 shadow-xl group transition-all">
-        <div className="relative w-full bg-white flex items-center justify-center overflow-hidden p-1 sm:p-2">
+      {/* Unified HTEIM Hero Banner Section (Collapsible) */}
+      <section className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-300/80 shadow-xl group transition-all duration-300 ${
+        isBannerCollapsed ? 'min-h-0' : 'min-h-[360px] sm:min-h-[420px] flex flex-col justify-center'
+      }`}>
+        {/* Banner graphics directly in the section background */}
+        <div className="absolute inset-0 z-0">
           <img 
             src={hteimBannerAsset} 
-            alt="HTEIM School of Ministry Official Banner" 
+            alt="HTEIM School of Ministry Banner" 
             referrerPolicy="no-referrer"
-            className="w-full h-auto max-h-[320px] sm:max-h-[380px] object-contain rounded-xl sm:rounded-2xl transition-transform duration-700 group-hover:scale-[1.01]"
+            className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-[1.02]"
           />
+          {/* Subtle light glass overlay to preserve full banner visibility while keeping text crisp */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/85 to-white/40 sm:to-white/30 backdrop-blur-[2px]" />
         </div>
-      </section>
 
-      {/* Futuristic Mesh Hero Section */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl futuristic-hero-bg text-white border border-indigo-500/30 shadow-2xl cyber-grid-pattern">
-        {/* Futuristic glowing ambient background lights */}
-        <div className="absolute -left-1/4 -top-1/4 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
-        <div className="absolute -right-1/4 -bottom-1/4 w-[600px] h-[600px] bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 px-4 py-8 sm:px-6 sm:py-12 md:py-16 md:px-12 max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-6 sm:gap-10">
-          
-          {/* Hero Copy */}
-          <div className="flex-1 text-left space-y-4 sm:space-y-5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/15 text-amber-300 text-[10px] sm:text-[11px] font-black tracking-wider uppercase rounded-full border border-amber-400/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>Equipping Saints for Kingdom Ministry</span>
-            </div>
-            
-            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight leading-tight text-white font-sans">
+        {/* Top Header Row with Collapse / Expand Toggle */}
+        <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between gap-4 w-full">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500/10 text-amber-900 text-[10px] sm:text-[11px] font-black tracking-wider uppercase rounded-full border border-amber-400/50 backdrop-blur-md shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-spin" style={{ animationDuration: '6s' }} />
+            <span>Equipping Saints for Kingdom Ministry</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleBannerCollapse}
+            className="px-3 py-1.5 bg-white/90 hover:bg-white text-slate-800 hover:text-slate-950 text-[11px] font-extrabold rounded-xl border border-amber-300/80 shadow-xs backdrop-blur-md flex items-center gap-1.5 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0"
+            title={isBannerCollapsed ? "Expand hero banner" : "Collapse hero banner"}
+          >
+            {isBannerCollapsed ? (
+              <>
+                <span>Expand Banner</span>
+                <ChevronDown className="w-4 h-4 text-amber-600" />
+              </>
+            ) : (
+              <>
+                <span>Collapse</span>
+                <ChevronUp className="w-4 h-4 text-amber-600" />
+              </>
+            )}
+          </button>
+        </div>
+
+        {!isBannerCollapsed ? (
+          /* Full Expanded Hero Content Overlay */
+          <div className="relative z-10 px-6 pb-6 pt-2 sm:px-10 sm:pb-10 md:px-12 md:pb-12 w-full max-w-4xl space-y-4 sm:space-y-5 animate-fadeIn">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight leading-tight text-slate-900 font-sans">
               World-Class Biblical & <br className="hidden sm:inline" />
-              <span className="inline-block my-1 px-3 py-1 bg-gradient-to-r from-amber-400 via-amber-300 to-indigo-300 text-slate-950 font-black rounded-lg sm:rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-200">
+              <span className="inline-block my-1 px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-lg sm:rounded-xl shadow-xs border border-amber-500/30">
                 Ministerial Training
               </span> <br />
               for Everyone, Everywhere.
             </h1>
             
-            <p className="text-xs sm:text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl font-normal">
+            <p className="text-xs sm:text-sm md:text-base text-slate-800 leading-relaxed max-w-xl font-semibold">
               HTEIM School of Ministry provides structured, biblically-centered teaching designed to help you grow in faith, develop high standards of character, and activate your spiritual calling.
             </p>
             
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-1 sm:pt-2 flex-wrap">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-2 flex-wrap">
               {onOpenPresentationDemo && (
                 <button
                   onClick={onOpenPresentationDemo}
-                  className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400/50 animate-pulse"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-500"
                 >
                   <Play className="w-4 h-4 text-amber-300 fill-amber-300" /> Play 30s Student Presentation Demo
                 </button>
@@ -291,165 +323,38 @@ create policy "Allow public update" on app_states for update using (true) with c
 
               <button
                 onClick={() => onNavigate('courses')}
-                className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-300"
+                className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-400"
               >
                 <BookOpen className="w-4 h-4 text-slate-950" /> Explore Curriculum
               </button>
               
               <button
                 onClick={() => onNavigate('schedule')}
-                className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-slate-900/90 hover:bg-slate-800/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-indigo-500/40 hover:border-indigo-400 cursor-pointer flex items-center justify-center gap-2 backdrop-blur-md shadow-lg"
+                className="w-full sm:w-auto px-5 py-3 sm:py-3.5 bg-slate-900/90 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all border border-slate-800 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
               >
                 View Academic Calendar
               </button>
             </div>
           </div>
-          
-          {/* Futuristic Holographic Logo Feature Card */}
-          <div className="hidden md:flex flex-shrink-0 w-64 h-64 bg-slate-900/80 backdrop-blur-md border border-indigo-500/40 rounded-3xl items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.25)] relative p-3 group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/20 via-indigo-500/20 to-purple-500/20 rounded-3xl opacity-60 group-hover:opacity-100 transition-opacity" />
-            <div className="relative z-10 flex flex-col items-center text-center p-4">
-              <div className="relative mb-3">
-                <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-indigo-500 rounded-2xl blur-xs opacity-75 group-hover:opacity-100 transition-opacity animate-pulse" />
-                <img 
-                  src={hteimLogoAsset} 
-                  alt="HTEIM logo" 
-                  className="relative w-24 h-24 rounded-2xl border-2 border-amber-400/80 shadow-xl object-contain bg-white p-1.5"
-                />
-              </div>
-              <span className="font-serif italic text-amber-300 text-xs font-semibold drop-shadow-xs">"Bringing Heaven to Earth"</span>
-              <p className="text-[10px] font-mono text-indigo-300 mt-2 uppercase font-extrabold tracking-wider bg-indigo-950/80 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
-                Apostolic School of Ministry
-              </p>
+        ) : (
+          /* Compact Collapsed Bar View */
+          <div className="relative z-10 px-6 pb-4 pt-1 w-full flex items-center justify-between gap-4 animate-fadeIn">
+            <p className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+              HTEIM School of Ministry — World-Class Biblical & Ministerial Training
+            </p>
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => onNavigate('courses')}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[11px] rounded-lg shadow-xs cursor-pointer"
+              >
+                Explore Curriculum
+              </button>
             </div>
           </div>
-          
-        </div>
+        )}
       </section>
 
-      {/* Prominent Supabase Cloud database synchronization panel */}
-      <section className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 border border-indigo-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 text-white shadow-xl relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute right-0 top-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="flex flex-col gap-4 sm:gap-6 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex h-2 w-2 relative">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${supabaseTableMissing ? 'bg-rose-400' : 'bg-emerald-400'} opacity-75`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${supabaseTableMissing ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                </span>
-                <span className={`text-[10px] font-mono uppercase font-bold tracking-wider ${supabaseTableMissing ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {supabaseTableMissing ? 'Supabase Table Required' : 'Supabase Cloud Active'}
-                </span>
-                {userEmail && (
-                  <span className="px-2 py-0.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 rounded-full text-[9px] font-mono font-bold truncate max-w-[200px]">
-                    👤 {userEmail}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-sm sm:text-base md:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                <Database className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 shrink-0" />
-                Supabase Realtime Cloud Database
-              </h3>
-              <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-                Your School of Ministry portal is fully linked to your custom Supabase database instance: 
-                <code className="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded ml-1 font-mono text-[9px] sm:text-[10px] select-all border border-slate-800 break-all">
-                  https://mjaloptcpeytvecbxbza.supabase.co
-                </code>.
-              </p>
-              {lastSyncedTime ? (
-                <p className="text-[11px] text-slate-400 font-medium">
-                  ✅ Last successfully backed up: <strong className="text-indigo-300 font-mono">{lastSyncedTime}</strong>. All devices logged into your account will instantly sync this exact data.
-                </p>
-              ) : supabaseTableMissing ? (
-                <p className="text-[11px] text-rose-300 font-bold flex items-center gap-1.5">
-                  ⚠️ Your Supabase 'app_states' table does not exist yet. Please paste the SQL query below in your Supabase SQL Editor.
-                </p>
-              ) : (
-                <p className="text-[11px] text-amber-300 font-bold flex items-center gap-1.5 animate-pulse">
-                  ⚠️ Cloud Database empty! Click "Upload Local Data" below to back up to Supabase.
-                </p>
-              )}
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center shrink-0 w-full sm:w-auto">
-              <button
-                onClick={async () => {
-                  if (onVerifySetup) {
-                    await onVerifySetup();
-                  }
-                }}
-                className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-700 text-center"
-              >
-                Verify Table Setup
-              </button>
 
-              <button
-                onClick={() => onPushToCloud?.()}
-                disabled={isCloudSyncing || supabaseTableMissing}
-                className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed border border-indigo-400"
-              >
-                {isCloudSyncing ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-                ) : (
-                  <Cloud className="w-3.5 h-3.5 text-white" />
-                )}
-                <span>{isCloudSyncing ? "Saving..." : "Upload Local Data"}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Table missing setup alert or toggle manual SQL instructions */}
-          <div className="border-t border-slate-800 pt-3 mt-1">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setShowSqlSetup(!showSqlSetup)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <span>{showSqlSetup ? "Hide SQL Setup Instructions" : "Show SQL Setup Instructions"}</span>
-                <span className="text-[10px] bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-900">
-                  {showSqlSetup ? "▲" : "▼"}
-                </span>
-              </button>
-              
-              {supabaseTableMissing && (
-                <span className="text-[10px] sm:text-[11px] bg-rose-500/15 text-rose-300 px-2 py-1 rounded-lg border border-rose-500/30 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 text-rose-400 shrink-0" />
-                  Table missing!
-                </span>
-              )}
-            </div>
-
-            {(showSqlSetup || supabaseTableMissing) && (
-              <div className="mt-3 bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-slate-300 space-y-3 animate-fadeIn">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider">
-                    👉 Supabase SQL Editor Script
-                  </span>
-                  <button
-                    onClick={handleCopySql}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white rounded-lg text-[10px] sm:text-[11px] font-bold border border-slate-800 cursor-pointer transition-all active:scale-95 shrink-0"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedSql ? "Copied!" : "Copy SQL"}</span>
-                  </button>
-                </div>
-                
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Go to your <strong className="text-slate-200">Supabase Dashboard</strong>, open the <strong className="text-slate-200 font-bold">SQL Editor</strong>, paste this script, and click <strong className="text-slate-200 font-bold">Run</strong>:
-                </p>
-
-                <pre className="bg-slate-900 p-3 rounded-xl text-indigo-300 text-[11px] font-mono select-all overflow-x-auto max-h-48 custom-scrollbar border border-slate-800 break-all">
-                  {sqlSetupCode}
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
 
       {/* Customizable Metric Widgets Dashboard Section */}
       <section className="space-y-3">
