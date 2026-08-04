@@ -663,3 +663,49 @@ button, a, input, select, textarea {
     font-size: 16px !important;
   }
 }
+
+/* ============================================================
+   MD3 GLOBAL MODAL HEADER NORMALIZER
+   Converts remaining dark slate-900 modal headers to MD3 surface
+   ============================================================ */
+
+/* Modal headers using bg-slate-900 → clean white surface */
+.fixed .bg-slate-900:not(nav):not(header) {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+.fixed .bg-slate-900:not(nav):not(header) .text-white,
+.fixed .bg-slate-900:not(nav):not(header) h2,
+.fixed .bg-slate-900:not(nav):not(header) h3,
+.fixed .bg-slate-900:not(nav):not(header) h4 {
+  color: #1e293b !important;
+}
+.fixed .bg-slate-900:not(nav):not(header) p,
+.fixed .bg-slate-900:not(nav):not(header) .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Dark mode modal headers */
+.dark .fixed .bg-slate-900:not(nav):not(header) {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-bottom-color: #334155 !important;
+}
+.dark .fixed .bg-slate-900:not(nav):not(header) .text-white,
+.dark .fixed .bg-slate-900:not(nav):not(header) h2,
+.dark .fixed .bg-slate-900:not(nav):not(header) h3 {
+  color: #f1f5f9 !important;
+}
+.dark .fixed .bg-slate-900:not(nav):not(header) p,
+.dark .fixed .bg-slate-900:not(nav):not(header) .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Page-level section banners with dark gradient → MD3 primary indigo */
+.space-y-6 > div[class*="from-slate-900"],
+.space-y-8 > div[class*="from-slate-900"],
+.space-y-6 > section[class*="from-slate-900"] {
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 60%, #6366f1 100%) !important;
+  border-color: rgba(99,102,241,0.3) !important;
+}

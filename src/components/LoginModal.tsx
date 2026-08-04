@@ -461,27 +461,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <button
             type="button"
             onClick={() => handleSelectTab('teacher')}
-            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-3 px-3 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 border-b-2 ${
               activeTab === 'teacher'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                ? 'border-indigo-600 text-indigo-700 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
           >
             <UserCheck className="w-4 h-4" />
-            <span>Teacher View</span>
+            <span>Teacher</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleSelectTab('admin')}
-            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-3 px-3 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 border-b-2 ${
               activeTab === 'admin'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                ? 'border-indigo-600 text-indigo-700 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Admin View</span>
+            <span>Admin</span>
           </button>
         </div>
 
@@ -513,7 +513,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
                 placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                className="md-input pl-10"
                 required
               />
             </div>
@@ -531,38 +531,33 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                className="md-input pl-10"
                 required
               />
             </div>
           </div>
 
-          {/* Current Logged In Banner */}
           {currentUser && (
-            <div className="p-3 bg-slate-100 rounded-xl text-xs flex items-center justify-between text-slate-700">
-              <span className="font-medium">Currently logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
-              <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">Active</span>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-center justify-between text-slate-700">
+              <span className="font-medium">Logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Active</span>
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* MD3 Submit Button */}
           <button
             type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="md-btn-filled w-full py-3 text-sm flex items-center justify-center gap-2"
           >
-            <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
+            <span>Log In — {activeTab === 'admin' ? 'Admin' : activeTab === 'teacher' ? 'Teacher' : 'Student'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        {/* Footer info */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1.5">
-          <div>
-            <span>HTEIM School of Ministry © 2026</span>
-            <span className="mx-1 text-slate-300">•</span>
-            <span className="text-slate-600">App created by <strong className="text-slate-800">Rockproxy Technologies</strong> (Director: Kendell Pierre)</span>
-          </div>
-          <span className="font-mono text-indigo-700 font-bold">Role Access: Admin • Teacher • Student</span>
+        {/* Footer */}
+        <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-1.5">
+          <span>HTEIM School of Ministry © 2026 · Rockproxy Technologies</span>
+          <span className="font-semibold text-indigo-600">Admin · Teacher · Student</span>
         </div>
       </div>
     </div>

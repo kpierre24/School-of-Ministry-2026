@@ -171,27 +171,29 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-fadeIn">
           
-          {/* Header */}
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <Bell className="w-4.5 h-4.5 text-amber-400" />
+          {/* MD3 Header */}
+          <div className="px-4 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-indigo-600" />
+              </div>
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider">Automated Notifications</h3>
-                <p className="text-[10px] text-slate-400">Due dates, grading updates & submissions</p>
+                <h3 className="text-xs font-semibold text-slate-800 dark:text-white">Notifications</h3>
+                <p className="text-[10px] text-slate-400">Due dates, grading & submissions</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 bg-rose-600 text-white font-mono font-bold text-[10px] rounded-full">
-                  {unreadCount} New
+                <span className="px-2 py-0.5 bg-red-600 text-white font-semibold text-[10px] rounded-full">
+                  {unreadCount}
                 </span>
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="md-icon-btn w-7 h-7"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -319,23 +321,23 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             )}
           </div>
 
-          {/* Test / Simulation Action Footer */}
-          <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 font-medium text-[10px] flex items-center gap-1">
-              <Zap className="w-3 h-3 text-amber-400" /> Test Triggers:
+          {/* MD3 Footer */}
+          <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+              <Zap className="w-3 h-3 text-amber-500" /> Test:
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSimulateGradeAlert}
-                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded transition-all cursor-pointer"
+                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold text-[10px] rounded-full transition-all cursor-pointer"
               >
-                + Test Grade
+                Grade Alert
               </button>
               <button
                 onClick={handleSimulateDueDateAlert}
-                className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] rounded transition-all cursor-pointer"
+                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-semibold text-[10px] rounded-full transition-all cursor-pointer"
               >
-                + Test Due Date
+                Due Date
               </button>
             </div>
           </div>
