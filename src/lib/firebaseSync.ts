@@ -57,6 +57,7 @@ export interface SyncedAppState {
   customAssignments?: any[];
   submissions?: any[];
   notifications?: any[];
+  messages?: any[];
   sheetUrl?: string;
   courses?: any[];
   schedules?: any[];

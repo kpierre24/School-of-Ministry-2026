@@ -1,4 +1,4 @@
-export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments';
+export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
 
 export type AcademicLevel = {
   id: string;
@@ -281,5 +281,48 @@ export type StudentSummary = {
   note?: string;
   photoUrl?: string;
   levelId: string;
+};
+
+export type MessagePriority = 'normal' | 'important' | 'urgent';
+export type MessageCategory = 'general' | 'assignment' | 'attendance' | 'tuition' | 'exam' | 'technical';
+
+export type MessageAttachment = {
+  name: string;
+  url: string;
+  type?: string;
+};
+
+export type MessageReply = {
+  id: string;
+  senderName: string;
+  senderRole: 'student' | 'teacher' | 'admin';
+  senderEmail?: string;
+  senderPhotoUrl?: string;
+  message: string;
+  attachments?: MessageAttachment[];
+  createdAt: string;
+};
+
+export type AppMessage = {
+  id: string;
+  subject: string;
+  category: MessageCategory;
+  priority: MessagePriority;
+  senderName: string;
+  senderRole: 'student' | 'teacher' | 'admin';
+  senderEmail?: string;
+  senderStudentId?: string;
+  recipientType: 'admin' | 'teacher' | 'student' | 'all_staff';
+  recipientName?: string; // e.g. "All Administration & Faculty", "Headmaster / Dean", "Apostolic Ministry Faculty" or specific student name
+  recipientEmail?: string;
+  courseCode?: string;
+  content: string;
+  attachments?: MessageAttachment[];
+  createdAt: string;
+  updatedAt: string;
+  isReadByRecipient: boolean;
+  isReadBySender: boolean;
+  status: 'open' | 'in_progress' | 'resolved' | 'archived';
+  replies: MessageReply[];
 };
 

@@ -17,6 +17,7 @@ export type FullBackupBundle = {
     paymentLedgers?: any[];
     rubricScores?: Record<string, any>;
     notifications?: any[];
+    messages?: any[];
     auditLogs?: AuditLogEntry[];
     settings?: Record<string, any>;
   };
@@ -59,6 +60,12 @@ export function collectAllPortalData(exportedBy: string = 'Administrator'): Full
     if (saved) notifications = JSON.parse(saved);
   } catch (e) {}
 
+  let messages: any[] = [];
+  try {
+    const saved = localStorage.getItem('hteim_app_messages');
+    if (saved) messages = JSON.parse(saved);
+  } catch (e) {}
+
   let settings: Record<string, any> = {};
   try {
     settings = {
@@ -97,6 +104,7 @@ export function collectAllPortalData(exportedBy: string = 'Administrator'): Full
       paymentLedgers,
       rubricScores,
       notifications,
+      messages,
       auditLogs,
       settings
     }

@@ -74,6 +74,7 @@ import {
   Edit3,
   Plus,
   Menu,
+  MessageSquare,
   LogOut
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
@@ -94,7 +95,7 @@ import {
 import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId } from './lib/sheets';
 import { getDemoAttendance } from './data';
-import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary } from './types';
+import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment } from './types';
 import { AppUser, generateStudentUsername } from './lib/userAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
@@ -107,6 +108,7 @@ import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components
 import { ScheduleTab, INITIAL_SCHEDULE } from './components/ScheduleTab';
 import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
 import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
+import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { HomeTab } from './components/HomeTab';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
@@ -526,6 +528,105 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('hteim_assignment_submissions', JSON.stringify(submissions));
   }, [submissions]);
+
+  // Lifted Messages State & Communication Center Logic
+  const [messages, setMessages] = useState<AppMessage[]>(() => {
+    const saved = localStorage.getItem('hteim_app_messages');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return INITIAL_MESSAGES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_app_messages', JSON.stringify(messages));
+  }, [messages]);
+
+  const handleSendMessage = (msgData: Omit<AppMessage, 'id' | 'createdAt' | 'updatedAt' | 'replies' | 'isReadByRecipient' | 'isReadBySender' | 'status'>) => {
+    const senderName = msgData.senderName || appUser?.studentName || appUser?.name || 'Student';
+    const senderRole = msgData.senderRole || appUser?.role || 'student';
+    const newMessage: AppMessage = {
+      ...msgData,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      senderName,
+      senderRole,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'open',
+      isReadBySender: true,
+      isReadByRecipient: false,
+      replies: [],
+      attachments: msgData.attachments || []
+    };
+
+    setMessages(prev => [newMessage, ...prev]);
+
+    logActivity({
+      actor: senderName,
+      role: senderRole,
+      actionCategory: 'System Settings',
+      actionTitle: 'New Message Sent',
+      details: `Sent message '${msgData.subject}' to ${msgData.recipientName}`
+    });
+  };
+
+  const handleReplyMessage = (messageId: string, replyText: string, attachments?: MessageAttachment[]) => {
+    const replierName = appUser?.name || 'User';
+    const replierRole = appUser?.role || 'student';
+
+    const newReply: MessageReply = {
+      id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      senderName: replierName,
+      senderRole: replierRole === 'admin' ? 'admin' : replierRole === 'teacher' ? 'teacher' : 'student',
+      senderEmail: appUser?.email,
+      message: replyText,
+      createdAt: new Date().toISOString(),
+      attachments
+    };
+
+    setMessages(prev => prev.map(m => {
+      if (m.id === messageId) {
+        return {
+          ...m,
+          replies: [...m.replies, newReply],
+          updatedAt: new Date().toISOString(),
+          status: 'in_progress',
+          isReadByRecipient: false
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handleUpdateMessageStatus = (messageId: string, status: AppMessage['status']) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, status, updatedAt: new Date().toISOString() } : m));
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+  };
+
+  // Compute unread count for current logged-in user
+  const unreadMessagesCount = useMemo(() => {
+    const userRole = appUser?.role || 'student';
+    const userName = (appUser?.studentName || appUser?.name || '').toLowerCase();
+
+    return messages.filter(m => {
+      if (m.status === 'archived') return false;
+      
+      if (userRole === 'admin') {
+        return (m.recipientType === 'admin' || m.recipientType === 'all_staff') && !m.isReadByRecipient;
+      } else if (userRole === 'teacher') {
+        return (m.recipientType === 'teacher' || m.recipientType === 'all_staff') && !m.isReadByRecipient;
+      } else {
+        const isFromStudent = m.senderName.toLowerCase().includes(userName) || m.senderEmail === appUser?.email;
+        if (isFromStudent) {
+          return m.status === 'in_progress' || m.status === 'open';
+        }
+        return false;
+      }
+    }).length;
+  }, [messages, appUser]);
 
   // Handler to scan assignments & submissions for automated notification generation
   const handleRunNotificationScan = () => {
@@ -1026,6 +1127,7 @@ export default function App() {
           if (cloudState.libraryResources !== undefined) setLibraryResources(cloudState.libraryResources);
           if (cloudState.classroomMedia !== undefined) setClassroomMedia(cloudState.classroomMedia);
           if (cloudState.payments !== undefined) setPayments(cloudState.payments);
+          if (cloudState.messages !== undefined) setMessages(cloudState.messages);
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
           
@@ -1059,6 +1161,7 @@ export default function App() {
             libraryResources,
             classroomMedia,
             payments,
+            messages,
             zoomExceptionNote,
             hasZoomException
           };
@@ -1116,6 +1219,7 @@ export default function App() {
         libraryResources,
         classroomMedia,
         payments,
+        messages,
         zoomExceptionNote,
         hasZoomException
       };
@@ -1221,6 +1325,7 @@ export default function App() {
           libraryResources,
           classroomMedia,
           payments,
+          messages,
           zoomExceptionNote,
           hasZoomException
         };
@@ -1257,6 +1362,7 @@ export default function App() {
     libraryResources,
     classroomMedia,
     payments,
+    messages,
     zoomExceptionNote,
     hasZoomException,
     user
@@ -2648,6 +2754,25 @@ create policy "Allow public update" on app_states for update using (true) with c
               )}
             </div>
 
+            {/* Quick Messages Header Button */}
+            <button
+              onClick={() => setActiveErpTab('messages')}
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border transition-all cursor-pointer relative shrink-0 flex items-center gap-1.5 ${
+                activeErpTab === 'messages'
+                  ? 'bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-400/40'
+                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border-slate-700/60'
+              }`}
+              title="Messaging & Direct Contact Center"
+            >
+              <MessageSquare className="w-4 h-4 text-indigo-400" />
+              <span className="hidden lg:inline text-xs font-bold">Messages</span>
+              {unreadMessagesCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                  {unreadMessagesCount}
+                </span>
+              )}
+            </button>
+
             {/* Notification Center */}
             <NotificationCenter
               notifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
@@ -2900,6 +3025,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             {activeErpTab === 'schedule' && <Calendar className="w-4 h-4 text-blue-400" />}
             {activeErpTab === 'library' && <Bookmark className="w-4 h-4 text-teal-400" />}
             {activeErpTab === 'payments' && <DollarSign className="w-4 h-4 text-emerald-400" />}
+            {activeErpTab === 'messages' && <MessageSquare className="w-4 h-4 text-indigo-400" />}
           </div>
           <div>
             <p className="text-xs font-black uppercase tracking-wider text-amber-300">
@@ -2911,6 +3037,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               {activeErpTab === 'schedule' && 'Class Schedule'}
               {activeErpTab === 'library' && 'Library & Resources'}
               {activeErpTab === 'payments' && 'Tuition & Payments'}
+              {activeErpTab === 'messages' && 'Messaging & Support'}
             </p>
             <p className="text-[9px] text-slate-400 font-mono">HTEIM School of Ministry Portal</p>
           </div>
@@ -2966,6 +3093,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                   {activeErpTab === 'schedule' && <Calendar className="w-3.5 h-3.5 text-blue-400" />}
                   {activeErpTab === 'library' && <Bookmark className="w-3.5 h-3.5 text-teal-400" />}
                   {activeErpTab === 'payments' && <DollarSign className="w-3.5 h-3.5 text-emerald-400" />}
+                  {activeErpTab === 'messages' && <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />}
                   
                   {activeErpTab === 'home' && 'Home Page'}
                   {activeErpTab === 'attendance' && 'Attendance Portal'}
@@ -2975,6 +3103,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                   {activeErpTab === 'schedule' && 'Class Schedule'}
                   {activeErpTab === 'library' && 'Library & Resources'}
                   {activeErpTab === 'payments' && (appUser?.role === 'student' ? 'My Payments' : 'Student Payments')}
+                  {activeErpTab === 'messages' && 'Messaging & Direct Support'}
                 </span>
               </p>
             </div>
@@ -3182,6 +3311,33 @@ create policy "Allow public update" on app_states for update using (true) with c
                   </span>
                 </button>
               )}
+
+              {/* 9. Messaging & Direct Contact */}
+              <button
+                onClick={() => {
+                  setActiveErpTab('messages');
+                  setIsNavHovered(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  activeErpTab === 'messages'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-md border border-indigo-400/60'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className={`w-4 h-4 ${activeErpTab === 'messages' ? 'text-white' : 'text-indigo-400'}`} />
+                  <span className="font-bold">Messaging & Contact</span>
+                </div>
+                {unreadMessagesCount > 0 ? (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white animate-pulse">
+                    {unreadMessagesCount} New
+                  </span>
+                ) : (
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeErpTab === 'messages' ? 'bg-white/20 text-white' : 'bg-slate-800 text-indigo-300'}`}>
+                    Direct
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Active Session & Logout Quick Switcher block */}
@@ -3421,6 +3577,23 @@ create policy "Allow public update" on app_states for update using (true) with c
               currentStudentName={appUser?.studentName || appUser?.name}
               payments={payments}
               setPayments={setPayments}
+            />
+          </div>
+        )}
+
+        {activeErpTab === 'messages' && (
+          <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+            <MessagesTab
+              appUser={appUser}
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              onReplyMessage={handleReplyMessage}
+              onUpdateStatus={handleUpdateMessageStatus}
+              onDeleteMessage={handleDeleteMessage}
+              availableStudents={uniqueStudents.map(s => {
+                const name = typeof s === 'string' ? s : s.name;
+                return { name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
+              })}
             />
           </div>
         )}
@@ -6063,6 +6236,37 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         </div>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        setActiveErpTab('messages');
+                        setShowMobileMoreMenu(false);
+                      }}
+                      className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all col-span-2 ${
+                        activeErpTab === 'messages'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400 text-white font-bold shadow-md'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-200 hover:border-indigo-500/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
+                          <MessageSquare className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">Messaging & Support Inbox</p>
+                          <p className="text-[9px] text-slate-400">Direct Messages to Teacher & Admin</p>
+                        </div>
+                      </div>
+                      {unreadMessagesCount > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                          {unreadMessagesCount} New
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[9px] font-mono">
+                          Open
+                        </span>
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -6187,6 +6391,26 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         onClose={() => setShowPresentationModal(false)}
         onNavigateTab={(tab) => setActiveErpTab(tab)}
       />
+
+      {/* Floating Quick Messages Launcher (Bottom Right) */}
+      <div className="fixed bottom-16 sm:bottom-6 right-4 sm:right-6 z-40">
+        <button
+          onClick={() => setActiveErpTab('messages')}
+          className="px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-2xl shadow-indigo-600/50 flex items-center gap-2 border border-indigo-400/40 cursor-pointer hover:scale-105 active:scale-95 transition-all group"
+          title="Direct Message Teacher or Admin"
+        >
+          <div className="relative">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-6 transition-transform text-amber-300" />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center border border-slate-950 animate-bounce">
+                {unreadMessagesCount}
+              </span>
+            )}
+          </div>
+          <span className="hidden sm:inline font-black">Message Teacher / Admin</span>
+          <span className="sm:hidden font-black text-[11px]">Contact</span>
+        </button>
+      </div>
 
       {/* Floating Mobile Bottom Navigation Bar (Visible on mobile/tablets < 768px) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-indigo-500/30 text-white shadow-2xl p-1 px-1 sm:px-2 flex items-center justify-around md:hidden pb-safe">
