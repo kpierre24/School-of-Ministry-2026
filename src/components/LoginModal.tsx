@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import LogoImage from './LogoImage';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 import { 
   ShieldCheck, 
   GraduationCap, 
@@ -76,8 +76,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   availableStudents = [],
   currentUser = null
 }) => {
-  if (!isOpen) return null;
-
   const studentList = useMemo(() => {
     return availableStudentNames.length > 0 ? availableStudentNames : availableStudents;
   }, [availableStudentNames, availableStudents]);
@@ -94,6 +92,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setUsernameInput('');
     setPasswordInput('');
   }, []);
+
+  if (!isOpen) return null;
 
   // Quick tab switch handler
   const handleSelectTab = (tab: UserRole) => {
@@ -140,7 +140,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Top Minimalist Brand Banner */}
         <div className="w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-between border-b border-slate-200/60 relative z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <LogoImage size="md" shape="rounded" wrapperClassName="flex-shrink-0" />
+            <img 
+              src={hteimLogoAsset} 
+              alt="HTEIM Logo" 
+              className="w-14 h-14 rounded-xl border-2 border-amber-300 shadow-sm object-contain bg-white p-0.5 flex-shrink-0"
+            />
             <div>
               <p className="text-xs font-black text-slate-800 uppercase tracking-wider leading-none">HTEIM</p>
               <p className="text-[10px] font-bold text-amber-700 font-serif tracking-tight mt-0.5">Heaven Touching Earth International Ministries</p>
@@ -261,25 +265,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* RIGHT PANEL: Embedded Intuitive Login Hub */}
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
             
-            {/* MD3 Login Panel Header */}
-            <div className="md-hero-bg text-white p-5">
-              <h2 className="text-base font-semibold flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-amber-300" /> Teaching Portal Sign-In
+            {/* Login Tab Headers */}
+            <div className="bg-slate-900 text-white p-5">
+              <h2 className="text-base font-extrabold flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-amber-400" /> Teaching Portal Sign-In
               </h2>
-              <p className="text-[11px] text-indigo-100/80 mt-1">
+              <p className="text-[11px] text-slate-300 mt-1">
                 Select your role below and sign in using your designated account.
               </p>
             </div>
 
-            {/* MD3 Tab Row */}
-            <div className="grid grid-cols-3 bg-slate-50 border-b border-slate-200 gap-0">
+            {/* Custom Tab Selectors */}
+            <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1">
               <button
                 type="button"
                 onClick={() => handleSelectTab('student')}
-                className={`py-3 px-1 text-xs font-semibold transition-all cursor-pointer flex flex-col items-center justify-center gap-1 border-b-2 ${
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                   activeTab === 'student'
-                    ? 'border-indigo-600 text-indigo-700 bg-white'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
@@ -289,10 +293,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectTab('teacher')}
-                className={`py-3 px-1 text-xs font-semibold transition-all cursor-pointer flex flex-col items-center justify-center gap-1 border-b-2 ${
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                   activeTab === 'teacher'
-                    ? 'border-indigo-600 text-indigo-700 bg-white'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
                 }`}
               >
                 <UserCheck className="w-4 h-4" />
@@ -302,10 +306,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectTab('admin')}
-                className={`py-3 px-1 text-xs font-semibold transition-all cursor-pointer flex flex-col items-center justify-center gap-1 border-b-2 ${
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                   activeTab === 'admin'
-                    ? 'border-indigo-600 text-indigo-700 bg-white'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
                 }`}
               >
                 <ShieldCheck className="w-4 h-4" />
@@ -411,69 +415,74 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col relative my-8">
         
-        {/* MD3 Header Banner */}
-        <div className="md-hero-bg text-white p-6 relative">
+        {/* Header Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 relative">
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 md-icon-btn text-white/70 hover:text-white hover:bg-white/10"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           )}
+
           <div className="flex items-center gap-3 mb-2">
-            <LogoImage size="md" shape="circle" />
+            <img 
+              src={hteimLogoAsset} 
+              alt="HTEIM Logo" 
+              className="w-12 h-12 rounded-full border-2 border-amber-400 object-contain shadow-md bg-white p-0.5"
+            />
             <div>
-              <h2 className="text-xl font-bold text-white">HTEIM School of Ministry</h2>
-              <p className="text-xs text-amber-300 flex items-center gap-1 mt-0.5">
-                <Sparkles className="w-3.5 h-3.5" /> Portal Authentication
+              <h2 className="text-xl font-black tracking-tight text-white">HTEIM School of Ministry</h2>
+              <p className="text-xs text-amber-300 font-bold flex items-center gap-1 mt-0.5">
+                <Sparkles className="w-3.5 h-3.5" /> Portal Authentication & Access Control
               </p>
             </div>
           </div>
-          <p className="text-xs text-indigo-100/80 mt-2 leading-relaxed">
-            Log in to access your designated dashboard. Admins, Teachers and Students have custom permissions.
+          <p className="text-xs text-indigo-200 mt-2 leading-relaxed">
+            Log in to access your designated view. Administrators, Teachers, and Ministry Students have custom tailored dashboards and permissions.
           </p>
         </div>
 
-        {/* MD3 Tab Row */}
-        <div className="grid grid-cols-3 bg-slate-50 border-b border-slate-200 gap-0">
+        {/* Role Type Tabs */}
+        <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1.5">
           <button
             type="button"
             onClick={() => handleSelectTab('student')}
-            className={`py-3 px-3 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 border-b-2 ${
+            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'student'
-                ? 'border-indigo-600 text-indigo-700 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
             }`}
           >
             <GraduationCap className="w-4 h-4" />
-            <span>Student</span>
+            <span>Student Portal</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleSelectTab('teacher')}
-            className={`py-3 px-3 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 border-b-2 ${
+            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'teacher'
-                ? 'border-indigo-600 text-indigo-700 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
             }`}
           >
             <UserCheck className="w-4 h-4" />
-            <span>Teacher</span>
+            <span>Teacher View</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleSelectTab('admin')}
-            className={`py-3 px-3 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 border-b-2 ${
+            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'admin'
-                ? 'border-indigo-600 text-indigo-700 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Admin</span>
+            <span>Admin View</span>
           </button>
         </div>
 
@@ -505,7 +514,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
                 placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                className="md-input pl-10"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                 required
               />
             </div>
@@ -523,33 +532,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="••••••"
-                className="md-input pl-10"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                 required
               />
             </div>
           </div>
 
+          {/* Current Logged In Banner */}
           {currentUser && (
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-center justify-between text-slate-700">
-              <span className="font-medium">Logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
-              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Active</span>
+            <div className="p-3 bg-slate-100 rounded-xl text-xs flex items-center justify-between text-slate-700">
+              <span className="font-medium">Currently logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
+              <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">Active</span>
             </div>
           )}
 
-          {/* MD3 Submit Button */}
+          {/* Submit Button */}
           <button
             type="submit"
-            className="md-btn-filled w-full py-3 text-sm flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>Log In — {activeTab === 'admin' ? 'Admin' : activeTab === 'teacher' ? 'Teacher' : 'Student'}</span>
+            <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        {/* Footer */}
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-1.5">
-          <span>HTEIM School of Ministry © 2026 · Rockproxy Technologies</span>
-          <span className="font-semibold text-indigo-600">Admin · Teacher · Student</span>
+        {/* Footer info */}
+        <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1.5">
+          <div>
+            <span>HTEIM School of Ministry © 2026</span>
+            <span className="mx-1 text-slate-300">•</span>
+            <span className="text-slate-600">App created by <strong className="text-slate-800">Rockproxy Technologies</strong> (Director: Kendell Pierre)</span>
+          </div>
+          <span className="font-mono text-indigo-700 font-bold">Role Access: Admin • Teacher • Student</span>
         </div>
       </div>
     </div>

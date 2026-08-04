@@ -25,7 +25,7 @@ import {
   ArrowRight,
   ShieldCheck
 } from 'lucide-react';
-import LogoImage from './LogoImage';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 import { TabType } from '../types';
 
 interface AppPresentationModalProps {
@@ -262,7 +262,7 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
         <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 p-3 sm:p-4 border-b border-indigo-900/60 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-400 p-0.5 border border-amber-300 shadow-sm shrink-0">
-              <LogoImage className="w-full h-full object-contain rounded-md" />
+              <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-full h-full object-contain rounded-md" referrerPolicy="no-referrer" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -352,7 +352,7 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
               {currentScene.visualType === 'welcome' && (
                 <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
                   <div className="w-16 h-16 rounded-2xl bg-white p-1 border-2 border-amber-400 shadow-xl shrink-0">
-                    <LogoImage className="w-full h-full object-contain rounded-xl" />
+                    <img src={hteimLogoAsset} alt="Logo" className="w-full h-full object-contain rounded-xl" referrerPolicy="no-referrer" />
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-amber-300">Heaven Touching Earth Int'l Ministries</h4>

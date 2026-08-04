@@ -66,6 +66,11 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   const [importErrorMessage, setImportErrorMessage] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
+  // GitHub Pull States
+  const [isPullingGithub, setIsPullingGithub] = useState(false);
+  const [githubPullStatus, setGithubPullStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [githubPullMessage, setGithubPullMessage] = useState('');
+
   // Operations & Diagnostics States
   const [payloadSize, setPayloadSize] = useState(0);
   const [payloadPct, setPayloadPct] = useState(0);
@@ -198,6 +203,42 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
       }
     };
     reader.readAsText(file);
+  };
+
+  const handlePullFromGithub = async () => {
+    setIsPullingGithub(true);
+    setGithubPullStatus('idle');
+    setGithubPullMessage('');
+    try {
+      const response = await fetch('/api/pull-from-github', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoUrl: 'https://github.com/kpierre24/School-of-Ministry-2026.git' })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setGithubPullStatus('success');
+        setGithubPullMessage(data.message || 'Workspace successfully updated from GitHub!');
+        logActivity({
+          actionCategory: 'Backup & Data',
+          actionTitle: 'Pulled GitHub Updates',
+          actor: currentActorName,
+          role: (currentUserRole === 'admin' || currentUserRole === 'teacher' || currentUserRole === 'student' || currentUserRole === 'system') ? currentUserRole : 'admin',
+          details: 'Successfully triggered remote GitHub synchronizer & updated server workspace code files.',
+          ipOrDevice: 'Web Admin Session'
+        });
+        refreshLogs();
+      } else {
+        setGithubPullStatus('error');
+        setGithubPullMessage(data.error || 'Server returned an error during synchronization.');
+      }
+    } catch (err: any) {
+      console.error('Failed to pull from GitHub:', err);
+      setGithubPullStatus('error');
+      setGithubPullMessage(err.message || String(err));
+    } finally {
+      setIsPullingGithub(false);
+    }
   };
 
   const handleClearLogs = () => {
@@ -608,7 +649,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               </div>
 
               {/* Individual Export & Import Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 
                 {/* Standalone JSON Backup */}
                 <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
@@ -657,6 +698,46 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                       className="hidden" 
                     />
                   </label>
+                </div>
+
+                {/* Pull from GitHub */}
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className={`w-5 h-5 text-indigo-600 dark:text-indigo-400 ${isPullingGithub ? 'animate-spin' : ''}`} />
+                      <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                        GitHub Repository Sync
+                      </h4>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Fetch and synchronize the latest portal features, styles, and software updates directly from the remote GitHub repository.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      onClick={handlePullFromGithub}
+                      disabled={isPullingGithub}
+                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isPullingGithub ? 'animate-spin' : ''}`} />
+                      <span>{isPullingGithub ? 'Synchronizing...' : 'Pull Updates from GitHub'}</span>
+                    </button>
+
+                    {githubPullStatus === 'success' && (
+                      <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 rounded-xl text-emerald-800 dark:text-emerald-200 text-[10px] font-bold flex items-start gap-1.5 animate-fadeIn">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <span>{githubPullMessage}</span>
+                      </div>
+                    )}
+
+                    {githubPullStatus === 'error' && (
+                      <div className="p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-xl text-rose-800 dark:text-rose-200 text-[10px] font-bold flex items-start gap-1.5 animate-fadeIn">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                        <span className="break-words max-w-full">{githubPullMessage}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

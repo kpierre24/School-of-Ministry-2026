@@ -272,144 +272,186 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
   return (
     <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
-      {/* MD3 Page Header */}
-      <div className="md-hero-bg rounded-2xl p-6 text-white shadow-lg">
+      {/* Top Banner & Quick Metrics */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-white/80" />
-              <h2 className="text-xl font-bold tracking-tight">Student Enrolment Directory</h2>
+              <GraduationCap className="w-6 h-6 text-indigo-400" />
+              <h2 className="text-xl font-black tracking-tight">Student Enrolment Directory</h2>
             </div>
-            <p className="text-sm text-indigo-100/80 mt-1">
-              Manage student profiles, attendance records, academic standing, and transcripts.
+            <p className="text-xs text-indigo-200 mt-1">
+              Centralized management of student profiles, attendance records, academic standing, and official transcripts.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-white/15 border border-white/20 px-3 py-1.5 rounded-full text-xs font-semibold text-white/90">
-            <Sparkles className="w-4 h-4 text-amber-300" />
+          <div className="flex items-center gap-2 bg-indigo-900/60 border border-indigo-700/50 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-indigo-200">
+            <Sparkles className="w-4 h-4 text-amber-400" />
             <span>HTEIM Ministry Cohort 2026</span>
           </div>
         </div>
 
-        {/* MD3 Stat chips */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white/10 border border-white/15 rounded-2xl p-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">Total Enrolled</p>
-            <p className="text-2xl font-bold font-mono mt-1">{totalStudents}</p>
-            <p className="text-[10px] text-white/50 mt-0.5">Candidates</p>
+        {/* 4 Metric Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-3.5">
+            <p className="text-[10px] font-bold uppercase text-indigo-200">Total Enrolled</p>
+            <p className="text-2xl font-black font-mono mt-1 text-white">{totalStudents}</p>
+            <p className="text-[10px] text-indigo-300 mt-0.5">Ministry Candidates</p>
           </div>
-          <div className="bg-emerald-500/20 border border-emerald-400/25 rounded-2xl p-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-100/80">Good Standing</p>
-            <p className="text-2xl font-bold font-mono mt-1 text-emerald-200">{satisfactoryStudents}</p>
-            <p className="text-[10px] text-emerald-200/60 mt-0.5">≥ {satisfactoryThreshold}%</p>
+          <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 rounded-xl p-3.5">
+            <p className="text-[10px] font-bold uppercase text-emerald-200">Satisfactory Standing</p>
+            <p className="text-2xl font-black font-mono mt-1 text-emerald-300">{satisfactoryStudents}</p>
+            <p className="text-[10px] text-emerald-200 mt-0.5">&ge; {satisfactoryThreshold}% Attendance</p>
           </div>
-          <div className="bg-amber-500/20 border border-amber-400/25 rounded-2xl p-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-100/80">Perfect Attendance</p>
-            <p className="text-2xl font-bold font-mono mt-1 text-amber-200">{perfectStudents}</p>
-            <p className="text-[10px] text-amber-200/60 mt-0.5">100% Sessions</p>
+          <div className="bg-amber-500/20 backdrop-blur-md border border-amber-500/30 rounded-xl p-3.5">
+            <p className="text-[10px] font-bold uppercase text-amber-200">Perfect Attendance</p>
+            <p className="text-2xl font-black font-mono mt-1 text-amber-300">{perfectStudents}</p>
+            <p className="text-[10px] text-amber-200 mt-0.5">100% Session Commendation</p>
           </div>
-          <div className="bg-red-500/20 border border-red-400/25 rounded-2xl p-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-red-100/80">At-Risk</p>
-            <p className="text-2xl font-bold font-mono mt-1 text-red-200">{atRiskStudents}</p>
-            <p className="text-[10px] text-red-200/60 mt-0.5">&lt; {atRiskThreshold}%</p>
+          <div className="bg-rose-500/20 backdrop-blur-md border border-rose-500/30 rounded-xl p-3.5">
+            <p className="text-[10px] font-bold uppercase text-rose-200">At-Risk Alert</p>
+            <p className="text-2xl font-black font-mono mt-1 text-rose-300">{atRiskStudents}</p>
+            <p className="text-[10px] text-rose-200 mt-0.5">&lt; {atRiskThreshold}% Attendance</p>
           </div>
         </div>
       </div>
 
-      {/* MD3 Filter & Search Toolbar */}
-      <div className="md-surface border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+      {/* Filter and Search Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col space-y-3">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Search field */}
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search student by name…"
+              placeholder="Search student profile by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="md-input pl-10"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto flex-shrink-0 flex-wrap justify-end">
-            {/* View mode toggle */}
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-700">
+            {/* View Mode Toggle: Cards vs Photo Gallery */}
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs shrink-0">
               <button
                 onClick={() => setDirectoryViewMode('cards')}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   directoryViewMode === 'cards'
-                    ? 'bg-white dark:bg-slate-600 text-indigo-700 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white text-indigo-700 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Detailed Student Profile Cards View"
               >
-                <LayoutGrid className="w-3.5 h-3.5" /> Profile Cards
+                <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Profile Cards</span>
               </button>
               <button
                 onClick={() => setDirectoryViewMode('gallery')}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   directoryViewMode === 'gallery'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-indigo-600 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Visual Photo Gallery View with Thumbnail Attendance Marking"
               >
-                <Camera className="w-3.5 h-3.5" /> Photo Gallery
+                <Camera className="w-3.5 h-3.5" />
+                <span>Photo Gallery</span>
               </button>
             </div>
 
-            {/* Sort */}
-            <div className="flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+            {/* Sorting Dropdown */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs font-extrabold text-slate-600 flex items-center gap-1">
+                <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Sort:
+              </span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="md-input text-xs py-2 pr-8 w-auto"
+                className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs"
               >
-                <option value="name_asc">Name A → Z</option>
-                <option value="name_desc">Name Z → A</option>
-                <option value="rate_desc">Attendance ↓</option>
-                <option value="rate_asc">Attendance ↑</option>
-                <option value="score_desc">Score ↓</option>
+                <option value="name_asc">Name (A &rarr; Z)</option>
+                <option value="name_desc">Name (Z &rarr; A)</option>
+                <option value="rate_desc">Attendance (High &rarr; Low)</option>
+                <option value="rate_asc">Attendance (Low &rarr; High)</option>
+                <option value="score_desc">Avg Score (High &rarr; Low)</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Filter chips */}
         <div className="flex items-center gap-2 w-full overflow-x-auto pb-1 justify-between flex-wrap">
-          <div className="flex items-center gap-2 overflow-x-auto flex-wrap">
-            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" /> Standing:
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-slate-400" /> Standing:
             </span>
-            {[
-              { key: 'all',          label: `All (${students.length})`,              activeClass: 'bg-slate-800 text-white' },
-              { key: 'satisfactory', label: `Good (${satisfactoryStudents})`,         activeClass: 'bg-emerald-600 text-white' },
-              { key: 'perfect',      label: `Honor Roll (${perfectStudents})`,        activeClass: 'bg-amber-500 text-slate-900' },
-              { key: 'at_risk',      label: `At-Risk (${atRiskStudents})`,            activeClass: 'bg-red-600 text-white' },
-              { key: 'fifty_percent',label: `≤50% (${fiftyPercentStudents})`,         activeClass: 'bg-purple-600 text-white' },
-            ].map(f => (
-              <button
-                key={f.key}
-                onClick={() => setStatusFilter(f.key as any)}
-                className={`md-chip text-xs ${statusFilter === f.key ? `md-chip-selected ${f.activeClass} border-transparent` : ''}`}
-              >
-                {f.label}
-              </button>
-            ))}
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'all' 
+                  ? 'bg-slate-900 text-white shadow-xs' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Candidates ({students.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('satisfactory')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'satisfactory' 
+                  ? 'bg-emerald-600 text-white shadow-xs' 
+                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }`}
+            >
+              Good Standing ({satisfactoryStudents})
+            </button>
+            <button
+              onClick={() => setStatusFilter('perfect')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'perfect' 
+                  ? 'bg-amber-500 text-slate-950 shadow-xs' 
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              Honor Roll ({perfectStudents})
+            </button>
+            <button
+              onClick={() => setStatusFilter('at_risk')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'at_risk' 
+                  ? 'bg-rose-600 text-white shadow-xs' 
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+              }`}
+            >
+              At-Risk ({atRiskStudents})
+            </button>
+            <button
+              onClick={() => setStatusFilter('fifty_percent')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'fifty_percent' 
+                  ? 'bg-purple-600 text-white shadow-xs' 
+                  : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+              }`}
+            >
+              Low Attendance (&le;50%) ({fiftyPercentStudents})
+            </button>
           </div>
 
           {onOpenAttendanceReport && (
             <div className="flex items-center gap-2 pt-1 sm:pt-0">
               <button
                 onClick={() => onOpenAttendanceReport('fifty_percent')}
-                className="md-btn-tonal text-xs px-3.5 py-2 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5"
+                title="Generate printable/downloadable official report for candidates with 50% or lower attendance"
               >
-                <FileText className="w-3.5 h-3.5" /> ≤50% Report
+                <FileText className="w-3.5 h-3.5 text-slate-900" />
+                <span>Export &le;50% Report</span>
               </button>
               <button
                 onClick={() => onOpenAttendanceReport('all')}
-                className="md-btn-filled text-xs px-3.5 py-2 flex items-center gap-1.5"
-                style={{ background: '#059669' }}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 flex-shrink-0"
+                title="Generate Printable Full Attendance Report"
               >
-                <FileText className="w-3.5 h-3.5" /> Full Report
+                <FileText className="w-3.5 h-3.5 text-white" />
+                <span>Full Attendance Report</span>
               </button>
             </div>
           )}
