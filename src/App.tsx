@@ -199,25 +199,7 @@ export default function App() {
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
-  const [isNavHovered, setIsNavHovered] = useState<boolean>(false);
-  const navHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleNavMouseEnter = () => {
-    if (navHoverTimeoutRef.current) {
-      clearTimeout(navHoverTimeoutRef.current);
-      navHoverTimeoutRef.current = null;
-    }
-    setIsNavHovered(true);
-  };
-
-  const handleNavMouseLeave = () => {
-    if (navHoverTimeoutRef.current) {
-      clearTimeout(navHoverTimeoutRef.current);
-    }
-    navHoverTimeoutRef.current = setTimeout(() => {
-      setIsNavHovered(false);
-    }, 500); // 500ms delay before hiding menu
-  };
+  const [isNavOpen, setIsNavOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -2944,144 +2926,181 @@ create policy "Allow public update" on app_states for update using (true) with c
         </button>
       </div>
 
-      {/* MD3 Desktop Navigation */}
-      <div
-        className="hidden md:block relative z-40 mb-4"
-        onMouseEnter={handleNavMouseEnter}
-        onMouseLeave={handleNavMouseLeave}
-      >
-        {/* Collapsed trigger bar */}
-        <div
-          onClick={() => isNavHovered ? setIsNavHovered(false) : handleNavMouseEnter()}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
+      {/* MD3 Desktop Navigation Bar */}
+      <div className="hidden md:block relative z-40 mb-4">
+        {/* Horizontal Navigation Bar */}
+        <div 
+          className="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-1.5 shadow-sm backdrop-blur-md flex items-center justify-between gap-1"
           style={{ boxShadow: 'var(--md-elev-1)' }}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center shrink-0">
-              <Menu className="w-4 h-4 text-indigo-600" />
-            </div>
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Navigation</span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 text-white rounded-full text-xs font-medium">
-              {activeErpTab === 'home' && <><Sparkles className="w-3.5 h-3.5" /><span>Home</span></>}
-              {activeErpTab === 'attendance' && <><UserCheck className="w-3.5 h-3.5" /><span>Attendance</span></>}
-              {activeErpTab === 'students' && <><GraduationCap className="w-3.5 h-3.5" /><span>Students</span></>}
-              {activeErpTab === 'courses' && <><BookOpen className="w-3.5 h-3.5" /><span>Courses</span></>}
-              {activeErpTab === 'exams' && <><Award className="w-3.5 h-3.5" /><span>Exams</span></>}
-              {activeErpTab === 'schedule' && <><Calendar className="w-3.5 h-3.5" /><span>Schedule</span></>}
-              {activeErpTab === 'library' && <><Bookmark className="w-3.5 h-3.5" /><span>Library</span></>}
-              {activeErpTab === 'payments' && <><DollarSign className="w-3.5 h-3.5" /><span>Payments</span></>}
-              {activeErpTab === 'messages' && <><MessageSquare className="w-3.5 h-3.5" /><span>Messages</span></>}
-            </div>
-          </div>
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isNavHovered ? 'rotate-180' : ''}`} />
-        </div>
-
-        {/* MD3 Navigation Drawer */}
-        <div
-          onMouseEnter={handleNavMouseEnter}
-          onMouseLeave={handleNavMouseLeave}
-          className={`absolute top-full left-0 mt-2 w-80 max-w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 z-50 space-y-1 transition-all duration-200 ease-out origin-top-left ${
-            isNavHovered
-              ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
-              : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
-          }`}
-          style={{ boxShadow: 'var(--md-elev-3)' }}
-        >
-          <div className="flex items-center justify-between pb-2 mb-1 border-b border-slate-100 dark:border-slate-800">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Modules</span>
-          </div>
-
-          <div className="flex flex-col gap-0.5 max-h-[65vh] overflow-y-auto custom-scrollbar">
-            {/* nav items */}
+          {/* Direct Tab Options */}
+          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[82%] py-0.5">
             {[
-              { tab: 'home',       label: 'Home',             Icon: Sparkles,      badge: 'Main' },
-              { tab: 'attendance', label: 'Attendance',        Icon: UserCheck,     badge: `${uniqueStudents.length} Students` },
-              { tab: 'students',   label: 'Students Directory',Icon: GraduationCap, badge: `${uniqueStudents.length} Profiles`, adminOnly: true },
-              { tab: 'courses',    label: 'Courses',           Icon: BookOpen,      badge: '6 Modules' },
-              { tab: 'exams',      label: 'Exams & Evaluation',Icon: Award,         badge: `${uniqueStudents.filter(s => s.avgScore !== null).length} Records` },
-              { tab: 'schedule',   label: 'Schedule',          Icon: Calendar,      badge: `${classDays.length} Days` },
-              { tab: 'library',    label: 'Library',           Icon: Bookmark,      badge: '6 Files' },
-              { tab: 'payments',   label: appUser?.role === 'student' ? 'My Payments' : 'Payments', Icon: DollarSign, badge: appUser?.role === 'student' ? 'Statement' : 'Admin', paymentOnly: true },
-              { tab: 'messages',   label: 'Messages',          Icon: MessageSquare, badge: unreadMessagesCount > 0 ? `${unreadMessagesCount} New` : 'Direct', badgeAlert: unreadMessagesCount > 0 },
+              { tab: 'home',       label: 'Home',             Icon: Sparkles },
+              { tab: 'attendance', label: 'Attendance',        Icon: UserCheck },
+              { tab: 'students',   label: 'Students',          Icon: GraduationCap, adminOnly: true },
+              { tab: 'courses',    label: 'Courses',           Icon: BookOpen },
+              { tab: 'exams',      label: 'Exams',             Icon: Award },
+              { tab: 'schedule',   label: 'Schedule',          Icon: Calendar },
+              { tab: 'library',    label: 'Library',           Icon: Bookmark },
+              { tab: 'payments',   label: appUser?.role === 'student' ? 'Payments' : 'Payments', Icon: DollarSign, paymentOnly: true },
+              { tab: 'messages',   label: 'Messages',          Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
             ].filter(item => {
               if ((item as any).adminOnly && appUser?.role === 'student') return false;
               if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
               return true;
-            }).map(({ tab, label, Icon, badge, badgeAlert }: any) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveErpTab(tab as any); setIsNavHovered(false); }}
-                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-sm transition-all cursor-pointer ${
-                  activeErpTab === tab
-                    ? 'bg-indigo-600 text-white font-semibold'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${activeErpTab === tab ? 'text-white' : 'text-slate-400'}`} />
+            }).map(({ tab, label, Icon, badgeAlert, badgeCount }: any) => {
+              const isActive = activeErpTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    setActiveErpTab(tab as any);
+                    setIsNavOpen(false);
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 scale-[1.02]'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
                   <span>{label}</span>
-                </div>
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                  activeErpTab === tab
-                    ? 'bg-white/20 text-white'
-                    : badgeAlert
-                    ? 'bg-red-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                }`}>
-                  {badge}
-                </span>
-              </button>
-            ))}
-              <button
-                onClick={() => {
-                  setActiveErpTab('home');
-                  setIsNavHovered(false);
-                }}
-                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer ${
-                  activeErpTab === 'home'
-                    ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black shadow-md border border-amber-300'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Sparkles className={`w-4 h-4 ${activeErpTab === 'home' ? 'text-slate-950' : 'text-amber-400'}`} />
-                  <span className="font-bold">Home Page</span>
-                </div>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${activeErpTab === 'home' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
-                  Main
-                </span>
-              </button>
-
+                  {badgeAlert && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      isActive ? 'bg-white text-indigo-700' : 'bg-red-500 text-white animate-pulse'
+                    }`}>
+                      {badgeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Session footer */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs shrink-0 ${
-                appUser?.role === 'admin' ? 'bg-amber-500 text-white' :
-                appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'
-              }`}>
-                {appUser ? appUser.name.charAt(0).toUpperCase() : '?'}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-800 dark:text-white truncate">{appUser ? appUser.name : 'Guest'}</p>
-                <p className="text-[10px] text-slate-400 capitalize">{appUser?.role || 'guest'}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                const prevUser = appUser;
-                setIsNavHovered(false);
-                setAppUser(null);
-                localStorage.removeItem('hteim_app_user');
-                logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-full transition-all cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" /> Logout
-            </button>
-          </div>
+          {/* Quick All Modules Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setIsNavOpen(!isNavOpen)}
+            className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border shrink-0 ${
+              isNavOpen
+                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            <Menu className="w-4 h-4" />
+            <span>Modules</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isNavOpen ? 'rotate-180' : ''}`} />
+          </button>
         </div>
+
+        {/* Click-Away Backdrop Overlay when Drawer is open */}
+        {isNavOpen && (
+          <div
+            onClick={() => setIsNavOpen(false)}
+            className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-2xs animate-fadeIn"
+          />
+        )}
+
+        {/* Explicit Click Drawer / Dropdown */}
+        {isNavOpen && (
+          <div
+            className="absolute top-full right-0 mt-2 w-80 max-w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 z-50 space-y-2 shadow-2xl animate-scaleUp origin-top-right"
+            style={{ boxShadow: 'var(--md-elev-3)' }}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Portal Modules Overview
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsNavOpen(false)}
+                className="text-xs text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {[
+                { tab: 'home',       label: 'Home Dashboard',   Icon: Sparkles,      badge: 'Main' },
+                { tab: 'attendance', label: 'Attendance System',Icon: UserCheck,     badge: `${uniqueStudents.length} Students` },
+                { tab: 'students',   label: 'Students Directory',Icon: GraduationCap, badge: `${uniqueStudents.length} Profiles`, adminOnly: true },
+                { tab: 'courses',    label: 'Courses & Modules', Icon: BookOpen,      badge: '6 Modules' },
+                { tab: 'exams',      label: 'Exams & Grades',    Icon: Award,         badge: `${uniqueStudents.filter(s => s.avgScore !== null).length} Records` },
+                { tab: 'schedule',   label: 'Class Schedule',    Icon: Calendar,      badge: `${classDays.length} Days` },
+                { tab: 'library',    label: 'Library & Media',   Icon: Bookmark,      badge: '6 Files' },
+                { tab: 'payments',   label: appUser?.role === 'student' ? 'My Payments' : 'Tuition & Billing', Icon: DollarSign, badge: appUser?.role === 'student' ? 'Statement' : 'Admin', paymentOnly: true },
+                { tab: 'messages',   label: 'Direct Messaging',  Icon: MessageSquare, badge: unreadMessagesCount > 0 ? `${unreadMessagesCount} New` : 'Direct', badgeAlert: unreadMessagesCount > 0 },
+              ].filter(item => {
+                if ((item as any).adminOnly && appUser?.role === 'student') return false;
+                if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
+                return true;
+              }).map(({ tab, label, Icon, badge, badgeAlert }: any) => {
+                const isActive = activeErpTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => {
+                      setActiveErpTab(tab as any);
+                      setIsNavOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <span>{label}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : badgeAlert
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                    }`}>
+                      {badge}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Session footer */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                  appUser?.role === 'admin' ? 'bg-amber-500 text-white' :
+                  appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'
+                }`}>
+                  {appUser ? appUser.name.charAt(0).toUpperCase() : '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{appUser ? appUser.name : 'Guest'}</p>
+                  <p className="text-[10px] text-slate-400 capitalize">{appUser?.role || 'guest'}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const prevUser = appUser;
+                  setIsNavOpen(false);
+                  setAppUser(null);
+                  localStorage.removeItem('hteim_app_user');
+                  logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Logout
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Workspace */}

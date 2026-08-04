@@ -16,10 +16,14 @@ import {
   Check, 
   Sparkles,
   Disc,
-  ListMusic
+  ListMusic,
+  Globe,
+  ExternalLink,
+  Link as LinkIcon
 } from 'lucide-react';
 import { MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
+import { parseVideoMediaUrl } from '../lib/mediaUtils';
 
 interface ClassroomMediaPlayerProps {
   mediaResources: MediaResource[];
@@ -31,6 +35,16 @@ interface ClassroomMediaPlayerProps {
 }
 
 export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
+  {
+    id: 'm_preset_gdrive_1',
+    title: 'Google Drive Livestream: Sunday Worship & Prophetic Teaching (HD Recording)',
+    speaker: 'Dr. Faculty Director',
+    duration: '1:05:30',
+    type: 'video',
+    url: 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing',
+    description: 'Full Sunday livestream video recording stored directly on Google Drive. Click to play inside the app.',
+    dateAdded: '2026-08-01'
+  },
   {
     id: 'm_preset_1',
     title: 'Lecture 1: Kingdom Citizenship & Purpose Mandate (Audio Sermon)',
@@ -221,134 +235,190 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
       </div>
 
       {/* Main Player Display */}
-      {currentTrack ? (
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3.5">
-          {/* Active Media Container */}
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            {/* Visual Screen / Vinyl Icon */}
-            {currentTrack.type === 'video' ? (
-              <div className="w-full md:w-56 h-32 bg-black rounded-lg overflow-hidden border border-slate-800 relative flex-shrink-0">
-                <video
-                  ref={videoRef}
-                  src={currentTrack.url}
-                  className="w-full h-full object-cover"
-                  onTimeUpdate={handleTimeUpdate}
-                  onEnded={() => setIsPlaying(false)}
-                />
-              </div>
-            ) : (
-              <div className="w-full md:w-44 h-32 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 rounded-2xl border border-indigo-500/40 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 relative overflow-hidden group shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-                <audio
-                  ref={audioRef}
-                  src={currentTrack.url}
-                  onTimeUpdate={handleTimeUpdate}
-                  onEnded={() => setIsPlaying(false)}
-                />
-                <div className="flex items-center justify-center gap-1.5 mb-2">
-                  <Disc className={`w-8 h-8 text-amber-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
-                  {/* Futuristic Audio Spectrum Bars */}
-                  <div className="flex items-end gap-0.5 h-6">
-                    <span className={`w-1 bg-amber-400 rounded-full transition-all ${isPlaying ? 'h-5 animate-pulse' : 'h-1.5'}`} />
-                    <span className={`w-1 bg-indigo-400 rounded-full transition-all ${isPlaying ? 'h-3 animate-pulse delay-75' : 'h-2'}`} />
-                    <span className={`w-1 bg-cyan-400 rounded-full transition-all ${isPlaying ? 'h-6 animate-pulse delay-150' : 'h-1'}`} />
-                    <span className={`w-1 bg-emerald-400 rounded-full transition-all ${isPlaying ? 'h-4 animate-pulse' : 'h-2'}`} />
+      {currentTrack ? (() => {
+        const parsedMedia = parseVideoMediaUrl(currentTrack.url || '');
+        const isDriveVideo = parsedMedia.isDrive;
+        const isYouTubeVideo = parsedMedia.isYouTube;
+        const isEmbeddedPlayer = isDriveVideo || isYouTubeVideo;
+
+        return (
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3.5">
+            {/* Active Media Container */}
+            <div className="flex flex-col space-y-3">
+              {/* If Embedded Google Drive or YouTube Video, show responsive Video Player Container */}
+              {isEmbeddedPlayer ? (
+                <div className="w-full flex flex-col space-y-2">
+                  <div className="w-full h-72 md:h-[380px] bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
+                    <iframe
+                      src={parsedMedia.embedUrl}
+                      className="w-full h-full border-0 rounded-xl"
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      title={currentTrack.title}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs px-1 pt-1">
+                    <span className="text-blue-400 font-extrabold flex items-center gap-1.5 bg-blue-950/70 border border-blue-800/80 px-2.5 py-1 rounded-lg">
+                      <Globe className="w-3.5 h-3.5 text-blue-400" />
+                      {isDriveVideo ? 'Google Drive Embedded Video Player' : 'YouTube Embedded Video Player'}
+                    </span>
+                    <a
+                      href={currentTrack.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-300 hover:text-white font-bold flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-all"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {isDriveVideo ? 'Open in Google Drive' : 'Watch on YouTube'}
+                    </a>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-black text-indigo-300 uppercase tracking-widest bg-indigo-900/60 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                  {isPlaying ? 'LIVE STREAM' : 'AUDIO RECORDING'}
-                </span>
-              </div>
-            )}
-
-            {/* Track Info & Progress Bar */}
-            <div className="flex-1 w-full space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-slate-800 text-amber-300 text-[10px] font-extrabold uppercase rounded border border-slate-700">
-                      {currentTrack.type}
-                    </span>
-                    <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1">
-                      <User className="w-3 h-3" /> {currentTrack.speaker}
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-extrabold text-white mt-1 leading-snug">
-                    {currentTrack.title}
-                  </h4>
-                  {currentTrack.description && (
-                    <p className="text-xs text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
-                      {currentTrack.description}
-                    </p>
+              ) : (
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  {/* Visual Screen / Vinyl Icon */}
+                  {currentTrack.type === 'video' ? (
+                    <div className="w-full md:w-56 h-32 bg-black rounded-lg overflow-hidden border border-slate-800 relative flex-shrink-0">
+                      <video
+                        ref={videoRef}
+                        src={currentTrack.url}
+                        className="w-full h-full object-cover"
+                        controls
+                        onTimeUpdate={handleTimeUpdate}
+                        onEnded={() => setIsPlaying(false)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full md:w-44 h-32 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 rounded-2xl border border-indigo-500/40 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 relative overflow-hidden group shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                      <audio
+                        ref={audioRef}
+                        src={currentTrack.url}
+                        onTimeUpdate={handleTimeUpdate}
+                        onEnded={() => setIsPlaying(false)}
+                      />
+                      <div className="flex items-center justify-center gap-1.5 mb-2">
+                        <Disc className={`w-8 h-8 text-amber-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+                        {/* Futuristic Audio Spectrum Bars */}
+                        <div className="flex items-end gap-0.5 h-6">
+                          <span className={`w-1 bg-amber-400 rounded-full transition-all ${isPlaying ? 'h-5 animate-pulse' : 'h-1.5'}`} />
+                          <span className={`w-1 bg-indigo-400 rounded-full transition-all ${isPlaying ? 'h-3 animate-pulse delay-75' : 'h-2'}`} />
+                          <span className={`w-1 bg-cyan-400 rounded-full transition-all ${isPlaying ? 'h-6 animate-pulse delay-150' : 'h-1'}`} />
+                          <span className={`w-1 bg-emerald-400 rounded-full transition-all ${isPlaying ? 'h-4 animate-pulse' : 'h-2'}`} />
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-black text-indigo-300 uppercase tracking-widest bg-indigo-900/60 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                        {isPlaying ? 'LIVE STREAM' : 'AUDIO RECORDING'}
+                      </span>
+                    </div>
                   )}
+
+                  {/* Track Info & Controls */}
+                  <div className="flex-1 w-full space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-slate-800 text-amber-300 text-[10px] font-extrabold uppercase rounded border border-slate-700">
+                            {currentTrack.type}
+                          </span>
+                          <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1">
+                            <User className="w-3 h-3" /> {currentTrack.speaker}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-extrabold text-white mt-1 leading-snug">
+                          {currentTrack.title}
+                        </h4>
+                        {currentTrack.description && (
+                          <p className="text-xs text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
+                            {currentTrack.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <a
+                        href={currentTrack.url}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
+                        title="Download MP3/MP4 File"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                    </div>
+
+                    {/* Progress Slider */}
+                    <div className="space-y-1">
+                      <input
+                        type="range"
+                        min="0"
+                        max={duration || 100}
+                        value={currentTime}
+                        onChange={handleSeek}
+                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                      />
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                        <span>{formatSecs(currentTime)}</span>
+                        <span>{currentTrack.duration || formatSecs(duration)}</span>
+                      </div>
+                    </div>
+
+                    {/* Control Buttons Row */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={togglePlay}
+                          className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95"
+                        >
+                          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                        </button>
+
+                        <button
+                          onClick={changeSpeed}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono font-bold text-xs rounded-lg border border-slate-700 cursor-pointer"
+                          title="Change Playback Speed"
+                        >
+                          {playbackSpeed}x
+                        </button>
+                      </div>
+
+                      {/* Volume Slider */}
+                      <div className="flex items-center gap-2">
+                        <button onClick={toggleMute} className="text-slate-400 hover:text-white cursor-pointer">
+                          {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={isMuted ? 0 : volume}
+                          onChange={handleVolumeChange}
+                          className="w-20 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <a
-                  href={currentTrack.url}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
-                  title="Download MP3/MP4 File"
-                >
-                  <Download className="w-4 h-4" />
-                </a>
-              </div>
-
-              {/* Progress Slider */}
-              <div className="space-y-1">
-                <input
-                  type="range"
-                  min="0"
-                  max={duration || 100}
-                  value={currentTime}
-                  onChange={handleSeek}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
-                />
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                  <span>{formatSecs(currentTime)}</span>
-                  <span>{currentTrack.duration || formatSecs(duration)}</span>
+              {/* Header info if embedded player */}
+              {isEmbeddedPlayer && (
+                <div className="pt-2 border-t border-slate-900 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-white leading-snug">
+                      {currentTrack.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                      <span className="text-indigo-300 font-bold flex items-center gap-1"><User className="w-3 h-3" /> {currentTrack.speaker}</span>
+                      <span>•</span>
+                      <span>{currentTrack.duration}</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Control Buttons Row */}
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={togglePlay}
-                    className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95"
-                  >
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-                  </button>
-
-                  <button
-                    onClick={changeSpeed}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono font-bold text-xs rounded-lg border border-slate-700 cursor-pointer"
-                    title="Change Playback Speed"
-                  >
-                    {playbackSpeed}x
-                  </button>
-                </div>
-
-                {/* Volume Slider */}
-                <div className="flex items-center gap-2">
-                  <button onClick={toggleMute} className="text-slate-400 hover:text-white cursor-pointer">
-                    {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={isMuted ? 0 : volume}
-                    onChange={handleVolumeChange}
-                    className="w-20 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
-        </div>
-      ) : null}
+        );
+      })() : null}
 
       {/* Playlist Tracks List */}
       <div className="space-y-2">
@@ -411,84 +481,134 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
       </div>
 
       {/* Add Media Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleAddSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-slate-100 animate-scaleUp">
-            <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-              <h4 className="text-xs font-extrabold text-white flex items-center gap-2">
-                <Radio className="w-4 h-4 text-amber-400" /> Add Classroom Sermon / Audio Recording
-              </h4>
-              <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white">✕</button>
-            </div>
-
-            <div className="p-4 space-y-3 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Recording Title *</label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Sermon: The Apostolic Anointing & Authority"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-500 text-white"
-                />
+      {showAddModal && (() => {
+        const parsedUrl = parseVideoMediaUrl(formUrl);
+        
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <form onSubmit={handleAddSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-slate-100 animate-scaleUp">
+              <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <h4 className="text-xs font-extrabold text-white flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-amber-400" /> Add Livestream Recording / Audio Media
+                </h4>
+                <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white cursor-pointer">✕</button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="p-4 space-y-3 text-xs">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Speaker / Preacher</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Recording Title *</label>
                   <input
+                    required
                     type="text"
-                    placeholder="e.g. Dr. Faculty Director"
-                    value={formSpeaker}
-                    onChange={(e) => setFormSpeaker(e.target.value)}
+                    placeholder="e.g. Livestream: Sunday Worship & Prophetic Teaching"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
                     className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-500 text-white"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Speaker / Preacher</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Dr. Faculty Director"
+                      value={formSpeaker}
+                      onChange={(e) => setFormSpeaker(e.target.value)}
+                      className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-500 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Media Type</label>
+                    <select
+                      value={formType}
+                      onChange={(e) => setFormType(e.target.value as 'audio' | 'video')}
+                      className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="video">Video Stream / Google Drive</option>
+                      <option value="audio">Audio MP3</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Media Type</label>
-                  <select
-                    value={formType}
-                    onChange={(e) => setFormType(e.target.value as 'audio' | 'video')}
-                    className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="audio">Audio MP3</option>
-                    <option value="video">Video Stream MP4</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-bold uppercase text-slate-400">
+                      Audio / Video or Google Drive Link *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormUrl('https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing');
+                        setFormType('video');
+                        if (!formTitle) setFormTitle('Google Drive Livestream Recording');
+                      }}
+                      className="text-[10px] font-bold text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <Globe className="w-3 h-3" /> Insert Sample Drive Link
+                    </button>
+                  </div>
+                  <input
+                    required
+                    type="url"
+                    placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                    value={formUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormUrl(val);
+                      const parsed = parseVideoMediaUrl(val);
+                      if (parsed.isDrive || parsed.isYouTube) {
+                        setFormType('video');
+                      }
+                    }}
+                    className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono focus:outline-none focus:border-indigo-500 text-indigo-300"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Paste any Google Drive share link, YouTube video URL, or direct MP4/MP3 web link.
+                  </p>
+                </div>
+
+                {/* Google Drive Detection Banner */}
+                {parsedUrl.isDrive && (
+                  <div className="p-2.5 bg-blue-950/80 border border-blue-600/80 rounded-xl text-blue-200 text-[11px] font-bold flex items-center gap-2 animate-fadeIn">
+                    <Globe className="w-4 h-4 text-blue-400 flex-shrink-0 animate-pulse" />
+                    <div>
+                      <p className="text-white font-extrabold">Google Drive Video Link Detected!</p>
+                      <p className="text-[10px] text-blue-300">File ID: {parsedUrl.fileId}. The video will play directly inside the app using the embedded video player.</p>
+                    </div>
+                  </div>
+                )}
+
+                {parsedUrl.isYouTube && (
+                  <div className="p-2.5 bg-rose-950/80 border border-rose-600/80 rounded-xl text-rose-200 text-[11px] font-bold flex items-center gap-2 animate-fadeIn">
+                    <VideoIcon className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-white font-extrabold">YouTube Video Link Detected!</p>
+                      <p className="text-[10px] text-rose-300">Video ID: {parsedUrl.fileId}. Will play in the embedded YouTube player.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Brief Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Notes on the livestream recording or lecture highlights..."
+                    value={formDesc}
+                    onChange={(e) => setFormDesc(e.target.value)}
+                    className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs focus:outline-none focus:border-indigo-500 text-white"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Audio/Video Stream URL *</label>
-                <input
-                  required
-                  type="url"
-                  placeholder="https://example.com/sermon-lecture.mp3"
-                  value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
-                  className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono focus:outline-none focus:border-indigo-500 text-indigo-300"
-                />
+              <div className="p-3 bg-slate-950 border-t border-slate-800 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg cursor-pointer">Cancel</button>
+                <button type="submit" className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg cursor-pointer">Add Track</button>
               </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Brief Description</label>
-                <textarea
-                  rows={2}
-                  placeholder="Notes on the sermon recording or lecture highlights..."
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs focus:outline-none focus:border-indigo-500 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-950 border-t border-slate-800 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAddModal(false)} className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Cancel</button>
-              <button type="submit" className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg">Add Track</button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        );
+      })()}
     </div>
   );
 };

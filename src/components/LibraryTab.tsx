@@ -8,6 +8,9 @@ import {
   Filter, 
   CheckCircle2, 
   Headphones, 
+  Video as VideoIcon,
+  Play,
+  Tv,
   Sparkles,
   BookMarked,
   Upload,
@@ -38,6 +41,7 @@ import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
+import { parseVideoMediaUrl } from '../lib/mediaUtils';
 
 interface LibraryTabProps {
   userRole?: UserRole;
@@ -108,6 +112,25 @@ const extractCleanTextFromDataUrl = async (dataUrl: string): Promise<string> => 
 };
 
 export const INITIAL_RESOURCES: LibraryResource[] = [
+  {
+    id: 'r_gdrive_livestream_1',
+    title: 'Google Drive Livestream: Sunday Worship & Prophetic Teaching (HD Recording)',
+    category: 'Livestream Recording',
+    author: 'Dr. Faculty Director',
+    courseCode: 'SOM-101',
+    format: 'VIDEO',
+    size: 'Google Drive HD',
+    downloadUrl: 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing',
+    summary: 'Full live stream recording saved directly to Google Drive. Includes covenant prayer, student Q&A, and prophetic activation.',
+    fullContent: 'Full livestream video stored on Google Drive. Click "Play Video Recording" to stream directly inside the portal.',
+    keyTakeaways: [
+      'Review covenant prayer points from minute 12:00.',
+      'Examine prophetic activation scripture references.',
+      'Access downloadable session transcript & notes.'
+    ],
+    aiEvaluated: true,
+    uploadedAt: '2026-08-02'
+  },
   {
     id: 'r1',
     title: 'HTEIM School of Ministry Official Student Handbook 2026',
@@ -359,12 +382,24 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   }, [previewResource]);
 
   // Upload Form State
-  const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file');
+  const [uploadMode, setUploadMode] = useState<'file' | 'text' | 'gdrive'>('file');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [textTitle, setTextTitle] = useState('');
   const [textAuthor, setTextAuthor] = useState('HTEIM Faculty');
   const [textCourseCode, setTextCourseCode] = useState('SOM-101');
   const [textContent, setTextContent] = useState('');
+
+  // Google Drive Upload State
+  const [gdriveUrl, setGdriveUrl] = useState('');
+  const [gdriveTitle, setGdriveTitle] = useState('');
+  const [gdriveAuthor, setGdriveAuthor] = useState('Dr. Faculty Director');
+  const [gdriveCourseCode, setGdriveCourseCode] = useState('SOM-101');
+  const [gdriveCategory, setGdriveCategory] = useState('Livestream Recording');
+  const [gdriveSummary, setGdriveSummary] = useState('');
+
+  // Playing Video Lightbox Modal State
+  const [playingVideoModalResource, setPlayingVideoModalResource] = useState<LibraryResource | null>(null);
+
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationProgress, setEvaluationProgress] = useState('');
 
@@ -495,7 +530,53 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
     const newUploadedResources: LibraryResource[] = [];
 
-    if (uploadMode === 'text') {
+    if (uploadMode === 'gdrive') {
+      if (!gdriveUrl.trim() || !gdriveTitle.trim()) {
+        setIsEvaluating(false);
+        return;
+      }
+
+      setEvaluationProgress(`AI Registering Google Drive Livestream "${gdriveTitle}"...`);
+
+      const summaryText = gdriveSummary.trim() || 'Livestream video recording saved on Google Drive. Stream directly inside the app.';
+
+      const newRes: LibraryResource = {
+        id: `res_gdrive_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: gdriveTitle.trim(),
+        category: gdriveCategory || 'Livestream Recording',
+        author: gdriveAuthor.trim() || 'HTEIM Faculty',
+        courseCode: gdriveCourseCode.toUpperCase().trim() || 'SOM-101',
+        format: 'VIDEO',
+        size: 'Google Drive HD',
+        downloadUrl: gdriveUrl.trim(),
+        summary: summaryText,
+        fullContent: `Google Drive Livestream Video Recording.\nLink: ${gdriveUrl}\nTitle: ${gdriveTitle}`,
+        keyTakeaways: [
+          'Watch live stream video directly inside the app video player.',
+          'Saved to Google Drive cloud storage.'
+        ],
+        aiEvaluated: true,
+        uploadedAt: new Date().toISOString().split('T')[0]
+      };
+
+      newUploadedResources.push(newRes);
+
+      // Auto-sync to Classroom Media Player tracks as well
+      const newMediaTrack: MediaResource = {
+        id: `media_gdrive_${Date.now()}`,
+        title: gdriveTitle.trim(),
+        speaker: gdriveAuthor.trim() || 'HTEIM Faculty',
+        duration: 'Livestream',
+        type: 'video',
+        url: gdriveUrl.trim(),
+        description: summaryText,
+        dateAdded: new Date().toISOString().split('T')[0]
+      };
+
+      if (setClassroomMedia) {
+        setClassroomMedia(prev => [newMediaTrack, ...prev]);
+      }
+    } else if (uploadMode === 'text') {
       if (!textTitle.trim() || !textContent.trim()) {
         setIsEvaluating(false);
         return;
@@ -593,6 +674,9 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
     setSelectedFiles([]);
     setTextTitle('');
     setTextContent('');
+    setGdriveUrl('');
+    setGdriveTitle('');
+    setGdriveSummary('');
   };
 
   return (
@@ -716,6 +800,14 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             }`}
           >
             Lecture Audio
+          </button>
+          <button
+            onClick={() => setCategoryFilter('Livestream Recording')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              categoryFilter === 'Livestream Recording' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-800'
+            }`}
+          >
+            🎥 Livestream Recordings
           </button>
         </div>
       </div>
@@ -1015,13 +1107,25 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               </div>
 
               {/* Card Actions */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button
-                  onClick={() => setPreviewResource(res)}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5" /> Read
-                </button>
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setPreviewResource(res)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> Read
+                  </button>
+
+                  {(res.format === 'VIDEO' || res.category === 'Livestream Recording' || parseVideoMediaUrl(res.downloadUrl).isDrive || parseVideoMediaUrl(res.downloadUrl).isYouTube) && (
+                    <button
+                      type="button"
+                      onClick={() => setPlayingVideoModalResource(res)}
+                      className="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-sm animate-pulse hover:animate-none"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" /> Play Video
+                    </button>
+                  )}
+                </div>
 
                 <button
                   onClick={(e) => handleDownload(res, e)}
@@ -1060,52 +1164,153 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             </div>
 
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
-              {/* Tab Selector: Upload Files vs Paste Text */}
-              <div className="flex border-b border-slate-200">
+              {/* Tab Selector: Upload Files vs Paste Text vs Google Drive */}
+              <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
                   type="button"
                   onClick={() => setUploadMode('file')}
-                  className={`pb-2.5 px-4 text-xs font-extrabold border-b-2 cursor-pointer transition-all ${
+                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap ${
                     uploadMode === 'file' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  Upload Lesson Documents / Audio
+                  Upload Files / Audio
                 </button>
                 <button
                   type="button"
                   onClick={() => setUploadMode('text')}
-                  className={`pb-2.5 px-4 text-xs font-extrabold border-b-2 cursor-pointer transition-all ${
+                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap ${
                     uploadMode === 'text' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  Paste Lesson Notes / Text
+                  Paste Notes / Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('gdrive')}
+                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap flex items-center gap-1 ${
+                    uploadMode === 'gdrive' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5 text-blue-500" /> Google Drive Recording
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Author / Instructor</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dr. Faculty Director"
-                    value={textAuthor}
-                    onChange={(e) => setTextAuthor(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
-                  />
+              {uploadMode !== 'gdrive' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Author / Instructor</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Dr. Faculty Director"
+                      value={textAuthor}
+                      onChange={(e) => setTextAuthor(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. SOM-101"
+                      value={textCourseCode}
+                      onChange={(e) => setTextCourseCode(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. SOM-101"
-                    value={textCourseCode}
-                    onChange={(e) => setTextCourseCode(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none"
-                  />
-                </div>
-              </div>
+              )}
 
-              {uploadMode === 'file' ? (
+              {uploadMode === 'gdrive' ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
+                    <p className="font-extrabold flex items-center gap-1">
+                      <Globe className="w-4 h-4 text-blue-600" /> Google Drive Livestream Video Player Integration
+                    </p>
+                    <p className="text-[11px] text-blue-700">
+                      Paste any shareable Google Drive link (e.g. <code>https://drive.google.com/file/d/.../view</code>). The video will play directly inside the app with embedded video controls!
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[10px] font-bold uppercase text-slate-500">
+                        Google Drive Video Share Link *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGdriveUrl('https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing');
+                          setGdriveTitle('Sunday Morning Livestream Worship & Sermon');
+                        }}
+                        className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                      >
+                        Insert Sample Drive Link
+                      </button>
+                    </div>
+                    <input
+                      required
+                      type="url"
+                      placeholder="https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing"
+                      value={gdriveUrl}
+                      onChange={(e) => setGdriveUrl(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-indigo-700 focus:outline-none"
+                    />
+                  </div>
+
+                  {gdriveUrl && parseVideoMediaUrl(gdriveUrl).isDrive && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-[11px] font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <span>Valid Google Drive video URL detected! File ID: {parseVideoMediaUrl(gdriveUrl).fileId}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Recording Title *</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Livestream: Sunday Worship & Prophetic Teaching"
+                      value={gdriveTitle}
+                      onChange={(e) => setGdriveTitle(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Speaker / Preacher</label>
+                      <input
+                        type="text"
+                        placeholder="Dr. Faculty Director"
+                        value={gdriveAuthor}
+                        onChange={(e) => setGdriveAuthor(e.target.value)}
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Code</label>
+                      <input
+                        type="text"
+                        placeholder="SOM-101"
+                        value={gdriveCourseCode}
+                        onChange={(e) => setGdriveCourseCode(e.target.value)}
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Brief Description / Notes</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Key notes, prayer points, or scripture references..."
+                      value={gdriveSummary}
+                      onChange={(e) => setGdriveSummary(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : uploadMode === 'file' ? (
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Select Lesson Files</label>
                   <div 
@@ -1272,6 +1477,39 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   <div className="p-8 bg-slate-900 text-slate-300 rounded-xl text-center space-y-2">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-400" />
                     <p className="text-xs font-bold">Extracting clean lesson text from Word (.docx) document...</p>
+                  </div>
+                ) : (parseVideoMediaUrl(previewResource.downloadUrl || '').isDrive || previewResource.format === 'VIDEO') ? (
+                  <div className="space-y-3">
+                    {parseVideoMediaUrl(previewResource.downloadUrl || '').isDrive ? (
+                      <iframe
+                        src={parseVideoMediaUrl(previewResource.downloadUrl || '').embedUrl || ''}
+                        title={previewResource.title}
+                        className="w-full h-72 sm:h-80 border-0 rounded-2xl shadow-xl bg-slate-950"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        controls
+                        src={previewResource.downloadUrl || previewResource.fileDataUrl}
+                        className="w-full h-72 sm:h-80 rounded-2xl bg-slate-950 object-contain shadow-xl"
+                      />
+                    )}
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-slate-100 p-2.5 rounded-xl">
+                      <span className="flex items-center gap-1 text-slate-800">
+                        <Globe className="w-4 h-4 text-blue-600" /> Streamed via Google Drive Cloud
+                      </span>
+                      {previewResource.downloadUrl && (
+                        <a
+                          href={previewResource.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Open in Drive Tab
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ) : previewExtractedText && !isBinaryZipContent(previewExtractedText) ? (
                   <div className="bg-slate-900 text-slate-100 p-4 rounded-xl font-sans text-xs whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto border border-slate-800">
@@ -1506,6 +1744,123 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           </div>
         </div>
       )}
+
+      {/* ========================================================= */}
+      {/* MODAL: VIDEO PLAYER LIGHTBOX (Google Drive & Video Embed) */}
+      {/* ========================================================= */}
+      {playingVideoModalResource && (() => {
+        const parsed = parseVideoMediaUrl(playingVideoModalResource.downloadUrl || playingVideoModalResource.fileDataUrl || '');
+
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden text-slate-100 flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2 overflow-hidden pr-2">
+                  <span className="p-1.5 bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/30 flex-shrink-0">
+                    <Tv className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
+                      {playingVideoModalResource.courseCode} • {playingVideoModalResource.category}
+                    </span>
+                    <h3 className="text-sm font-black text-white truncate max-w-md">
+                      {playingVideoModalResource.title}
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPlayingVideoModalResource(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Video Player Frame */}
+              <div className="p-4 bg-black flex-1 flex flex-col justify-center items-center overflow-hidden">
+                {parsed.isDrive && parsed.embedUrl ? (
+                  <iframe
+                    src={parsed.embedUrl}
+                    title={playingVideoModalResource.title}
+                    className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-2xl shadow-2xl bg-slate-950"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : parsed.isYouTube && parsed.embedUrl ? (
+                  <iframe
+                    src={parsed.embedUrl}
+                    title={playingVideoModalResource.title}
+                    className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-2xl shadow-2xl bg-slate-950"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    controls
+                    autoPlay
+                    src={playingVideoModalResource.downloadUrl || playingVideoModalResource.fileDataUrl}
+                    className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-2xl bg-slate-950 object-contain"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+              </div>
+
+              {/* Controls & Details Footer */}
+              <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div>
+                  <p className="font-extrabold text-white flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-indigo-400" /> Instructor / Speaker: {playingVideoModalResource.author}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                    {playingVideoModalResource.summary}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
+                  {playingVideoModalResource.downloadUrl && (
+                    <a
+                      href={playingVideoModalResource.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-blue-400" /> Open Link
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMediaTrack: MediaResource = {
+                        id: `media_gdrive_${Date.now()}`,
+                        title: playingVideoModalResource.title,
+                        speaker: playingVideoModalResource.author,
+                        duration: 'Livestream',
+                        type: 'video',
+                        url: playingVideoModalResource.downloadUrl || playingVideoModalResource.fileDataUrl || '',
+                        description: playingVideoModalResource.summary,
+                        dateAdded: new Date().toISOString().split('T')[0]
+                      };
+                      if (setClassroomMedia) {
+                        setClassroomMedia(prev => [newMediaTrack, ...prev]);
+                      }
+                      setPlayingVideoModalResource(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                  >
+                    <Tv className="w-3.5 h-3.5" /> Send to Top Player
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
