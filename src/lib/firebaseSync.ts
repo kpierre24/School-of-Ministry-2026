@@ -66,6 +66,7 @@ export interface SyncedAppState {
   payments?: any[];
   zoomExceptionNote?: string;
   hasZoomException?: boolean;
+  userCredentials?: any[];
   updatedAt?: string;
   updatedBy?: string;
 }

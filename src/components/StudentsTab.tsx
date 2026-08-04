@@ -34,6 +34,7 @@ import {
   Users,
   User
 } from 'lucide-react';
+import { generateStudentUsername } from '../lib/userAuth';
 
 export type StudentSummaryData = {
   name: string;
@@ -68,6 +69,7 @@ interface StudentsTabProps {
   onToggleAttendance?: (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused') => void;
   excusedAbsences?: Record<string, Record<string, boolean>>;
   appRole?: string;
+  onResetPassword?: (studentName: string) => void;
 }
 
 export const StudentsTab: React.FC<StudentsTabProps> = ({
@@ -86,7 +88,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   satisfactoryThreshold,
   onToggleAttendance,
   excusedAbsences = {},
-  appRole
+  appRole,
+  onResetPassword
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'perfect' | 'satisfactory' | 'at_risk' | 'fifty_percent'>('all');
@@ -710,13 +713,29 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
                     {/* Quick Document Actions Bar */}
                     <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
-                      <button
-                        onClick={() => handleTriggerUpload(s.name)}
-                        className="hover:text-indigo-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-                        title="Upload/Update Photo"
-                      >
-                        <Camera className="w-3.5 h-3.5 text-indigo-500" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleTriggerUpload(s.name)}
+                          className="hover:text-indigo-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Upload/Update Photo"
+                        >
+                          <Camera className="w-3.5 h-3.5 text-indigo-500" />
+                        </button>
+
+                        {appRole === 'admin' && onResetPassword && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to reset the password/PIN for ${s.name} back to default (1234)?`)) {
+                                onResetPassword(s.name);
+                              }
+                            }}
+                            className="hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Reset Password/PIN to 1234"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-rose-500" />
+                          </button>
+                        )}
+                      </div>
                       
                       <div className="flex items-center gap-1">
                         <button

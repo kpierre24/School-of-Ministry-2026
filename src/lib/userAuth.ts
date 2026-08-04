@@ -10,6 +10,16 @@ export interface AppUser {
   avatarUrl?: string;
 }
 
+export interface UserCredential {
+  id: string;
+  username: string; // Canonical format, e.g., ABurke, admin, teacher
+  name: string;
+  role: UserRole;
+  studentName?: string;
+  passwordHash: string; // Numeric PIN or custom password
+  mustChangePassword: boolean;
+}
+
 // Generate First Initial + Last Name username (e.g., Alex Burke -> ABurke)
 export const generateStudentUsername = (fullName: any): string => {
   if (!fullName) return '';
@@ -30,13 +40,13 @@ export const generateStudentUsername = (fullName: any): string => {
   return `${firstInitial}${formattedLastName}`;
 };
 
-// Validate user credentials
+// Validate user credentials against the dynamic credentials list
 export const authenticateUser = (
   usernameInput: string, 
   passwordInput: string,
-  availableStudents: string[]
-): { success: boolean; user?: AppUser; error?: string } => {
-  const u = usernameInput.trim();
+  credentials: UserCredential[]
+): { success: boolean; user?: AppUser; error?: string; mustChangePassword?: boolean } => {
+  const u = usernameInput.trim().toLowerCase();
   const p = passwordInput.trim();
 
   if (!u) {
@@ -46,73 +56,113 @@ export const authenticateUser = (
     return { success: false, error: 'Please enter a password.' };
   }
 
-  // 1. Check Admin credentials (admin / 12345)
-  if (u.toLowerCase() === 'admin') {
-    if (p === '12345') {
+  // Find user by username (case-insensitive)
+  const cred = credentials.find(c => c.username.toLowerCase() === u);
+
+  if (cred) {
+    if (cred.passwordHash === p) {
+      const user: AppUser = {
+        id: cred.id,
+        username: cred.username,
+        name: cred.name,
+        role: cred.role,
+        studentName: cred.studentName,
+        email: cred.role === 'student' 
+          ? `${cred.username.toLowerCase()}@student.hteim.edu` 
+          : `${cred.username.toLowerCase()}@hteim.edu`
+      };
+      
       return {
         success: true,
-        user: {
-          id: 'u-admin',
-          username: 'admin',
-          name: 'Administrator',
-          role: 'admin',
-          email: 'admin@hteim.edu'
-        }
+        user,
+        mustChangePassword: cred.mustChangePassword
       };
     } else {
-      return { success: false, error: 'Incorrect password for Admin (Default is 12345).' };
-    }
-  }
-
-  // 2. Check Teacher credentials (teacher / 12345)
-  if (u.toLowerCase() === 'teacher' || u.toLowerCase() === 'faculty') {
-    if (p === '12345') {
-      return {
-        success: true,
-        user: {
-          id: 'u-teacher',
-          username: 'teacher',
-          name: 'Rev. Dr. Faculty Instructor',
-          role: 'teacher',
-          email: 'teacher@hteim.edu'
-        }
-      };
-    } else {
-      return { success: false, error: 'Incorrect password for Teacher (Default is 12345).' };
-    }
-  }
-
-  // 3. Check Student accounts (First Initial + Last Name / 1234)
-  // Match input username against all students in directory
-  const normalizedInput = u.toLowerCase();
-
-  const matchedStudentName = availableStudents.find(sName => {
-    const generatedUsername = generateStudentUsername(sName).toLowerCase();
-    const rawLower = sName.toLowerCase().replace(/\s+/g, '');
-    return generatedUsername === normalizedInput || rawLower === normalizedInput;
-  });
-
-  if (matchedStudentName) {
-    if (p === '1234') {
-      const canonicalUsername = generateStudentUsername(matchedStudentName);
-      return {
-        success: true,
-        user: {
-          id: `u-student-${matchedStudentName.toLowerCase().replace(/\s+/g, '-')}`,
-          username: canonicalUsername,
-          name: matchedStudentName,
-          role: 'student',
-          studentName: matchedStudentName,
-          email: `${canonicalUsername.toLowerCase()}@student.hteim.edu`
-        }
-      };
-    } else {
-      return { success: false, error: `Incorrect password for student ${u} (Default is 1234).` };
+      return { success: false, error: 'Incorrect password.' };
     }
   }
 
   return { 
     success: false, 
-    error: `Username "${u}" not found in system. (For Admin use 'admin' / 12345, for Teacher use 'teacher' / 12345, or a Student username e.g. 'ABurke' / 1234).` 
+    error: `Username "${usernameInput}" not found in system. (Please check spelling or contact the administrator if you forgot your credentials).` 
   };
+};
+
+// Ensure all student profiles and default staff accounts have dynamic credentials in the system
+export const ensureUserCredentials = (
+  currentCredentials: UserCredential[],
+  studentNames: string[]
+): { updatedCredentials: UserCredential[]; changed: boolean } => {
+  const updated = [...(currentCredentials || [])];
+  let changed = false;
+
+  // 1. Ensure Admin exists (default PIN 12345)
+  const hasAdmin = updated.some(c => c.username.toLowerCase() === 'admin');
+  if (!hasAdmin) {
+    updated.push({
+      id: 'u-admin',
+      username: 'admin',
+      name: 'Administrator',
+      role: 'admin',
+      passwordHash: '12345',
+      mustChangePassword: true
+    });
+    changed = true;
+  }
+
+  // 2. Ensure Teacher/Faculty exists (default PIN 12345)
+  const hasTeacher = updated.some(c => c.username.toLowerCase() === 'teacher');
+  if (!hasTeacher) {
+    updated.push({
+      id: 'u-teacher',
+      username: 'teacher',
+      name: 'Rev. Dr. Faculty Instructor',
+      role: 'teacher',
+      passwordHash: '12345',
+      mustChangePassword: true
+    });
+    changed = true;
+  }
+
+  // 3. Ensure each student profile has a credential (default PIN 1234)
+  studentNames.forEach(sName => {
+    if (!sName || typeof sName !== 'string') return;
+    const username = generateStudentUsername(sName);
+    if (!username) return;
+    
+    const hasStudent = updated.some(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!hasStudent) {
+      updated.push({
+        id: `u-student-${sName.toLowerCase().replace(/\s+/g, '-')}`,
+        username: username,
+        name: sName,
+        role: 'student',
+        studentName: sName,
+        passwordHash: '1234',
+        mustChangePassword: true
+      });
+      changed = true;
+    }
+  });
+
+  return { updatedCredentials: updated, changed };
+};
+
+// Reset a user's password back to defaults (or custom set by admin)
+export const resetUserPassword = (
+  credentials: UserCredential[],
+  username: string,
+  newPassword?: string
+): UserCredential[] => {
+  return credentials.map(c => {
+    if (c.username.toLowerCase() === username.toLowerCase()) {
+      const defaultPin = c.role === 'student' ? '1234' : '12345';
+      return {
+        ...c,
+        passwordHash: newPassword || defaultPin,
+        mustChangePassword: true // Must change on next login
+      };
+    }
+    return c;
+  });
 };

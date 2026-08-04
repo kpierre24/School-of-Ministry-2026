@@ -9,29 +9,25 @@ import {
   Lock, 
   User, 
   Sparkles, 
-  CheckCircle2, 
   AlertCircle, 
   ArrowRight,
-  BookOpen,
   X,
-  ChevronRight,
   Globe,
   Flame,
   BookOpenCheck,
   Quote,
   RefreshCw,
   Landmark,
-  Calendar,
   Award
 } from 'lucide-react';
-import { AppUser, UserRole, authenticateUser, generateStudentUsername } from '../lib/userAuth';
+import { AppUser, UserRole, authenticateUser, UserCredential } from '../lib/userAuth';
 
 interface LoginModalProps {
   isOpen?: boolean;
   onClose?: () => void;
   onLoginSuccess: (user: AppUser) => void;
-  availableStudentNames?: string[];
-  availableStudents?: string[];
+  userCredentials: UserCredential[];
+  onChangePassword: (username: string, newPin: string) => void;
   currentUser?: AppUser | null;
 }
 
@@ -73,22 +69,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen = true,
   onClose,
   onLoginSuccess,
-  availableStudentNames = [],
-  availableStudents = [],
+  userCredentials = [],
+  onChangePassword,
   currentUser = null
 }) => {
-  const studentList = useMemo(() => {
-    return availableStudentNames.length > 0 ? availableStudentNames : availableStudents;
-  }, [availableStudentNames, availableStudents]);
-
   const [activeTab, setActiveTab] = useState<UserRole>('student');
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [selectedStudentPreset, setSelectedStudentPreset] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scriptureIndex, setScriptureIndex] = useState(0);
 
-  // Do not auto-populate initial credentials to maintain a clean, secure login form
+  // First-time login change PIN/password states
+  const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
+  const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changeError, setChangeError] = useState<string | null>(null);
+
   React.useEffect(() => {
     setUsernameInput('');
     setPasswordInput('');
@@ -102,19 +99,65 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMessage(null);
     setUsernameInput('');
     setPasswordInput('');
-    setSelectedStudentPreset('');
+    setShowPasswordChangeForm(false);
+    setPendingUser(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    const result = authenticateUser(usernameInput, passwordInput, studentList);
+    const result = authenticateUser(usernameInput, passwordInput, userCredentials);
     if (result.success && result.user) {
-      onLoginSuccess(result.user);
-      if (onClose) onClose();
+      if (result.mustChangePassword) {
+        // Enforce change pin/password on first try
+        setPendingUser(result.user);
+        setShowPasswordChangeForm(true);
+        setNewPassword('');
+        setConfirmPassword('');
+        setChangeError(null);
+      } else {
+        onLoginSuccess(result.user);
+        if (onClose) onClose();
+      }
     } else {
       setErrorMessage(result.error || 'Authentication failed');
+    }
+  };
+
+  const handleChangePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangeError(null);
+
+    const newPass = newPassword.trim();
+    const confPass = confirmPassword.trim();
+
+    if (!newPass) {
+      setChangeError('Please enter a new password/PIN.');
+      return;
+    }
+
+    if (newPass.length < 4) {
+      setChangeError('Password/PIN must be at least 4 characters long.');
+      return;
+    }
+
+    if (newPass === '1234' || newPass === '12345') {
+      setChangeError('You cannot use default 1234 or 12345 passwords. Please select a unique, custom password/PIN.');
+      return;
+    }
+
+    if (newPass !== confPass) {
+      setChangeError('Passwords do not match.');
+      return;
+    }
+
+    if (pendingUser) {
+      onChangePassword(pendingUser.username, newPass);
+      onLoginSuccess(pendingUser);
+      setShowPasswordChangeForm(false);
+      setPendingUser(null);
+      if (onClose) onClose();
     }
   };
 
@@ -122,12 +165,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setScriptureIndex((prev) => (prev + 1) % MINISTRY_SCRIPTURES.length);
   };
 
-  const featuredSampleStudents = studentList.slice(0, 8);
   const currentScripture = MINISTRY_SCRIPTURES[scriptureIndex];
-
-  // DETERMINING WORKFLOW:
-  // If currentUser exists (e.g. they are already logged in but want to switch roles), show the compact Modal layout.
-  // If currentUser is null (they are completely logged out), show the stunning, welcoming Full-Screen Landing Dashboard!
   const isDashboardLayout = currentUser === null;
 
   if (isDashboardLayout) {
@@ -223,7 +261,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             </div>
 
-            {/* Interactive Scripture Encouragement Generator (Highly Welcoming for School of Ministry) */}
+            {/* Interactive Scripture Encouragement Generator */}
             <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-5 shadow-2xs space-y-4">
               <div className="flex items-center justify-between border-b border-amber-200/30 pb-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
@@ -282,115 +320,190 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <Landmark className="w-5 h-5 text-amber-400" /> Teaching Portal Sign-In
               </h2>
               <p className="text-[11px] text-slate-300 mt-1">
-                Select your role below and sign in using your designated account.
+                {showPasswordChangeForm ? 'Create a secure custom password before proceeding.' : 'Enter your credentials below to access your designated workspace.'}
               </p>
             </div>
 
-            {/* Custom Tab Selectors */}
-            <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1">
-              <button
-                type="button"
-                onClick={() => handleSelectTab('student')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                  activeTab === 'student'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4" />
-                <span>Student</span>
-              </button>
+            {/* Custom Tab Selectors (only visible when not in password change mode) */}
+            {!showPasswordChangeForm && (
+              <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('student')}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    activeTab === 'student'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Student</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectTab('teacher')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                  activeTab === 'teacher'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                }`}
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>Teacher</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('teacher')}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    activeTab === 'teacher'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  }`}
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Teacher</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectTab('admin')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                  activeTab === 'admin'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Admin</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('admin')}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    activeTab === 'admin'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Admin</span>
+                </button>
+              </div>
+            )}
 
             {/* Form Workspace */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              
-              {errorMessage && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-bold flex items-start gap-2 animate-shake">
-                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                  <span>{errorMessage}</span>
-                </div>
-              )}
-
-              {/* Credentials information and list of students removed for absolute security and privacy */}
-
-              {/* Credentials Fields */}
-              <div className="space-y-3 pt-1">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                    <span>Username</span>
-                    {activeTab === 'student' && (
-                      <span className="text-[8px] text-slate-400 font-mono italic normal-case">
-                        Format: First Initial + Last Name
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      value={usernameInput}
-                      onChange={(e) => setUsernameInput(e.target.value)}
-                      placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
-                      required
-                    />
+            {showPasswordChangeForm ? (
+              <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] font-bold flex items-start gap-2">
+                  <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-extrabold">First-Time PIN Change Required</p>
+                    <p className="font-medium mt-0.5 text-slate-700">
+                      Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! 
+                      For security, you must set a new confidential password/PIN before proceeding.
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                    <span>Password</span>
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="password"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="••••••"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
-                      required
-                    />
+                {changeError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-bold flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                    <span>{changeError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                      New Password/PIN
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Choose custom password"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                      Confirm New Password/PIN
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Verify chosen PIN"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Login Button */}
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span>Enter {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordChangeForm(false);
+                      setPendingUser(null);
+                    }}
+                    className="flex-1 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer text-center"
+                  >
+                    Set PIN & Enter Portal
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                {errorMessage && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-bold flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
+                      <span>Username</span>
+                      {activeTab === 'student' && (
+                        <span className="text-[8px] text-slate-400 font-mono italic normal-case">
+                          Format: First Initial + Last Name (e.g. ABurke)
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={usernameInput}
+                        onChange={(e) => setUsernameInput(e.target.value)}
+                        placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
+                      <span>Password / PIN</span>
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        placeholder="••••••"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Enter {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            )}
 
             {/* Portal Announcement Widget */}
             <div className="border-t border-slate-100 bg-slate-50 p-4 space-y-2">
@@ -414,7 +527,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Bottom Minimalist Footer */}
         <footer className="w-full max-w-7xl mx-auto px-6 py-4 border-t border-slate-200/60 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 relative z-10 flex-shrink-0">
           <span>HTEIM School of Ministry © 2026. Heaven Touching Earth International Ministries. All Rights Reserved.</span>
-          <span className="font-mono text-indigo-700 font-bold">Equipping Saints •Perfecting Ministries</span>
+          <span className="font-mono text-indigo-700 font-bold">Equipping Saints • Perfecting Ministries</span>
         </footer>
       </div>
     );
@@ -455,124 +568,202 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </p>
         </div>
 
-        {/* Role Type Tabs */}
-        <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleSelectTab('student')}
-            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'student'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4" />
-            <span>Student Portal</span>
-          </button>
+        {/* Role Type Tabs (only visible when not in password change mode) */}
+        {!showPasswordChangeForm && (
+          <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleSelectTab('student')}
+              className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'student'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Student Portal</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleSelectTab('teacher')}
-            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'teacher'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-            }`}
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>Teacher View</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleSelectTab('teacher')}
+              className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'teacher'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Teacher View</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleSelectTab('admin')}
-            className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'admin'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Admin View</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => handleSelectTab('admin')}
+              className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'admin'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin View</span>
+            </button>
+          </div>
+        )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-shake">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+        {showPasswordChangeForm ? (
+          <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-5">
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-xs font-bold flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-extrabold">First-Time PIN Change Required</p>
+                <p className="font-medium mt-0.5 text-slate-700">
+                  Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! 
+                  For security, you must set a new confidential password/PIN before proceeding.
+                </p>
+              </div>
             </div>
-          )}
 
-          {/* Credentials and quick presets completely hidden for secure access */}
+            {changeError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-shake">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                <span>{changeError}</span>
+              </div>
+            )}
 
-          {/* Username Input */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
-              <span>Username</span>
-              {activeTab === 'student' && (
-                <span className="text-[10px] text-slate-400 font-mono normal-case">
-                  Format: First Initial + Last Name (e.g. ABurke)
-                </span>
-              )}
-            </label>
-            <div className="relative">
-              <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
-                required
-              />
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-600 tracking-wider">
+                  New Password/PIN
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Choose custom password"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-600 tracking-wider">
+                  Confirm New Password/PIN
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Verify chosen PIN"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                    required
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Password Input */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
-              <span>Password</span>
-            </label>
-            <div className="relative">
-              <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
-                required
-              />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordChangeForm(false);
+                  setPendingUser(null);
+                }}
+                className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all cursor-pointer text-center"
+              >
+                Set PIN & Enter Portal
+              </button>
             </div>
-          </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            {errorMessage && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-shake">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
-          {/* Current Logged In Banner */}
-          {currentUser && (
-            <div className="p-3 bg-slate-100 rounded-xl text-xs flex items-center justify-between text-slate-700">
-              <span className="font-medium">Currently logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
-              <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">Active</span>
+            {/* Username Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
+                <span>Username</span>
+                {activeTab === 'student' && (
+                  <span className="text-[10px] text-slate-400 font-mono normal-case">
+                    Format: First Initial + Last Name (e.g. ABurke)
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                  required
+                />
+              </div>
             </div>
-          )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </form>
+            {/* Password Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
+                <span>Password / PIN</span>
+              </label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="••••••"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Current Logged In Banner */}
+            {currentUser && (
+              <div className="p-3 bg-slate-100 rounded-xl text-xs flex items-center justify-between text-slate-700">
+                <span className="font-medium">Currently logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
+                <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">Active</span>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        )}
 
         {/* Footer info */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1.5">
           <div>
             <span>HTEIM School of Ministry © 2026</span>
             <span className="mx-1 text-slate-300">•</span>
-            <span className="text-slate-600">App created by <strong className="text-slate-800">Rockproxy Technologies</strong> (Director: Kendell Pierre)</span>
+            <span className="text-slate-600">App created by <strong className="text-slate-800">Rockproxy Technologies</strong></span>
           </div>
           <span className="font-mono text-indigo-700 font-bold">Role Access: Admin • Teacher • Student</span>
         </div>

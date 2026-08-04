@@ -46,6 +46,8 @@ interface AdminAuditAndBackupModalProps {
   currentUserRole?: string;
   currentActorName?: string;
   onDataRestored?: () => void;
+  userCredentials?: any[];
+  onResetPassword?: (username: string, newPin?: string) => void;
 }
 
 export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> = ({
@@ -53,9 +55,11 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   onClose,
   currentUserRole = 'admin',
   currentActorName = 'Administrator',
-  onDataRestored
+  onDataRestored,
+  userCredentials = [],
+  onResetPassword
 }) => {
-  const [activeTab, setActiveTab] = useState<'audit' | 'backup' | 'operations'>('audit');
+  const [activeTab, setActiveTab] = useState<'audit' | 'backup' | 'operations' | 'credentials'>('audit');
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -405,6 +409,18 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
             >
               <Sliders className="w-4 h-4 text-indigo-500" />
               <span>Operations & Diagnostics</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('credentials')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                activeTab === 'credentials'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-rose-500" />
+              <span>User Accounts & Security</span>
             </button>
           </div>
 
@@ -902,6 +918,134 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 4: USER ACCOUNTS & SECURITY */}
+          {activeTab === 'credentials' && (
+            <div className="space-y-5 animate-fadeIn">
+              
+              {/* Header Description */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <ShieldCheck className="w-4.5 h-4.5 text-rose-500" /> Dynamic User Accounts & PIN Security Console
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Manage login credentials, monitor account PIN statuses, and perform security resets for students, teachers, and administrators. Users must change their default passwords on their first login.
+                  </p>
+                </div>
+              </div>
+
+              {/* User search & filter */}
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <div className="relative flex-1 w-full">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search accounts by name or username..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                  />
+                </div>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full sm:w-40 py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white cursor-pointer"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Administrators</option>
+                  <option value="teacher">Teachers</option>
+                  <option value="student">Students</option>
+                </select>
+              </div>
+
+              {/* Accounts Directory List */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
+                        <th className="py-3 px-4">User Details</th>
+                        <th className="py-3 px-4">Username</th>
+                        <th className="py-3 px-4">Role</th>
+                        <th className="py-3 px-4">PIN Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {userCredentials
+                        .filter(c => {
+                          const query = searchQuery.toLowerCase();
+                          const matchesSearch = c.name.toLowerCase().includes(query) || c.username.toLowerCase().includes(query);
+                          const matchesRole = selectedRole === 'all' || c.role === selectedRole;
+                          return matchesSearch && matchesRole;
+                        })
+                        .map(c => {
+                          const defaultPin = c.role === 'student' ? '1234' : '12345';
+                          return (
+                            <tr key={c.username} className="hover:bg-white/50 dark:hover:bg-slate-800/30 transition-colors">
+                              <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                                {c.name}
+                              </td>
+                              <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
+                                {c.username}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                  c.role === 'admin'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : c.role === 'teacher'
+                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                }`}>
+                                  {c.role}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                {c.mustChangePassword ? (
+                                  <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-extrabold text-[10px]">
+                                    <AlertTriangle className="w-3.5 h-3.5" /> PIN Reset Required
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px]">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> Confidential Set
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <button
+                                  onClick={() => {
+                                    const customPin = window.prompt(`Enter a new custom password/PIN for ${c.name} (Leave empty to reset to default ${defaultPin}):`);
+                                    if (customPin !== null) {
+                                      const updatedPin = customPin.trim() || defaultPin;
+                                      if (onResetPassword) {
+                                        onResetPassword(c.username, updatedPin);
+                                        alert(`Successfully updated password/PIN for ${c.name} to '${updatedPin}'. This user will be forced to change it upon their next login.`);
+                                      }
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 font-extrabold rounded-lg border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer text-[10px] inline-flex items-center gap-1"
+                                >
+                                  <RotateCcw className="w-3 h-3" /> Reset / Change PIN
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      {userCredentials.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-slate-400 font-bold">
+                            No credentials registered in current school database.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           )}
 

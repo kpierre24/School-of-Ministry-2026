@@ -96,7 +96,7 @@ import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId } from './lib/sheets';
 import { getDemoAttendance } from './data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment } from './types';
-import { AppUser, generateStudentUsername } from './lib/userAuth';
+import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword } from './lib/userAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
 import { LoginModal } from './components/LoginModal';
@@ -184,15 +184,20 @@ export default function App() {
         return null;
       }
     }
-    // Default to admin user for initial seamless experience
-    return {
-      id: 'u-admin',
-      username: 'admin',
-      name: 'Administrator',
-      role: 'admin',
-      email: 'admin@hteim.edu'
-    };
+    return null; // Truly fully authenticated app: start logged out!
   });
+
+  // Dynamic User Credentials State
+  const [userCredentials, setUserCredentials] = useState<UserCredential[]>(() => {
+    const saved = localStorage.getItem('hteim_user_credentials');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Local storage persistence for credentials
+  useEffect(() => {
+    localStorage.setItem('hteim_user_credentials', JSON.stringify(userCredentials));
+  }, [userCredentials]);
+
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
   const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
@@ -308,6 +313,42 @@ export default function App() {
     setAppUser(null);
     localStorage.removeItem('hteim_app_user');
     setShowLoginModal(true);
+  };
+
+  const handleChangeUserPassword = (username: string, newPin: string) => {
+    setUserCredentials(prev => {
+      const updated = prev.map(c => {
+        if (c.username.toLowerCase() === username.toLowerCase()) {
+          return {
+            ...c,
+            passwordHash: newPin,
+            mustChangePassword: false
+          };
+        }
+        return c;
+      });
+      localStorage.setItem('hteim_user_credentials', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleResetStudentPassword = (studentName: string) => {
+    const username = generateStudentUsername(studentName);
+    if (!username) return;
+    setUserCredentials(prev => {
+      const updated = prev.map(c => {
+        if (c.username.toLowerCase() === username.toLowerCase()) {
+          return {
+            ...c,
+            passwordHash: '1234',
+            mustChangePassword: true
+          };
+        }
+        return c;
+      });
+      localStorage.setItem('hteim_user_credentials', JSON.stringify(updated));
+      return updated;
+    });
   };
   
   const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('sheetUrl') || 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=283667804#gid=283667804');
@@ -1112,6 +1153,7 @@ export default function App() {
           if (cloudState.messages !== undefined) setMessages(cloudState.messages);
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
+          if (cloudState.userCredentials !== undefined) setUserCredentials(cloudState.userCredentials);
           
           if (cloudState.updatedAt) {
             const timeStr = new Date(cloudState.updatedAt).toLocaleTimeString('en-US', { 
@@ -1145,7 +1187,8 @@ export default function App() {
             payments,
             messages,
             zoomExceptionNote,
-            hasZoomException
+            hasZoomException,
+            userCredentials
           };
           const success = await saveToSupabase(user?.email, stateToSave);
           if (success) {
@@ -1203,7 +1246,8 @@ export default function App() {
         payments,
         messages,
         zoomExceptionNote,
-        hasZoomException
+        hasZoomException,
+        userCredentials
       };
       const success = await saveToSupabase(user?.email, stateToSave);
       if (success) {
@@ -1309,7 +1353,8 @@ export default function App() {
           payments,
           messages,
           zoomExceptionNote,
-          hasZoomException
+          hasZoomException,
+          userCredentials
         };
         await saveToSupabase(user?.email, stateToSave);
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
@@ -1347,6 +1392,7 @@ export default function App() {
     messages,
     zoomExceptionNote,
     hasZoomException,
+    userCredentials,
     user
   ]);
 
@@ -2020,6 +2066,17 @@ export default function App() {
 
     return { uniqueStudents: students, avgAttendance: avg, avgScoreOverall, classDayStats };
   }, [records, classDays, deletedStudentNames, studentNotes, studentPhotos, studentLevels, customAssignments, submissions, excusedAbsences]);
+
+  // Synchronize credentials database when student directory is loaded/updated
+  useEffect(() => {
+    if (uniqueStudents && uniqueStudents.length > 0) {
+      const studentNames = uniqueStudents.map(s => s.name);
+      const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames);
+      if (changed) {
+        setUserCredentials(updatedCredentials);
+      }
+    }
+  }, [uniqueStudents, userCredentials]);
 
   // Find current student stats if a student is logged in
   const loggedInStudentData = useMemo(() => {
@@ -3246,6 +3303,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               onToggleAttendance={handleToggleStudentAttendance}
               excusedAbsences={excusedAbsences}
               appRole={appUser?.role}
+              onResetPassword={handleResetStudentPassword}
             />
           </div>
         )}
@@ -4796,6 +4854,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             try { setRecords(JSON.parse(savedAtt)); } catch(e){}
           }
         }}
+        userCredentials={userCredentials}
+        onResetPassword={handleChangeUserPassword}
       />
 
       {/* Mobile App & APK Download Center Modal */}
@@ -5895,13 +5955,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       {(showLoginModal || !appUser) && (
         <LoginModal
           isOpen={showLoginModal || !appUser}
-          availableStudentNames={uniqueStudents.map(s => s.name)}
-          availableStudents={uniqueStudents.map(s => s.name)}
           currentUser={appUser}
           onLoginSuccess={handleAppLoginSuccess}
           onClose={() => {
             if (appUser) setShowLoginModal(false);
           }}
+          userCredentials={userCredentials}
+          onChangePassword={handleChangeUserPassword}
         />
       )}
 
