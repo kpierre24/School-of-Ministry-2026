@@ -35,11 +35,13 @@ import {
   ExternalLink,
   Check,
   Edit3,
-  Globe
+  Globe,
+  RefreshCw,
+  CloudDownload
 } from 'lucide-react';
 import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
-import { uploadToSupabaseStorage } from '../lib/supabaseClient';
+import { uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from '../lib/supabaseClient';
 import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
 import { parseVideoMediaUrl } from '../lib/mediaUtils';
 
@@ -49,6 +51,7 @@ interface LibraryTabProps {
   setResources?: React.Dispatch<React.SetStateAction<LibraryResource[]>>;
   classroomMedia?: MediaResource[];
   setClassroomMedia?: React.Dispatch<React.SetStateAction<MediaResource[]>>;
+  onOpenDiagnostics?: () => void;
 }
 
 // Helper to check if text contains raw binary zip code / PK header from DOCX
@@ -212,7 +215,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   resources: propResources,
   setResources: propSetResources,
   classroomMedia: propClassroomMedia,
-  setClassroomMedia: propSetClassroomMedia
+  setClassroomMedia: propSetClassroomMedia,
+  onOpenDiagnostics
 }) => {
   const isStudent = userRole === 'student';
 
@@ -253,6 +257,36 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
+  const [isSyncingStorage, setIsSyncingStorage] = useState(false);
+  
+  // Auto-scan Supabase storage bucket for missing uploaded files on mount
+  useEffect(() => {
+    syncLibraryFromSupabaseBucket(resources).then(({ updatedResources, addedCount }) => {
+      if (addedCount > 0) {
+        setResources(updatedResources);
+      }
+    }).catch(err => {
+      console.warn("Library storage auto-sync skipped:", err);
+    });
+  }, []);
+
+  const handleSyncFromSupabaseStorage = async () => {
+    setIsSyncingStorage(true);
+    try {
+      const { updatedResources, addedCount } = await syncLibraryFromSupabaseBucket(resources);
+      if (addedCount > 0) {
+        setResources(updatedResources);
+        alert(`Successfully synced ${addedCount} document(s) directly from your Supabase 'library' storage bucket into your app library!`);
+      } else {
+        alert("Scanned Supabase 'library' storage bucket: All files are already synced and displayed in your Library.");
+      }
+    } catch (err: any) {
+      console.error("Storage sync failed:", err);
+      alert(`Storage sync failed: ${err.message || String(err)}`);
+    } finally {
+      setIsSyncingStorage(false);
+    }
+  };
   
   // Modals
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -621,6 +655,9 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           fileDataUrl = await uploadToSupabaseStorage('library', file.name, file);
         } catch (err) {
           console.error("Failed to upload library resource to Supabase Storage:", err);
+        }
+
+        if (!fileDataUrl) {
           fileDataUrl = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -654,6 +691,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           summary: aiResult.summary,
           fullContent: fileContentText || '',
           fileDataUrl,
+          downloadUrl: fileDataUrl,
           fileName: file.name,
           mimeType: file.type,
           keyTakeaways: aiResult.keyTakeaways || [],
@@ -709,6 +747,26 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleSyncFromSupabaseStorage}
+              disabled={isSyncingStorage}
+              className="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Fetch and import any documents from Supabase Storage bucket 'library' into your app"
+            >
+              <CloudDownload className={`w-4 h-4 text-emerald-400 ${isSyncingStorage ? 'animate-bounce' : ''}`} /> 
+              {isSyncingStorage ? 'Scanning Storage...' : 'Sync Storage Files'}
+            </button>
+
+            {onOpenDiagnostics && (
+              <button
+                onClick={onOpenDiagnostics}
+                className="px-3.5 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Evaluate Supabase storage buckets and permissions for missing files"
+              >
+                <ShieldAlert className="w-4 h-4 text-indigo-400" /> Storage Diagnostics
+              </button>
+            )}
+
             {resources.length > 0 ? (
               <button
                 onClick={handleClearAllLessons}

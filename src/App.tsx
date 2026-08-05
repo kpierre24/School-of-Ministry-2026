@@ -78,7 +78,8 @@ import {
   LogOut
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
-import { uploadToSupabaseStorage } from './lib/supabaseClient';
+import { uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from './lib/supabaseClient';
+import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
@@ -93,7 +94,7 @@ import {
   CartesianGrid
 } from 'recharts';
 import { initAuth, googleSignIn, logout } from './lib/auth';
-import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId } from './lib/sheets';
+import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
 import { getDemoAttendance } from './data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword } from './lib/userAuth';
@@ -130,6 +131,140 @@ const isExcludedStudent = (name?: string) => {
   if (!name || typeof name !== 'string') return false;
   const lower = name.toLowerCase().trim();
   return EXCLUDED_STUDENTS.some(excluded => lower.includes(excluded));
+};
+
+const MANUAL_ALIASES: Record<string, string> = {
+  'denise edwards': 'Denise Edwards',
+  'deniseedwards6561@gmail.com': 'Denise Edwards',
+  'deniseedwards6561@gmeil.com': 'Denise Edwards',
+  'denise edwards6561@gmail.com': 'Denise Edwards',
+  'denise edwards 6561@gmail.com': 'Denise Edwards',
+  'kabrina morris jack': 'Kabrina Morris Jack',
+  'kabrinamorrisjack': 'Kabrina Morris Jack',
+  'mishael daniel': 'Mishael Daniel',
+  'mishaeldaniel06@gmail.com': 'Mishael Daniel',
+  'mishaeldaniel06@gmeil.com': 'Mishael Daniel',
+  'mishael daniel06@gmail.com': 'Mishael Daniel',
+  'mishael daniel06@gmeil.com': 'Mishael Daniel',
+  'niomi loverne joseph': 'Niomi Loverne Joseph Marksman',
+  'laverne joseph marksman': 'Niomi Loverne Joseph Marksman',
+  'niomi loverne joseph marksman': 'Niomi Loverne Joseph Marksman',
+  'vanessa mohammed': 'Vanessa Mohammed',
+  'v mohammed': 'Vanessa Mohammed',
+  'v. mohammed': 'Vanessa Mohammed',
+};
+
+const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
+  const nameGroups: string[][] = [];
+  const canonicalNames = new Map<string, string>();
+
+  rawNames.forEach((rawName: string) => {
+    if (!rawName) return;
+    let foundGroup = false;
+    const lowerRaw = rawName.toLowerCase().trim();
+    const explicitCanonical = MANUAL_ALIASES[lowerRaw];
+    const normalizedRaw = lowerRaw.replace(/[^a-z0-9 ]/g, ' ').trim();
+    
+    for (const group of nameGroups) {
+      const representative = group[0];
+      const lowerRep = (representative || '').toLowerCase().trim();
+      const explicitRepCanonical = MANUAL_ALIASES[lowerRep];
+
+      if (explicitCanonical && (explicitCanonical === explicitRepCanonical || group.some((n: string) => MANUAL_ALIASES[(n || '').toLowerCase().trim()] === explicitCanonical))) {
+        group.push(rawName);
+        foundGroup = true;
+        break;
+      }
+
+      const normalizedRep = lowerRep.replace(/[^a-z0-9 ]/g, ' ').trim();
+      const rawCompact = normalizedRaw.replace(/\s/g, '');
+      const repCompact = normalizedRep.replace(/\s/g, '');
+      const rawNoDigits = rawCompact.replace(/\d+/g, '').replace(/@.*$/, '');
+      const repNoDigits = repCompact.replace(/\d+/g, '').replace(/@.*$/, '');
+
+      if (rawCompact === repCompact || (rawNoDigits.length > 4 && rawNoDigits === repNoDigits)) {
+        group.push(rawName);
+        foundGroup = true;
+        break;
+      }
+      
+      const rawParts = normalizedRaw.split(/\s+/).filter(Boolean);
+      const repParts = normalizedRep.split(/\s+/).filter(Boolean);
+
+      if (rawParts.length >= 2 && repParts.length >= 2) {
+        const rawFirst = rawParts[0];
+        const rawLast = rawParts[rawParts.length - 1];
+        const repFirst = repParts[0];
+        const repLast = repParts[repParts.length - 1];
+
+        if (rawLast === repLast && rawFirst[0] === repFirst[0] && (rawFirst.length === 1 || repFirst.length === 1)) {
+          group.push(rawName);
+          foundGroup = true;
+          break;
+        }
+      }
+
+      const sim = stringSimilarity.compareTwoStrings(normalizedRaw, normalizedRep);
+      if (sim > 0.8) {
+        group.push(rawName);
+        foundGroup = true;
+        break;
+      }
+      
+      const shorter = rawParts.length < repParts.length ? rawParts : repParts;
+      const longer = rawParts.length < repParts.length ? repParts : rawParts;
+      
+      if (shorter.length > 0 && longer.length > 0) {
+        let allPartsMatch = true;
+        for (const sPart of shorter) {
+          let bestMatch = 0;
+          for (const lPart of longer) {
+            const partSim = stringSimilarity.compareTwoStrings(sPart, lPart);
+            if (partSim > bestMatch) bestMatch = partSim;
+          }
+          if (bestMatch < 0.75) {
+            allPartsMatch = false;
+            break;
+          }
+        }
+        
+        if (allPartsMatch && shorter.join('').length >= 4) {
+          group.push(rawName);
+          foundGroup = true;
+          break;
+        }
+      }
+    }
+    
+    if (!foundGroup) {
+      nameGroups.push([rawName]);
+    }
+  });
+  
+  nameGroups.forEach((group: string[]) => {
+    let canonical = group[0];
+    for (const name of group) {
+      const alias = MANUAL_ALIASES[(name || '').toLowerCase().trim()];
+      if (alias) {
+        canonical = alias;
+        break;
+      }
+    }
+
+    if (!Object.values(MANUAL_ALIASES).includes(canonical)) {
+      for (const name of group) {
+        if (name.length > canonical.length && !name.includes('@')) {
+          canonical = name;
+        }
+      }
+    }
+
+    group.forEach((name: string) => {
+      if (name) canonicalNames.set((name || '').trim(), canonical);
+    });
+  });
+
+  return canonicalNames;
 };
 
 type AttendanceRecord = {
@@ -351,7 +486,13 @@ export default function App() {
     });
   };
   
-  const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('sheetUrl') || 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=283667804#gid=283667804');
+  const [sheetUrl, setSheetUrl] = useState(() => {
+    const saved = localStorage.getItem('sheetUrl');
+    if (!saved || saved.includes('gid=283667804')) {
+      return 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=614888378#gid=614888378';
+    }
+    return saved;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1121,6 +1262,7 @@ export default function App() {
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
   const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState<boolean>(false);
 
   // Pull from cloud on startup / login user change
   useEffect(() => {
@@ -1129,8 +1271,9 @@ export default function App() {
       setIsCloudSyncing(true);
       setCloudSyncError(null);
       setSupabaseTableMissing(false);
+      const activeEmail = appUser?.email || user?.email;
       try {
-        const cloudState = await loadFromSupabase(user?.email);
+        const cloudState = await loadFromSupabase(activeEmail);
         if (cloudState && active) {
           if (cloudState.records !== undefined) setRecords(cloudState.records);
           if (cloudState.classDays !== undefined) setClassDays(cloudState.classDays);
@@ -1140,15 +1283,56 @@ export default function App() {
           if (cloudState.deletedStudentNames !== undefined) setDeletedStudentNames(cloudState.deletedStudentNames);
           if (cloudState.studentPhotos !== undefined) setStudentPhotos(cloudState.studentPhotos);
           if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
-          if (cloudState.customAssignments !== undefined) setCustomAssignments(cloudState.customAssignments);
-          if (cloudState.submissions !== undefined) setSubmissions(cloudState.submissions);
+
+          // Smart merge for customAssignments, submissions, libraryResources, classroomMedia so local uploads are not wiped
+          if (cloudState.customAssignments !== undefined) {
+            setCustomAssignments(prev => {
+              const cloudIds = new Set(cloudState.customAssignments.map((a: any) => a.id));
+              const localOnly = prev.filter(a => !cloudIds.has(a.id));
+              return [...cloudState.customAssignments, ...localOnly];
+            });
+          }
+          if (cloudState.submissions !== undefined) {
+            setSubmissions(prev => {
+              const cloudIds = new Set(cloudState.submissions.map((s: any) => s.id));
+              const localOnly = prev.filter(s => !cloudIds.has(s.id));
+              return [...cloudState.submissions, ...localOnly];
+            });
+          }
+          if (cloudState.libraryResources !== undefined) {
+            setLibraryResources(prev => {
+              const cloudIds = new Set(cloudState.libraryResources.map((r: any) => r.id));
+              const localOnly = prev.filter(r => !cloudIds.has(r.id));
+              const merged = [...cloudState.libraryResources, ...localOnly];
+              
+              // Asynchronously scan Supabase 'library' storage bucket for any files uploaded directly
+              syncLibraryFromSupabaseBucket(merged).then(({ updatedResources, addedCount }) => {
+                if (addedCount > 0) {
+                  setLibraryResources(updatedResources);
+                }
+              }).catch(() => {});
+
+              return merged;
+            });
+          } else {
+            syncLibraryFromSupabaseBucket(libraryResources).then(({ updatedResources, addedCount }) => {
+              if (addedCount > 0) {
+                setLibraryResources(updatedResources);
+              }
+            }).catch(() => {});
+          }
+          if (cloudState.classroomMedia !== undefined) {
+            setClassroomMedia(prev => {
+              const cloudIds = new Set(cloudState.classroomMedia.map((m: any) => m.id));
+              const localOnly = prev.filter(m => !cloudIds.has(m.id));
+              return [...cloudState.classroomMedia, ...localOnly];
+            });
+          }
+
           if (cloudState.notifications !== undefined) setNotifications(cloudState.notifications);
           if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
-          
           if (cloudState.courses !== undefined) setCourses(cloudState.courses);
           if (cloudState.schedules !== undefined) setSchedules(cloudState.schedules);
-          if (cloudState.libraryResources !== undefined) setLibraryResources(cloudState.libraryResources);
-          if (cloudState.classroomMedia !== undefined) setClassroomMedia(cloudState.classroomMedia);
           if (cloudState.payments !== undefined) setPayments(cloudState.payments);
           if (cloudState.messages !== undefined) setMessages(cloudState.messages);
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
@@ -1190,7 +1374,7 @@ export default function App() {
             hasZoomException,
             userCredentials
           };
-          const success = await saveToSupabase(user?.email, stateToSave);
+          const success = await saveToSupabase(activeEmail, stateToSave);
           if (success) {
             const timeStr = new Date().toLocaleTimeString('en-US', { 
               hour: '2-digit', 
@@ -1219,12 +1403,13 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, appUser]);
 
   const handlePushToCloud = async () => {
     setIsCloudSyncing(true);
     setCloudSyncError(null);
     setSupabaseTableMissing(false);
+    const activeEmail = appUser?.email || user?.email;
     try {
       const stateToSave = {
         records,
@@ -1249,7 +1434,7 @@ export default function App() {
         hasZoomException,
         userCredentials
       };
-      const success = await saveToSupabase(user?.email, stateToSave);
+      const success = await saveToSupabase(activeEmail, stateToSave);
       if (success) {
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
           hour: '2-digit', 
@@ -1278,12 +1463,13 @@ export default function App() {
     setIsCloudSyncing(true);
     setCloudSyncError(null);
     setSupabaseTableMissing(false);
+    const activeEmail = appUser?.email || user?.email;
     try {
       const isConnected = await testSupabaseConnection();
       if (isConnected) {
         setSupabaseTableMissing(false);
         // Table verified, let's load data
-        const cloudState = await loadFromSupabase(user?.email);
+        const cloudState = await loadFromSupabase(activeEmail);
         if (cloudState) {
           if (cloudState.records !== undefined) setRecords(cloudState.records);
           if (cloudState.classDays !== undefined) setClassDays(cloudState.classDays);
@@ -1332,6 +1518,7 @@ export default function App() {
     const timer = setTimeout(async () => {
       if (records.length === 0 && classDays.length === 0 && courses.length === 0 && schedules.length === 0 && libraryResources.length === 0) return;
 
+      const activeEmail = appUser?.email || user?.email;
       try {
         const stateToSave = {
           records,
@@ -1356,7 +1543,7 @@ export default function App() {
           hasZoomException,
           userCredentials
         };
-        await saveToSupabase(user?.email, stateToSave);
+        await saveToSupabase(activeEmail, stateToSave);
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit', 
@@ -1377,7 +1564,7 @@ export default function App() {
     studentNotes, 
     excusedAbsences, 
     rubricScores, 
-    deletedStudentNames, 
+    deletedStudentNames,  
     studentPhotos, 
     studentLevels, 
     customAssignments, 
@@ -1654,10 +1841,6 @@ export default function App() {
 
   const handleLoadSheets = async (e?: React.FormEvent, customUrl?: string) => {
     if (e) e.preventDefault();
-    if (!token) {
-      setError("Please sign in with Google first.");
-      return;
-    }
 
     const targetUrl = customUrl || sheetUrl;
     if (customUrl) {
@@ -1674,48 +1857,87 @@ export default function App() {
     setError(null);
     lastFetchTimeRef.current = Date.now();
     try {
-      const metadata = await fetchSpreadsheetMetadata(spreadsheetId, token);
-      const docTitle = metadata.properties?.title || 'Google Sheet Attendance';
-      addRecentSheet(targetUrl, docTitle);
+      let batchData: any = null;
+      let docTitle = 'Google Sheet Attendance';
 
-      const allSheets = metadata.sheets.map((s: any) => s.properties.title);
-      const sheets = allSheets;
-      
-      if (sheets.length === 0) {
-        throw new Error("No valid class sheets found in the document.");
+      if (token) {
+        // 1. Authenticated Google API fetch attempt
+        try {
+          const metadata = await fetchSpreadsheetMetadata(spreadsheetId, token);
+          docTitle = metadata.properties?.title || 'Google Sheet Attendance';
+          addRecentSheet(targetUrl, docTitle);
+
+          const allSheets = metadata.sheets.map((s: any) => s.properties.title);
+          const sheets = allSheets;
+          
+          if (sheets.length > 0) {
+            batchData = await fetchMultipleRanges(spreadsheetId, sheets, token);
+          }
+        } catch (authErr) {
+          console.warn("Authenticated sheet fetch failed, falling back to public fetch...", authErr);
+        }
       }
 
-      const batchData = await fetchMultipleRanges(spreadsheetId, sheets, token);
+      // 2. Fallback or direct load for completely public Google Sheets
+      if (!batchData) {
+        const publicData = await fetchPublicSpreadsheetData(spreadsheetId);
+        docTitle = publicData.properties?.title || 'Public Google Sheet';
+        addRecentSheet(targetUrl, docTitle);
+        batchData = publicData;
+      }
       
-      // Get the final list of student names currently in the system
-      const currentStudentNames = Array.from(new Set(
-        records.map(r => (r.name || r.studentName || '').toString().trim())
-               .filter(n => n && n !== 'Unknown' && !isExcludedStudent(n))
-      )) as string[];
-      const currentStudentNamesLower = new Set(currentStudentNames.map(n => n.toLowerCase().trim()));
-
-      let updatedRecords = [...records];
-      const updatedClassDays = [...classDays];
-      
+      const syncedSheetTitles = new Set<string>();
       if (batchData.valueRanges) {
         batchData.valueRanges.forEach((rangeData: any, index: number) => {
-          const sheetTitle = sheets[index];
+          const rangeName = rangeData.range || '';
+          const sheetTitle = rangeName 
+            ? rangeName.split('!')[0].replace(/^'|'$/g, '') 
+            : `Sheet${index + 1}`;
+          syncedSheetTitles.add(sheetTitle);
+        });
+      }
+
+      // Filter out existing records that correspond to these synced sheets
+      const preservedRecords = records.filter(r => r && r.classDay && !syncedSheetTitles.has(r.classDay));
+
+      const parsedSheetDataByClassDay = new Map<string, {
+        displayDate: string;
+        studentsCompleted: Map<string, { score: string; timestamp: string }>;
+      }>();
+      const allRawNames = new Set<string>();
+
+      // Initialize all raw names with names from preserved records
+      preservedRecords.forEach(r => {
+        const name = (r.name || r.studentName || '').toString().trim();
+        if (name && name !== 'Unknown' && !isExcludedStudent(name)) {
+          allRawNames.add(name);
+        }
+      });
+
+      if (batchData.valueRanges) {
+        batchData.valueRanges.forEach((rangeData: any, index: number) => {
+          const rangeName = rangeData.range || '';
+          const sheetTitle = rangeName 
+            ? rangeName.split('!')[0].replace(/^'|'$/g, '') 
+            : `Sheet${index + 1}`;
+
           if (!rangeData.values || rangeData.values.length === 0) {
-            if (!updatedClassDays.some(d => d.id === sheetTitle)) {
-              updatedClassDays.push({ id: sheetTitle, name: sheetTitle });
-            }
+            parsedSheetDataByClassDay.set(sheetTitle, {
+              displayDate: sheetTitle,
+              studentsCompleted: new Map()
+            });
             return;
           }
-          
+
           const headers = rangeData.values[0] as string[];
           const rows = rangeData.values.slice(1) as string[][];
           
-          let nameIndex = headers.findIndex(h => h.toLowerCase().includes('first and last name'));
-          if (nameIndex === -1) nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'));
+          let nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('first and last name'));
+          if (nameIndex === -1) nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('name'));
           if (nameIndex === -1) nameIndex = 2; // fallback
           
-          let timestampIndex = headers.findIndex(h => h.toLowerCase().includes('timestamp'));
-          let scoreIndex = headers.findIndex(h => h.toLowerCase().includes('score'));
+          let timestampIndex = headers.findIndex(h => h && h.toLowerCase().includes('timestamp'));
+          let scoreIndex = headers.findIndex(h => h && h.toLowerCase().includes('score'));
           if (timestampIndex === -1) timestampIndex = 0;
           if (scoreIndex === -1) scoreIndex = 1;
           
@@ -1734,54 +1956,85 @@ export default function App() {
               }
             }
           }
-          if (!updatedClassDays.some(d => d.id === sheetTitle)) {
-            updatedClassDays.push({ id: sheetTitle, name: displayDate });
-          }
-          
+
+          const studentsCompleted = new Map<string, { score: string; timestamp: string }>();
+
           rows.forEach(row => {
             const rawName = row[nameIndex] || 'Unknown';
             const name = rawName.trim().replace(/[\r\n]+/g, ' ');
             if (!name || name === '' || name === 'Unknown') return;
             if (/^[\d\s\/]+$/.test(name)) return;
             if (isExcludedStudent(name)) return;
-            
-            const nameLower = name.toLowerCase().trim();
-            // Only update or add score if the student exists in our final student list
-            if (currentStudentNamesLower.has(nameLower)) {
-              const existingRecordIdx = updatedRecords.findIndex(r => 
-                (r.name || r.studentName || '').toString().trim().toLowerCase() === nameLower && 
-                r.classDay === sheetTitle
-              );
 
-              const rowScore = row[scoreIndex] || '';
-              const rowTimestamp = row[timestampIndex] || '';
+            allRawNames.add(name);
 
-              if (existingRecordIdx >= 0) {
-                // Update score/timestamp, do NOT overwrite present field
-                updatedRecords[existingRecordIdx] = {
-                  ...updatedRecords[existingRecordIdx],
-                  score: rowScore,
-                  timestamp: rowTimestamp || updatedRecords[existingRecordIdx].timestamp
-                };
-              } else {
-                // Find canonical name from our records
-                const canonicalName = currentStudentNames.find(n => n.toLowerCase().trim() === nameLower) || name;
-                // Add score record for existing student
-                updatedRecords.push({
-                  name: canonicalName,
-                  timestamp: rowTimestamp,
-                  score: rowScore,
-                  classDay: sheetTitle,
-                  present: false, // leave attendance as false (managed locally)
-                });
-              }
-            }
+            const rowScore = row[scoreIndex] || '';
+            const rowTimestamp = row[timestampIndex] || '';
+
+            studentsCompleted.set(name.toLowerCase().trim(), {
+              score: rowScore,
+              timestamp: rowTimestamp
+            });
+          });
+
+          parsedSheetDataByClassDay.set(sheetTitle, {
+            displayDate,
+            studentsCompleted
           });
         });
       }
+
+      const canonicalNamesMap = getCanonicalNamesMap(Array.from(allRawNames));
+      const allCanonicalStudentNames = Array.from(new Set(Array.from(allRawNames).map(n => canonicalNamesMap.get(n) || n)));
+
+      const newSyncedRecords: AttendanceRecord[] = [];
+      const updatedClassDays = [...classDays.filter(d => !syncedSheetTitles.has(d.id))];
+
+      parsedSheetDataByClassDay.forEach((data, sheetTitle) => {
+        if (!updatedClassDays.some(d => d.id === sheetTitle)) {
+          const existingDay = classDays.find(d => d.id === sheetTitle);
+          updatedClassDays.push({ id: sheetTitle, name: existingDay ? existingDay.name : data.displayDate });
+        }
+
+        const { studentsCompleted } = data;
+
+        allCanonicalStudentNames.forEach(studentName => {
+          let completionRow: { score: string; timestamp: string } | null = null;
+          for (const [rawLower, rowData] of Array.from(studentsCompleted.entries())) {
+            const matchedRawName = Array.from(allRawNames).find(n => n.toLowerCase().trim() === rawLower);
+            if (matchedRawName) {
+              const mappedCanonical = canonicalNamesMap.get(matchedRawName) || matchedRawName;
+              if (mappedCanonical.toLowerCase().trim() === studentName.toLowerCase().trim()) {
+                completionRow = rowData;
+                break;
+              }
+            }
+          }
+
+          if (completionRow) {
+            newSyncedRecords.push({
+              name: studentName,
+              timestamp: completionRow.timestamp,
+              score: completionRow.score,
+              classDay: sheetTitle,
+              present: true
+            });
+          } else {
+            newSyncedRecords.push({
+              name: studentName,
+              timestamp: '',
+              score: '',
+              classDay: sheetTitle,
+              present: false
+            });
+          }
+        });
+      });
+
+      const finalRecords = [...preservedRecords, ...newSyncedRecords];
       
       setClassDays(updatedClassDays);
-      setRecords(updatedRecords);
+      setRecords(finalRecords);
       setDataSource('sheets');
       setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
@@ -1793,18 +2046,18 @@ export default function App() {
 
   // Auto-Sync Interval Timer
   useEffect(() => {
-    if (autoSyncInterval <= 0 || dataSource !== 'sheets' || !token || isLoading) return;
+    if (autoSyncInterval <= 0 || dataSource !== 'sheets' || isLoading) return;
 
     const intervalId = setInterval(() => {
       handleLoadSheets();
     }, autoSyncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [autoSyncInterval, dataSource, token, isLoading, sheetUrl]);
+  }, [autoSyncInterval, dataSource, isLoading, sheetUrl]);
 
   // Tab Focus Auto-Sync
   useEffect(() => {
-    if (!syncOnTabFocus || dataSource !== 'sheets' || !token) return;
+    if (!syncOnTabFocus || dataSource !== 'sheets') return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isLoading) {
@@ -1818,139 +2071,20 @@ export default function App() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [syncOnTabFocus, dataSource, token, isLoading, sheetUrl]);
+  }, [syncOnTabFocus, dataSource, isLoading, sheetUrl]);
+
+  // Auto-sync Google Sheets when the user loads the app, or navigates to the 'exams' or 'attendance' tab
+  useEffect(() => {
+    if ((activeErpTab === 'exams' || activeErpTab === 'attendance' || activeErpTab === 'home') && sheetUrl) {
+      handleLoadSheets(undefined, sheetUrl).catch(err => {
+        console.warn("Auto-sync of public sheets failed:", err);
+      });
+    }
+  }, [activeErpTab, sheetUrl]);
 
   const { uniqueStudents, avgAttendance, avgScoreOverall, classDayStats } = useMemo(() => {
     const rawNames: string[] = (Array.from(new Set(records.filter(r => r && (r.name || r.studentName)).map(r => (r.name || r.studentName || '').toString().trim()))) as string[]).filter((name: string) => name && !isExcludedStudent(name));
-    const nameGroups: string[][] = [];
-    const canonicalNames = new Map<string, string>();
-
-    const MANUAL_ALIASES: Record<string, string> = {
-      'denise edwards': 'Denise Edwards',
-      'deniseedwards6561@gmail.com': 'Denise Edwards',
-      'deniseedwards6561@gmeil.com': 'Denise Edwards',
-      'denise edwards6561@gmail.com': 'Denise Edwards',
-      'denise edwards 6561@gmail.com': 'Denise Edwards',
-      'kabrina morris jack': 'Kabrina Morris Jack',
-      'kabrinamorrisjack': 'Kabrina Morris Jack',
-      'mishael daniel': 'Mishael Daniel',
-      'mishaeldaniel06@gmail.com': 'Mishael Daniel',
-      'mishaeldaniel06@gmeil.com': 'Mishael Daniel',
-      'mishael daniel06@gmail.com': 'Mishael Daniel',
-      'mishael daniel06@gmeil.com': 'Mishael Daniel',
-      'niomi loverne joseph': 'Niomi Loverne Joseph Marksman',
-      'laverne joseph marksman': 'Niomi Loverne Joseph Marksman',
-      'niomi loverne joseph marksman': 'Niomi Loverne Joseph Marksman',
-      'vanessa mohammed': 'Vanessa Mohammed',
-      'v mohammed': 'Vanessa Mohammed',
-      'v. mohammed': 'Vanessa Mohammed',
-    };
-    
-    rawNames.forEach((rawName: string) => {
-      if (!rawName) return;
-      let foundGroup = false;
-      const lowerRaw = rawName.toLowerCase().trim();
-      const explicitCanonical = MANUAL_ALIASES[lowerRaw];
-      const normalizedRaw = lowerRaw.replace(/[^a-z0-9 ]/g, ' ').trim();
-      
-      for (const group of nameGroups) {
-        const representative = group[0];
-        const lowerRep = (representative || '').toLowerCase().trim();
-        const explicitRepCanonical = MANUAL_ALIASES[lowerRep];
-
-        if (explicitCanonical && (explicitCanonical === explicitRepCanonical || group.some((n: string) => MANUAL_ALIASES[(n || '').toLowerCase().trim()] === explicitCanonical))) {
-          group.push(rawName);
-          foundGroup = true;
-          break;
-        }
-
-        const normalizedRep = lowerRep.replace(/[^a-z0-9 ]/g, ' ').trim();
-        const rawCompact = normalizedRaw.replace(/\s/g, '');
-        const repCompact = normalizedRep.replace(/\s/g, '');
-        const rawNoDigits = rawCompact.replace(/\d+/g, '').replace(/@.*$/, '');
-        const repNoDigits = repCompact.replace(/\d+/g, '').replace(/@.*$/, '');
-
-        if (rawCompact === repCompact || (rawNoDigits.length > 4 && rawNoDigits === repNoDigits)) {
-          group.push(rawName);
-          foundGroup = true;
-          break;
-        }
-        
-        const rawParts = normalizedRaw.split(/\s+/).filter(Boolean);
-        const repParts = normalizedRep.split(/\s+/).filter(Boolean);
-
-        if (rawParts.length >= 2 && repParts.length >= 2) {
-          const rawFirst = rawParts[0];
-          const rawLast = rawParts[rawParts.length - 1];
-          const repFirst = repParts[0];
-          const repLast = repParts[repParts.length - 1];
-
-          if (rawLast === repLast && rawFirst[0] === repFirst[0] && (rawFirst.length === 1 || repFirst.length === 1)) {
-            group.push(rawName);
-            foundGroup = true;
-            break;
-          }
-        }
-
-        const sim = stringSimilarity.compareTwoStrings(normalizedRaw, normalizedRep);
-        if (sim > 0.8) {
-          group.push(rawName);
-          foundGroup = true;
-          break;
-        }
-        
-        const shorter = rawParts.length < repParts.length ? rawParts : repParts;
-        const longer = rawParts.length < repParts.length ? repParts : rawParts;
-        
-        if (shorter.length > 0 && longer.length > 0) {
-          let allPartsMatch = true;
-          for (const sPart of shorter) {
-            let bestMatch = 0;
-            for (const lPart of longer) {
-              const partSim = stringSimilarity.compareTwoStrings(sPart, lPart);
-              if (partSim > bestMatch) bestMatch = partSim;
-            }
-            if (bestMatch < 0.75) {
-              allPartsMatch = false;
-              break;
-            }
-          }
-          
-          if (allPartsMatch && shorter.join('').length >= 4) {
-            group.push(rawName);
-            foundGroup = true;
-            break;
-          }
-        }
-      }
-      
-      if (!foundGroup) {
-        nameGroups.push([rawName]);
-      }
-    });
-    
-    nameGroups.forEach((group: string[]) => {
-      let canonical = group[0];
-      for (const name of group) {
-        const alias = MANUAL_ALIASES[(name || '').toLowerCase().trim()];
-        if (alias) {
-          canonical = alias;
-          break;
-        }
-      }
-
-      if (!Object.values(MANUAL_ALIASES).includes(canonical)) {
-        for (const name of group) {
-          if (name.length > canonical.length && !name.includes('@')) {
-            canonical = name;
-          }
-        }
-      }
-
-      group.forEach((name: string) => {
-        if (name) canonicalNames.set((name || '').trim(), canonical);
-      });
-    });
+    const canonicalNames = getCanonicalNamesMap(rawNames);
 
     const studentMap = new Map<string, StudentSummary>();
     
@@ -1991,7 +2125,7 @@ export default function App() {
     let studentsWithScoresCount = 0;
 
     const students: StudentSummary[] = Array.from(studentMap.values()).map((student, idx) => {
-      const attended = Object.keys(student.attendanceByDay).length;
+      const attended = Object.values(student.attendanceByDay).filter(att => att && att.present).length;
       const rate = totalClasses > 0 ? (attended / totalClasses) * 100 : 0;
       totalRates += rate;
 
@@ -2808,17 +2942,29 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Sync Status */}
             <div className="hidden sm:flex items-center shrink-0">
               {isOffline ? (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold">
-                  <WifiOff className="w-3 h-3" /> Offline
-                </span>
+                <button
+                  onClick={() => setShowDiagnosticModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
+                  title="Click for Supabase Storage & Data Diagnostics"
+                >
+                  <WifiOff className="w-3 h-3" /> Offline (Diagnose)
+                </button>
               ) : isCloudSyncing ? (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold">
+                <button
+                  onClick={() => setShowDiagnosticModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
+                  title="Click for Supabase Storage & Data Diagnostics"
+                >
                   <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
-                </span>
+                </button>
               ) : (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold">
-                  <CheckCircle2 className="w-3 h-3" /> Synced
-                </span>
+                <button
+                  onClick={() => setShowDiagnosticModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
+                  title="Click to run Supabase Storage & Data Diagnostics"
+                >
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Synced (Diagnose)
+                </button>
               )}
             </div>
 
@@ -3230,20 +3376,6 @@ create policy "Allow public update" on app_states for update using (true) with c
               userEmail={user?.email}
               supabaseTableMissing={supabaseTableMissing}
               onVerifySetup={handleVerifySupabase}
-              students={uniqueStudents}
-              customAssignments={customAssignments}
-              submissions={submissions}
-              payments={payments}
-              onSelectStudentForCertificate={(s) => {
-                setCertificateData({
-                  studentName: s.name,
-                  awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
-                  criteria: `Demonstrated exceptional commitment with ${s.rate.toFixed(1)}% class attendance and full course completion.`,
-                  rate: s.rate,
-                  avgScore: s.avgScore || 90
-                });
-                setShowCertificateModal(true);
-              }}
             />
           </div>
         )}
@@ -3401,6 +3533,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               setResources={setLibraryResources}
               classroomMedia={classroomMedia}
               setClassroomMedia={setClassroomMedia}
+              onOpenDiagnostics={() => setShowDiagnosticModal(true)}
             />
           </div>
         )}
@@ -3589,11 +3722,11 @@ create policy "Allow public update" on app_states for update using (true) with c
                         </button>
                         <button
                           onClick={() => setShowClassDaysModal(true)}
-                          className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                          className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
                           title="Manage class session titles"
                         >
                           <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                          <span className="hidden sm:inline">Days ({classDays.length})</span>
+                          <span className="text-xs font-bold">Manage Days ({classDays.length})</span>
                         </button>
                       </div>
                     )}
@@ -3885,10 +4018,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                                             handleEditClassDayTitle(day.id, newName.trim());
                                           }
                                         }}
-                                        className="opacity-0 group-hover/th:opacity-100 p-0.5 hover:bg-slate-300/60 rounded text-slate-500 hover:text-indigo-700 transition-all cursor-pointer flex-shrink-0"
+                                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition-all cursor-pointer flex-shrink-0"
                                         title="Click to rename class day title"
                                       >
-                                        <Edit3 className="w-3 h-3" />
+                                        <Edit3 className="w-3.5 h-3.5" />
                                       </button>
                                     )}
                                   </div>
@@ -4159,7 +4292,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                           {stats.count} ({Math.round(stats.percentage)}%)
                         </span>
                         {appUser?.role !== 'student' && (
-                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1 ml-1.5 border-l border-slate-200 pl-1.5">
                             <button
                               type="button"
                               onClick={() => {
@@ -4168,18 +4301,18 @@ create policy "Allow public update" on app_states for update using (true) with c
                                   handleEditClassDayTitle(day.id, newName.trim());
                                 }
                               }}
-                              className="p-1 hover:bg-indigo-100 text-slate-400 hover:text-indigo-700 rounded transition-colors cursor-pointer"
+                              className="p-1 hover:bg-indigo-50 text-slate-400 hover:text-indigo-700 rounded transition-colors cursor-pointer"
                               title="Rename Title"
                             >
-                              <Edit3 className="w-3 h-3" />
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteClassDay(day.id)}
-                              className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                              className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
                               title="Delete Class Day"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         )}
@@ -6245,6 +6378,14 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           </div>
         )}
       </AnimatePresence>
+
+      {/* Supabase Storage & Data Diagnostic Modal */}
+      <SupabaseDiagnosticModal
+        isOpen={showDiagnosticModal}
+        onClose={() => setShowDiagnosticModal(false)}
+        userEmail={appUser?.email || user?.email}
+        onRefreshData={handlePushToCloud}
+      />
 
       {/* 30-Second Student Presentation Demo Video Modal */}
       <AppPresentationModal

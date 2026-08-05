@@ -38,11 +38,12 @@ import {
   Share2,
   Loader2,
   Bookmark,
-  ShieldCheck
+  ShieldCheck,
+  CloudDownload
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
-import { uploadToSupabaseStorage } from '../lib/supabaseClient';
+import { uploadToSupabaseStorage, syncAssignmentsFromSupabaseBucket } from '../lib/supabaseClient';
 import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment, QuizSubmission } from '../types';
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 import { QuizCreatorModal } from './QuizCreatorModal';
@@ -496,6 +497,56 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState<'all' | 'perfect' | 'passed' | 'failed'>('all');
+  const [isSyncingAssignments, setIsSyncingAssignments] = useState(false);
+
+  // Identify Student Profile
+  const studentRecordTmp = students.find(s => {
+    if (currentStudentName && s && s.name) {
+      const sName = (s.name || '').toLowerCase().trim();
+      const currName = (currentStudentName || '').toLowerCase().trim();
+      return sName === currName || sName.includes(currName);
+    }
+    return false;
+  }) || (userRole === 'student' ? students[0] : null);
+
+  const activeStudentNameTmp = studentRecordTmp?.name || currentStudentName || 'Student Candidate';
+
+  // Auto-scan Supabase storage bucket for missing uploaded assignment files on mount
+  useEffect(() => {
+    const stds = students.map(s => ({ name: s.name }));
+    syncAssignmentsFromSupabaseBucket(customAssignments, submissions, stds, activeStudentNameTmp)
+      .then(({ updatedAssignments, updatedSubmissions, addedSubmissionsCount, addedAssignmentsCount }) => {
+        if (addedSubmissionsCount > 0 || addedAssignmentsCount > 0) {
+          setCustomAssignments(updatedAssignments);
+          setSubmissions(updatedSubmissions);
+        }
+      })
+      .catch(err => {
+        console.warn("Assignment storage auto-sync skipped:", err);
+      });
+  }, []);
+
+  const handleSyncAssignmentsFromBucket = async () => {
+    setIsSyncingAssignments(true);
+    try {
+      const stds = students.map(s => ({ name: s.name }));
+      const { updatedAssignments, updatedSubmissions, addedSubmissionsCount, addedAssignmentsCount } = 
+        await syncAssignmentsFromSupabaseBucket(customAssignments, submissions, stds, activeStudentNameTmp);
+      
+      if (addedSubmissionsCount > 0 || addedAssignmentsCount > 0) {
+        setCustomAssignments(updatedAssignments);
+        setSubmissions(updatedSubmissions);
+        alert(`Successfully synced ${addedSubmissionsCount} submission(s) and created ${addedAssignmentsCount} assignment(s) from your Supabase 'assignments' storage bucket!`);
+      } else {
+        alert("Scanned Supabase 'assignments' storage bucket: All files are already synced and mapped to student submissions.");
+      }
+    } catch (err: any) {
+      console.error("Assignment storage sync failed:", err);
+      alert(`Assignment sync failed: ${err.message || String(err)}`);
+    } finally {
+      setIsSyncingAssignments(false);
+    }
+  };
 
   // Modals
   const [showAddAssignmentModal, setShowAddAssignmentModal] = useState(false);
@@ -1306,10 +1357,21 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           {/* ASSIGNMENTS OVERVIEW CARDS */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <BookOpen className="w-4.5 h-4.5 text-indigo-600" /> Assigned Ministry Coursework
-              </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <BookOpen className="w-4.5 h-4.5 text-indigo-600" /> Assigned Ministry Coursework
+                </h3>
+                <button
+                  onClick={handleSyncAssignmentsFromBucket}
+                  disabled={isSyncingAssignments}
+                  className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-extrabold text-[10px] sm:text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                  title="Scan and import uploaded assignment documents from Supabase 'assignments' Storage bucket"
+                >
+                  <CloudDownload className={`w-3.5 h-3.5 text-emerald-600 ${isSyncingAssignments ? 'animate-bounce' : ''}`} /> 
+                  {isSyncingAssignments ? 'Syncing...' : 'Sync Uploaded Assignments'}
+                </button>
+              </div>
               {isStudent && (
                 <span className="text-xs text-slate-500 font-medium">
                   Logged in as Student: <strong className="text-slate-900">{activeStudentName}</strong>
