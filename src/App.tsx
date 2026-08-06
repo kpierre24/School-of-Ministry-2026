@@ -113,6 +113,7 @@ import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
 import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { HomeTab } from './components/HomeTab';
+import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
 import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
 import { SwipeableAttendanceCard } from './components/SwipeableAttendanceCard';
@@ -343,6 +344,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('hteim_user_credentials', JSON.stringify(userCredentials));
   }, [userCredentials]);
+
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    return sessionStorage.getItem('hteim_intro_shown') !== 'true';
+  });
 
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
@@ -2798,7 +2803,19 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] md:h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-24 md:pb-6 overflow-y-auto md:overflow-hidden select-none sm:select-text">
+    <>
+      <AnimatePresence>
+        {showIntro && (
+          <IntroSplashScreen
+            onComplete={() => {
+              setShowIntro(false);
+              sessionStorage.setItem('hteim_intro_shown', 'true');
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-col min-h-[100dvh] md:h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-24 md:pb-6 overflow-y-auto md:overflow-hidden select-none sm:select-text">
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0">
@@ -6826,5 +6843,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         </button>
       </nav>
     </div>
+    </>
   );
 }
