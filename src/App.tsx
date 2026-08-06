@@ -3582,6 +3582,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               onOpenPresentationDemo={() => setShowPresentationModal(true)}
               studentsCount={uniqueStudents.length}
               students={uniqueStudents}
+              payments={payments}
               classDays={classDays}
               records={records}
               coursesCount={courses.length || 6}

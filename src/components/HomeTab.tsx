@@ -50,9 +50,10 @@ import {
   Quote,
   FileText,
   Layers,
-  Video
+  Video,
+  UserCheck
 } from 'lucide-react';
-import { TabType, StudentSummary, ClassDay } from '../types';
+import { TabType, StudentSummary, ClassDay, PaymentRecord } from '../types';
 import { AppUser } from '../lib/userAuth';
 import { 
   ResponsiveContainer, 
@@ -80,6 +81,7 @@ interface HomeTabProps {
   onOpenPresentationDemo?: () => void;
   studentsCount: number;
   students?: StudentSummary[];
+  payments?: PaymentRecord[];
   classDays?: ClassDay[];
   records?: any[];
   coursesCount: number;
@@ -106,6 +108,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onOpenPresentationDemo,
   studentsCount,
   students = [],
+  payments = [],
   classDays = [],
   records = [],
   coursesCount,
@@ -311,6 +314,20 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const scheduledClasses = classDaysCount;
   const attendanceRate = Math.round(avgAttendanceRate || 0);
 
+  // Find logged in student data
+  const loggedInStudentData = useMemo(() => {
+    if (!isStudent || !appUser) return null;
+    const nameToMatch = (appUser.studentName || appUser.name || '').toLowerCase().trim();
+    return students.find(s => s.name.toLowerCase().trim() === nameToMatch) || null;
+  }, [isStudent, appUser, students]);
+
+  // Find logged in student tuition statement
+  const loggedInStudentPayment = useMemo(() => {
+    if (!isStudent || !appUser) return null;
+    const nameToMatch = (appUser.studentName || appUser.name || '').toLowerCase().trim();
+    return payments.find(p => p.studentName.toLowerCase().trim() === nameToMatch) || null;
+  }, [isStudent, appUser, payments]);
+
   const ministryPillars = [
     {
       id: 'pillar_1',
@@ -512,6 +529,95 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         )}
       </section>
 
+      {/* Student Quick Touch Command Hub - Mobile & Student View Optimization */}
+      {isStudent && (
+        <section className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 border border-indigo-500/30 shadow-lg space-y-4 animate-fadeIn">
+          <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400 shrink-0">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-white font-syne tracking-tight">Student Quick Command Hub</h3>
+                <p className="text-[10px] text-slate-300 leading-none mt-0.5">1-Touch mobile actions optimized for student accounts</p>
+              </div>
+            </div>
+            {loggedInStudentData && (
+              <span className={`px-2.5 py-1 text-[9px] font-black rounded-full uppercase tracking-wider shrink-0 ${
+                loggedInStudentData.rate >= atRiskThreshold 
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' 
+                  : 'bg-rose-500/20 text-rose-300 border border-rose-400/30 animate-pulse'
+              }`}>
+                {loggedInStudentData.rate >= atRiskThreshold ? 'Satisfactory Standing' : 'At-Risk Standing'}
+              </span>
+            )}
+          </div>
+
+          {/* Quick Stats Grid for Students on Mobile */}
+          <div className="grid grid-cols-3 gap-2.5 text-center">
+            <div className="p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider truncate">My Attendance</p>
+              <p className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
+                loggedInStudentData && loggedInStudentData.rate < atRiskThreshold ? 'text-rose-400' : 'text-emerald-400'
+              }`}>
+                {loggedInStudentData ? `${Math.round(loggedInStudentData.rate)}%` : '—'}
+              </p>
+            </div>
+            <div className="p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider truncate">My Avg Grade</p>
+              <p className="text-sm sm:text-base font-black text-amber-300 font-mono mt-0.5">
+                {loggedInStudentData?.avgScore !== null && loggedInStudentData?.avgScore !== undefined
+                  ? `${Math.round(loggedInStudentData.avgScore)}%`
+                  : 'N/A'}
+              </p>
+            </div>
+            <div className="p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider truncate">Pending Tasks</p>
+              <p className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
+                pendingAssignmentsCount > 0 ? 'text-indigo-300' : 'text-slate-400'
+              }`}>
+                {pendingAssignmentsCount}
+              </p>
+            </div>
+          </div>
+
+          {/* Touch Actions Grid */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <button
+              onClick={() => onNavigate('attendance')}
+              className="p-3 bg-indigo-600/10 hover:bg-indigo-600/35 border border-indigo-400/20 hover:border-indigo-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <UserCheck className="w-5 h-5 text-indigo-400" />
+              <span className="text-[11px] font-extrabold text-white">Self-Attendance</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('exams')}
+              className="p-3 bg-amber-500/10 hover:bg-amber-500/35 border border-amber-400/20 hover:border-amber-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <Award className="w-5 h-5 text-amber-400" />
+              <span className="text-[11px] font-extrabold text-white">Quizzes & Grades</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('library')}
+              className="p-3 bg-teal-500/10 hover:bg-teal-500/35 border border-teal-400/20 hover:border-teal-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <FileText className="w-5 h-5 text-teal-400" />
+              <span className="text-[11px] font-extrabold text-white">Handouts & PDFs</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('messages')}
+              className="p-3 bg-purple-500/10 hover:bg-purple-500/35 border border-purple-400/20 hover:border-purple-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <MessageSquare className="w-5 h-5 text-purple-400" />
+              <span className="text-[11px] font-extrabold text-white">Message Teacher</span>
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* 2. DAILY SCRIPTURE MEMORY SPOTLIGHT & REFLECTION CARD */}
       <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-md border border-indigo-900/80 relative overflow-hidden">
         <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -601,15 +707,19 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   return (
                     <div 
                       key={widgetId} 
-                      onClick={() => onNavigate('students')}
+                      onClick={() => onNavigate(isStudent ? 'attendance' : 'students')}
                       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all flex items-center gap-3 cursor-pointer group"
                     >
                       <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">Enrolled Students</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-syne">{activeStudents} Enrollees</p>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">
+                          {isStudent ? 'My Classmates' : 'Enrolled Students'}
+                        </p>
+                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-syne">
+                          {isStudent ? `${activeStudents} Cohort` : `${activeStudents} Enrollees`}
+                        </p>
                       </div>
                     </div>
                   );
@@ -648,22 +758,41 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     </div>
                   );
 
-                case 'avg_attendance':
+                case 'avg_attendance': {
+                  const studentRate = loggedInStudentData ? Math.round(loggedInStudentData.rate) : null;
+                  const isAtRisk = studentRate !== null && studentRate < atRiskThreshold;
                   return (
                     <div 
                       key={widgetId} 
                       onClick={() => onNavigate('attendance')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-rose-300 dark:hover:border-rose-500/50 transition-all flex items-center gap-3 cursor-pointer group"
+                      className={`bg-white dark:bg-slate-900 border rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md transition-all flex items-center gap-3 cursor-pointer group ${
+                        isStudent && isAtRisk 
+                          ? 'border-rose-300 dark:border-rose-950/85 hover:border-rose-400' 
+                          : 'border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-500/50'
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <TrendingUp className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                        isStudent && isAtRisk
+                          ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900/50'
+                          : 'bg-rose-50 dark:bg-rose-950/80 border-rose-200 dark:border-rose-800'
+                      }`}>
+                        <TrendingUp className={`w-5 h-5 ${isStudent && isAtRisk ? 'text-rose-500' : 'text-rose-600 dark:text-rose-400'}`} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">Avg Attendance</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-syne">{attendanceRate}% Rate</p>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">
+                          {isStudent ? 'My Attendance' : 'Avg Attendance'}
+                        </p>
+                        <p className={`text-sm sm:text-lg font-black leading-tight font-syne ${
+                          isStudent && isAtRisk ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
+                        }`}>
+                          {isStudent 
+                            ? (studentRate !== null ? `${studentRate}% Rate` : 'No Record') 
+                            : `${attendanceRate}% Rate`}
+                        </p>
                       </div>
                     </div>
                   );
+                }
 
                 case 'pending_assignments':
                   return (
@@ -676,13 +805,18 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         <PenSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">Pending Quizzes</p>
+                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">
+                          {isStudent ? 'My Pending Tasks' : 'Pending Quizzes'}
+                        </p>
                         <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono">{pendingAssignmentsCount} Tasks</p>
                       </div>
                     </div>
                   );
 
-                case 'uncollected_tuition':
+                case 'uncollected_tuition': {
+                  const balanceDue = loggedInStudentPayment 
+                    ? Math.max(0, loggedInStudentPayment.totalTuition - loggedInStudentPayment.amountPaid)
+                    : 0;
                   return (
                     <div 
                       key={widgetId} 
@@ -693,11 +827,18 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         <DollarSign className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">Unpaid Tuition</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono">${uncollectedTuitionAmount.toLocaleString()} Due</p>
+                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">
+                          {isStudent ? 'My Tuition Due' : 'Unpaid Tuition'}
+                        </p>
+                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono">
+                          {isStudent 
+                            ? `$${balanceDue.toLocaleString()}`
+                            : `$${uncollectedTuitionAmount.toLocaleString()} Due`}
+                        </p>
                       </div>
                     </div>
                   );
+                }
 
                 case 'library_resources':
                   return (
@@ -1061,7 +1202,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </div>
 
       {/* 5. ADMIN & FACULTY ACADEMIC INSIGHTS PANEL (Collapsible Section for At-Risk Triggers & Trends) */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
+      {isAdminOrTeacher && (
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
         <div 
           onClick={() => setIsAdminPanelExpanded(prev => !prev)}
           className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
@@ -1364,6 +1506,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         )}
       </section>
+      )}
 
       {/* Dashboard Widgets Customizer Modal */}
       {showCustomizerModal && (
