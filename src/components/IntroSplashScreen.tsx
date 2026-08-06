@@ -118,7 +118,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
           <motion.div
             variants={logoPulseVariants}
             animate="pulse"
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-amber-400/80 shadow-2xl bg-slate-900 p-1.5 flex items-center justify-center overflow-hidden cursor-pointer"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl border-2 border-amber-400/80 shadow-2xl bg-white p-1.5 flex items-center justify-center overflow-hidden cursor-pointer"
           >
             <LogoImage className="w-full h-full object-contain" />
           </motion.div>
