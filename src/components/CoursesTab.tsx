@@ -340,10 +340,10 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-amber-400" />
-            <h2 className="text-xl font-black tracking-tight">Ministry Courses & Academic Curriculum</h2>
+            <BookOpen className="w-6 h-6 text-amber-400 shrink-0" />
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight font-syne">Ministry Courses & Academic Curriculum</h2>
           </div>
-          <p className="text-xs text-indigo-200 mt-1">
+          <p className="text-xs text-indigo-200 mt-1 max-w-2xl font-sans">
             Manage structured theological modules, syllabus guidelines, and course cards for HTEIM School of Ministry.
           </p>
         </div>

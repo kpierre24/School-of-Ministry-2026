@@ -9,7 +9,8 @@ import {
   Sparkles, 
   Users, 
   Clock, 
-  AlertCircle 
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 
 export type ClassDayItem = {
@@ -23,7 +24,8 @@ interface ManageClassDaysModalProps {
   classDays: ClassDayItem[];
   onAddClassDay: (title: string) => void;
   onEditClassDayTitle: (id: string, newTitle: string) => void;
-  onDeleteClassDay: (id: string) => void;
+  onDeleteClassDay: (id: string, skipConfirm?: boolean) => void;
+  onClearClassDayRecords?: (id: string, skipConfirm?: boolean) => void;
   uniqueStudentsCount?: number;
   classDayStats?: Record<string, { count: number; percentage: number }>;
 }
@@ -35,12 +37,15 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
   onAddClassDay,
   onEditClassDayTitle,
   onDeleteClassDay,
+  onClearClassDayRecords,
   uniqueStudentsCount = 0,
   classDayStats = {}
 }) => {
   const [newTitle, setNewTitle] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitleInput, setEditTitleInput] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmClearId, setConfirmClearId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -201,21 +206,72 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
 
                     {!isEditing && (
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => startEditing(day)}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                          title="Rename title"
-                        >
-                          <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Rename</span>
-                        </button>
-                        <button
-                          onClick={() => onDeleteClassDay(day.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete class day"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {confirmDeleteId === day.id ? (
+                          <div className="flex items-center gap-1 bg-rose-50 dark:bg-rose-950/80 p-1 rounded-lg border border-rose-200 dark:border-rose-800">
+                            <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 px-1">Delete session & records?</span>
+                            <button
+                              onClick={() => {
+                                onDeleteClassDay(day.id, true);
+                                setConfirmDeleteId(null);
+                              }}
+                              className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              Yes, Delete
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : confirmClearId === day.id ? (
+                          <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/80 p-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 px-1">Clear all logs?</span>
+                            <button
+                              onClick={() => {
+                                if (onClearClassDayRecords) onClearClassDayRecords(day.id, true);
+                                setConfirmClearId(null);
+                              }}
+                              className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              Yes, Clear
+                            </button>
+                            <button
+                              onClick={() => setConfirmClearId(null)}
+                              className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => startEditing(day)}
+                              className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 hover:text-indigo-700 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Rename title"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                              <span>Rename</span>
+                            </button>
+                            {onClearClassDayRecords && (
+                              <button
+                                onClick={() => setConfirmClearId(day.id)}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded-lg transition-colors cursor-pointer"
+                                title="Clear all attendance records for this day"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setConfirmDeleteId(day.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete class session and all its records"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

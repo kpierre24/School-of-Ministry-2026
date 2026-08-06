@@ -242,6 +242,8 @@ export const INITIAL_SCHEDULE: ScheduleItem[] = [
 interface ScheduleTabProps {
   classDays: { id: string; name: string }[];
   onTakeAttendanceForDay: (dayId: string) => void;
+  onDeleteClassDay?: (dayId: string) => void;
+  onClearClassDayRecords?: (dayId: string) => void;
   userRole?: UserRole;
   schedules?: ScheduleItem[];
   setSchedules?: React.Dispatch<React.SetStateAction<ScheduleItem[]>>;
@@ -254,6 +256,8 @@ interface ScheduleTabProps {
 export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   classDays,
   onTakeAttendanceForDay,
+  onDeleteClassDay,
+  onClearClassDayRecords,
   userRole = 'admin',
   schedules: propSchedules,
   setSchedules: propSetSchedules,

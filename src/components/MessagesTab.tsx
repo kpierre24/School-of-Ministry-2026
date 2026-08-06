@@ -839,7 +839,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                     <span className="text-[11px] font-medium">
-                      Messaging is for <strong>typed text only</strong>. Submit assignment files in the <strong>Courses & Curriculum</strong> tab.
+                      Messaging is for <strong>typed text only</strong>. Submit assignment files in the <strong>Exams</strong> tab.
                     </span>
                   </div>
                 </div>
@@ -1067,7 +1067,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   <span>Typed Text Communication Policy</span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                  Messaging is restricted to typed text to ensure academic records remain organized. File attachments and coursework submissions must be uploaded through the <strong>Courses & Curriculum</strong> tab.
+                  Messaging is restricted to typed text to ensure academic records remain organized. File attachments and coursework submissions must be uploaded through the <strong>Exams</strong> tab.
                 </p>
               </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   UserCheck, 
   CheckCircle2, 
@@ -21,8 +21,18 @@ import {
   Camera,
   Upload,
   User,
-  Lock
+  Lock,
+  Flame,
+  Search,
+  Filter,
+  MessageSquare,
+  Layers,
+  Send,
+  X,
+  TrendingUp,
+  ShieldCheck
 } from 'lucide-react';
+import { downloadICSFile } from '../lib/calendarExport';
 
 export type StudentPortalSummary = {
   name: string;
@@ -66,6 +76,20 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
   const [currentPhoto, setCurrentPhoto] = useState<string>(student?.photoUrl || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Filter & Search states for attendance log
+  const [logFilter, setLogFilter] = useState<'all' | 'present' | 'absent'>('all');
+  const [logSearch, setLogSearch] = useState('');
+
+  // Excuse note modal state
+  const [excuseModalDay, setExcuseModalDay] = useState<{ id: string; name: string } | null>(null);
+  const [excuseReason, setExcuseReason] = useState('Medical / Illness');
+  const [excuseComment, setExcuseComment] = useState('');
+  const [submittedExcuses, setSubmittedExcuses] = useState<Record<string, { reason: string; comment: string; date: string }>>(() => {
+    const saved = localStorage.getItem(`hteim_excuses_${studentKey}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [excuseSubmittedToast, setExcuseSubmittedToast] = useState(false);
 
   useEffect(() => {
     if (student?.photoUrl) {
@@ -113,10 +137,6 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
     reader.readAsDataURL(file);
   };
 
-  const rubric = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-  const rubAvg = Math.round((rubric.participation + rubric.assignment) / 2);
-  const canDownloadDocs = false;
-
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const handleCopyText = (text: string, fieldName: string) => {
@@ -125,8 +145,124 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  // Streak counter calculation
+  const streakCount = useMemo(() => {
+    let count = 0;
+    for (let i = classDays.length - 1; i >= 0; i--) {
+      const day = classDays[i];
+      const att = safeAttendanceByDay[day.id];
+      if (att && att.present) {
+        count++;
+      } else if (att && !att.present) {
+        break;
+      }
+    }
+    return count;
+  }, [classDays, safeAttendanceByDay]);
+
+  // Filtered log items
+  const filteredClassDays = useMemo(() => {
+    return classDays.filter(day => {
+      const att = safeAttendanceByDay[day.id];
+      const isPresent = !!att?.present;
+
+      if (logFilter === 'present' && !isPresent) return false;
+      if (logFilter === 'absent' && isPresent) return false;
+
+      if (logSearch.trim()) {
+        const query = logSearch.toLowerCase().trim();
+        return day.name.toLowerCase().includes(query);
+      }
+      return true;
+    });
+  }, [classDays, safeAttendanceByDay, logFilter, logSearch]);
+
+  // Module Breakdown computation
+  const moduleBreakdown = useMemo(() => {
+    const modules = [
+      { code: 'M1', name: 'Module 1: Introduction' },
+      { code: 'M2', name: 'Module 2: Evangelism' },
+      { code: 'M3', name: 'Module 3: Ministerial Ethics' },
+      { code: 'M4', name: 'Module 4: Apostolic Ministry' },
+      { code: 'M5', name: 'Module 5: Prophetic Ministry' },
+      { code: 'M6', name: 'Module 6: Pastors & Teachers' }
+    ];
+
+    const totalDays = classDays.length || 1;
+    const daysPerMod = Math.max(1, Math.ceil(totalDays / 6));
+
+    return modules.map((m, idx) => {
+      const start = idx * daysPerMod;
+      const modDays = classDays.slice(start, start + daysPerMod);
+      
+      let attended = 0;
+      modDays.forEach(d => {
+        if (safeAttendanceByDay[d.id]?.present) {
+          attended++;
+        }
+      });
+
+      const total = modDays.length;
+      const rate = total > 0 ? Math.round((attended / total) * 100) : 100;
+
+      return {
+        ...m,
+        total,
+        attended,
+        rate
+      };
+    });
+  }, [classDays, safeAttendanceByDay]);
+
+  const handleAddZoomToCalendar = () => {
+    downloadICSFile([{
+      id: 'hteim-zoom-class',
+      title: 'HTEIM School of Ministry Tuesday Live Zoom',
+      description: 'Weekly Live Lecture via Zoom. Meeting ID: 815 0537 7396 Passcode: 163738',
+      location: 'Zoom Online',
+      date: new Date().toISOString().split('T')[0],
+      startTime: '07:00 pm',
+      endTime: '09:00 pm'
+    }], 'HTEIM_Tuesday_Live_Zoom.ics');
+  };
+
+  const handleSubmitExcuse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!excuseModalDay) return;
+
+    const updated = {
+      ...submittedExcuses,
+      [excuseModalDay.id]: {
+        reason: excuseReason,
+        comment: excuseComment,
+        date: new Date().toLocaleDateString()
+      }
+    };
+
+    setSubmittedExcuses(updated);
+    localStorage.setItem(`hteim_excuses_${studentKey}`, JSON.stringify(updated));
+    setExcuseModalDay(null);
+    setExcuseComment('');
+    setExcuseSubmittedToast(true);
+    setTimeout(() => setExcuseSubmittedToast(false), 3000);
+  };
+
   return (
     <div className="h-full overflow-y-auto p-3.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn custom-scrollbar">
+      
+      {/* Toast Notification */}
+      {excuseSubmittedToast && (
+        <div className="p-3 bg-emerald-600 text-white font-bold text-xs rounded-2xl shadow-lg flex items-center justify-between gap-2 animate-bounce">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+            <span>Absence excuse submitted successfully to HTEIM Faculty!</span>
+          </div>
+          <button onClick={() => setExcuseSubmittedToast(false)} className="hover:opacity-80">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Weekly Tuesday Live Zoom Class Notice Card */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-5 text-white border border-blue-500/30 shadow-lg relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -183,18 +319,31 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               </button>
             </div>
 
-            <a
-              href="https://zoom.us/j/81505377396"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-95"
-            >
-              <span>Join Tuesday Live Zoom</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleAddZoomToCalendar}
+                className="px-3 py-3 bg-slate-800/90 hover:bg-slate-800 text-slate-200 font-extrabold text-xs rounded-2xl border border-slate-700 flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                title="Download .ics event to sync to Google Calendar / iCal"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Add to Calendar</span>
+              </button>
+
+              <a
+                href="https://zoom.us/j/81505377396"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 shrink-0"
+              >
+                <span>Join Tuesday Live Zoom</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
           </div>
         </div>
       </div>
+
       {/* Student Welcome & Status Hero Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white border border-indigo-900/50 shadow-xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
@@ -260,12 +409,54 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           </div>
         </div>
 
+        {/* Graduation Readiness Visual Bar */}
+        <div className="mt-6 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 space-y-2">
+          <div className="flex items-center justify-between text-xs font-extrabold text-indigo-100">
+            <span className="flex items-center gap-1.5">
+              <GraduationCap className="w-4 h-4 text-amber-400" /> Graduation Requirement Attendance Threshold (75%)
+            </span>
+            <span className="font-mono text-amber-300">{Math.round(safeRate)}% Current</span>
+          </div>
+
+          <div className="relative w-full h-3 bg-slate-950/60 rounded-full overflow-hidden p-0.5 border border-white/10">
+            <div 
+              className={`h-full rounded-full transition-all duration-1000 ${
+                safeRate >= 75 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-amber-500'
+              }`}
+              style={{ width: `${Math.min(100, safeRate)}%` }}
+            />
+            {/* Target Marker at 75% */}
+            <div 
+              className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-sm"
+              style={{ left: '75%' }}
+              title="75% Graduation Target"
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-indigo-300">
+            <span>0%</span>
+            <span className="font-bold text-amber-300">★ 75% Minimum Required</span>
+            <span>100% Perfect</span>
+          </div>
+        </div>
+
         {/* 4 Summary Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Attendance Rate</p>
             <p className="text-2xl font-black font-mono text-white mt-1">{Math.round(safeRate)}%</p>
             <p className="text-[10px] text-indigo-300 mt-0.5">{safeAttended} of {safeTotalDays} sessions attended</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Active Streak</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="text-2xl font-black font-mono text-amber-300">{streakCount}</span>
+              <span className="text-xs font-bold text-amber-400 flex items-center gap-0.5">
+                <Flame className="w-4 h-4 text-amber-400 animate-bounce" /> Sessions
+              </span>
+            </div>
+            <p className="text-[10px] text-indigo-300 mt-0.5">Consecutive classes present</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
@@ -275,7 +466,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 <span className="inline-flex items-center gap-1 font-bold text-amber-300 text-sm">
                   <Trophy className="w-4 h-4 text-amber-400" /> Perfect Standing
                 </span>
-              ) : safeRate >= satisfactoryThreshold ? (
+              ) : safeRate >= 75 ? (
                 <span className="inline-flex items-center gap-1 font-bold text-emerald-400 text-sm">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Good Standing
                 </span>
@@ -285,15 +476,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Required for graduation: ≥ 80%</p>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Sessions Attended</p>
-            <p className="text-2xl font-black font-mono text-amber-300 mt-1">
-              {safeAttended} / {safeTotalDays}
-            </p>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Classes Attended</p>
+            <p className="text-[10px] text-indigo-300 mt-0.5">Required for graduation: ≥ 75%</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
@@ -304,9 +487,50 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
         </div>
       </div>
 
+      {/* Module-Wise Attendance Breakdown */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Module Attendance Progress Breakdown</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Track your attendance rate across all 6 core curriculum modules.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {moduleBreakdown.map((mod) => (
+            <div key={mod.code} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 rounded text-[9px] font-mono font-bold">
+                  {mod.code}
+                </span>
+                <span className="text-[10px] font-bold text-slate-500 font-mono">
+                  {mod.attended}/{mod.total}
+                </span>
+              </div>
+
+              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{mod.name}</h4>
+
+              <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${mod.rate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                  style={{ width: `${mod.rate}%` }}
+                />
+              </div>
+
+              <p className="text-[10px] font-bold text-slate-500 font-mono text-right">{mod.rate}%</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Class Attendance History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-3 sm:space-y-4">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -316,51 +540,103 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               Verified record of your class attendance presence recorded by ministry instructors.
             </p>
           </div>
-          <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono font-bold rounded-xl">
-            {classDays.length} Total Sessions
-          </span>
+
+          {/* Search & Filter Toolbar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Filter session..."
+                value={logSearch}
+                onChange={(e) => setLogSearch(e.target.value)}
+                className="pl-8 pr-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
+              <button
+                onClick={() => setLogFilter('all')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${logFilter === 'all' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-3xs' : 'text-slate-500'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setLogFilter('present')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${logFilter === 'present' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-3xs' : 'text-slate-500'}`}
+              >
+                Present
+              </button>
+              <button
+                onClick={() => setLogFilter('absent')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${logFilter === 'absent' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-300 shadow-3xs' : 'text-slate-500'}`}
+              >
+                Absent
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Mobile View (< md) */}
         <div className="md:hidden space-y-2.5">
-          {classDays.map((day) => {
+          {filteredClassDays.map((day) => {
             const att = safeAttendanceByDay[day.id];
             const isPresent = !!att?.present;
+            const excuse = submittedExcuses[day.id];
 
             return (
               <div 
                 key={day.id} 
-                className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-2xs"
+                className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-3 space-y-2 shadow-2xs"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                    isPresent ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
-                  }`}>
-                    <BookOpen className="w-4 h-4" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                      isPresent ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
+                    }`}>
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{day.name}</p>
+                      {att?.timestamp ? (
+                        <p className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-slate-400" /> {att.timestamp}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 italic">No timestamp</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{day.name}</p>
-                    {att?.timestamp ? (
-                      <p className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3 h-3 text-slate-400" /> {att.timestamp}
-                      </p>
+
+                  <div className="shrink-0 flex items-center gap-2">
+                    {isPresent ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500 text-white shadow-xs">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Present
+                      </span>
                     ) : (
-                      <p className="text-[10px] text-slate-400 italic">No record</p>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800">
+                        <XCircle className="w-3.5 h-3.5 text-rose-500" /> Absent
+                      </span>
                     )}
                   </div>
                 </div>
 
-                <div className="shrink-0">
-                  {isPresent ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500 text-white shadow-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Present
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800">
-                      <XCircle className="w-3.5 h-3.5 text-rose-500" /> Absent
-                    </span>
-                  )}
-                </div>
+                {!isPresent && (
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2 text-[11px]">
+                    {excuse ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> Excuse Note: {excuse.reason}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setExcuseModalDay(day)}
+                        className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Send className="w-3 h-3" /> Submit Absence Reason
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -373,13 +649,15 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
                 <th className="p-3.5 rounded-l-xl">Class Day / Session</th>
                 <th className="p-3.5">Attendance Status</th>
-                <th className="p-3.5 rounded-r-xl">Attendance Date / Time</th>
+                <th className="p-3.5">Attendance Date / Time</th>
+                <th className="p-3.5 rounded-r-xl text-right">Faculty Actions / Excuse</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-              {classDays.map((day) => {
+              {filteredClassDays.map((day) => {
                 const att = safeAttendanceByDay[day.id];
                 const isPresent = !!att?.present;
+                const excuse = submittedExcuses[day.id];
 
                 return (
                   <tr key={day.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition-colors">
@@ -407,6 +685,22 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                         <span className="text-slate-400 italic">—</span>
                       )}
                     </td>
+                    <td className="p-3.5 text-right font-mono">
+                      {!isPresent && (
+                        excuse ? (
+                          <span className="text-amber-600 dark:text-amber-400 font-bold text-[11px] flex items-center justify-end gap-1">
+                            <MessageSquare className="w-3.5 h-3.5" /> {excuse.reason}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setExcuseModalDay(day)}
+                            className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-lg text-[11px] font-extrabold border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+                          >
+                            Submit Reason
+                          </button>
+                        )
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -422,6 +716,70 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           <p className="text-xs text-amber-950 dark:text-amber-200 font-medium leading-relaxed italic">"{student.note}"</p>
         </div>
       )}
+
+      {/* Submit Excuse Reason Modal */}
+      {excuseModalDay && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-indigo-600" />
+                <span>Submit Excuse for {excuseModalDay.name}</span>
+              </h3>
+              <button onClick={() => setExcuseModalDay(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitExcuse} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Reason Category</label>
+                <select
+                  value={excuseReason}
+                  onChange={(e) => setExcuseReason(e.target.value)}
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                >
+                  <option value="Medical / Illness">Medical / Illness</option>
+                  <option value="Ministry Service / Mission Trip">Ministry Service / Mission Trip</option>
+                  <option value="Work Conflict">Work Conflict</option>
+                  <option value="Family Emergency">Family Emergency</option>
+                  <option value="Travel / Bereavement">Travel / Bereavement</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Explanation Note</label>
+                <textarea
+                  rows={3}
+                  value={excuseComment}
+                  onChange={(e) => setExcuseComment(e.target.value)}
+                  placeholder="Provide brief details for faculty records..."
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setExcuseModalDay(null)}
+                  className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Submit to Faculty</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

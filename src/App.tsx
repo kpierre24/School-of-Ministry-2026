@@ -78,11 +78,12 @@ import {
   LogOut
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
-import { uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from './lib/supabaseClient';
+import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from './lib/supabaseClient';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
+import { SheetMergeConflictModal } from './components/SheetMergeConflictModal';
 import { usePWAInstall } from './lib/pwa';
 import {
   ResponsiveContainer,
@@ -267,12 +268,22 @@ const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
   return canonicalNames;
 };
 
+type MergeConflict = {
+  studentName: string;
+  classDay: string;
+  localStatus: 'present' | 'absent';
+  sheetsStatus: 'present' | 'absent';
+  sheetsScore: string;
+  sheetsTimestamp: string;
+};
+
 type AttendanceRecord = {
   name: string;
   timestamp: string;
   score: string;
   classDay: string;
   present: boolean;
+  manualOverride?: boolean;
 };
 
 const parseScorePercentage = (scoreStr?: any): number | null => {
@@ -562,6 +573,17 @@ export default function App() {
   const [dataSource, setDataSource] = useState<'demo' | 'sheets' | null>(() => {
     return (localStorage.getItem('dataSource') as any) || null;
   });
+
+  const [sheetMergePolicy, setSheetMergePolicy] = useState<'sheets' | 'manual' | 'prompt'>(() => {
+    return (localStorage.getItem('hteim_sheet_merge_policy') as any) || 'manual';
+  });
+
+  const [pendingConflicts, setPendingConflicts] = useState<MergeConflict[]>([]);
+  const [pendingSyncData, setPendingSyncData] = useState<{
+    preservedRecords: AttendanceRecord[];
+    newSyncedRecords: AttendanceRecord[];
+    updatedClassDays: ClassDay[];
+  } | null>(null);
 
   // Search, Filter & Sort State
   const [searchQuery, setSearchQuery] = useState('');
@@ -1604,6 +1626,10 @@ export default function App() {
   }, [dataSource]);
 
   useEffect(() => {
+    localStorage.setItem('hteim_sheet_merge_policy', sheetMergePolicy);
+  }, [sheetMergePolicy]);
+
+  useEffect(() => {
     localStorage.setItem('deletedStudentNames', JSON.stringify(deletedStudentNames));
   }, [deletedStudentNames]);
 
@@ -1989,6 +2015,7 @@ export default function App() {
 
       const newSyncedRecords: AttendanceRecord[] = [];
       const updatedClassDays = [...classDays.filter(d => !syncedSheetTitles.has(d.id))];
+      const conflictsList: MergeConflict[] = [];
 
       parsedSheetDataByClassDay.forEach((data, sheetTitle) => {
         if (!updatedClassDays.some(d => d.id === sheetTitle)) {
@@ -2011,37 +2038,98 @@ export default function App() {
             }
           }
 
-          if (completionRow) {
-            newSyncedRecords.push({
-              name: studentName,
-              timestamp: completionRow.timestamp,
-              score: completionRow.score,
+          const existingRecord = records.find(r => r && (r.name || r.studentName || '').toLowerCase().trim() === studentName.toLowerCase().trim() && r.classDay === sheetTitle);
+          const hasManualOverride = existingRecord && existingRecord.manualOverride === true;
+          const sheetsPresent = !!completionRow;
+          const localPresent = existingRecord ? existingRecord.present : false;
+
+          if (hasManualOverride && sheetsPresent !== localPresent) {
+            conflictsList.push({
+              studentName,
               classDay: sheetTitle,
-              present: true
+              localStatus: localPresent ? 'present' : 'absent',
+              sheetsStatus: sheetsPresent ? 'present' : 'absent',
+              sheetsScore: completionRow ? completionRow.score : '',
+              sheetsTimestamp: completionRow ? completionRow.timestamp : ''
+            });
+          }
+
+          if (sheetMergePolicy === 'manual' && hasManualOverride) {
+            // Prefer local manual override
+            newSyncedRecords.push({
+              ...existingRecord,
+              score: completionRow ? completionRow.score : existingRecord.score || '',
+              timestamp: completionRow ? completionRow.timestamp : existingRecord.timestamp || ''
             });
           } else {
+            // Default: Sheets rules
             newSyncedRecords.push({
               name: studentName,
-              timestamp: '',
-              score: '',
+              timestamp: completionRow ? completionRow.timestamp : '',
+              score: completionRow ? completionRow.score : '',
               classDay: sheetTitle,
-              present: false
+              present: sheetsPresent,
+              manualOverride: existingRecord ? existingRecord.manualOverride : false
             });
           }
         });
       });
 
-      const finalRecords = [...preservedRecords, ...newSyncedRecords];
-      
-      setClassDays(updatedClassDays);
-      setRecords(finalRecords);
-      setDataSource('sheets');
-      setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+      if (sheetMergePolicy === 'prompt' && conflictsList.length > 0) {
+        setPendingConflicts(conflictsList);
+        setPendingSyncData({
+          preservedRecords,
+          newSyncedRecords,
+          updatedClassDays
+        });
+      } else {
+        const finalRecords = [...preservedRecords, ...newSyncedRecords];
+        setClassDays(updatedClassDays);
+        setRecords(finalRecords);
+        setDataSource('sheets');
+        setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch spreadsheet data.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResolveConflicts = (resolutions: Record<string, 'local' | 'sheets'>) => {
+    if (!pendingSyncData) return;
+
+    const { preservedRecords, newSyncedRecords, updatedClassDays } = pendingSyncData;
+
+    const resolvedSyncedRecords = newSyncedRecords.map(r => {
+      const key = `${r.name}||${r.classDay}`;
+      if (resolutions[key] === 'local') {
+        const localRecord = records.find(oldRec => 
+          oldRec && 
+          (oldRec.name || oldRec.studentName || '').toLowerCase().trim() === r.name.toLowerCase().trim() && 
+          oldRec.classDay === r.classDay
+        );
+        if (localRecord) {
+          return {
+            ...r,
+            present: localRecord.present,
+            score: localRecord.score || '',
+            timestamp: localRecord.timestamp || '',
+            manualOverride: true
+          };
+        }
+      }
+      return r;
+    });
+
+    const finalRecords = [...preservedRecords, ...resolvedSyncedRecords];
+    setClassDays(updatedClassDays);
+    setRecords(finalRecords);
+    setDataSource('sheets');
+    setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    
+    setPendingConflicts([]);
+    setPendingSyncData(null);
   };
 
   // Auto-Sync Interval Timer
@@ -2277,27 +2365,36 @@ export default function App() {
     return `HTEIM-2026-${hashStr}`;
   };
 
-  const handleToggleStudentAttendance = (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused') => {
+  const handleToggleStudentAttendance = (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused' | 'unmarked') => {
     if (!studentName || !classDayId) return;
     const studentKey = studentName.toLowerCase().trim();
 
     // 1. Update excused absences
-    setExcusedAbsences(prev => ({
-      ...prev,
-      [studentKey]: {
-        ...(prev[studentKey] || {}),
-        [classDayId]: newStatus === 'excused'
+    setExcusedAbsences(prev => {
+      const copy = { ...prev };
+      const studentMap = { ...(copy[studentKey] || {}) };
+      if (newStatus === 'excused') {
+        studentMap[classDayId] = true;
+      } else {
+        delete studentMap[classDayId];
       }
-    }));
+      copy[studentKey] = studentMap;
+      return copy;
+    });
 
-    // 2. Update attendance records
+    // 2. Update or delete attendance records
     setRecords(prev => {
       const updated = [...prev];
       const existingIdx = updated.findIndex(r => r && (r.studentName || r.name) && (r.studentName || r.name).toLowerCase().trim() === studentKey && r.classDay === classDayId);
 
-      if (newStatus === 'present') {
+      if (newStatus === 'unmarked') {
+        if (existingIdx >= 0) {
+          updated.splice(existingIdx, 1);
+        }
+      } else if (newStatus === 'present') {
         if (existingIdx >= 0) {
           updated[existingIdx].present = true;
+          updated[existingIdx].manualOverride = true;
         } else {
           updated.push({
             studentName: studentName,
@@ -2305,12 +2402,15 @@ export default function App() {
             classDay: classDayId,
             present: true,
             score: '',
-            timestamp: new Date().toLocaleDateString()
+            timestamp: new Date().toLocaleDateString(),
+            manualOverride: true
           });
         }
       } else {
+        // absent or excused
         if (existingIdx >= 0) {
           updated[existingIdx].present = false;
+          updated[existingIdx].manualOverride = true;
         } else {
           updated.push({
             studentName: studentName,
@@ -2318,7 +2418,8 @@ export default function App() {
             classDay: classDayId,
             present: false,
             score: '',
-            timestamp: new Date().toLocaleDateString()
+            timestamp: new Date().toLocaleDateString(),
+            manualOverride: true
           });
         }
       }
@@ -2358,21 +2459,139 @@ export default function App() {
     });
   };
 
-  const handleDeleteClassDay = (dayId: string) => {
-    const day = classDays.find(d => d.id === dayId);
-    if (!day) return;
-    if (window.confirm(`Are you sure you want to delete class session "${day.name}"?`)) {
-      const updated = classDays.filter(d => d.id !== dayId);
-      setClassDays(updated);
-      if (liveCheckinDayId === dayId) {
-        setLiveCheckinDayId(updated.length > 0 ? updated[0].id : '');
+  const handleDeleteClassDay = (dayId: string, skipConfirm = false) => {
+    if (!dayId) return;
+    const targetKey = dayId.trim();
+    const day = classDays.find(d => 
+      d.id === targetKey || 
+      d.id.toLowerCase().trim() === targetKey.toLowerCase() ||
+      d.name.toLowerCase().trim() === targetKey.toLowerCase()
+    );
+    const dayName = day ? day.name : targetKey;
+    const dayActualId = day ? day.id : targetKey;
+
+    let confirmed = skipConfirm;
+    if (!confirmed) {
+      try {
+        confirmed = window.confirm(`Are you sure you want to delete class session "${dayName}"?\n\nThis will also permanently delete all student attendance records associated with this session.`);
+      } catch (e) {
+        confirmed = true;
       }
+    }
+
+    if (confirmed) {
+      const updatedDays = classDays.filter(d => 
+        d.id !== dayActualId && 
+        d.id.toLowerCase().trim() !== targetKey.toLowerCase() &&
+        d.name.toLowerCase().trim() !== targetKey.toLowerCase()
+      );
+      setClassDays(updatedDays);
+      
+      // Remove all attendance records for this deleted day
+      setRecords(prev => prev.filter(r => 
+        r.classDay !== dayActualId && 
+        r.classDay !== targetKey &&
+        (r.classDay || '').toLowerCase().trim() !== targetKey.toLowerCase()
+      ));
+      
+      // Clean up excused absences map for this day
+      setExcusedAbsences(prev => {
+        const copy = { ...prev };
+        Object.keys(copy).forEach(k => {
+          if (copy[k]) {
+            delete copy[k][dayActualId];
+            delete copy[k][targetKey];
+          }
+        });
+        return copy;
+      });
+
+      if (liveCheckinDayId === dayActualId || liveCheckinDayId === targetKey) {
+        setLiveCheckinDayId(updatedDays.length > 0 ? updatedDays[0].id : '');
+      }
+      
       logActivity({
         actor: appUser?.name || 'Admin',
         role: appUser?.role === 'student' ? 'student' : 'admin',
         actionCategory: 'Attendance Override',
         actionTitle: 'Class Session Deleted',
-        details: `Deleted class day: ${day.name}`
+        details: `Deleted class session "${dayName}" and purged all associated attendance records.`
+      });
+    }
+  };
+
+  const handleClearClassDayRecords = (dayId: string, skipConfirm = false) => {
+    if (!dayId) return;
+    const targetKey = dayId.trim();
+    const day = classDays.find(d => 
+      d.id === targetKey || 
+      d.id.toLowerCase().trim() === targetKey.toLowerCase() ||
+      d.name.toLowerCase().trim() === targetKey.toLowerCase()
+    );
+    const dayName = day ? day.name : targetKey;
+    const dayActualId = day ? day.id : targetKey;
+
+    let confirmed = skipConfirm;
+    if (!confirmed) {
+      try {
+        confirmed = window.confirm(`Are you sure you want to clear ALL attendance records for "${dayName}"?\n\nThe class session will remain active, but all present/absent logs for this day will be reset.`);
+      } catch (e) {
+        confirmed = true;
+      }
+    }
+
+    if (confirmed) {
+      setRecords(prev => prev.filter(r => 
+        r.classDay !== dayActualId && 
+        r.classDay !== targetKey &&
+        (r.classDay || '').toLowerCase().trim() !== targetKey.toLowerCase()
+      ));
+      setExcusedAbsences(prev => {
+        const copy = { ...prev };
+        Object.keys(copy).forEach(k => {
+          if (copy[k]) {
+            delete copy[k][dayActualId];
+            delete copy[k][targetKey];
+          }
+        });
+        return copy;
+      });
+      logActivity({
+        actor: appUser?.name || 'Admin',
+        role: appUser?.role === 'student' ? 'student' : 'admin',
+        actionCategory: 'Attendance Override',
+        actionTitle: 'Class Records Cleared',
+        details: `Cleared all attendance records for class session "${dayName}".`
+      });
+    }
+  };
+
+  const handleClearStudentAttendanceRecords = (studentName: string, skipConfirm = false) => {
+    if (!studentName) return;
+    const studentKey = studentName.toLowerCase().trim();
+
+    let confirmed = skipConfirm;
+    if (!confirmed) {
+      try {
+        confirmed = window.confirm(`Are you sure you want to delete all attendance records for "${studentName}"?`);
+      } catch (e) {
+        confirmed = true;
+      }
+    }
+
+    if (confirmed) {
+      setRecords(prev => prev.filter(r => (r.studentName || r.name || '').toLowerCase().trim() !== studentKey));
+      setExcusedAbsences(prev => {
+        const copy = { ...prev };
+        delete copy[studentKey];
+        return copy;
+      });
+      logActivity({
+        actor: appUser?.name || 'Admin',
+        role: appUser?.role === 'student' ? 'student' : 'admin',
+        actionCategory: 'Attendance Override',
+        actionTitle: 'Student Attendance Cleared',
+        details: `Deleted all attendance records for student "${studentName}".`
       });
     }
   };
@@ -2579,7 +2798,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] md:h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-24 md:pb-6 overflow-y-auto md:overflow-hidden select-none sm:select-text">
+    <div className="flex flex-col min-h-[100dvh] md:h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-24 md:pb-6 overflow-y-auto md:overflow-hidden select-none sm:select-text">
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0">
@@ -2676,27 +2895,27 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm mb-4 flex-shrink-0 relative z-30 max-w-full overflow-visible"
+      <header className="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-md mb-4 flex-shrink-0 sticky top-2 z-[60] max-w-full overflow-visible transition-all"
         style={{ boxShadow: 'var(--md-elev-1)' }}>
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink-0" onClick={() => setActiveErpTab('home')}>
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink-0 group" onClick={() => setActiveErpTab('home')}>
             <img
               src={hteimLogoAsset}
               alt="HTEIM Logo"
-              className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl border-2 border-amber-400 shadow-sm object-contain bg-white p-0.5"
+              className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl border-2 border-amber-400 shadow-md object-contain bg-white p-0.5 group-hover:scale-105 transition-transform"
               referrerPolicy="no-referrer"
             />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h1 className="text-xs xs:text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
+                <h1 className="text-xs xs:text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none font-syne">
                   HTEIM School of Ministry
                 </h1>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 shrink-0">
-                  <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> Portal
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 rounded-full border border-indigo-200 dark:border-indigo-800 shrink-0 shadow-2xs">
+                  <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-amber-500 animate-pulse" /> Portal
                 </span>
               </div>
-              <p className="text-slate-500 text-[9px] sm:text-[10px] hidden sm:block">Heaven Touching Earth Int'l Ministries</p>
+              <p className="text-slate-500 text-[9px] sm:text-[10px] hidden sm:block font-medium">Heaven Touching Earth Int'l Ministries</p>
             </div>
           </div>
 
@@ -2741,7 +2960,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     setLiveCheckinDayId(classDays[classDays.length - 1].id);
                   }
                 }}
-                className="md-btn-filled hidden md:flex items-center gap-1.5 text-xs px-3 py-2"
+                className="md-btn-filled hidden md:flex items-center gap-1.5 text-xs px-3.5 py-2 btn-enhanced btn-glow-amber font-bold"
                 style={{ background: '#d97706' }}
               >
                 <span className="relative flex h-2 w-2 shrink-0">
@@ -2756,17 +2975,17 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Demo Video */}
             <button
               onClick={() => setShowPresentationModal(true)}
-              className="md-btn-tonal hidden md:flex items-center gap-1.5 text-xs px-3 py-2 shrink-0"
+              className="md-btn-tonal hidden md:flex items-center gap-1.5 text-xs px-3.5 py-2 shrink-0 btn-enhanced font-bold"
               title="30-Second Student Presentation Demo"
             >
-              <Play className="w-3.5 h-3.5 shrink-0" />
+              <Play className="w-3.5 h-3.5 shrink-0 text-amber-500 fill-amber-500" />
               <span className="hidden sm:inline">Demo</span>
             </button>
 
             {/* Search */}
             <button
               onClick={() => setShowCommandPalette(true)}
-              className="md-icon-btn hidden md:flex border border-slate-200 dark:border-slate-700"
+              className="md-icon-btn hidden md:flex border border-slate-200 dark:border-slate-700 btn-enhanced"
               title="Global Search (⌘K)"
             >
               <Search className="w-4 h-4" />
@@ -2788,7 +3007,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               </button>
 
               {showToolsMenu && (
-                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-50 space-y-3"
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-[70] space-y-3"
                   style={{ boxShadow: 'var(--md-elev-3)' }}>
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                     <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
@@ -3183,7 +3402,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           style={{ boxShadow: 'var(--md-elev-1)' }}
         >
           {/* Direct Tab Options */}
-          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar max-w-[82%] py-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[85%] py-0.5">
             {[
               { tab: 'home',       label: 'Home',             Icon: Sparkles },
               { tab: 'attendance', label: 'Attendance',        Icon: UserCheck },
@@ -3208,13 +3427,13 @@ create policy "Allow public update" on app_states for update using (true) with c
                     setActiveErpTab(tab as any);
                     setIsNavOpen(false);
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 btn-enhanced cursor-pointer whitespace-nowrap shrink-0 ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 scale-[1.02]'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-slate-400 dark:text-slate-500'}`} />
                   <span>{label}</span>
                   {badgeAlert && (
                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
@@ -3362,6 +3581,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               onOpenLogin={() => setShowLoginModal(true)}
               onOpenPresentationDemo={() => setShowPresentationModal(true)}
               studentsCount={uniqueStudents.length}
+              students={uniqueStudents}
+              classDays={classDays}
+              records={records}
               coursesCount={courses.length || 6}
               classDaysCount={classDays.length}
               avgAttendanceRate={avgAttendance}
@@ -3498,6 +3720,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               setSheetUrl={setSheetUrl}
               onLoadSheets={handleLoadSheets}
               isLoadingSheets={isLoading}
+              lastSyncedTime={lastSyncedTime}
               recentSheets={recentSheets}
               onRemoveRecentSheet={handleRemoveRecentSheet}
             />
@@ -3509,6 +3732,8 @@ create policy "Allow public update" on app_states for update using (true) with c
             <ScheduleTab
               classDays={classDays}
               userRole={appUser?.role}
+              onDeleteClassDay={handleDeleteClassDay}
+              onClearClassDayRecords={handleClearClassDayRecords}
               onTakeAttendanceForDay={(dayId) => {
                 if (appUser?.role === 'student') return;
                 setActiveErpTab('attendance');
@@ -4009,20 +4234,44 @@ create policy "Allow public update" on app_states for update using (true) with c
                                       {day.name}
                                     </span>
                                     {appUser?.role !== 'student' && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const newName = prompt('Rename Class Day Title:', day.name);
-                                          if (newName && newName.trim() !== '') {
-                                            handleEditClassDayTitle(day.id, newName.trim());
-                                          }
-                                        }}
-                                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition-all cursor-pointer flex-shrink-0"
-                                        title="Click to rename class day title"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5" />
-                                      </button>
+                                      <div className="flex items-center gap-0.5 opacity-80 group-hover/th:opacity-100 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newName = prompt('Rename Class Day Title:', day.name);
+                                            if (newName && newName.trim() !== '') {
+                                              handleEditClassDayTitle(day.id, newName.trim());
+                                            }
+                                          }}
+                                          className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition-all cursor-pointer flex-shrink-0"
+                                          title="Rename class day title"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleClearClassDayRecords(day.id);
+                                          }}
+                                          className="p-1 hover:bg-amber-100 rounded text-slate-400 hover:text-amber-600 transition-all cursor-pointer flex-shrink-0"
+                                          title="Clear all attendance records for this day"
+                                        >
+                                          <RotateCcw className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteClassDay(day.id);
+                                          }}
+                                          className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 transition-all cursor-pointer flex-shrink-0"
+                                          title="Delete this class session completely"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                   <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 border border-slate-200 text-slate-600">
@@ -4187,6 +4436,34 @@ create policy "Allow public update" on app_states for update using (true) with c
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Clear all attendance records for the ${selectedStudentNames.length} selected student(s)?`)) {
+                          selectedStudentNames.forEach(name => {
+                            const key = name.toLowerCase().trim();
+                            setRecords(prev => prev.filter(r => (r.studentName || r.name || '').toLowerCase().trim() !== key));
+                            setExcusedAbsences(prev => {
+                              const copy = { ...prev };
+                              delete copy[key];
+                              return copy;
+                            });
+                          });
+                          logActivity({
+                            actor: appUser?.name || 'Admin',
+                            role: appUser?.role === 'student' ? 'student' : 'admin',
+                            actionCategory: 'Attendance Override',
+                            actionTitle: 'Batch Records Cleared',
+                            details: `Cleared attendance records for ${selectedStudentNames.length} selected students.`
+                          });
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                      title="Clear attendance history for all selected students"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Clear Attendance ({selectedStudentNames.length})
+                    </button>
+
                     <button
                       onClick={() => setShowBatchEmailModal(true)}
                       className="flex items-center gap-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
@@ -4623,16 +4900,38 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {!isPresent && (
-                              <button
-                                onClick={() => handleToggleExcusedAbsence(selectedStudent.name, day.id)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                                  isExcused ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-slate-200/80 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
-                                }`}
-                                title="Toggle excused absence"
-                              >
-                                {isExcused ? 'Unmark Excused' : 'Mark Excused'}
-                              </button>
+                            {appUser?.role !== 'student' && (
+                              <>
+                                <button
+                                  onClick={() => handleToggleStudentAttendance(selectedStudent.name, day.id, isPresent ? 'absent' : 'present')}
+                                  className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                    isPresent ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
+                                  }`}
+                                  title="Toggle Present / Absent"
+                                >
+                                  {isPresent ? 'Mark Absent' : 'Mark Present'}
+                                </button>
+                                {!isPresent && (
+                                  <button
+                                    onClick={() => handleToggleExcusedAbsence(selectedStudent.name, day.id)}
+                                    className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                      isExcused ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-slate-200/80 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
+                                    }`}
+                                    title="Toggle excused absence"
+                                  >
+                                    {isExcused ? 'Unmark Excused' : 'Mark Excused'}
+                                  </button>
+                                )}
+                                {(isPresent || isExcused || att) && (
+                                  <button
+                                    onClick={() => handleToggleStudentAttendance(selectedStudent.name, day.id, 'unmarked')}
+                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100/60 rounded transition-colors cursor-pointer"
+                                    title="Delete/Clear this day's attendance record"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </>
                             )}
                             <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                               isPresent ? 'bg-emerald-100 text-emerald-800' : isExcused ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
@@ -4668,14 +4967,27 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               </div>
 
               {/* Modal Footer */}
-              <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center flex-shrink-0">
-                <button 
-                  onClick={() => handleDeleteStudent(selectedStudent.name)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-rose-600 hover:bg-rose-100 hover:text-rose-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Exclude Student
-                </button>
+              <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleDeleteStudent(selectedStudent.name)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-rose-600 hover:bg-rose-100 hover:text-rose-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                    title="Remove student from local active roster"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Exclude Student
+                  </button>
+                  {appUser?.role !== 'student' && (
+                    <button
+                      onClick={() => handleClearStudentAttendanceRecords(selectedStudent.name)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-amber-700 hover:bg-amber-100 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                      title="Clear all attendance logs for this student"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Clear Attendance History
+                    </button>
+                  )}
+                </div>
                 <button 
                   onClick={() => {
                     setSelectedStudent(null);
@@ -4995,6 +5307,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         setAutoSyncInterval={setAutoSyncInterval}
         syncOnTabFocus={syncOnTabFocus}
         setSyncOnTabFocus={setSyncOnTabFocus}
+        sheetMergePolicy={sheetMergePolicy}
+        setSheetMergePolicy={setSheetMergePolicy}
         themeMode={themeMode}
         setThemeMode={setThemeMode}
         onExportBackup={handleExportBackup}
@@ -6067,6 +6381,19 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         />
       )}
 
+      {/* Sheet Merge Conflict Resolution Modal */}
+      {pendingConflicts.length > 0 && (
+        <SheetMergeConflictModal
+          isOpen={pendingConflicts.length > 0}
+          conflicts={pendingConflicts}
+          onResolve={handleResolveConflicts}
+          onCancel={() => {
+            setPendingConflicts([]);
+            setPendingSyncData(null);
+          }}
+        />
+      )}
+
       {/* Outstanding Payment Notice Banner for Students */}
       {showOutstandingPaymentBanner && studentPaymentSummary && studentPaymentSummary.hasOutstanding && (
         <OutstandingPaymentBanner
@@ -6114,6 +6441,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         onAddClassDay={handleAddClassDay}
         onEditClassDayTitle={handleEditClassDayTitle}
         onDeleteClassDay={handleDeleteClassDay}
+        onClearClassDayRecords={handleClearClassDayRecords}
         uniqueStudentsCount={uniqueStudents.length}
         classDayStats={classDayStats}
       />
@@ -6394,11 +6722,44 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         onNavigateTab={(tab) => setActiveErpTab(tab)}
       />
 
+      {/* Portal Global Footer */}
+      <footer className="mt-8 mb-16 md:mb-4 px-4 py-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-2.5">
+          <img
+            src={hteimLogoAsset}
+            alt="HTEIM Logo"
+            className="w-6 h-6 object-contain rounded-lg border border-amber-400 bg-white p-0.5"
+            referrerPolicy="no-referrer"
+          />
+          <div>
+            <p className="font-extrabold text-slate-800 dark:text-slate-200 font-syne">HTEIM School of Ministry</p>
+            <p className="text-[10px] text-slate-400 font-medium">Heaven Touching Earth Int'l Ministries • Academic Portal v2.4</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] font-medium italic font-serif text-slate-500">
+          <span>"Bringing Heaven to Earth, Taking People to Heaven"</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 rounded-full text-[10px] font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            System Operational
+          </span>
+          <button
+            onClick={() => setShowDiagnosticModal(true)}
+            className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+          >
+            Diagnostics
+          </button>
+        </div>
+      </footer>
+
       {/* Floating Quick Messages Launcher (Bottom Right) */}
-      <div className="fixed bottom-16 sm:bottom-6 right-4 sm:right-6 z-40">
+      <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50">
         <button
           onClick={() => setActiveErpTab('messages')}
-          className="px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-2xl shadow-indigo-600/50 flex items-center gap-2 border border-indigo-400/40 cursor-pointer hover:scale-105 active:scale-95 transition-all group"
+          className="px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-xl btn-glow-indigo flex items-center gap-2 border border-indigo-400/40 cursor-pointer active:scale-95 transition-all group touch-min-44"
           title="Direct Message Teacher or Admin"
         >
           <div className="relative">
@@ -6409,14 +6770,14 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               </span>
             )}
           </div>
-          <span className="hidden sm:inline font-black">Message Teacher / Admin</span>
-          <span className="sm:hidden font-black text-[11px]">Contact</span>
+          <span className="hidden sm:inline font-bold">Message Teacher / Admin</span>
+          <span className="sm:hidden font-bold text-[11px]">Contact</span>
         </button>
       </div>
 
       {/* MD3 Mobile Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-lg flex items-center justify-around md:hidden pb-safe"
-        style={{ boxShadow: '0 -2px 8px rgba(0,0,0,.08)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 mobile-nav-glass border-t border-slate-200/80 dark:border-slate-800 shadow-2xl flex items-center justify-around md:hidden pb-safe"
+        style={{ boxShadow: '0 -4px 20px rgba(0,0,0,.12)' }}>
         {[
           { tab: 'home',       Icon: Sparkles,      label: 'Home' },
           { tab: 'attendance', Icon: UserCheck,     label: 'Attendance', dot: uniqueStudents.length > 0 },
@@ -6427,18 +6788,18 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           <button
             key={tab}
             onClick={() => setActiveErpTab(tab)}
-            className="flex-1 min-w-0 min-h-[56px] py-2 px-1 flex flex-col items-center justify-center relative cursor-pointer transition-all"
+            className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center relative cursor-pointer active:scale-95 transition-all touch-min-44"
           >
             <div className={`relative flex items-center justify-center w-12 h-7 rounded-full transition-all ${
-              activeErpTab === tab ? 'md-nav-pill' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/30'
+              activeErpTab === tab ? 'md-nav-pill bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800' : 'text-slate-400 dark:text-slate-500'
             }`}>
-              <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
+              <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'}`} />
               {dot && activeErpTab !== tab && (
-                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900" />
+                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900" />
               )}
             </div>
-            <span className={`text-[10px] mt-1 font-medium leading-none truncate max-w-full transition-all ${
-              activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-400 font-bold' : 'text-slate-400 dark:text-slate-500'
+            <span className={`text-[10px] mt-1 font-bold leading-none truncate max-w-full transition-all ${
+              activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-300 font-extrabold' : 'text-slate-400 dark:text-slate-500'
             }`}>{label}</span>
           </button>
         ))}
@@ -6446,20 +6807,20 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         {/* More button */}
         <button
           onClick={() => setShowMobileMoreMenu(true)}
-          className="flex-1 min-w-0 min-h-[56px] py-2 px-1 flex flex-col items-center justify-center cursor-pointer transition-all"
+          className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all touch-min-44"
         >
           <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${
             showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
-              ? 'md-nav-pill' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/30'
+              ? 'md-nav-pill bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800' : 'text-slate-400 dark:text-slate-500'
           }`}>
             <Menu className={`w-5 h-5 ${
               showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
-                ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+                ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
             }`} />
           </div>
-          <span className={`text-[10px] mt-1 font-medium leading-none ${
+          <span className={`text-[10px] mt-1 font-bold leading-none ${
             showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
-              ? 'text-indigo-700 dark:text-indigo-400 font-bold' : 'text-slate-400 dark:text-slate-500'
+              ? 'text-indigo-700 dark:text-indigo-300 font-extrabold' : 'text-slate-400 dark:text-slate-500'
           }`}>More</span>
         </button>
       </nav>

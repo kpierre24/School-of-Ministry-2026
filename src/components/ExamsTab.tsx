@@ -39,7 +39,8 @@ import {
   Loader2,
   Bookmark,
   ShieldCheck,
-  CloudDownload
+  CloudDownload,
+  UploadCloud
 } from 'lucide-react';
 
 import { UserRole } from '../lib/userAuth';
@@ -83,6 +84,7 @@ interface ExamsTabProps {
   setSheetUrl?: (url: string) => void;
   onLoadSheets?: (e?: React.FormEvent, customUrl?: string) => Promise<void>;
   isLoadingSheets?: boolean;
+  lastSyncedTime?: string | null;
   recentSheets?: { id: string; title: string; url: string; lastLoaded?: string }[];
   onRemoveRecentSheet?: (id: string, e: React.MouseEvent) => void;
 }
@@ -306,11 +308,24 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   setSheetUrl,
   onLoadSheets,
   isLoadingSheets,
+  lastSyncedTime,
   recentSheets = [],
   onRemoveRecentSheet
 }) => {
   const isStudent = userRole === 'student';
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Sub tab view: 'assignments' (default) vs 'quizzes' vs 'admin_dashboard'
   const [subTab, setSubTab] = useState<'assignments' | 'quizzes' | 'admin_dashboard'>('assignments');
@@ -584,6 +599,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [uploadNotes, setUploadNotes] = useState('');
   const [uploadTypedResponse, setUploadTypedResponse] = useState('');
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isDraggingUpload, setIsDraggingUpload] = useState(false);
 
   // 3. Teacher Correction Form
   const [correctionScore, setCorrectionScore] = useState<number>(95);
@@ -597,6 +613,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [targetAssignmentId, setTargetAssignmentId] = useState('');
   const [directStudentFileName, setDirectStudentFileName] = useState('');
   const [directStudentFileUrl, setDirectStudentFileUrl] = useState('');
+  const [directStudentFiles, setDirectStudentFiles] = useState<{ name: string; url: string; type?: string }[]>([]);
   const [directStudentNotes, setDirectStudentNotes] = useState('');
 
   // Identify Student Profile
@@ -674,6 +691,53 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     } catch (err) {
       console.error("File upload error:", err);
       setIsUploadingFile(false);
+    }
+  };
+
+  // Helper Multi-File Upload Handler for Batch Document Processing
+  const handleMultiFileUpload = async (
+    files: FileList | File[],
+    onCompleteMany: (uploadedFiles: { url: string; name: string; type?: string }[]) => void,
+    bucketName: string = 'assignments'
+  ) => {
+    if (!files || files.length === 0) return;
+
+    setIsUploadingFile(true);
+    const fileList = Array.from(files);
+    const results: { url: string; name: string; type?: string }[] = [];
+
+    for (const file of fileList) {
+      try {
+        const base64Url = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => resolve(evt.target?.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+
+        try {
+          const publicUrl = await uploadToSupabaseStorage(bucketName, file.name, file);
+          results.push({
+            url: publicUrl || base64Url,
+            name: file.name,
+            type: file.type
+          });
+        } catch (err) {
+          console.error("Supabase Storage upload failed, using local fallback URL:", err);
+          results.push({
+            url: base64Url,
+            name: file.name,
+            type: file.type
+          });
+        }
+      } catch (err) {
+        console.error("Multi-file upload error for", file.name, err);
+      }
+    }
+
+    setIsUploadingFile(false);
+    if (results.length > 0) {
+      onCompleteMany(results);
     }
   };
 
@@ -989,10 +1053,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     if (existing) {
       setDirectStudentFileName(existing.studentFileName || '');
       setDirectStudentFileUrl(existing.studentFileUrl || '');
+      setDirectStudentFiles(existing.studentFiles || (existing.studentFileUrl ? [{ name: existing.studentFileName || 'Student_File.pdf', url: existing.studentFileUrl }] : []));
       setDirectStudentNotes(existing.studentNotes || '');
     } else {
       setDirectStudentFileName('');
       setDirectStudentFileUrl('');
+      setDirectStudentFiles([]);
       setDirectStudentNotes('');
     }
 
@@ -1008,12 +1074,15 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       s => s.assignmentId === targetAssignmentId && s.studentName.toLowerCase().trim() === targetStudentName.toLowerCase().trim()
     );
 
+    const firstFile = directStudentFiles[0];
+
     if (existingIndex >= 0) {
       const updated = [...submissions];
       updated[existingIndex] = {
         ...updated[existingIndex],
-        studentFileName: directStudentFileName || 'Teacher_Uploaded_Student_File.pdf',
-        studentFileUrl: directStudentFileUrl || updated[existingIndex].studentFileUrl,
+        studentFileName: firstFile?.name || directStudentFileName || 'Teacher_Uploaded_Student_File.pdf',
+        studentFileUrl: firstFile?.url || directStudentFileUrl || updated[existingIndex].studentFileUrl,
+        studentFiles: directStudentFiles,
         studentNotes: directStudentNotes,
         updatedAt: nowStr
       };
@@ -1024,8 +1093,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         assignmentId: targetAssignmentId,
         studentName: targetStudentName,
         submittedAt: nowStr,
-        studentFileName: directStudentFileName || 'Teacher_Uploaded_Student_File.pdf',
-        studentFileUrl: directStudentFileUrl || 'data:text/plain;base64,VVBMT0FERUQgQllBIEZBQ1VMVFkgRk9SIFNUVURFTlQ=',
+        studentFileName: firstFile?.name || directStudentFileName || 'Teacher_Uploaded_Student_File.pdf',
+        studentFileUrl: firstFile?.url || directStudentFileUrl || 'data:text/plain;base64,VVBMT0FERUQgQllBIEZBQ1VMVFkgRk9SIFNUVURFTlQ=',
+        studentFiles: directStudentFiles,
         studentNotes: directStudentNotes,
         status: 'Submitted',
         updatedAt: nowStr
@@ -2012,7 +2082,27 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end"
                 >
                   <div className="md:col-span-8 space-y-1.5">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Google Spreadsheet URL</label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Google Spreadsheet URL</label>
+                      <div className="flex items-center gap-2">
+                        {isOnline ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Offline Fallback Mode
+                          </span>
+                        )}
+                        {lastSyncedTime && (
+                          <span className="text-[10px] text-slate-400 font-bold bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full">
+                            Last Synced: {lastSyncedTime}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <input 
                       type="url" 
                       required
@@ -2454,38 +2544,113 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <p className="text-[10px] text-slate-500">You can type your response above, upload a document file below, or do both!</p>
               </div>
 
-              <div className="space-y-1.5 pt-1 border-t border-slate-100">
-                <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <FileUp className="w-4 h-4 text-indigo-600 shrink-0" /> Upload Documents or Images (Multiple Allowed)
-                </label>
-                {isUploadingFile ? (
-                  <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse font-bold text-xs w-full">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0" />
-                    <span>Uploading assignment document...</span>
-                  </div>
-                ) : (
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,image/*"
-                    onChange={(e) => handleFileUpload(e, (url, name, type) => {
-                      if (url && name) {
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                    <FileUp className="w-4 h-4 text-indigo-600 shrink-0" /> Upload Documents or Images
+                  </label>
+                  <span className="text-[10px] font-extrabold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200/80">
+                    Multi-Document Upload Enabled
+                  </span>
+                </div>
+
+                {/* Drag and Drop Dropzone Zone */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingUpload(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); setIsDraggingUpload(false); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingUpload(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleMultiFileUpload(e.dataTransfer.files, (newFiles) => {
                         setUploadFilesList(prev => {
-                          if (prev.some(f => f.name === name)) return prev;
-                          return [...prev, { name, url, type }];
+                          const existingNames = new Set(prev.map(f => f.name));
+                          const filteredNew = newFiles.filter(f => !existingNames.has(f.name));
+                          const combined = [...prev, ...filteredNew];
+                          if (combined.length > 0) {
+                            setUploadFileName(combined[0].name);
+                            setUploadFileUrl(combined[0].url);
+                            setUploadFileType(combined[0].type || '');
+                          }
+                          return combined;
                         });
-                        setUploadFileName(name);
-                        setUploadFileUrl(url);
-                        setUploadFileType(type || '');
-                      }
-                      e.target.value = '';
-                    })}
-                    className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
-                  />
-                )}
+                      });
+                    }
+                  }}
+                  className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
+                    isDraggingUpload
+                      ? 'border-indigo-500 bg-indigo-50/80 scale-[1.01]'
+                      : 'border-slate-200 hover:border-indigo-300 bg-slate-50/50'
+                  }`}
+                >
+                  {isUploadingFile ? (
+                    <div className="flex flex-col items-center justify-center py-3 space-y-2 text-indigo-700">
+                      <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                      <p className="text-xs font-bold">Uploading assignment documents to portal storage...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">
+                          Drag & drop multiple files here, or choose files
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Upload multiple PDF, Word (.docx), TXT, PNG, or JPG files at once
+                        </p>
+                      </div>
+
+                      <div className="pt-1">
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,image/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              handleMultiFileUpload(e.target.files, (newFiles) => {
+                                setUploadFilesList(prev => {
+                                  const existingNames = new Set(prev.map(f => f.name));
+                                  const filteredNew = newFiles.filter(f => !existingNames.has(f.name));
+                                  const combined = [...prev, ...filteredNew];
+                                  if (combined.length > 0) {
+                                    setUploadFileName(combined[0].name);
+                                    setUploadFileUrl(combined[0].url);
+                                    setUploadFileType(combined[0].type || '');
+                                  }
+                                  return combined;
+                                });
+                              });
+                              e.target.value = '';
+                            }
+                          }}
+                          className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 {uploadFilesList.length > 0 ? (
                   <div className="space-y-2 mt-2">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ready for Submission ({uploadFilesList.length})</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Documents Selected ({uploadFilesList.length})
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadFilesList([]);
+                          setUploadFileName('');
+                          setUploadFileUrl('');
+                          setUploadFileType('');
+                        }}
+                        className="text-[10px] text-rose-600 hover:underline font-bold cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                       {uploadFilesList.map((file, idx) => {
                         const isImage = file.url?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
@@ -2786,19 +2951,71 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Upload / Replace Response File</label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700">Upload / Replace Documents (Multiple Allowed)</label>
+                  <span className="text-[10px] font-extrabold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
+                    Multi-Upload
+                  </span>
+                </div>
                 <input
                   type="file"
-                  onChange={(e) => handleFileUpload(e, (url, name) => {
-                    setDirectStudentFileUrl(url);
-                    setDirectStudentFileName(name);
-                  })}
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleMultiFileUpload(e.target.files, (newFiles) => {
+                        setDirectStudentFiles(prev => {
+                          const existingNames = new Set(prev.map(f => f.name));
+                          const filtered = newFiles.filter(f => !existingNames.has(f.name));
+                          const combined = [...prev, ...filtered];
+                          if (combined.length > 0) {
+                            setDirectStudentFileName(combined[0].name);
+                            setDirectStudentFileUrl(combined[0].url);
+                          }
+                          return combined;
+                        });
+                      });
+                      e.target.value = '';
+                    }
+                  }}
                   className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer"
                 />
-                {directStudentFileName && (
+
+                {directStudentFiles.length > 0 ? (
+                  <div className="space-y-1.5 mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Attached Documents ({directStudentFiles.length})</p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                      {directStudentFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200 text-xs">
+                          <span className="font-bold text-slate-800 truncate flex-1">📄 {file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDirectStudentFiles(prev => {
+                                const filtered = prev.filter((_, i) => i !== idx);
+                                if (filtered.length > 0) {
+                                  setDirectStudentFileName(filtered[0].name);
+                                  setDirectStudentFileUrl(filtered[0].url);
+                                } else {
+                                  setDirectStudentFileName('');
+                                  setDirectStudentFileUrl('');
+                                }
+                                return filtered;
+                              });
+                            }}
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="Remove file"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : directStudentFileName ? (
                   <p className="text-[11px] text-emerald-700 font-bold mt-1">Selected File: {directStudentFileName}</p>
-                )}
+                ) : null}
               </div>
 
               <div className="space-y-1">

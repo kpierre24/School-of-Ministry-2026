@@ -280,40 +280,40 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-indigo-400" />
-              <h2 className="text-xl font-black tracking-tight">Student Enrolment Directory</h2>
+              <GraduationCap className="w-6 h-6 text-indigo-400 shrink-0" />
+              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight font-syne text-white">Student Enrolment Directory</h2>
             </div>
-            <p className="text-xs text-indigo-200 mt-1">
+            <p className="text-xs text-indigo-200 mt-1 max-w-2xl font-sans">
               Centralized management of student profiles, attendance records, academic standing, and official transcripts.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-indigo-900/60 border border-indigo-700/50 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-indigo-200">
-            <Sparkles className="w-4 h-4 text-amber-400" />
+          <div className="flex items-center gap-2 bg-indigo-900/80 border border-indigo-700/60 px-3.5 py-1.5 rounded-xl text-xs font-jetbrains font-bold text-indigo-200 shadow-xs">
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
             <span>HTEIM Ministry Cohort 2026</span>
           </div>
         </div>
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-3.5">
-            <p className="text-[10px] font-bold uppercase text-indigo-200">Total Enrolled</p>
-            <p className="text-2xl font-black font-mono mt-1 text-white">{totalStudents}</p>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Ministry Candidates</p>
+          <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition-all hover:bg-white/15">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200 font-jetbrains">Total Enrolled</p>
+            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-white">{totalStudents}</p>
+            <p className="text-[10px] text-indigo-300 mt-0.5 font-medium">Ministry Candidates</p>
           </div>
-          <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 rounded-xl p-3.5">
-            <p className="text-[10px] font-bold uppercase text-emerald-200">Satisfactory Standing</p>
-            <p className="text-2xl font-black font-mono mt-1 text-emerald-300">{satisfactoryStudents}</p>
-            <p className="text-[10px] text-emerald-200 mt-0.5">&ge; {satisfactoryThreshold}% Attendance</p>
+          <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/35 rounded-2xl p-4 transition-all hover:bg-emerald-500/25">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 font-jetbrains">Satisfactory Standing</p>
+            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-emerald-300">{satisfactoryStudents}</p>
+            <p className="text-[10px] text-emerald-200 mt-0.5 font-medium">&ge; {satisfactoryThreshold}% Attendance</p>
           </div>
-          <div className="bg-amber-500/20 backdrop-blur-md border border-amber-500/30 rounded-xl p-3.5">
-            <p className="text-[10px] font-bold uppercase text-amber-200">Perfect Attendance</p>
-            <p className="text-2xl font-black font-mono mt-1 text-amber-300">{perfectStudents}</p>
-            <p className="text-[10px] text-amber-200 mt-0.5">100% Session Commendation</p>
+          <div className="bg-amber-500/20 backdrop-blur-md border border-amber-500/35 rounded-2xl p-4 transition-all hover:bg-amber-500/25">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-200 font-jetbrains">Perfect Attendance</p>
+            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-amber-300">{perfectStudents}</p>
+            <p className="text-[10px] text-amber-200 mt-0.5 font-medium">100% Session Commendation</p>
           </div>
-          <div className="bg-rose-500/20 backdrop-blur-md border border-rose-500/30 rounded-xl p-3.5">
-            <p className="text-[10px] font-bold uppercase text-rose-200">At-Risk Alert</p>
-            <p className="text-2xl font-black font-mono mt-1 text-rose-300">{atRiskStudents}</p>
-            <p className="text-[10px] text-rose-200 mt-0.5">&lt; {atRiskThreshold}% Attendance</p>
+          <div className="bg-rose-500/20 backdrop-blur-md border border-rose-500/35 rounded-2xl p-4 transition-all hover:bg-rose-500/25">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-200 font-jetbrains">At-Risk Alert</p>
+            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-rose-300">{atRiskStudents}</p>
+            <p className="text-[10px] text-rose-200 mt-0.5 font-medium">&lt; {atRiskThreshold}% Attendance</p>
           </div>
         </div>
       </div>

@@ -46,6 +46,8 @@ interface SettingsModalProps {
   setAutoSyncInterval: (val: number) => void;
   syncOnTabFocus: boolean;
   setSyncOnTabFocus: (val: boolean) => void;
+  sheetMergePolicy: 'sheets' | 'manual' | 'prompt';
+  setSheetMergePolicy: (val: 'sheets' | 'manual' | 'prompt') => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   onResetAllData?: () => void;
@@ -68,6 +70,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   setAutoSyncInterval,
   syncOnTabFocus,
   setSyncOnTabFocus,
+  sheetMergePolicy,
+  setSheetMergePolicy,
   themeMode,
   setThemeMode,
   onResetAllData,
@@ -652,6 +656,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                         <span>Auto-sync attendance data when switching browser tabs</span>
                       </label>
+
+                      {/* Google Sheets Sync Merge Policy */}
+                      <div className="border-t border-slate-200 pt-3 mt-1">
+                        <label className="block font-bold text-slate-700 mb-1">Sheets Sync Conflict Merge Policy</label>
+                        <select
+                          value={sheetMergePolicy}
+                          onChange={(e) => setSheetMergePolicy(e.target.value as any)}
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        >
+                          <option value="sheets">Always Prefer Google Sheets (Overwrite Local Overrides)</option>
+                          <option value="manual">Always Prefer Local Manual Overrides</option>
+                          <option value="prompt">Prompt with Conflict Resolution Modal</option>
+                        </select>
+                        <p className="text-[10px] text-slate-500 mt-1 leading-normal">
+                          Decides what happens when attendance data imported from Google Sheets differs from manual edits you made inside the portal.
+                        </p>
+                      </div>
                     </div>
                   </div>
 

@@ -21,7 +21,7 @@ interface SwipeableAttendanceCardProps {
   satisfactoryThreshold: number;
   atRiskThreshold: number;
   studentBadges: any[];
-  onToggleAttendance: (studentName: string, dayId: string, status: 'present' | 'absent' | 'excused') => void;
+  onToggleAttendance: (studentName: string, dayId: string, status: 'present' | 'absent' | 'excused' | 'unmarked') => void;
   onSelectStudent: (s: StudentSummary) => void;
   onToggleSelectStudent: (name: string) => void;
   appRole?: string;
