@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { AppMessage, MessageCategory, MessagePriority, MessageReply, MessageAttachment } from '../types';
 import { AppUser } from '../lib/userAuth';
+import { sanitizeInput } from '../lib/securityHelper';
 
 export const INITIAL_MESSAGES: AppMessage[] = [
   {
@@ -252,7 +253,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
     if (!subject.trim() || !content.trim()) return;
 
     onSendMessage({
-      subject,
+      subject: sanitizeInput(subject),
       category,
       priority,
       senderName: currentUserName,
@@ -261,7 +262,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
       senderStudentId: appUser?.studentId,
       recipientType: recipientName.includes('Student') ? 'student' : (recipientName.includes('Faculty') || recipientName.includes('Teacher') ? 'teacher' : 'admin'),
       recipientName,
-      content,
+      content: sanitizeInput(content),
       attachments: []
     });
 
@@ -274,7 +275,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
     e.preventDefault();
     if (!activeMessage || !replyText.trim()) return;
 
-    onReplyMessage(activeMessage.id, replyText, []);
+    onReplyMessage(activeMessage.id, sanitizeInput(replyText), []);
     setReplyText('');
   };
 

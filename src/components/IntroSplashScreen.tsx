@@ -22,8 +22,8 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
       setStartTypewriter(true);
     }, 800);
 
-    // Auto complete the intro after typewriter finishes + a short reading delay
-    const totalDuration = 800 + (titleChars.length * 80) + 1200;
+    // Auto complete the intro after typewriter finishes + a longer reading delay (3200ms instead of 1200ms)
+    const totalDuration = 800 + (titleChars.length * 80) + 3200;
     const completeTimer = setTimeout(() => {
       setAnimationFinished(true);
       // Give a tiny fadeout window

@@ -731,21 +731,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           </p>
         </div>
 
-        {isStudent ? (
-          <div className="relative group flex-shrink-0">
-            <button
-              disabled
-              className="px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs rounded-xl flex items-center gap-2 cursor-not-allowed opacity-80"
-            >
-              <Lock className="w-4 h-4 text-amber-400" />
-              <span>Upload Lesson Files</span>
-            </button>
-            <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              <span>Requires Instructor or Administrator Privileges</span>
-            </div>
-          </div>
-        ) : (
+        {!isStudent && (
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleSyncFromSupabaseStorage}

@@ -18,6 +18,7 @@ import {
   Phone
 } from 'lucide-react';
 import { AppNotification } from '../types';
+import { sanitizeInput } from '../lib/securityHelper';
 
 interface BatchAnnouncementModalProps {
   isOpen: boolean;
@@ -125,11 +126,14 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
 
     setIsSending(true);
 
+    const safeSubject = sanitizeInput(subject);
+    const safeMessage = sanitizeInput(message);
+
     setTimeout(() => {
       const newLog: BroadcastLog = {
         id: `bcast-${Date.now()}`,
-        title: subject,
-        message,
+        title: safeSubject,
+        message: safeMessage,
         channel: channel.toUpperCase(),
         targetGroup: targetGroup === 'all' ? 'All Students' : targetGroup === 'pending_tuition' ? 'Pending Tuition' : 'Active Students',
         sentAt: new Date().toLocaleString(),
@@ -139,8 +143,8 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
 
       setHistory(prev => [newLog, ...prev]);
       onSendBroadcast({
-        title: subject,
-        message,
+        title: safeSubject,
+        message: safeMessage,
         channel,
         targetGroup,
         recipientCount: targetStudents.length || availableStudents.length

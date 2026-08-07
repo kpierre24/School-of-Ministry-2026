@@ -1204,21 +1204,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </>
             )}
 
-            {isStudent && subTab === 'assignments' && (
-              <div className="relative group flex-1 sm:flex-none">
-                <button
-                  disabled
-                  className="w-full sm:w-auto px-3.5 sm:px-4 py-2 bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-not-allowed opacity-80"
-                >
-                  <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Add Assignment</span>
-                </button>
-                <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>Requires Instructor or Administrator Privileges</span>
-                </div>
-              </div>
-            )}
+
 
             <button
               onClick={exportExamsCSV}

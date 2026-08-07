@@ -400,13 +400,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
             </div>
           </div>
 
-          {/* Download Transcript & Certificate Buttons for Student (Locked until end of course) */}
-          <div className="flex items-center gap-2.5 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3.5 py-2 rounded-xl text-xs text-indigo-200">
-              <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Transcripts & Certificates unlock at course completion</span>
-            </div>
-          </div>
+
         </div>
 
         {/* Graduation Readiness Visual Bar */}

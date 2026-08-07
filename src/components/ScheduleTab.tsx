@@ -676,21 +676,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           </div>
 
           {/* + Schedule Lecture Button with Restricted Hover Tooltip */}
-          {isStudent ? (
-            <div className="relative group">
-              <button
-                disabled
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed opacity-80"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Schedule Lecture</span>
-              </button>
-              <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                <span>Requires Instructor or Administrator Privileges</span>
-              </div>
-            </div>
-          ) : (
+          {!isStudent && (
             <button
               onClick={() => handleOpenAddModal()}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:scale-95"
@@ -784,21 +770,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
               <ExternalLink className="w-3 h-3 text-blue-200" />
             </a>
 
-            {isStudent ? (
-              <div className="relative group">
-                <button
-                  disabled
-                  className="px-3 py-2.5 bg-slate-900/80 text-slate-400 border border-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed opacity-75"
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden xl:inline">Exception Alert</span>
-                </button>
-                <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-amber-300 text-[10px] font-bold rounded-lg border border-amber-500/30 shadow-xl whitespace-nowrap z-50 animate-fadeIn">
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Requires Instructor or Administrator Privileges</span>
-                </div>
-              </div>
-            ) : (
+            {!isStudent && (
               <button
                 type="button"
                 onClick={() => setShowZoomExceptionModal(true)}

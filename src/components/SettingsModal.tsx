@@ -261,31 +261,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span>Appearance</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('academic')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'academic'
-                ? 'bg-white text-emerald-700 shadow-2xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Academic Thresholds</span>
-            {isStudent && <Lock className="w-3 h-3 text-amber-600" />}
-          </button>
+          {!isStudent && (
+            <>
+              <button
+                onClick={() => setActiveTab('academic')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'academic'
+                    ? 'bg-white text-emerald-700 shadow-2xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Academic Thresholds</span>
+              </button>
 
-          <button
-            onClick={() => setActiveTab('sync')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'sync'
-                ? 'bg-white text-amber-700 shadow-2xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>Sync & Backup</span>
-            {isStudent && <Lock className="w-3 h-3 text-rose-500" />}
-          </button>
+              <button
+                onClick={() => setActiveTab('sync')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'sync'
+                    ? 'bg-white text-amber-700 shadow-2xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span>Sync & Backup</span>
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => setActiveTab('about')}

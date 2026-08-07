@@ -81,36 +81,87 @@ export const SupabaseDiagnosticModal: React.FC<SupabaseDiagnosticModalProps> = (
   };
 
   const copySqlGuide = () => {
-    const sqlText = `-- 1. Create app_state table if not exists
+    const sqlText = `-- ========================================================
+-- HEAVEN TOUCHING EARTH SCHOOL OF MINISTRY (HTEIM)
+-- ADVANCED SUPABASE SECURITY & RLS POLICIES
+-- ========================================================
+
+-- 1. DATABASE SCHEMA SETUP
+-- Setup state synchronization table for HTEIM Portal
 CREATE TABLE IF NOT EXISTS public.app_state (
   email text PRIMARY KEY,
   data jsonb NOT NULL,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable RLS & add public access policies for app_state
+-- Enable Row Level Security (RLS) on Database Tables
 ALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public read app_state" ON public.app_state
-  FOR SELECT USING (true);
+-- POLICY A: SECURE STUDENT-ISOLATED ACCESS (RECOMMENDED)
+-- Students can only read/write their own state; Admins can read/write everything.
+CREATE POLICY "Student Isolated Read" ON public.app_state
+  FOR SELECT USING (
+    (auth.jwt() ->> 'email') = email 
+    OR (auth.jwt() ->> 'role' = 'service_role')
+  );
 
-CREATE POLICY "Allow public insert/update app_state" ON public.app_state
-  FOR ALL USING (true);
+CREATE POLICY "Student Isolated Upsert" ON public.app_state
+  FOR ALL WITH CHECK (
+    (auth.jwt() ->> 'email') = email 
+    OR (auth.jwt() ->> 'role' = 'service_role')
+  );
 
--- 2. Storage Buckets (library, assignments, classroom_media)
--- In Supabase Dashboard -> Storage -> Create New Buckets:
--- Bucket Names: 'library', 'assignments', 'classroom_media'
--- Check the box: "Public bucket"
+-- POLICY B: DELEGATED ACCESS (ANONYMOUS CLIENT FALLBACK)
+-- Use this if you are using anonymous public token clients
+-- CREATE POLICY "Delegated SELECT" ON public.app_state FOR SELECT USING (true);
+-- CREATE POLICY "Delegated ALL" ON public.app_state FOR ALL USING (true);
 
--- Storage RLS Policies for 'library' and 'assignments'
-CREATE POLICY "Public Read Library" ON storage.objects
+
+-- 2. STORAGE BUCKET ROW LEVEL SECURITY (RLS)
+-- Go to Supabase Dashboard -> Storage -> Create Buckets: 'library', 'assignments', 'classroom_media'
+-- Enforce proper policies to prevent unauthorized file manipulation.
+
+-- Allow public read access to all public portal files
+CREATE POLICY "Public Read Access" ON storage.objects
   FOR SELECT USING (bucket_id IN ('library', 'assignments', 'classroom_media'));
 
-CREATE POLICY "Public Upload Library" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id IN ('library', 'assignments', 'classroom_media'));
+-- LIBRARY BUCKET: Only admins/instructors can write, upload or delete
+CREATE POLICY "Library Admin Insert" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'library' 
+    AND (
+      (auth.jwt() ->> 'email') IN ('kpierre24@gmail.com', 'admin@hteim.org') 
+      OR (auth.jwt() ->> 'role' = 'service_role')
+    )
+  );
 
-CREATE POLICY "Public Update Library" ON storage.objects
-  FOR UPDATE USING (bucket_id IN ('library', 'assignments', 'classroom_media'));
+CREATE POLICY "Library Admin Delete" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'library' 
+    AND (
+      (auth.jwt() ->> 'email') IN ('kpierre24@gmail.com', 'admin@hteim.org') 
+      OR (auth.jwt() ->> 'role' = 'service_role')
+    )
+  );
+
+-- ASSIGNMENTS BUCKET: Authenticated students can upload, admins can review and delete
+CREATE POLICY "Student Assignment Upload" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'assignments' 
+    AND (
+      (auth.jwt() ->> 'email') IS NOT NULL
+      OR (auth.jwt() ->> 'role' = 'service_role')
+    )
+  );
+
+CREATE POLICY "Assignments Admin Control" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'assignments'
+    AND (
+      (auth.jwt() ->> 'email') IN ('kpierre24@gmail.com', 'admin@hteim.org')
+      OR (auth.jwt() ->> 'role' = 'service_role')
+    )
+  );
 `;
     navigator.clipboard.writeText(sqlText);
     setCopiedText(true);
@@ -526,25 +577,39 @@ CREATE POLICY "Public Update Library" ON storage.objects
                       </button>
                     </div>
                     <pre className="p-4 text-xs font-mono text-emerald-400 overflow-x-auto leading-relaxed max-h-72">
-{`-- 1. Create app_state table if not exists
+{`-- HEAVEN TOUCHING EARTH SCHOOL OF MINISTRY (HTEIM)
+-- 1. Create app_state table if not exists
 CREATE TABLE IF NOT EXISTS public.app_state (
   email text PRIMARY KEY,
   data jsonb NOT NULL,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable RLS & add public access policies for app_state
+-- Enable RLS for database row protection
 ALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public read app_state" ON public.app_state
-  FOR SELECT USING (true);
+-- Policy: Only allow users to read/update their own state row
+CREATE POLICY "Student Isolated Read" ON public.app_state
+  FOR SELECT USING ((auth.jwt() ->> 'email') = email OR (auth.jwt() ->> 'role' = 'service_role'));
 
-CREATE POLICY "Allow public insert/update app_state" ON public.app_state
-  FOR ALL USING (true);
+CREATE POLICY "Student Isolated Upsert" ON public.app_state
+  FOR ALL WITH CHECK ((auth.jwt() ->> 'email') = email OR (auth.jwt() ->> 'role' = 'service_role'));
 
--- 2. Storage Buckets Setup
--- Go to Supabase Dashboard -> Storage -> Create Buckets: 'library', 'assignments', 'classroom_media'
--- Enable "Public Bucket" checkbox on each.`}
+-- 2. Storage Buckets (library, assignments, classroom_media)
+-- Go to Supabase -> Storage and create these public buckets.
+-- Enforce policies: Read access is public, but writes are role-restricted:
+
+-- Read access to all files
+CREATE POLICY "Public Read Access" ON storage.objects
+  FOR SELECT USING (bucket_id IN ('library', 'assignments', 'classroom_media'));
+
+-- Library bucket: Only Admins/Instructors can upload/delete
+CREATE POLICY "Library Admin Insert" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'library' AND ((auth.jwt() ->> 'email') IN ('kpierre24@gmail.com', 'admin@hteim.org')));
+
+-- Assignments bucket: Students can upload, admins manage
+CREATE POLICY "Student Assignment Upload" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'assignments' AND ((auth.jwt() ->> 'email') IS NOT NULL));`}
                     </pre>
                   </div>
                 </div>

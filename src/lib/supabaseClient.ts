@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeFileName } from './securityHelper';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mjaloptcpeytvecbxbza.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qYWxvcHRjcGV5dHZlY2J4YnphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MjQ1NjksImV4cCI6MjEwMTAwMDU2OX0.0eT8NJxGDMsPzh-y3w4LEt-oFxwkfiEIizBUY67DaFE';
@@ -44,7 +45,7 @@ export async function uploadToSupabaseStorage(
   }
 
   // Generate a clean and uniquely prefixed path to prevent name collision or cache issues
-  const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const cleanFileName = sanitizeFileName(fileName);
   const uniquePath = `${Date.now()}_${cleanFileName}`;
 
   try {
