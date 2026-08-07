@@ -212,18 +212,21 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         badge: 'Admin',
         badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
         action: () => { onOpenBatchBroadcast(); onClose(); }
-      },
-      {
-        id: 'action-admin-tools',
-        category: 'Actions & Views',
-        title: 'Admin Audit Trail & Database Backup Suite',
-        subtitle: 'Inspect system logs, security audit history & JSON backups',
-        icon: <ShieldCheck className="w-4 h-4 text-amber-500" />,
-        badge: 'Security',
-        badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
-        action: () => { onOpenAdminTools(); onClose(); }
       }
     );
+  }
+
+  if (appUser?.role === 'admin') {
+    allItems.push({
+      id: 'action-admin-tools',
+      category: 'Actions & Views',
+      title: 'Admin Audit Trail & Database Backup Suite',
+      subtitle: 'Inspect system logs, security audit history & JSON backups',
+      icon: <ShieldCheck className="w-4 h-4 text-amber-500" />,
+      badge: 'Security',
+      badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
+      action: () => { onOpenAdminTools(); onClose(); }
+    });
   }
 
   allItems.push(

@@ -22,6 +22,7 @@ interface SupabaseDiagnosticModalProps {
   isOpen: boolean;
   onClose: () => void;
   userEmail?: string;
+  userRole?: string;
   onRefreshData?: () => void;
 }
 
@@ -29,6 +30,7 @@ export const SupabaseDiagnosticModal: React.FC<SupabaseDiagnosticModalProps> = (
   isOpen,
   onClose,
   userEmail,
+  userRole,
   onRefreshData
 }) => {
   const [loading, setLoading] = useState(false);
@@ -58,6 +60,28 @@ export const SupabaseDiagnosticModal: React.FC<SupabaseDiagnosticModalProps> = (
   }, [isOpen, userEmail]);
 
   if (!isOpen) return null;
+
+  if (userRole && userRole !== 'admin') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Admin Restricted Diagnostics</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Storage and database diagnostics are restricted strictly to portal Administrators.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleTestUpload = async (bucket: 'library' | 'assignments') => {
     setTestUploadStatus(`Uploading test file to ${bucket} bucket...`);

@@ -778,7 +778,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </h3>
 
                     <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                      {onOpenAdminTools && (
+                      {onOpenAdminTools && userRole === 'admin' && (
                         <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-3.5 rounded-xl text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-indigo-800/80">
                           <div>
                             <h4 className="font-extrabold text-amber-300 text-xs flex items-center gap-1.5">

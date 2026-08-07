@@ -3008,87 +3008,87 @@ create policy "Allow public update" on app_states for update using (true) with c
               <Search className="w-4 h-4" />
             </button>
 
-            {/* Tools Dropdown */}
-            <div className="relative shrink-0 hidden md:block">
-              <button
-                onClick={() => setShowToolsMenu(!showToolsMenu)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  showToolsMenu
-                    ? 'bg-indigo-600 text-white border-indigo-500'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Tools</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${showToolsMenu ? 'rotate-180' : ''}`} />
-              </button>
+            {/* Tools Dropdown - Admin Only */}
+            {appUser?.role === 'admin' && (
+              <div className="relative shrink-0 hidden md:block">
+                <button
+                  onClick={() => setShowToolsMenu(!showToolsMenu)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                    showToolsMenu
+                      ? 'bg-indigo-600 text-white border-indigo-500'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Tools</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showToolsMenu ? 'rotate-180' : ''}`} />
+                </button>
 
-              {showToolsMenu && (
-                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-[70] space-y-3"
-                  style={{ boxShadow: 'var(--md-elev-3)' }}>
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Tools & Operations
-                    </h4>
-                    <button onClick={() => setShowToolsMenu(false)} className="md-icon-btn w-6 h-6">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                {showToolsMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-[70] space-y-3"
+                    style={{ boxShadow: 'var(--md-elev-3)' }}>
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+                        <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Tools & Operations
+                      </h4>
+                      <button onClick={() => setShowToolsMenu(false)} className="md-icon-btn w-6 h-6">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
 
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Sync & Cloud</p>
-                    <button
-                      onClick={() => { setShowToolsMenu(false); handlePushToCloud(); }}
-                      disabled={isCloudSyncing}
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-indigo-600" />}
-                        <div>
-                          <p className="text-slate-800 dark:text-slate-200 font-semibold">Cloud Backup</p>
-                          {lastSyncedTime && <p className="text-[10px] text-slate-400 font-mono">{lastSyncedTime}</p>}
-                        </div>
-                      </div>
-                      <span className="text-[10px] text-indigo-600 font-semibold">Sync</span>
-                    </button>
-                    {dataSource === 'sheets' && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Sync & Cloud</p>
                       <button
-                        onClick={() => { setShowToolsMenu(false); handleLoadSheets(); }}
-                        disabled={isLoading}
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                        onClick={() => { setShowToolsMenu(false); handlePushToCloud(); }}
+                        disabled={isCloudSyncing}
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
-                          <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isLoading ? 'animate-spin' : ''}`} />
-                          <span className="text-slate-800 dark:text-slate-200 font-semibold">Sync Google Sheets</span>
+                          {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-indigo-600" />}
+                          <div>
+                            <p className="text-slate-800 dark:text-slate-200 font-semibold">Cloud Backup</p>
+                            {lastSyncedTime && <p className="text-[10px] text-slate-400 font-mono">{lastSyncedTime}</p>}
+                          </div>
                         </div>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Sheets</span>
+                        <span className="text-[10px] text-indigo-600 font-semibold">Sync</span>
                       </button>
-                    )}
-                  </div>
-
-                  {records.length > 0 && appUser?.role !== 'student' && (
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Exports</p>
-                      <div className="grid grid-cols-2 gap-1.5">
+                      {dataSource === 'sheets' && (
                         <button
-                          onClick={() => { setShowToolsMenu(false); setShowReportModal(true); }}
-                          className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
+                          onClick={() => { setShowToolsMenu(false); handleLoadSheets(); }}
+                          disabled={isLoading}
+                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
                         >
-                          <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-slate-800 dark:text-slate-200">PDF Report</span>
+                          <div className="flex items-center gap-2">
+                            <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isLoading ? 'animate-spin' : ''}`} />
+                            <span className="text-slate-800 dark:text-slate-200 font-semibold">Sync Google Sheets</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">Sheets</span>
                         </button>
-                        <button
-                          onClick={() => { setShowToolsMenu(false); handleExportCSV(); }}
-                          className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          <Download className="w-3.5 h-3.5 text-slate-600" />
-                          <span className="text-slate-800 dark:text-slate-200">CSV Export</span>
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  )}
 
-                  {appUser?.role !== 'student' && (
+                    {records.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Exports</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            onClick={() => { setShowToolsMenu(false); setShowReportModal(true); }}
+                            className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-slate-800 dark:text-slate-200">PDF Report</span>
+                          </button>
+                          <button
+                            onClick={() => { setShowToolsMenu(false); handleExportCSV(); }}
+                            className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
+                          >
+                            <Download className="w-3.5 h-3.5 text-slate-600" />
+                            <span className="text-slate-800 dark:text-slate-200">CSV Export</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => { setShowToolsMenu(false); setShowBatchBroadcastModal(true); }}
                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
@@ -3099,31 +3099,29 @@ create policy "Allow public update" on app_states for update using (true) with c
                       </div>
                       <span className="text-[10px] text-indigo-600 font-semibold">Email & SMS</span>
                     </button>
-                  )}
 
-                  <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">More</p>
-                    <button
-                      onClick={() => { setShowToolsMenu(false); setShowPresentationModal(true); }}
-                      className="w-full p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-                        <span className="text-indigo-800 dark:text-indigo-200 font-semibold">30s Demo Video</span>
-                      </div>
-                      <span className="md-badge bg-amber-100 text-amber-800 border border-amber-200 text-[9px]">PLAY</span>
-                    </button>
-                    <button
-                      onClick={() => { setShowToolsMenu(false); setShowMobileDownloadModal(true); }}
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="w-3.5 h-3.5 text-amber-600" />
-                        <span className="text-slate-800 dark:text-slate-200 font-semibold">Mobile App / APK</span>
-                      </div>
-                      <span className="md-badge bg-amber-50 text-amber-700 border border-amber-200 text-[9px]">v2.4</span>
-                    </button>
-                    {(appUser?.role === 'admin' || appUser?.role === 'teacher') ? (
+                    <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">More</p>
+                      <button
+                        onClick={() => { setShowToolsMenu(false); setShowPresentationModal(true); }}
+                        className="w-full p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
+                          <span className="text-indigo-800 dark:text-indigo-200 font-semibold">30s Demo Video</span>
+                        </div>
+                        <span className="md-badge bg-amber-100 text-amber-800 border border-amber-200 text-[9px]">PLAY</span>
+                      </button>
+                      <button
+                        onClick={() => { setShowToolsMenu(false); setShowMobileDownloadModal(true); }}
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="text-slate-800 dark:text-slate-200 font-semibold">Mobile App / APK</span>
+                        </div>
+                        <span className="md-badge bg-amber-50 text-amber-700 border border-amber-200 text-[9px]">v2.4</span>
+                      </button>
                       <button
                         onClick={() => { setShowToolsMenu(false); setShowAdminAuditModal(true); }}
                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
@@ -3134,16 +3132,11 @@ create policy "Allow public update" on app_states for update using (true) with c
                         </div>
                         <span className="text-[10px] text-amber-600 font-semibold">Admin</span>
                       </button>
-                    ) : (
-                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2 text-xs text-slate-400 cursor-not-allowed opacity-60">
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Admin Audit Tools — Restricted</span>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
             {/* Messages */}
             <button
               onClick={() => setActiveErpTab('messages')}
@@ -3178,29 +3171,47 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Sync Status */}
             <div className="hidden sm:flex items-center shrink-0">
               {isOffline ? (
-                <button
-                  onClick={() => setShowDiagnosticModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
-                  title="Click for Supabase Storage & Data Diagnostics"
-                >
-                  <WifiOff className="w-3 h-3" /> Offline (Diagnose)
-                </button>
+                appUser?.role === 'admin' ? (
+                  <button
+                    onClick={() => setShowDiagnosticModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
+                    title="Click for Supabase Storage & Data Diagnostics"
+                  >
+                    <WifiOff className="w-3 h-3" /> Offline (Diagnose)
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold">
+                    <WifiOff className="w-3 h-3" /> Offline
+                  </span>
+                )
               ) : isCloudSyncing ? (
-                <button
-                  onClick={() => setShowDiagnosticModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
-                  title="Click for Supabase Storage & Data Diagnostics"
-                >
-                  <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
-                </button>
+                appUser?.role === 'admin' ? (
+                  <button
+                    onClick={() => setShowDiagnosticModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
+                    title="Click for Supabase Storage & Data Diagnostics"
+                  >
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
+                  </span>
+                )
               ) : (
-                <button
-                  onClick={() => setShowDiagnosticModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
-                  title="Click to run Supabase Storage & Data Diagnostics"
-                >
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Synced (Diagnose)
-                </button>
+                appUser?.role === 'admin' ? (
+                  <button
+                    onClick={() => setShowDiagnosticModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
+                    title="Click to run Supabase Storage & Data Diagnostics"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Synced (Diagnose)
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Synced
+                  </span>
+                )
               )}
             </div>
 
@@ -3589,232 +3600,296 @@ create policy "Allow public update" on app_states for update using (true) with c
       </div>
 
       {/* Main Workspace */}
-      <div className="flex flex-1 gap-6 min-h-0">
-        {activeErpTab === 'home' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <HomeTab
-              onNavigate={(tab) => setActiveErpTab(tab)}
-              appUser={appUser}
-              onOpenLogin={() => setShowLoginModal(true)}
-              onOpenPresentationDemo={() => setShowPresentationModal(true)}
-              studentsCount={uniqueStudents.length}
-              students={uniqueStudents}
-              payments={payments}
-              classDays={classDays}
-              records={records}
-              coursesCount={courses.length || 6}
-              classDaysCount={classDays.length}
-              avgAttendanceRate={avgAttendance}
-              pendingAssignmentsCount={pendingAssignmentsCount}
-              uncollectedTuitionAmount={uncollectedTuitionAmount}
-              libraryResourcesCount={libraryResources.length}
-              nextClassTitle={classDays.length > 0 ? classDays[classDays.length - 1].name : 'Session 1'}
-              isCloudSyncing={isCloudSyncing}
-              cloudSyncError={cloudSyncError}
-              lastSyncedTime={lastSyncedTime}
-              onPushToCloud={handlePushToCloud}
-              userEmail={user?.email}
-              supabaseTableMissing={supabaseTableMissing}
-              onVerifySetup={handleVerifySupabase}
-            />
-          </div>
-        )}
+      <div className="flex flex-1 gap-6 min-h-0 relative">
+        <AnimatePresence mode="wait">
+          {activeErpTab === 'home' && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <HomeTab
+                onNavigate={(tab) => setActiveErpTab(tab)}
+                appUser={appUser}
+                onOpenLogin={() => setShowLoginModal(true)}
+                onOpenPresentationDemo={() => setShowPresentationModal(true)}
+                studentsCount={uniqueStudents.length}
+                students={uniqueStudents}
+                payments={payments}
+                classDays={classDays}
+                records={records}
+                coursesCount={courses.length || 6}
+                classDaysCount={classDays.length}
+                avgAttendanceRate={avgAttendance}
+                pendingAssignmentsCount={pendingAssignmentsCount}
+                uncollectedTuitionAmount={uncollectedTuitionAmount}
+                libraryResourcesCount={libraryResources.length}
+                nextClassTitle={classDays.length > 0 ? classDays[classDays.length - 1].name : 'Session 1'}
+                isCloudSyncing={isCloudSyncing}
+                cloudSyncError={cloudSyncError}
+                lastSyncedTime={lastSyncedTime}
+                onPushToCloud={handlePushToCloud}
+                userEmail={user?.email}
+                supabaseTableMissing={supabaseTableMissing}
+                onVerifySetup={handleVerifySupabase}
+              />
+            </motion.div>
+          )}
 
-        {/* Render Non-Attendance ERP Tabs */}
-        {activeErpTab === 'students' && appUser?.role !== 'student' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <StudentsTab
-              classDays={classDays}
-              students={uniqueStudents.map(s => ({
-                name: s.name,
-                rate: s.rate,
-                attended: s.attended,
-                totalDays: s.totalDays,
-                avgScore: s.avgScore,
-                note: s.note,
-                photoUrl: s.photoUrl,
-                levelId: s.levelId,
-                attendanceByDay: s.attendanceByDay
-              }))}
-              onDeleteStudent={handleDeleteStudent}
-              onSelectStudentForTranscript={(s) => {
-                const found = uniqueStudents.find(u => u.name === s.name);
-                if (found) {
-                  setSelectedStudent(found);
-                  setShowStudentTranscriptModal(true);
-                }
-              }}
-              onSelectStudentForCertificate={(s) => {
-                setCertificateData({
-                  studentName: s.name,
-                  awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
-                  criteria: `Demonstrated exceptional commitment with ${s.rate.toFixed(1)}% class attendance across all required School of Ministry sessions.`,
-                  rate: s.rate,
-                  avgScore: s.avgScore
-                });
-                setShowCertificateModal(true);
-              }}
-              onSelectStudentForEmail={(s) => {
-                const found = uniqueStudents.find(u => u.name === s.name);
-                if (found) {
-                  setSelectedStudent(found);
-                  setShowEmailDraftModal(true);
-                }
-              }}
-              rubricScores={rubricScores}
-              onUpdateRubric={handleUpdateRubric}
-              studentNotes={studentNotes}
-              onUpdateNote={(name, note) => {
-                setStudentNotes(prev => {
-                  const updated = { ...prev, [name.toLowerCase().trim()]: note };
-                  localStorage.setItem('studentNotes', JSON.stringify(updated));
-                  return updated;
-                });
-              }}
-              studentPhotos={studentPhotos}
-              onUpdateStudentPhoto={handleUpdateStudentPhoto}
-              studentLevels={studentLevels}
-              onUpdateStudentLevel={handleUpdateStudentLevel}
-              onOpenAttendanceReport={(filter) => {
-                setSelectedReportLevel('all');
-                if (filter) {
-                  setSelectedReportAttendanceFilter(filter);
-                } else {
-                  setSelectedReportAttendanceFilter('all');
-                }
-                setShowReportModal(true);
-              }}
-              atRiskThreshold={atRiskThreshold}
-              satisfactoryThreshold={satisfactoryThreshold}
-              onToggleAttendance={handleToggleStudentAttendance}
-              excusedAbsences={excusedAbsences}
-              appRole={appUser?.role}
-              onResetPassword={handleResetStudentPassword}
-            />
-          </div>
-        )}
-
-        {activeErpTab === 'courses' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <CoursesTab 
-              userRole={appUser?.role} 
-              courses={courses}
-              setCourses={setCourses}
-            />
-          </div>
-        )}
-
-        {activeErpTab === 'exams' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <ExamsTab
-              students={uniqueStudents.map(s => {
-                const rawRec = records.find(r => r.name.toLowerCase().trim() === s.name.toLowerCase().trim() && r.score);
-                return {
+          {/* Render Non-Attendance ERP Tabs */}
+          {activeErpTab === 'students' && appUser?.role !== 'student' && (
+            <motion.div
+              key="students"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <StudentsTab
+                classDays={classDays}
+                students={uniqueStudents.map(s => ({
                   name: s.name,
-                  scoreStr: rawRec?.score || '',
-                  percentage: s.avgScore,
-                  attendedSessions: s.attended,
-                  totalSessions: s.totalDays,
-                  attendanceRate: s.rate,
+                  rate: s.rate,
+                  attended: s.attended,
+                  totalDays: s.totalDays,
+                  avgScore: s.avgScore,
+                  note: s.note,
+                  photoUrl: s.photoUrl,
+                  levelId: s.levelId,
                   attendanceByDay: s.attendanceByDay
-                };
-              })}
-              allQuizSheets={allQuizSheets}
-              rubricScores={rubricScores}
-              onUpdateRubric={handleUpdateRubric}
-              userRole={appUser?.role}
-              currentStudentName={appUser?.studentName || appUser?.name}
-              onNotificationCreated={(notif) => setNotifications(prev => [notif, ...prev])}
-              customAssignments={customAssignments}
-              setCustomAssignments={setCustomAssignments}
-              submissions={submissions}
-              setSubmissions={setSubmissions}
-              googleUser={user}
-              googleToken={token}
-              isLoggingIn={isLoggingIn}
-              onGoogleLogin={handleLogin}
-              onGoogleLogout={handleLogout}
-              sheetUrl={sheetUrl}
-              setSheetUrl={setSheetUrl}
-              onLoadSheets={handleLoadSheets}
-              isLoadingSheets={isLoading}
-              lastSyncedTime={lastSyncedTime}
-              recentSheets={recentSheets}
-              onRemoveRecentSheet={handleRemoveRecentSheet}
-            />
-          </div>
-        )}
+                }))}
+                onDeleteStudent={handleDeleteStudent}
+                onSelectStudentForTranscript={(s) => {
+                  const found = uniqueStudents.find(u => u.name === s.name);
+                  if (found) {
+                    setSelectedStudent(found);
+                    setShowStudentTranscriptModal(true);
+                  }
+                }}
+                onSelectStudentForCertificate={(s) => {
+                  setCertificateData({
+                    studentName: s.name,
+                    awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
+                    criteria: `Demonstrated exceptional commitment with ${s.rate.toFixed(1)}% class attendance across all required School of Ministry sessions.`,
+                    rate: s.rate,
+                    avgScore: s.avgScore
+                  });
+                  setShowCertificateModal(true);
+                }}
+                onSelectStudentForEmail={(s) => {
+                  const found = uniqueStudents.find(u => u.name === s.name);
+                  if (found) {
+                    setSelectedStudent(found);
+                    setShowEmailDraftModal(true);
+                  }
+                }}
+                rubricScores={rubricScores}
+                onUpdateRubric={handleUpdateRubric}
+                studentNotes={studentNotes}
+                onUpdateNote={(name, note) => {
+                  setStudentNotes(prev => {
+                    const updated = { ...prev, [name.toLowerCase().trim()]: note };
+                    localStorage.setItem('studentNotes', JSON.stringify(updated));
+                    return updated;
+                  });
+                }}
+                studentPhotos={studentPhotos}
+                onUpdateStudentPhoto={handleUpdateStudentPhoto}
+                studentLevels={studentLevels}
+                onUpdateStudentLevel={handleUpdateStudentLevel}
+                onOpenAttendanceReport={(filter) => {
+                  setSelectedReportLevel('all');
+                  if (filter) {
+                    setSelectedReportAttendanceFilter(filter);
+                  } else {
+                    setSelectedReportAttendanceFilter('all');
+                  }
+                  setShowReportModal(true);
+                }}
+                atRiskThreshold={atRiskThreshold}
+                satisfactoryThreshold={satisfactoryThreshold}
+                onToggleAttendance={handleToggleStudentAttendance}
+                excusedAbsences={excusedAbsences}
+                appRole={appUser?.role}
+                onResetPassword={handleResetStudentPassword}
+              />
+            </motion.div>
+          )}
 
-        {activeErpTab === 'schedule' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <ScheduleTab
-              classDays={classDays}
-              userRole={appUser?.role}
-              onDeleteClassDay={handleDeleteClassDay}
-              onClearClassDayRecords={handleClearClassDayRecords}
-              onTakeAttendanceForDay={(dayId) => {
-                if (appUser?.role === 'student') return;
-                setActiveErpTab('attendance');
-                setShowLiveCheckinModal(true);
-                setLiveCheckinDayId(dayId);
-              }}
-              schedules={schedules}
-              setSchedules={setSchedules}
-              zoomExceptionNote={zoomExceptionNote}
-              setZoomExceptionNote={setZoomExceptionNote}
-              hasZoomException={hasZoomException}
-              setHasZoomException={setHasZoomException}
-            />
-          </div>
-        )}
+          {activeErpTab === 'courses' && (
+            <motion.div
+              key="courses"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <CoursesTab 
+                userRole={appUser?.role} 
+                courses={courses}
+                setCourses={setCourses}
+              />
+            </motion.div>
+          )}
 
-        {activeErpTab === 'library' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <LibraryTab 
-              userRole={appUser?.role} 
-              resources={libraryResources}
-              setResources={setLibraryResources}
-              classroomMedia={classroomMedia}
-              setClassroomMedia={setClassroomMedia}
-              onOpenDiagnostics={() => setShowDiagnosticModal(true)}
-            />
-          </div>
-        )}
+          {activeErpTab === 'exams' && (
+            <motion.div
+              key="exams"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <ExamsTab
+                students={uniqueStudents.map(s => {
+                  const rawRec = records.find(r => r.name.toLowerCase().trim() === s.name.toLowerCase().trim() && r.score);
+                  return {
+                    name: s.name,
+                    scoreStr: rawRec?.score || '',
+                    percentage: s.avgScore,
+                    attendedSessions: s.attended,
+                    totalSessions: s.totalDays,
+                    attendanceRate: s.rate,
+                    attendanceByDay: s.attendanceByDay
+                  };
+                })}
+                allQuizSheets={allQuizSheets}
+                rubricScores={rubricScores}
+                onUpdateRubric={handleUpdateRubric}
+                userRole={appUser?.role}
+                currentStudentName={appUser?.studentName || appUser?.name}
+                onNotificationCreated={(notif) => setNotifications(prev => [notif, ...prev])}
+                customAssignments={customAssignments}
+                setCustomAssignments={setCustomAssignments}
+                submissions={submissions}
+                setSubmissions={setSubmissions}
+                googleUser={user}
+                googleToken={token}
+                isLoggingIn={isLoggingIn}
+                onGoogleLogin={handleLogin}
+                onGoogleLogout={handleLogout}
+                sheetUrl={sheetUrl}
+                setSheetUrl={setSheetUrl}
+                onLoadSheets={handleLoadSheets}
+                isLoadingSheets={isLoading}
+                lastSyncedTime={lastSyncedTime}
+                recentSheets={recentSheets}
+                onRemoveRecentSheet={handleRemoveRecentSheet}
+              />
+            </motion.div>
+          )}
 
-        {activeErpTab === 'payments' && (appUser?.role === 'admin' || appUser?.role === 'student') && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <PaymentTab
-              availableStudents={uniqueStudents.map(s => ({ name: s.name || '', email: `${(s.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu` }))}
-              isAdmin={appUser?.role === 'admin'}
-              userRole={appUser?.role}
-              currentStudentName={appUser?.studentName || appUser?.name}
-              payments={payments}
-              setPayments={setPayments}
-              onDeleteStudent={handleDeleteStudent}
-              onRestoreStudent={handleRestoreStudent}
-            />
-          </div>
-        )}
+          {activeErpTab === 'schedule' && (
+            <motion.div
+              key="schedule"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <ScheduleTab
+                classDays={classDays}
+                userRole={appUser?.role}
+                onDeleteClassDay={handleDeleteClassDay}
+                onClearClassDayRecords={handleClearClassDayRecords}
+                onTakeAttendanceForDay={(dayId) => {
+                  if (appUser?.role === 'student') return;
+                  setActiveErpTab('attendance');
+                  setShowLiveCheckinModal(true);
+                  setLiveCheckinDayId(dayId);
+                }}
+                schedules={schedules}
+                setSchedules={setSchedules}
+                zoomExceptionNote={zoomExceptionNote}
+                setZoomExceptionNote={setZoomExceptionNote}
+                hasZoomException={hasZoomException}
+                setHasZoomException={setHasZoomException}
+              />
+            </motion.div>
+          )}
 
-        {activeErpTab === 'messages' && (
-          <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-            <MessagesTab
-              appUser={appUser}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              onReplyMessage={handleReplyMessage}
-              onUpdateStatus={handleUpdateMessageStatus}
-              onDeleteMessage={handleDeleteMessage}
-              availableStudents={uniqueStudents.map(s => {
-                const name = typeof s === 'string' ? s : s.name;
-                return { name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
-              })}
-            />
-          </div>
-        )}
+          {activeErpTab === 'library' && (
+            <motion.div
+              key="library"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <LibraryTab 
+                userRole={appUser?.role} 
+                resources={libraryResources}
+                setResources={setLibraryResources}
+                classroomMedia={classroomMedia}
+                setClassroomMedia={setClassroomMedia}
+                onOpenDiagnostics={appUser?.role === 'admin' ? () => setShowDiagnosticModal(true) : undefined}
+              />
+            </motion.div>
+          )}
 
-        {activeErpTab === 'attendance' && (
-          <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto md:overflow-hidden">
+          {activeErpTab === 'payments' && (appUser?.role === 'admin' || appUser?.role === 'student') && (
+            <motion.div
+              key="payments"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <PaymentTab
+                availableStudents={uniqueStudents.map(s => ({ name: s.name || '', email: `${(s.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu` }))}
+                isAdmin={appUser?.role === 'admin'}
+                userRole={appUser?.role}
+                currentStudentName={appUser?.studentName || appUser?.name}
+                payments={payments}
+                setPayments={setPayments}
+                onDeleteStudent={handleDeleteStudent}
+                onRestoreStudent={handleRestoreStudent}
+              />
+            </motion.div>
+          )}
+
+          {activeErpTab === 'messages' && (
+            <motion.div
+              key="messages"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar min-h-0"
+            >
+              <MessagesTab
+                appUser={appUser}
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                onReplyMessage={handleReplyMessage}
+                onUpdateStatus={handleUpdateMessageStatus}
+                onDeleteMessage={handleDeleteMessage}
+                availableStudents={uniqueStudents.map(s => {
+                  const name = typeof s === 'string' ? s : s.name;
+                  return { name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
+                })}
+              />
+            </motion.div>
+          )}
+
+          {activeErpTab === 'attendance' && (
+            <motion.div
+              key="attendance"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto md:overflow-hidden"
+            >
             {appUser?.role === 'student' ? (
               <StudentAttendancePortal
                 student={currentStudentPortalData}
@@ -4521,7 +4596,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               </p>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
         {/* Sidebar Controls */}
@@ -4622,6 +4697,7 @@ create policy "Allow public update" on app_states for update using (true) with c
 
           </aside>
         )}
+        </AnimatePresence>
       </div>
 
       {/* Student Detail Modal */}
@@ -6730,6 +6806,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         isOpen={showDiagnosticModal}
         onClose={() => setShowDiagnosticModal(false)}
         userEmail={appUser?.email || user?.email}
+        userRole={appUser?.role}
         onRefreshData={handlePushToCloud}
       />
 
@@ -6764,17 +6841,19 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             System Operational
           </span>
-          <button
-            onClick={() => setShowDiagnosticModal(true)}
-            className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-          >
-            Diagnostics
-          </button>
+          {appUser?.role === 'admin' && (
+            <button
+              onClick={() => setShowDiagnosticModal(true)}
+              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              Diagnostics
+            </button>
+          )}
         </div>
       </footer>
 
       {/* Floating Quick Messages Launcher (Bottom Right) */}
-      <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50">
+      <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50">
         <button
           onClick={() => setActiveErpTab('messages')}
           className="px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-xl btn-glow-indigo flex items-center gap-2 border border-indigo-400/40 cursor-pointer active:scale-95 transition-all group touch-min-44"

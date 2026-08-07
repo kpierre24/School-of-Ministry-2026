@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import biblicalHeroAsset from '../assets/images/hteim_people_hero_banner_1786036369689.jpg';
+import hteimLogoAsset from '../assets/hteim_logo.png';
 import { 
   BookOpen, 
   GraduationCap, 
@@ -136,6 +137,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const [copiedVerse, setCopiedVerse] = useState(false);
   const [adminTab, setAdminTab] = useState<'at_risk' | 'trends' | 'sync'>('at_risk');
   const [isAdminPanelExpanded, setIsAdminPanelExpanded] = useState(false);
+
+  // Prospective Student Admission Inquiry Modal State
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [inquirySubmitted, setInquirySubmitted] = useState(false);
+  const [inquiryForm, setInquiryForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    preferredTrack: 'Module 1: Foundational Hermeneutics & Word',
+    notes: ''
+  });
 
   // At-Risk Notification Card State
   const [atRiskFilter, setAtRiskFilter] = useState<'all' | 'critical' | 'moderate'>('all');
@@ -437,6 +449,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-[1.02]"
           />
+          {/* Subtle Watermark Branding Overlay (Bottom Right) */}
+          <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 flex items-center gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-slate-950/65 border border-amber-400/40 backdrop-blur-md shadow-lg opacity-75 hover:opacity-100 transition-opacity duration-300 pointer-events-none select-none">
+            <img 
+              src={hteimLogoAsset} 
+              alt="HTEIM Logo Watermark" 
+              className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded-full border border-amber-300/50 p-0.5 bg-slate-900/90" 
+            />
+            <span className="text-[10px] sm:text-[11px] font-black tracking-widest uppercase text-amber-300/95 font-mono drop-shadow-xs">
+              HTEIM OFFICIAL
+            </span>
+          </div>
           {/* Multi-stage Gradient Mask for Readable Contrast */}
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/40 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-950/60" />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
@@ -483,30 +506,58 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </h1>
             </div>
 
+            {/* Top Visual Marker Badges Overlaid on Hero */}
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
+                <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
+                6 Core Curriculum Modules
+              </span>
+              <span className="px-3 py-1 bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                75% Attendance Standard
+              </span>
+              <span className="px-3 py-1 bg-indigo-400/20 text-indigo-300 border border-indigo-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
+                <Users className="w-3.5 h-3.5 text-indigo-300" />
+                Family & Community Discipleship
+              </span>
+              <span className="px-3 py-1 bg-rose-400/20 text-rose-300 border border-rose-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
+                <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                Live Hybrid Classes
+              </span>
+            </div>
+
             <p className="text-xs sm:text-sm md:text-base text-slate-200/90 leading-relaxed max-w-2xl font-medium">
               "Bringing Heaven to Earth, Taking People to Heaven." Equipping saints through deep exegesis, high ministerial ethics, prophetic discernment, and five-fold apostolic oversight.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-2 flex-wrap">
+              <button
+                onClick={() => setShowInquiryModal(true)}
+                className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-200 ring-2 ring-amber-400/40 animate-pulseSoft"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
+                <span>Apply / Prospective Student Inquiry</span>
+              </button>
+
               {onOpenPresentationDemo && (
                 <button
                   onClick={onOpenPresentationDemo}
-                  className="w-full sm:w-auto px-5 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-300"
+                  className="w-full sm:w-auto px-4 py-3 bg-slate-900/80 hover:bg-slate-900 text-amber-300 font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-400/50 backdrop-blur-md"
                 >
-                  <Play className="w-4 h-4 text-slate-950 fill-slate-950" /> Play 30s Student Presentation
+                  <Play className="w-4 h-4 text-amber-400 fill-amber-400" /> 30s Student Presentation
                 </button>
               )}
 
               <button
                 onClick={() => onNavigate('courses')}
-                className="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
+                className="w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
               >
-                <BookOpen className="w-4 h-4 text-amber-300" /> Explore 6 Core Modules
+                <BookOpen className="w-4 h-4 text-amber-300" /> 6 Core Modules
               </button>
 
               <button
                 onClick={() => onNavigate('schedule')}
-                className="w-full sm:w-auto px-5 py-3 bg-slate-900/80 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700/80 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                className="w-full sm:w-auto px-4 py-3 bg-slate-900/80 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700/80 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
               >
                 <Calendar className="w-4 h-4 text-emerald-400" /> Class Schedule
               </button>
@@ -519,14 +570,155 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </p>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               <button
+                onClick={() => setShowInquiryModal(true)}
+                className="px-3 py-1.5 bg-amber-400 text-slate-950 font-black text-[11px] rounded-lg shadow-xs cursor-pointer"
+              >
+                Apply Now
+              </button>
+              <button
                 onClick={() => onNavigate('courses')}
-                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] rounded-lg shadow-xs cursor-pointer"
+                className="px-3 py-1.5 bg-indigo-600 text-white font-black text-[11px] rounded-lg shadow-xs cursor-pointer"
               >
                 Explore Modules
               </button>
             </div>
           </div>
         )}
+      </section>
+
+      {/* 1B. INSTANT WELCOME & USER PATHWAY SELECTOR STRIP */}
+      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-5 border border-amber-400/30 shadow-lg text-white space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30">
+              <Compass className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-black text-white font-syne tracking-tight">
+                Welcome to HTEIM School of Ministry Portal Gateway
+              </h2>
+              <p className="text-[10px] text-slate-300">
+                Select your path below for instant, guided access to curriculum, student tools, or faculty controls.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold bg-slate-950/80 px-2.5 py-1 rounded-full border border-white/10 self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-amber-300">
+              {appUser ? `Logged in as ${appUser.role.toUpperCase()}` : 'Guest / Prospective Student Mode'}
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Pathway Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Card 1: Prospective Students / Guests */}
+          <div className="p-4 rounded-2xl bg-slate-950/70 border border-amber-400/30 hover:border-amber-400/60 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  New Applicants & Guests
+                </span>
+                <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              </div>
+              <h3 className="text-xs font-black text-white">Explore & Apply for Admission</h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Review our 6 Core Modules, tuition information, and submit a 1-click prospective student inquiry.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                onClick={() => setShowInquiryModal(true)}
+                className="flex-1 py-2 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+              >
+                <span>Inquire / Apply</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onNavigate('courses')}
+                className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] rounded-xl border border-white/10 cursor-pointer"
+              >
+                Syllabus
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Enrolled Students */}
+          <div className="p-4 rounded-2xl bg-slate-950/70 border border-indigo-400/30 hover:border-indigo-400/60 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-400/20 text-indigo-300 border border-indigo-400/30">
+                  Enrolled Students
+                </span>
+                <GraduationCap className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+              </div>
+              <h3 className="text-xs font-black text-white">Student Academic Hub</h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Log attendance, take scripture evaluation quizzes, download lecture handouts, and view tuition records.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                onClick={() => onNavigate('attendance')}
+                className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+              >
+                <span>My Attendance</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onNavigate('exams')}
+                className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] rounded-xl border border-white/10 cursor-pointer"
+              >
+                Quizzes
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Faculty & Staff */}
+          <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-400/30 hover:border-emerald-400/60 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                  Faculty & Leadership
+                </span>
+                <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              </div>
+              <h3 className="text-xs font-black text-white">Faculty & Administrative Suite</h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Oversee student roster, monitor the 75% at-risk attendance triggers, manage payments, and sync cloud data.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center gap-2">
+              {appUser ? (
+                <button
+                  onClick={() => onNavigate('students')}
+                  className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+                >
+                  <span>Roster Directory</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenLogin}
+                  className="flex-1 py-2 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Faculty Sign In</span>
+                </button>
+              )}
+              <button
+                onClick={() => onNavigate('schedule')}
+                className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] rounded-xl border border-white/10 cursor-pointer"
+              >
+                Schedule
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Student Quick Touch Command Hub - Mobile & Student View Optimization */}
@@ -1518,6 +1710,170 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           onSave={handleSaveWidgetLayout}
           onReset={handleResetWidgetLayout}
         />
+      )}
+
+      {/* Prospective Student Admission Inquiry & Application Modal */}
+      {showInquiryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-amber-400/40 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+            <button
+              onClick={() => {
+                setShowInquiryModal(false);
+                setInquirySubmitted(false);
+              }}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-500 font-bold flex items-center justify-center transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-700 dark:text-amber-300 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-400/40">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>HTEIM School of Ministry Admissions</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-syne tracking-tight">
+                Apply / Inquire for Enrolment
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Join our upcoming cohort in anointed biblical exegesis, ministerial ethics, and five-fold leadership equipping.
+              </p>
+            </div>
+
+            {inquirySubmitted ? (
+              <div className="p-6 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-center space-y-3 animate-fadeIn">
+                <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-black text-emerald-950 dark:text-emerald-200">
+                  Application Received!
+                </h3>
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                  Thank you, <strong>{inquiryForm.fullName}</strong>. An HTEIM Academic Dean will contact you shortly at <strong>{inquiryForm.email}</strong> with class orientation details and onboarding steps.
+                </p>
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setShowInquiryModal(false);
+                      setInquirySubmitted(false);
+                    }}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                  >
+                    Done & Return to Portal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!inquiryForm.fullName || !inquiryForm.email) return;
+                  setInquirySubmitted(true);
+                }}
+                className="space-y-4 text-xs"
+              >
+                {/* Form Inputs */}
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700 dark:text-slate-300">
+                    Full Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Min. Sarah Johnson"
+                    value={inquiryForm.fullName}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, fullName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-extrabold text-slate-700 dark:text-slate-300">
+                      Email Address <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={inquiryForm.email}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, email: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-extrabold text-slate-700 dark:text-slate-300">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="(868) 555-0199"
+                      value={inquiryForm.phone}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, phone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700 dark:text-slate-300">
+                    Preferred Core Module Track
+                  </label>
+                  <select
+                    value={inquiryForm.preferredTrack}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, preferredTrack: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white font-medium"
+                  >
+                    <option value="Module 1: Foundational Hermeneutics & Word">Module 1: Foundational Hermeneutics & Word</option>
+                    <option value="Module 2: Soul Winning & Evangelism">Module 2: Soul Winning & Evangelism</option>
+                    <option value="Module 3: Ministerial Ethics & Integrity">Module 3: Ministerial Ethics & Integrity</option>
+                    <option value="Module 4: Apostolic Governance & Five-Fold">Module 4: Apostolic Governance & Five-Fold</option>
+                    <option value="Module 5: Prophetic Ministry & Discernment">Module 5: Prophetic Ministry & Discernment</option>
+                    <option value="Module 6: School of Pastors & Teachers">Module 6: School of Pastors & Teachers</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-extrabold text-slate-700 dark:text-slate-300">
+                    Questions or Ministry Background (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Tell us about your home church, ministry goals, or any questions..."
+                    value={inquiryForm.notes}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, notes: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                {/* Admission Highlights Banner */}
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between text-[11px] text-amber-900 dark:text-amber-200">
+                  <span className="font-bold">✨ Classes meet Tuesdays & Thursdays @ 7:00 PM EST</span>
+                  <span className="font-extrabold uppercase text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded">
+                    75% Attendance Standard
+                  </span>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowInquiryModal(false)}
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Submit Inquiry</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       )}
 
     </div>
