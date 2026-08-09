@@ -42,6 +42,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | undefined>(quizToEdit?.timeLimitMinutes || undefined);
   const [isTemplate, setIsTemplate] = useState(quizToEdit?.isTemplate || false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Questions state
   const [questions, setQuestions] = useState<QuizQuestion[]>(quizToEdit?.questions || [
@@ -111,7 +112,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
 
   const handleDeleteQuestion = (index: number) => {
     if (questions.length <= 1) {
-      alert('A quiz must have at least one question.');
+      setValidationError('A quiz must have at least one question.');
       return;
     }
     setQuestions(questions.filter((_, i) => i !== index));
@@ -145,7 +146,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
   const handleDeleteOption = (qIndex: number, optIndex: number) => {
     const q = questions[qIndex];
     if (q.options.length <= 2) {
-      alert('Questions require at least two choices.');
+      setValidationError('Questions require at least two choices.');
       return;
     }
     const optToDelete = q.options[optIndex];
@@ -159,8 +160,9 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError(null);
     if (!title.trim()) {
-      alert('Please enter a Quiz Title.');
+      setValidationError('Please enter a Quiz Title.');
       return;
     }
 
@@ -168,12 +170,12 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.questionText.trim()) {
-        alert(`Question #${i + 1} is missing question text.`);
+        setValidationError(`Question #${i + 1} is missing question text.`);
         return;
       }
       const validOptions = q.options.filter(o => o.text.trim().length > 0);
       if (validOptions.length < 2) {
-        alert(`Question #${i + 1} must have at least 2 non-empty choices.`);
+        setValidationError(`Question #${i + 1} must have at least 2 non-empty choices.`);
         return;
       }
     }
@@ -229,7 +231,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
             <button 
               onClick={onClose}
               className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-            >
+             aria-label="Close">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -596,7 +598,15 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
         </form>
 
         {/* Footer Bar */}
-        <div className="p-4 sm:p-5 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-shrink-0 modal-material-footer">
+        <div className="p-4 sm:p-5 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-3 flex-shrink-0 modal-material-footer">
+          {validationError && (
+            <div role="alert" className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-medium animate-fadeIn">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span>{validationError}</span>
+              <button onClick={() => setValidationError(null)} className="ml-auto text-rose-400 hover:text-rose-600" aria-label="Dismiss"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
@@ -623,6 +633,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
               <CheckCircle2 className="w-4 h-4" />
               <span>Save & Publish Quiz ({totalPoints} pts)</span>
             </button>
+          </div>
           </div>
         </div>
 

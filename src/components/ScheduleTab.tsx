@@ -43,6 +43,7 @@ import {
 import { ScheduleItem } from '../types';
 import { UserRole } from '../lib/userAuth';
 import { downloadICSFile, generateGoogleCalendarUrl, CalendarEventItem } from '../lib/calendarExport';
+import { EmptyState } from './UXPrimitives';
 
 export const CORE_MODULES = [
   { id: 'm1', code: 'SOM-MOD-1', name: 'Module 1: Introduction', shortName: 'Introduction', color: 'emerald' },
@@ -649,6 +650,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 viewMode === 'calendar' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Monthly Calendar View"
+              aria-label="Monthly Calendar View"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Monthly Calendar</span><span className="sm:hidden">Month</span>
@@ -659,6 +661,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 viewMode === 'timetable' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Weekly Matrix Timetable View"
+              aria-label="Weekly Timetable View"
             >
               <Grid className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Weekly Timetable</span><span className="sm:hidden">Week</span>
@@ -1345,7 +1348,23 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           </div>
 
           <div className="space-y-3">
-            {filteredSchedules.map((item) => (
+            {filteredSchedules.length === 0 ? (
+              <EmptyState
+                title={schedules.length === 0 ? 'No classes scheduled yet' : 'No classes match this filter'}
+                description={schedules.length === 0
+                  ? 'Use the "Schedule Lecture" button above to add your first class.'
+                  : 'Try switching to "All Core Modules" or a different view mode.'
+                }
+                icon={<CalendarIcon className="h-6 w-6" />}
+                action={
+                  selectedModuleFilter !== 'all' ? (
+                    <button type="button" onClick={() => setSelectedModuleFilter('all')} className="md-btn-tonal text-sm">
+                      Show All Modules
+                    </button>
+                  ) : undefined
+                }
+              />
+            ) : filteredSchedules.map((item) => (
               <div 
                 key={item.id}
                 onClick={() => !isStudent && handleOpenEditModal(item)}

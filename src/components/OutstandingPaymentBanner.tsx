@@ -52,8 +52,7 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
             onClick={onClose}
             className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
             title="Close Notice"
-            aria-label="Close Notice"
-          >
+            aria-label="Close Notice">
             <X className="w-5 h-5" />
           </button>
         </div>

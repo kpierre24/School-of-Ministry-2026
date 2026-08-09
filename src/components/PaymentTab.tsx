@@ -40,6 +40,7 @@ import { PaymentRecord } from '../types';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
+import { EmptyState } from './UXPrimitives';
 
 interface PaymentTabProps {
   availableStudents: { name: string; email?: string }[];
@@ -2065,8 +2066,22 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
                 {filteredPayments.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 font-medium">
-                      No tuition records match your search query.
+                    <td colSpan={8} className="p-2">
+                      <EmptyState
+                        title={payments.length === 0 ? 'No payment records yet' : 'No records match your search'}
+                        description={payments.length === 0
+                          ? 'Add a student payment record to get started.'
+                          : 'Try clearing your search query or changing the status filter.'
+                        }
+                        icon={<DollarSign className="h-6 w-6" />}
+                        action={
+                          filteredPayments.length === 0 && payments.length > 0 ? (
+                            <button type="button" onClick={() => { }} className="md-btn-tonal text-sm">
+                              Clear Filter
+                            </button>
+                          ) : undefined
+                        }
+                      />
                     </td>
                   </tr>
                 )}

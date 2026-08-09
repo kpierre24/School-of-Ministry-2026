@@ -1117,7 +1117,8 @@ export default function App() {
     try {
       const element = document.getElementById(elementId);
       if (!element) {
-        alert('Report content element not found. Switching to browser print...');
+        setSyncedBannerMessage('Report element not found — switching to browser print.');
+        setTimeout(() => setSyncedBannerMessage(null), 4000);
         window.print();
         setIsGeneratingPDF(false);
         return;
@@ -3288,12 +3289,12 @@ create policy "Allow public update" on app_states for update using (true) with c
             </div>
 
             {/* Settings */}
-            <button onClick={() => setShowSettingsModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" title="Settings">
+            <button onClick={() => setShowSettingsModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" aria-label="Settings" title="Settings">
               <Settings className="w-4 h-4" />
             </button>
 
             {/* Help */}
-            <button onClick={() => setShowGuideModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" title="Help">
+            <button onClick={() => setShowGuideModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" aria-label="Help & Guide" title="Help">
               <HelpCircle className="w-4 h-4" />
             </button>
 
@@ -3439,6 +3440,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             <button
               onClick={() => setShowLoginModal(true)}
               className="flex items-center gap-2 p-1 pr-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all cursor-pointer shrink-0"
+              aria-label={appUser ? `Account: ${appUser.name}` : 'Log in'}
               title="Account"
             >
               <div className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${
@@ -6590,6 +6592,11 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             rate: s.rate,
             levelId: s.levelId,
             studentId: getStudentIdForName(s.name)
+          }))}
+          paymentList={payments.map(p => ({
+            name: p.studentName,
+            status: p.status,
+            track: p.moduleTrack
           }))}
           onOpenSettings={() => setShowSettingsModal(true)}
           onOpenAdminTools={() => setShowAdminAuditModal(true)}

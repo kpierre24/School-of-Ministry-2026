@@ -47,6 +47,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   // Auto-save & draft restoration state
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
   const [restoredFromDraft, setRestoredFromDraft] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Optional Timer State
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(
@@ -165,9 +166,10 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     if (e) e.preventDefault();
 
     if (!activeStudentName) {
-      alert('Please select or enter your name before submitting the quiz.');
+      setSubmitError('Please select or enter your name before submitting the quiz.');
       return;
     }
+    setSubmitError(null);
 
     // Check if all questions answered
     const unansweredCount = quiz.questions.filter(q => !answers[q.id]).length;
@@ -238,7 +240,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-          >
+           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
 
@@ -659,7 +661,16 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               </div>
 
               {/* Submit Action */}
-              <div className="pt-4 text-center">
+              <div className="pt-4 text-center space-y-3">
+                {submitError && (
+                  <div role="alert" className="flex items-center gap-2 px-4 py-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-medium animate-fadeIn text-left">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>{submitError}</span>
+                    <button onClick={() => setSubmitError(null)} className="ml-auto text-rose-400 hover:text-rose-600" aria-label="Dismiss error">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <button
                   type="submit"
                   className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-sm rounded-2xl shadow-xl shadow-purple-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 mx-auto"

@@ -88,3 +88,53 @@ export async function saveToSupabase(
     return false;
   }
 }
+
+// ─── Real-time subscription ──────────────────────────────────────────────────
+
+/**
+ * Subscribes to real-time changes on the app_states table for a given doc ID.
+ * Calls `onUpdate` with the new state whenever another session saves.
+ * Returns an `unsubscribe` function — call it on component unmount.
+ *
+ * Usage:
+ *   const unsub = subscribeToAppState(userEmail, (newState) => {
+ *     // merge newState into local React state
+ *   });
+ *   // On cleanup: unsub();
+ */
+export function subscribeToAppState(
+  userEmail: string | null | undefined,
+  onUpdate: (newState: SyncedAppState) => void
+): () => void {
+  const docId = userEmail
+    ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`
+    : 'shared_default_state';
+
+  const channel = supabase
+    .channel(`app_state_${docId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'app_states',
+        filter: `id=eq.${docId}`,
+      },
+      (payload) => {
+        const newState = (payload.new as any)?.state as SyncedAppState | null;
+        if (newState) {
+          onUpdate(newState);
+        }
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[Supabase RT] Subscribed to real-time updates for ${docId}`);
+      }
+    });
+
+  // Return unsubscribe function
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

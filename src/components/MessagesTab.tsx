@@ -379,6 +379,19 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
         </div>
       </div>
 
+      {/* Mobile back button — shown above the grid on small screens when a message is open */}
+      {activeMessage && (
+        <div className="lg:hidden flex items-center gap-2 px-1 -mb-2">
+          <button
+            onClick={() => setSelectedMessageId(null)}
+            className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-bold py-2 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors"
+            aria-label="Back to message list"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Messages
+          </button>
+        </div>
+      )}
+
       {/* Main Workspace Layout (Sidebar Threads List + Chat View) */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px]">
         

@@ -64,6 +64,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [pinResetMessage, setPinResetMessage] = useState<string | null>(null);
   
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -385,8 +386,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
             onClick={onClose}
             className="p-2 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-full transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
             title="Close Suite"
-            aria-label="Close Suite"
-          >
+            aria-label="Close Suite">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -947,6 +947,14 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
           {activeTab === 'credentials' && (
             <div className="space-y-5 animate-fadeIn">
               
+              {/* PIN Reset Feedback Banner */}
+              {pinResetMessage && (
+                <div role="status" aria-live="polite" className="flex items-center justify-between gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-fadeIn">
+                  <span>✓ {pinResetMessage}</span>
+                  <button onClick={() => setPinResetMessage(null)} className="shrink-0 opacity-60 hover:opacity-100 text-emerald-600" aria-label="Dismiss">✕</button>
+                </div>
+              )}
+
               {/* Header Description */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
                 <div>
@@ -1044,7 +1052,8 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                                       const updatedPin = customPin.trim() || defaultPin;
                                       if (onResetPassword) {
                                         onResetPassword(c.username, updatedPin);
-                                        alert(`Successfully updated password/PIN for ${c.name} to '${updatedPin}'. This user will be forced to change it upon their next login.`);
+                                        setPinResetMessage(`PIN updated for ${c.name} → '${updatedPin}'. User must change it on next login.`);
+                                        setTimeout(() => setPinResetMessage(null), 5000);
                                       }
                                     }
                                   }}

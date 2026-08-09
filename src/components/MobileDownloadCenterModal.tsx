@@ -125,7 +125,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
             title="Close modal"
-          >
+           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

@@ -358,7 +358,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
           <button
             onClick={onClose}
             className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors cursor-pointer"
-          >
+           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

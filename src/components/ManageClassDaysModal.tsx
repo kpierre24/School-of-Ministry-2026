@@ -95,7 +95,7 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
           <button
             onClick={onClose}
             className="p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
-          >
+           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

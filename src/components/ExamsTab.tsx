@@ -513,6 +513,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState<'all' | 'perfect' | 'passed' | 'failed'>('all');
   const [isSyncingAssignments, setIsSyncingAssignments] = useState(false);
+  const [syncBannerMessage, setSyncBannerMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  const showSyncBanner = (type: 'success' | 'error' | 'info', text: string) => {
+    setSyncBannerMessage({ type, text });
+    setTimeout(() => setSyncBannerMessage(null), 5000);
+  };
 
   // Identify Student Profile
   const studentRecordTmp = students.find(s => {
@@ -551,13 +557,13 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       if (addedSubmissionsCount > 0 || addedAssignmentsCount > 0) {
         setCustomAssignments(updatedAssignments);
         setSubmissions(updatedSubmissions);
-        alert(`Successfully synced ${addedSubmissionsCount} submission(s) and created ${addedAssignmentsCount} assignment(s) from your Supabase 'assignments' storage bucket!`);
+        showSyncBanner('success', `Synced ${addedSubmissionsCount} submission(s) and created ${addedAssignmentsCount} assignment(s) from Supabase storage.`);
       } else {
-        alert("Scanned Supabase 'assignments' storage bucket: All files are already synced and mapped to student submissions.");
+        showSyncBanner('info', "All assignment files are already synced — no new submissions found.");
       }
     } catch (err: any) {
       console.error("Assignment storage sync failed:", err);
-      alert(`Assignment sync failed: ${err.message || String(err)}`);
+      showSyncBanner('error', `Assignment sync failed: ${err.message || String(err)}`);
     } finally {
       setIsSyncingAssignments(false);
     }
@@ -1165,6 +1171,24 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   return (
     <div className="material-screen space-y-4 sm:space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       
+      {/* Sync Feedback Banner */}
+      {syncBannerMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-medium shadow-sm animate-fadeIn ${
+            syncBannerMessage.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300' :
+            syncBannerMessage.type === 'error' ? 'bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/60 dark:border-rose-700 dark:text-rose-300' :
+            'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/60 dark:border-blue-700 dark:text-blue-300'
+          }`}
+        >
+          <span>{syncBannerMessage.text}</span>
+          <button onClick={() => setSyncBannerMessage(null)} className="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss notification">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Banner & Sub-Tab Switcher */}
       <div className="material-banner rounded-2xl p-4 sm:p-5 text-white border border-indigo-900/50 shadow-xl relative md:sticky md:top-0 z-30 backdrop-blur-md">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 mb-4">

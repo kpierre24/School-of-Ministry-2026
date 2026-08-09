@@ -188,7 +188,7 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
           <button 
             onClick={onClose}
             className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
-          >
+           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

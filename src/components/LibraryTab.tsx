@@ -271,19 +271,26 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     });
   }, []);
 
+  const [syncBannerMessage, setSyncBannerMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  const showSyncBanner = (type: 'success' | 'error' | 'info', text: string) => {
+    setSyncBannerMessage({ type, text });
+    setTimeout(() => setSyncBannerMessage(null), 5000);
+  };
+
   const handleSyncFromSupabaseStorage = async () => {
     setIsSyncingStorage(true);
     try {
       const { updatedResources, addedCount } = await syncLibraryFromSupabaseBucket(resources);
       if (addedCount > 0) {
         setResources(updatedResources);
-        alert(`Successfully synced ${addedCount} document(s) directly from your Supabase 'library' storage bucket into your app library!`);
+        showSyncBanner('success', `Synced ${addedCount} document(s) from Supabase 'library' storage into your Library.`);
       } else {
-        alert("Scanned Supabase 'library' storage bucket: All files are already synced and displayed in your Library.");
+        showSyncBanner('info', "All files are already synced — no new documents found in Supabase storage.");
       }
     } catch (err: any) {
       console.error("Storage sync failed:", err);
-      alert(`Storage sync failed: ${err.message || String(err)}`);
+      showSyncBanner('error', `Storage sync failed: ${err.message || String(err)}`);
     } finally {
       setIsSyncingStorage(false);
     }
@@ -720,6 +727,24 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+      {/* Sync Feedback Banner */}
+      {syncBannerMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-medium shadow-sm animate-fadeIn ${
+            syncBannerMessage.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300' :
+            syncBannerMessage.type === 'error' ? 'bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/60 dark:border-rose-700 dark:text-rose-300' :
+            'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/60 dark:border-blue-700 dark:text-blue-300'
+          }`}
+        >
+          <span>{syncBannerMessage.text}</span>
+          <button onClick={() => setSyncBannerMessage(null)} className="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Header Banner */}
       <div className="material-banner rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -872,7 +897,29 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
       {/* Lesson Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredResources.map((res) => {
+        {filteredResources.length === 0 ? (
+          <div className="col-span-full">
+            <EmptyState
+              title={resources.length === 0 ? 'No resources in your library yet' : 'No resources match your search'}
+              description={resources.length === 0
+                ? 'Upload lesson files, paste text content, or add a Google Drive link to get started.'
+                : 'Try clearing your search query or selecting a different category filter.'
+              }
+              icon={<BookOpen className="h-6 w-6" />}
+              action={
+                resources.length === 0 && !isStudent ? (
+                  <button type="button" onClick={() => setShowUploadModal(true)} className="md-btn-primary text-sm flex items-center gap-2">
+                    <Upload className="w-4 h-4" /> Upload First Resource
+                  </button>
+                ) : filteredResources.length === 0 && resources.length > 0 ? (
+                  <button type="button" onClick={() => { setSearchQuery(''); setCategoryFilter('all'); }} className="md-btn-tonal text-sm">
+                    Clear Filters
+                  </button>
+                ) : undefined
+              }
+            />
+          </div>
+        ) : filteredResources.map((res) => {
           const isDownloaded = downloadedIds.includes(res.id);
           const isInlineEditing = editingInlineId === res.id;
 

@@ -723,6 +723,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           onClick={() => handleTriggerUpload(s.name)}
                           className="hover:text-indigo-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
                           title="Upload/Update Photo"
+                          aria-label={`Upload photo for ${s.name}`}
                         >
                           <Camera className="w-3.5 h-3.5 text-indigo-500" />
                         </button>
@@ -736,6 +737,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                             }}
                             className="hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
                             title="Reset Password/PIN to 1234"
+                            aria-label={`Reset password for ${s.name}`}
                           >
                             <Lock className="w-3.5 h-3.5 text-rose-500" />
                           </button>
@@ -747,6 +749,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           onClick={() => onSelectStudentForTranscript(s)}
                           className="p-1 text-slate-600 hover:text-indigo-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
                           title="Transcript"
+                          aria-label={`View transcript for ${s.name}`}
                         >
                           <FileText className="w-3.5 h-3.5" />
                         </button>
@@ -754,6 +757,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           onClick={() => onSelectStudentForCertificate(s)}
                           className="p-1 text-slate-600 hover:text-amber-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
                           title="Certificate"
+                          aria-label={`View certificate for ${s.name}`}
                         >
                           <Award className="w-3.5 h-3.5 text-amber-500" />
                         </button>
@@ -761,6 +765,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           onClick={() => onSelectStudentForEmail(s)}
                           className="p-1 text-slate-600 hover:text-rose-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
                           title="Email Notice"
+                          aria-label={`Send email notice to ${s.name}`}
                         >
                           <Mail className="w-3.5 h-3.5" />
                         </button>
@@ -1180,6 +1185,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       onClick={() => onSelectStudentForEmail(s)}
                       className="py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       title="Send Email Warning Notice"
+                      aria-label={`Send email warning to ${s.name}`}
                     >
                       <Mail className="w-3.5 h-3.5" />
                     </button>

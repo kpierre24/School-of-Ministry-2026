@@ -40,6 +40,7 @@ interface CommandPaletteModalProps {
   onNavigate: (tab: TabType) => void;
   appUser: AppUser | null;
   studentList: { name: string; rate?: number; levelId?: string; studentId?: string }[];
+  paymentList?: { name: string; status: string; track: string }[];
   onOpenSettings: () => void;
   onOpenAdminTools: () => void;
   onOpenBatchBroadcast: () => void;
@@ -54,6 +55,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onNavigate,
   appUser,
   studentList,
+  paymentList,
   onOpenSettings,
   onOpenAdminTools,
   onOpenBatchBroadcast,
@@ -83,12 +85,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     { code: 'EXAM-05', title: 'Prophetic Discernment Practical Practicum', weight: '20%' },
   ];
 
-  const corePayments = [
-    { name: 'Aaron Miller', status: 'Paid In Full', track: 'Foundation Certificate' },
-    { name: 'Abigail Watson', status: 'Partial', track: 'Intermediate Diploma' },
-    { name: 'Benny Hinn Jr.', status: 'Past Due', track: 'Advanced Degree' },
-    { name: 'Chloe Davis', status: 'Paid In Full', track: 'Executive Leadership' },
-  ];
+  // Use live payment data passed as prop; fall back to empty if not provided
+  const corePayments = (paymentList ?? []).slice(0, 20);
 
   // Focus input automatically when modal opens
   useEffect(() => {

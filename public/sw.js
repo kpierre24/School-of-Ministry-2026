@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hteim-erp-pwa-v2.4.0';
+const CACHE_NAME = 'hteim-erp-pwa-v2.5.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

@@ -299,6 +299,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 onClick={() => handleCopyText('815 0537 7396', 'meetingId')}
                 className="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
                 title="Copy Meeting ID"
+                aria-label="Copy Zoom Meeting ID"
               >
                 {copiedField === 'meetingId' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
@@ -314,6 +315,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 onClick={() => handleCopyText('163738', 'passcode')}
                 className="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
                 title="Copy Passcode"
+                aria-label="Copy Zoom Passcode"
               >
                 {copiedField === 'passcode' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>

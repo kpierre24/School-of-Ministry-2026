@@ -244,7 +244,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button 
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
-          >
+           aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>

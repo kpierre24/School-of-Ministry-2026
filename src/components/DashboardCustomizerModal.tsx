@@ -184,7 +184,7 @@ export const DashboardCustomizerModal: React.FC<DashboardCustomizerModalProps> =
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-colors cursor-pointer"
-          >
+           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>

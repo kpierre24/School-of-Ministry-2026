@@ -90,6 +90,81 @@ export function ErrorState({
   );
 }
 
+// ─── Skeleton Primitives ───────────────────────────────────────────────────
+
+/** A single shimmering block — use as the base for all skeleton shapes */
+export function SkeletonBlock({ className = '' }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700/60 ${className}`}
+    />
+  );
+}
+
+/** Skeleton for a student profile card (used in StudentsTab / AttendanceTab) */
+export function StudentCardSkeleton() {
+  return (
+    <div aria-hidden="true" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+        <div className="flex-1 space-y-1.5">
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/5" />
+          <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-2/5" />
+        </div>
+        <div className="h-6 w-12 bg-slate-200 dark:bg-slate-700 rounded-lg shrink-0" />
+      </div>
+      <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded w-full" />
+      <div className="flex gap-2">
+        <div className="h-7 flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+        <div className="h-7 flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+        <div className="h-7 flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton grid for a list of student cards */
+export function StudentGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div
+      role="status"
+      aria-label="Loading students…"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <StudentCardSkeleton key={i} />
+      ))}
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
+
+/** Skeleton for a single payment table row */
+export function PaymentRowSkeleton() {
+  return (
+    <tr aria-hidden="true" className="animate-pulse border-b border-slate-100 dark:border-slate-800">
+      {[40, 20, 15, 12, 12, 10, 10, 8].map((w, i) => (
+        <td key={i} className="px-3 py-3">
+          <div className={`h-3 bg-slate-200 dark:bg-slate-700 rounded w-${w === 40 ? 'full' : `${w}/20`}`} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+/** Skeleton for the payment table body */
+export function PaymentTableSkeleton({ rows = 8 }: { rows?: number }) {
+  return (
+    <tbody role="status" aria-label="Loading payments…">
+      {Array.from({ length: rows }).map((_, i) => (
+        <PaymentRowSkeleton key={i} />
+      ))}
+      <tr><td><span className="sr-only">Loading…</span></td></tr>
+    </tbody>
+  );
+}
+
 export function StatusBanner({ tone = 'info', children }: { tone?: FeedbackTone; children: React.ReactNode }) {
   return (
     <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-sm ${toneClasses[tone]}`} role={tone === 'danger' ? 'alert' : 'status'}>
