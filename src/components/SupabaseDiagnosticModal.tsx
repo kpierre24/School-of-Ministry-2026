@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { 
   Database, 
   HardDrive, 
@@ -33,6 +34,7 @@ export const SupabaseDiagnosticModal: React.FC<SupabaseDiagnosticModalProps> = (
   userRole,
   onRefreshData
 }) => {
+  const dialogRef = useAccessibleModal(isOpen, onClose);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<SupabaseDiagnosticReport | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'library' | 'assignments' | 'sql_guide'>('overview');
@@ -63,12 +65,12 @@ export const SupabaseDiagnosticModal: React.FC<SupabaseDiagnosticModalProps> = (
 
   if (userRole && userRole !== 'admin') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full text-center space-y-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 modal-material-scrim">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="supabase-access-title" className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full text-center space-y-4 modal-material-dialog">
           <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Admin Restricted Diagnostics</h3>
+          <h3 id="supabase-access-title" className="text-base font-extrabold text-slate-900 dark:text-white">Admin Restricted Diagnostics</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Storage and database diagnostics are restricted strictly to portal Administrators.
           </p>
@@ -198,17 +200,17 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto modal-material-scrim">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="supabase-diagnostic-title" className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in duration-200 modal-material-dialog">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 modal-material-header">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400">
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 id="supabase-diagnostic-title" className="text-lg font-bold text-white flex items-center gap-2">
                 Supabase Storage & Data Diagnostics
               </h2>
               <p className="text-xs text-slate-400">
@@ -643,7 +645,7 @@ CREATE POLICY "Student Assignment Upload" ON storage.objects
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
+        <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between modal-material-footer">
           <div className="text-xs text-slate-500">
             Last evaluated: {report ? new Date(report.timestamp).toLocaleTimeString() : 'Never'}
           </div>

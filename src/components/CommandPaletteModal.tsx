@@ -369,17 +369,17 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   const categories = ['Actions & Views', 'Students', 'Courses', 'Exams', 'Payments'] as const;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn modal-material-scrim">
       {/* Outside Click Backdrop */}
       <div className="fixed inset-0" onClick={onClose} />
 
       {/* Main Command Box */}
       <div 
-        className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] z-10 animate-scaleUp"
+        className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] z-10 animate-scaleUp modal-material-dialog"
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
-        <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center gap-3 text-white">
+        <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center gap-3 text-white modal-material-header">
           <Search className="w-5 h-5 text-amber-400 shrink-0" />
           <input
             ref={inputRef}

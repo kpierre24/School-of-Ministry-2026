@@ -1434,9 +1434,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     const progressPercent = Math.min(100, Math.round((studentPayment.amountPaid / studentPayment.totalTuition) * 100));
 
     return (
-      <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+      <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
         {/* Student Welcome Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+        <div className="material-banner border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
             <div>
               <div className="flex items-center gap-2">
@@ -1784,9 +1784,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+    <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+      <div className="material-banner border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 flex items-center justify-center shadow-lg font-black text-2xl flex-shrink-0">
@@ -1835,11 +1835,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       </div>
 
       {/* Sub-Navigation Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 flex items-center justify-between gap-3 shadow-xs flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="bg-white border border-slate-200 rounded-2xl p-2 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full lg:w-auto">
           <button
             onClick={() => setActiveSubTab('ledger')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
               activeSubTab === 'ledger'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -1850,7 +1850,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
           <button
             onClick={() => setActiveSubTab('analytics')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
               activeSubTab === 'analytics'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -1860,10 +1860,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2 w-full lg:w-auto">
           <button
             onClick={() => setShowBulkReminderModal(true)}
-            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 hover:from-emerald-700 hover:to-indigo-800 text-white font-black text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-95 border border-emerald-400/30"
+            className="col-span-2 sm:col-span-1 min-h-11 px-3.5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 hover:from-emerald-700 hover:to-indigo-800 text-white font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-95 border border-emerald-400/30"
           >
             <MessageSquare className="w-4 h-4 text-emerald-300 animate-pulse" />
             <span>Send Bulk Reminders (WhatsApp & Email)</span>
@@ -1873,14 +1873,14 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           </button>
           <button
             onClick={handleExportCSV}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border border-slate-200"
+            className="min-h-11 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
           {removedStudentRecords.length > 0 && (
             <button
               onClick={() => setShowRemovedArchiveModal(true)}
-              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="min-h-11 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               title="View or restore previously removed students and fees"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -1892,7 +1892,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           )}
           <button
             onClick={() => setShowAddStudentModal(true)}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="min-h-11 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Plus className="w-3.5 h-3.5 text-emerald-400" /> Log Tuition
           </button>
@@ -1926,7 +1926,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 <button
                   key={st}
                   onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`min-h-10 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                     statusFilter === st
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
@@ -2331,9 +2331,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 3: Printable Official Tuition Receipt & Statement */}
       {receiptRecord && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl my-auto flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
-            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="modal-material-scrim fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="modal-material-dialog bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl my-auto flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
+            <div className="modal-material-header p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-emerald-400 shrink-0" /> Official Tuition Statement & Receipt
               </h3>

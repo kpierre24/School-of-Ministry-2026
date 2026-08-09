@@ -122,12 +122,21 @@ import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { AppPresentationModal } from './components/AppPresentationModal';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
+import { trackUxEvent } from './lib/uxTelemetry';
 
 const EXCLUDED_STUDENTS = [
   'gale agrant',
   'gillian selkridge',
   'sam selk',
 ];
+
+const VALID_TABS: TabType[] = ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages'];
+
+const getTabFromLocation = (): TabType => {
+  if (typeof window === 'undefined') return 'home';
+  const candidate = new URLSearchParams(window.location.search).get('tab') as TabType | null;
+  return candidate && VALID_TABS.includes(candidate) ? candidate : 'home';
+};
 
 const isExcludedStudent = (name?: string) => {
   if (!name || typeof name !== 'string') return false;
@@ -856,14 +865,27 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncedBannerMessage, setSyncedBannerMessage] = useState<string | null>(null);
 
+  const handleNavigate = (tab: TabType) => {
+    setActiveErpTab(tab);
+    setIsNavOpen(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.pushState({ tab }, '', url);
+    }
+    trackUxEvent('navigation_changed', { tab, role: appUser?.role || 'guest' });
+  };
+
   useEffect(() => {
     const handleOnline = () => {
       setIsOffline(false);
+      trackUxEvent('online_restored');
       setSyncedBannerMessage('🟢 Internet Reconnected! Mobile PWA auto-synced local attendance & student records.');
       setTimeout(() => setSyncedBannerMessage(null), 6000);
     };
     const handleOffline = () => {
       setIsOffline(true);
+      trackUxEvent('offline_detected');
     };
 
     window.addEventListener('online', handleOnline);
@@ -1003,7 +1025,20 @@ export default function App() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
 
   // ERP Classroom System Active Tab State
-  const [activeErpTab, setActiveErpTab] = useState<TabType>('home');
+  const [activeErpTab, setActiveErpTab] = useState<TabType>(getTabFromLocation);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', activeErpTab);
+    window.history.replaceState({ tab: activeErpTab }, '', url);
+  }, [activeErpTab]);
+
+  useEffect(() => {
+    const handlePopState = () => setActiveErpTab(getTabFromLocation());
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const handleUpdateRubric = (studentName: string, key: 'participation' | 'scripture' | 'assignment', val: number) => {
     const studentKey = studentName.toLowerCase().trim();
@@ -2815,15 +2850,50 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col min-h-[100dvh] md:h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-24 md:pb-6 overflow-y-auto md:overflow-hidden select-none sm:select-text">
+      <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
+      <div className="flex flex-col min-h-[100dvh] md:h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 overflow-y-auto md:overflow-hidden overscroll-y-contain select-text">
       {/* Offline Banner */}
       {isOffline && (
-        <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0">
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
           <div className="flex items-center gap-2">
             <WifiOff className="w-4 h-4 text-amber-600" />
-            <span className="font-medium">Working Offline — data cached locally, syncing when connection restores.</span>
+            <span className="font-medium">Working offline — changes are saved locally and will sync when connection restores.</span>
           </div>
           <span className="px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-semibold">PWA Ready</span>
+        </div>
+      )}
+
+      {syncedBannerMessage && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center gap-2 shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
+          <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="font-medium">{syncedBannerMessage.replace('🟢 ', '')}</span>
+        </div>
+      )}
+
+      {cloudSyncError && !isOffline && (
+        <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-2.5 rounded-2xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-sm" role="alert">
+          <div className="flex items-center gap-2 min-w-0">
+            <CloudOff className="w-4 h-4 shrink-0 text-red-600" aria-hidden="true" />
+            <span className="font-medium">{cloudSyncError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { trackUxEvent('sync_retry_requested', { role: appUser?.role || 'guest' }); handlePushToCloud(); }}
+            disabled={isCloudSyncing}
+            className="md-btn-tonal text-xs px-3 py-1.5 shrink-0"
+          >
+            {isCloudSyncing ? 'Retrying…' : 'Retry sync'}
+          </button>
+        </div>
+      )}
+
+      {pendingConflicts.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-sm" role="alert">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle className="w-4 h-4 shrink-0 text-orange-600" aria-hidden="true" />
+            <span className="font-medium">{pendingConflicts.length} attendance sync conflict{pendingConflicts.length === 1 ? '' : 's'} need review.</span>
+          </div>
+          <button type="button" onClick={() => handleNavigate('attendance')} className="md-btn-tonal text-xs px-3 py-1.5 shrink-0">Review conflicts</button>
         </div>
       )}
 
@@ -3139,7 +3209,9 @@ create policy "Allow public update" on app_states for update using (true) with c
             )}
             {/* Messages */}
             <button
-              onClick={() => setActiveErpTab('messages')}
+              type="button"
+              onClick={() => handleNavigate('messages')}
+              aria-label="Open messages"
               className={`md-icon-btn border relative ${
                 activeErpTab === 'messages'
                   ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
@@ -3385,7 +3457,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       </header>
 
       {/* MD3 Mobile breadcrumb bar */}
-      <div className="md:hidden bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl px-3.5 py-2 mb-4 flex items-center justify-between">
+      <nav aria-label="Mobile portal navigation" className="md:hidden bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl px-3.5 py-2 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600">
             {activeErpTab === 'home' && <Sparkles className="w-4 h-4" />}
@@ -3414,16 +3486,18 @@ create policy "Allow public update" on app_states for update using (true) with c
           </div>
         </div>
         <button
+          type="button"
           onClick={() => setShowMobileMoreMenu(true)}
           className="md-btn-tonal text-xs px-3 py-1.5 flex items-center gap-1.5"
+          aria-label="Open more portal sections"
         >
           <Menu className="w-3.5 h-3.5" />
           <span>Menu</span>
         </button>
-      </div>
+      </nav>
 
       {/* MD3 Desktop Navigation Bar */}
-      <div className="hidden md:block relative z-40 mb-4">
+      <nav aria-label="Primary portal navigation" className="hidden md:block relative z-40 mb-4">
         {/* Horizontal Navigation Bar */}
         <div 
           className="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-1.5 shadow-sm backdrop-blur-md flex items-center justify-between gap-1"
@@ -3452,16 +3526,16 @@ create policy "Allow public update" on app_states for update using (true) with c
                   key={tab}
                   type="button"
                   onClick={() => {
-                    setActiveErpTab(tab as any);
-                    setIsNavOpen(false);
+                    handleNavigate(tab as TabType);
                   }}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 btn-enhanced cursor-pointer whitespace-nowrap shrink-0 ${
                     isActive
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]'
+                      ? 'md-nav-pill shadow-sm'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--md-primary)]' : 'text-slate-400 dark:text-slate-500'}`} />
                   <span>{label}</span>
                   {badgeAlert && (
                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
@@ -3479,6 +3553,9 @@ create policy "Allow public update" on app_states for update using (true) with c
           <button
             type="button"
             onClick={() => setIsNavOpen(!isNavOpen)}
+            aria-expanded={isNavOpen}
+            aria-controls="portal-modules-menu"
+            aria-label="Toggle portal modules"
             className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border shrink-0 ${
               isNavOpen
                 ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
@@ -3502,6 +3579,7 @@ create policy "Allow public update" on app_states for update using (true) with c
         {/* Explicit Click Drawer / Dropdown */}
         {isNavOpen && (
           <div
+            id="portal-modules-menu"
             className="absolute top-full right-0 mt-2 w-80 max-w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 z-50 space-y-2 shadow-2xl animate-scaleUp origin-top-right"
             style={{ boxShadow: 'var(--md-elev-3)' }}
           >
@@ -3540,9 +3618,9 @@ create policy "Allow public update" on app_states for update using (true) with c
                     key={tab}
                     type="button"
                     onClick={() => {
-                      setActiveErpTab(tab as any);
-                      setIsNavOpen(false);
+                      handleNavigate(tab as TabType);
                     }}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-sm'
@@ -3597,10 +3675,10 @@ create policy "Allow public update" on app_states for update using (true) with c
             </div>
           </div>
         )}
-      </div>
+      </nav>
 
       {/* Main Workspace */}
-      <div className="flex flex-1 gap-6 min-h-0 relative">
+      <main id="main-workspace" tabIndex={-1} className="flex flex-1 gap-6 min-h-0 relative">
         <AnimatePresence mode="wait">
           {activeErpTab === 'home' && (
             <motion.div
@@ -4698,7 +4776,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           </aside>
         )}
         </AnimatePresence>
-      </div>
+      </main>
 
       {/* Student Detail Modal */}
       <AnimatePresence>
@@ -6855,7 +6933,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       {/* Floating Quick Messages Launcher (Bottom Right) */}
       <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50">
         <button
-          onClick={() => setActiveErpTab('messages')}
+          type="button"
+          onClick={() => handleNavigate('messages')}
           className="px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-xl btn-glow-indigo flex items-center gap-2 border border-indigo-400/40 cursor-pointer active:scale-95 transition-all group touch-min-44"
           title="Direct Message Teacher or Admin"
         >
@@ -6873,7 +6952,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       </div>
 
       {/* MD3 Mobile Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 mobile-nav-glass border-t border-slate-200/80 dark:border-slate-800 shadow-2xl flex items-center justify-around md:hidden pb-safe"
+      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-50 mobile-nav-glass border-t border-slate-200/80 dark:border-slate-800 shadow-2xl flex items-center justify-around md:hidden pb-safe"
         style={{ boxShadow: '0 -4px 20px rgba(0,0,0,.12)' }}>
         {[
           { tab: 'home',       Icon: Sparkles,      label: 'Home' },
@@ -6884,7 +6963,10 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         ].map(({ tab, Icon, label, dot }: any) => (
           <button
             key={tab}
-            onClick={() => setActiveErpTab(tab)}
+            type="button"
+            onClick={() => handleNavigate(tab as TabType)}
+            aria-label={`Open ${label}`}
+            aria-current={activeErpTab === tab ? 'page' : undefined}
             className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center relative cursor-pointer active:scale-95 transition-all touch-min-44"
           >
             <div className={`relative flex items-center justify-center w-12 h-7 rounded-full transition-all ${
@@ -6903,7 +6985,10 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
         {/* More button */}
         <button
+          type="button"
           onClick={() => setShowMobileMoreMenu(true)}
+          aria-label="Open more portal sections"
+          aria-expanded={showMobileMoreMenu}
           className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all touch-min-44"
         >
           <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${

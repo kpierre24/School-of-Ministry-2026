@@ -196,7 +196,7 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
   const totalSubmissions = submissions.length;
 
   return (
-    <div className="space-y-6">
+    <div className="material-screen space-y-6">
       {/* Toast Banner */}
       {copiedToast && (
         <div className="p-3 bg-amber-400 text-slate-950 font-bold text-xs rounded-2xl shadow-lg border border-amber-500 flex items-center justify-between animate-fadeIn">
@@ -209,7 +209,7 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
       )}
 
       {/* DASHBOARD HEADER */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+      <div className="material-banner text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">

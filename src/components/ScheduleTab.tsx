@@ -590,16 +590,16 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   return (
-    <div className="space-y-6 animate-fadeIn text-slate-100 pb-28 sm:pb-24 md:pb-8">
+    <div className="material-screen min-w-0 space-y-6 animate-fadeIn text-slate-100 pb-28 sm:pb-24 md:pb-8">
       {/* Sleek Dark Header Bar matching uploaded mockup */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
               <CalendarIcon className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2 break-words">
                 Class Schedule & Academic Timetable
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   Admin Control
@@ -615,7 +615,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
         {/* Header Right Controls */}
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
           {/* Module Selector Filter */}
-          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5">
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 min-h-11 max-w-full">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <select
               value={selectedModuleFilter}
@@ -634,7 +634,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           {/* iCal / Google Calendar Sync Export Button */}
           <button
             onClick={handleExportAllToICS}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-800 shadow-3xs transition-all cursor-pointer active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-11 bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-800 shadow-3xs transition-all cursor-pointer active:scale-95"
             title="Export all lectures to Apple Calendar, Outlook, or iCal (.ics file)"
           >
             <Download className="w-3.5 h-3.5 text-amber-400" />
@@ -642,36 +642,36 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           </button>
 
           {/* View Mode Toggle Switcher */}
-          <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl">
+          <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl max-w-full overflow-x-auto no-scrollbar">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 min-h-10 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 viewMode === 'calendar' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Monthly Calendar View"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Monthly Calendar</span>
+                <span className="hidden sm:inline">Monthly Calendar</span><span className="sm:hidden">Month</span>
             </button>
             <button
               onClick={() => setViewMode('timetable')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 min-h-10 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 viewMode === 'timetable' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Weekly Matrix Timetable View"
             >
               <Grid className="w-3.5 h-3.5" />
-              <span>Weekly Timetable</span>
+                <span className="hidden sm:inline">Weekly Timetable</span><span className="sm:hidden">Week</span>
             </button>
             <button
               onClick={() => setViewMode('agenda')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 min-h-10 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 viewMode === 'agenda' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Agenda List View"
             >
               <List className="w-3.5 h-3.5" />
-              <span>Agenda List</span>
+                <span className="hidden sm:inline">Agenda List</span><span className="sm:hidden">Agenda</span>
             </button>
           </div>
 
@@ -679,7 +679,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           {!isStudent && (
             <button
               onClick={() => handleOpenAddModal()}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:scale-95"
+              className="flex items-center justify-center gap-2 px-4 py-2 min-h-11 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Schedule Lecture</span>
@@ -689,7 +689,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
       </div>
 
       {/* Weekly Tuesday Live Zoom Schedule Banner */}
-      <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 border border-blue-500/30 rounded-2xl p-5 shadow-2xl text-white relative overflow-hidden">
+      <div className="material-banner border border-blue-500/30 rounded-2xl p-5 shadow-2xl text-white relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 relative z-10">
           <div className="flex items-start gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-bold flex-shrink-0 shadow-inner">

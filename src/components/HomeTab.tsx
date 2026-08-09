@@ -435,10 +435,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-28 sm:pb-24 md:pb-12 animate-fadeIn" id="som-home-container">
+    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
       
       {/* 1. HERO BANNER: Cinematic Biblical Training Atmosphere with Glassmorphism Overlay */}
-      <section className={`relative overflow-hidden rounded-3xl border border-amber-300/60 dark:border-amber-500/30 shadow-xl group transition-all duration-300 ${
+      <section className={`relative overflow-hidden rounded-3xl border border-amber-300/60 dark:border-amber-500/30 shadow-xl group transition-all duration-300 material-hero ${
         isBannerCollapsed ? 'min-h-0' : 'min-h-[380px] sm:min-h-[440px] flex flex-col justify-between'
       }`}>
         {/* Background Artwork */}
@@ -587,7 +587,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </section>
 
       {/* 1B. INSTANT WELCOME & USER PATHWAY SELECTOR STRIP */}
-      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-5 border border-amber-400/30 shadow-lg text-white space-y-3.5">
+      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-5 border border-amber-400/30 shadow-lg text-white space-y-3.5 material-banner">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30">
@@ -723,7 +723,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* Student Quick Touch Command Hub - Mobile & Student View Optimization */}
       {isStudent && (
-        <section className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 border border-indigo-500/30 shadow-lg space-y-4 animate-fadeIn">
+        <section className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 border border-indigo-500/30 shadow-lg space-y-4 animate-fadeIn material-banner">
           <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400 shrink-0">

@@ -29,6 +29,7 @@ import {
   Briefcase,
   Database
 } from 'lucide-react';
+import { EmptyState } from './UXPrimitives';
 import { AppMessage, MessageCategory, MessagePriority, MessageReply, MessageAttachment } from '../types';
 import { AppUser } from '../lib/userAuth';
 import { sanitizeInput } from '../lib/securityHelper';
@@ -302,9 +303,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+    <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+      <div className="material-banner rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
         <div className="relative z-10 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30 flex items-center gap-1.5">
@@ -496,18 +497,12 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
           {/* Messages Thread List */}
           <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-200/80 dark:divide-slate-800">
             {filteredMessages.length === 0 ? (
-              <div className="p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-                  <MessageSquare className="w-6 h-6" />
-                </div>
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">No messages found matching your filter.</p>
-                <button
-                  onClick={() => { setActiveFilter('all'); setSelectedCategory('all'); setSearchQuery(''); }}
-                  className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-lg border border-indigo-200 dark:border-indigo-800"
-                >
-                  Reset Filters
-                </button>
-              </div>
+              <EmptyState
+                title="No messages match these filters"
+                description="Try clearing the search or selecting a different message category."
+                icon={<MessageSquare className="h-6 w-6" />}
+                action={<button type="button" onClick={() => { setActiveFilter('all'); setSelectedCategory('all'); setSearchQuery(''); }} className="md-btn-tonal text-sm">Reset filters</button>}
+              />
             ) : (
               filteredMessages.map(msg => {
                 const isSelected = activeMessage?.id === msg.id;

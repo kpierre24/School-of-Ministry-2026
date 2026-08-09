@@ -42,7 +42,8 @@ export function usePWAInstall() {
     };
 
     checkStandalone();
-    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkStandalone);
+    const standaloneMediaQuery = window.matchMedia('(display-mode: standalone)');
+    standaloneMediaQuery.addEventListener('change', checkStandalone);
 
     const handlePrompt = (prompt: BeforeInstallPromptEvent | null) => {
       setDeferredPrompt(prompt);
@@ -51,6 +52,7 @@ export function usePWAInstall() {
     listeners.push(handlePrompt);
 
     return () => {
+      standaloneMediaQuery.removeEventListener('change', checkStandalone);
       const idx = listeners.indexOf(handlePrompt);
       if (idx > -1) listeners.splice(idx, 1);
     };

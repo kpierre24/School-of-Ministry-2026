@@ -207,8 +207,8 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-fadeIn modal-material-scrim">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden modal-material-dialog">
         
         {/* Header Bar with Google Forms style accent */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 text-white p-5 sm:p-6 relative flex-shrink-0">
@@ -419,7 +419,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
                   className="bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 border-slate-200 dark:border-slate-700 shadow-sm relative space-y-4 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
                 >
                   {/* Top Bar for Question */}
-                  <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60 -mx-5 -mt-5 p-3.5 px-5 rounded-t-2xl border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60 -mx-5 -mt-5 p-3.5 px-5 rounded-t-2xl border-b border-slate-200 dark:border-slate-700 modal-material-header">
                     <div className="flex items-center gap-2">
                       <span className="w-7 h-7 rounded-xl bg-purple-600 text-white font-black text-xs flex items-center justify-center shadow">
                         {qIndex + 1}
@@ -596,7 +596,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
         </form>
 
         {/* Footer Bar */}
-        <div className="p-4 sm:p-5 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-shrink-0">
+        <div className="p-4 sm:p-5 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-shrink-0 modal-material-footer">
           <button
             type="button"
             onClick={onClose}

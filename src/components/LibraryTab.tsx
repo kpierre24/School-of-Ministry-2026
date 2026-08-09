@@ -39,6 +39,7 @@ import {
   RefreshCw,
   CloudDownload
 } from 'lucide-react';
+import { EmptyState } from './UXPrimitives';
 import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
 import { uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from '../lib/supabaseClient';
@@ -718,9 +719,9 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+    <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="material-banner rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <BookMarked className="w-6 h-6 text-emerald-400" />
@@ -858,31 +859,15 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
       {/* Empty State */}
       {resources.length === 0 && (
-        <div className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center space-y-4">
-          <div className="w-16 h-16 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
-            <BookOpen className="w-8 h-8" />
-          </div>
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900">The Lesson Library is Currently Empty</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-              Upload your lesson files, PDFs, or lecture notes. Gemini AI will evaluate each lesson, generate a card summary, and make it available for instant student download.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Upload className="w-4 h-4" /> Upload Lessons Now
-            </button>
-            <button
-              onClick={handleResetSampleLessons}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-            >
-              Restore Sample Lessons
-            </button>
-          </div>
-        </div>
+        <EmptyState
+          title="The lesson library is currently empty"
+          description="Upload lesson files, PDFs, or lecture notes, or restore the sample lessons to get started."
+          icon={<BookOpen className="h-6 w-6" />}
+          action={<div className="flex flex-wrap items-center justify-center gap-3">
+            <button type="button" onClick={() => setShowUploadModal(true)} className="md-btn-filled inline-flex items-center gap-2 text-sm"><Upload className="h-4 w-4" /> Upload lessons</button>
+            <button type="button" onClick={handleResetSampleLessons} className="md-btn-tonal text-sm">Restore samples</button>
+          </div>}
+        />
       )}
 
       {/* Lesson Cards Grid */}

@@ -1,4 +1,5 @@
 import express from "express";
+import { createServer as createHttpServer } from "http";
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
@@ -9,6 +10,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+const httpServer = createHttpServer(app);
 const PORT = 3000;
 
 // Increase JSON payload limit for file/text evaluations
@@ -184,7 +186,7 @@ async function startServer() {
   // Vite middleware for development mode
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: { server: httpServer } },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -196,7 +198,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`HTEIM School of Ministry server running on http://localhost:${PORT}`);
   });
 }

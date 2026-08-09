@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { ShieldAlert, Check, FileSpreadsheet, User, RefreshCw, Calendar } from 'lucide-react';
 
 export type MergeConflict = {
@@ -23,6 +24,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
   onResolve,
   onCancel
 }) => {
+  const dialogRef = useAccessibleModal(isOpen && conflicts.length > 0, onCancel);
   // Store individual resolution choices: key is studentName + '||' + classDay
   const [choices, setChoices] = useState<Record<string, 'local' | 'sheets'>>(() => {
     const initial: Record<string, 'local' | 'sheets'> = {};
@@ -57,8 +59,8 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn" id="sheets-conflict-modal">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn modal-material-scrim" id="sheets-conflict-modal">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="sheets-conflict-title" className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-material-dialog">
         
         {/* Header section */}
         <div className="p-6 bg-amber-50 border-b border-amber-100 flex items-start gap-4">
@@ -69,7 +71,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
             <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-200">
               {conflicts.length} Unresolved Conflict{conflicts.length > 1 ? 's' : ''}
             </span>
-            <h3 className="text-base font-black text-slate-900 mt-1">Google Sheets Sync Conflict Resolution</h3>
+            <h3 id="sheets-conflict-title" className="text-base font-black text-slate-900 mt-1">Google Sheets Sync Conflict Resolution</h3>
             <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
               We detected conflicts between your local manual modifications and the incoming Google Sheets records. Choose which source of truth to preserve.
             </p>
@@ -77,7 +79,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
         </div>
 
         {/* Bulk Action Controls */}
-        <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 modal-material-header">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quick Actions</span>
           <div className="flex gap-2">
             <button
@@ -161,7 +163,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
         </div>
 
         {/* Footer controls */}
-        <div className="p-6 border-t border-slate-100 flex items-center justify-between bg-white">
+        <div className="p-6 border-t border-slate-100 flex items-center justify-between bg-white modal-material-footer">
           <button
             onClick={onCancel}
             className="px-4 py-2 hover:bg-slate-50 text-slate-600 font-extrabold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer"

@@ -35,6 +35,7 @@ import {
   User
 } from 'lucide-react';
 import { generateStudentUsername } from '../lib/userAuth';
+import { EmptyState } from './UXPrimitives';
 
 export type StudentSummaryData = {
   name: string;
@@ -274,9 +275,9 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const satisfactoryStudents = students.filter(s => s.rate >= satisfactoryThreshold).length;
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8 material-screen">
       {/* Top Banner & Quick Metrics */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl material-banner">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
@@ -319,7 +320,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col space-y-3">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col space-y-3 material-surface">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -475,7 +476,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         /* Visual Student Photo Gallery View */
         <div className="space-y-5 animate-fadeIn">
           {/* Gallery Header Banner: Active Class Session Selector, Stats & Batch Actions */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl border border-indigo-800/50 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl border border-indigo-800/50 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 material-banner">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
                 <Camera className="w-5 h-5" />
@@ -1071,7 +1072,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                 {/* Chronological Activity Line */}
                                 <div className="relative pl-5 border-l-2 border-indigo-900/80 space-y-3.5 my-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                                   {filteredItems.length === 0 ? (
-                                    <p className="text-[11px] text-slate-400 italic py-2">No records found for this filter.</p>
+                                    <EmptyState
+                                      title="No activity yet"
+                                      description="Attendance and quiz activity will appear here when records are available."
+                                      icon={<Clock className="h-5 w-5" />}
+                                    />
                                   ) : (
                                     filteredItems.map((item, idx) => (
                                       <div key={item.id || idx} className="relative group/timeline">

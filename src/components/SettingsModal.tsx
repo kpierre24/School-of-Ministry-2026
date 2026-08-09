@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import hteimLogoAsset from '../assets/hteim_logo.png';
 import { 
   Settings, 
@@ -81,6 +82,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenMobileDownloadCenter,
   onOpenAdminTools
 }) => {
+  const dialogRef = useAccessibleModal(isOpen, onClose);
   const [activeTab, setActiveTab] = useState<'appearance' | 'academic' | 'sync' | 'about'>('appearance');
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importErrorMessage, setImportErrorMessage] = useState('');
@@ -208,18 +210,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden modal-material-scrim">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog">
         
         {/* Header */}
-        <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0 border-b border-slate-800">
+        <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0 border-b border-slate-800 modal-material-header">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
               <Settings className="w-4.5 h-4.5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-black tracking-tight">Portal Settings & System Information</h2>
+                <h2 id="settings-modal-title" className="text-sm font-black tracking-tight">Portal Settings & System Information</h2>
                 {userRole === 'admin' && (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     Administrator
@@ -1091,7 +1093,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2 flex-shrink-0">
+        <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2 flex-shrink-0 modal-material-footer">
           <div className="text-[10px] text-slate-500 font-medium">
             <span>HTEIM Ministry ERP • 2026</span>
             <span className="mx-1.5 text-slate-300">•</span>

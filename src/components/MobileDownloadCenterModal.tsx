@@ -99,10 +99,10 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 md:p-6 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto text-slate-100 max-h-[92vh]">
+    <div className="modal-material-scrim fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="modal-material-dialog relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto text-slate-100 max-h-[92vh]">
         {/* Header Bar */}
-        <div className="bg-slate-950/90 border-b border-slate-800 p-4 sm:p-5 flex items-center justify-between gap-4 sticky top-0 z-20">
+        <div className="modal-material-header bg-slate-950/90 border-b border-slate-800 p-4 sm:p-5 flex items-center justify-between gap-4 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 shrink-0">
               <Smartphone className="w-6 h-6" />

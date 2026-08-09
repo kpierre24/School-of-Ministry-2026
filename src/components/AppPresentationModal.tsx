@@ -252,15 +252,15 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-fadeIn">
+    <div className="modal-material-scrim fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-fadeIn">
       <div 
         ref={modalContainerRef}
-        className={`w-full max-w-4xl bg-slate-900 border border-indigo-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col ${
+        className={`modal-material-dialog w-full max-w-4xl bg-slate-900 border border-indigo-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col ${
           isFullscreen ? 'fixed inset-0 max-w-none rounded-none z-50' : 'max-h-[92vh]'
         }`}
       >
         {/* Modal Top Bar */}
-        <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 p-3 sm:p-4 border-b border-indigo-900/60 flex items-center justify-between gap-2 shrink-0">
+        <div className="modal-material-header bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 p-3 sm:p-4 border-b border-indigo-900/60 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-400 p-0.5 border border-amber-300 shadow-sm shrink-0">
               <img src={hteimLogoAsset} alt="HTEIM Logo" className="w-full h-full object-contain rounded-md" referrerPolicy="no-referrer" />
