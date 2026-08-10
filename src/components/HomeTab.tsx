@@ -74,6 +74,7 @@ import {
   DEFAULT_WIDGET_ORDER, 
   DEFAULT_ENABLED_WIDGETS 
 } from './DashboardCustomizerModal';
+import { EmptyState } from './UXPrimitives';
 
 interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
@@ -1599,11 +1600,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     })}
                   </div>
                 ) : (
-                  <div className="p-6 text-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">All Students Meeting Attendance Expectations</p>
-                    <p className="text-[11px] text-slate-400">No students are currently falling below the 75% threshold in this filter view.</p>
-                  </div>
+                  <EmptyState
+                    title="All students meeting expectations"
+                    description="No students are currently falling below the attendance threshold in this filter view."
+                    icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                  />
                 )}
               </div>
             )}

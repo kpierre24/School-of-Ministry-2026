@@ -23,6 +23,7 @@ import {
   Lock,
   ShieldAlert
 } from 'lucide-react';
+import { EmptyState } from './UXPrimitives';
 import { Course } from '../types';
 import { UserRole } from '../lib/userAuth';
 
@@ -408,7 +409,13 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       </div>
 
       {/* Course List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {filteredCourses.length === 0 ? (
+        <EmptyState
+          title="No courses found"
+          description="There are no courses matching your current filters. Try adjusting your search or status filter."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredCourses.map((course) => {
           const isExpired = course.expiryDate ? new Date(course.expiryDate) < new Date() : false;
 
@@ -554,6 +561,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
         );
       })}
       </div>
+      )}
 
       {/* Course Detail Syllabus Modal */}
       {selectedCourse && (

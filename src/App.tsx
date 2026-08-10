@@ -75,7 +75,8 @@ import {
   Plus,
   Menu,
   MessageSquare,
-  LogOut
+  LogOut,
+  MoreHorizontal
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
 import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from './lib/supabaseClient';
@@ -120,6 +121,7 @@ import { SwipeableAttendanceCard } from './components/SwipeableAttendanceCard';
 import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { AppPresentationModal } from './components/AppPresentationModal';
+import { EmptyState } from './components/UXPrimitives';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
 import { trackUxEvent } from './lib/uxTelemetry';
@@ -364,6 +366,7 @@ export default function App() {
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
+  const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
   const [isNavOpen, setIsNavOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -3060,154 +3063,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               </button>
             )}
 
-            {/* Demo Video */}
-            <button
-              onClick={() => setShowPresentationModal(true)}
-              className="md-btn-tonal hidden md:flex items-center gap-1.5 text-xs px-3.5 py-2 shrink-0 btn-enhanced font-bold"
-              title="30-Second Student Presentation Demo"
-            >
-              <Play className="w-3.5 h-3.5 shrink-0 text-amber-500 fill-amber-500" />
-              <span className="hidden sm:inline">Demo</span>
-            </button>
 
-            {/* Search */}
-            <button
-              onClick={() => setShowCommandPalette(true)}
-              className="md-icon-btn hidden md:flex border border-slate-200 dark:border-slate-700 btn-enhanced"
-              title="Global Search (⌘K)"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            {/* Tools Dropdown - Admin Only */}
-            {appUser?.role === 'admin' && (
-              <div className="relative shrink-0 hidden md:block">
-                <button
-                  onClick={() => setShowToolsMenu(!showToolsMenu)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                    showToolsMenu
-                      ? 'bg-indigo-600 text-white border-indigo-500'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Tools</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${showToolsMenu ? 'rotate-180' : ''}`} />
-                </button>
-
-                {showToolsMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-[70] space-y-3"
-                    style={{ boxShadow: 'var(--md-elev-3)' }}>
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                      <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                        <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Tools & Operations
-                      </h4>
-                      <button onClick={() => setShowToolsMenu(false)} className="md-icon-btn w-6 h-6">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Sync & Cloud</p>
-                      <button
-                        onClick={() => { setShowToolsMenu(false); handlePushToCloud(); }}
-                        disabled={isCloudSyncing}
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-indigo-600" />}
-                          <div>
-                            <p className="text-slate-800 dark:text-slate-200 font-semibold">Cloud Backup</p>
-                            {lastSyncedTime && <p className="text-[10px] text-slate-400 font-mono">{lastSyncedTime}</p>}
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-indigo-600 font-semibold">Sync</span>
-                      </button>
-                      {dataSource === 'sheets' && (
-                        <button
-                          onClick={() => { setShowToolsMenu(false); handleLoadSheets(); }}
-                          disabled={isLoading}
-                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isLoading ? 'animate-spin' : ''}`} />
-                            <span className="text-slate-800 dark:text-slate-200 font-semibold">Sync Google Sheets</span>
-                          </div>
-                          <span className="text-[10px] text-emerald-600 font-semibold">Sheets</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {records.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Exports</p>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <button
-                            onClick={() => { setShowToolsMenu(false); setShowReportModal(true); }}
-                            className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="text-slate-800 dark:text-slate-200">PDF Report</span>
-                          </button>
-                          <button
-                            onClick={() => { setShowToolsMenu(false); handleExportCSV(); }}
-                            className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
-                          >
-                            <Download className="w-3.5 h-3.5 text-slate-600" />
-                            <span className="text-slate-800 dark:text-slate-200">CSV Export</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => { setShowToolsMenu(false); setShowBatchBroadcastModal(true); }}
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Radio className="w-3.5 h-3.5 text-indigo-600" />
-                        <span className="text-slate-800 dark:text-slate-200 font-semibold">Batch Broadcast</span>
-                      </div>
-                      <span className="text-[10px] text-indigo-600 font-semibold">Email & SMS</span>
-                    </button>
-
-                    <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">More</p>
-                      <button
-                        onClick={() => { setShowToolsMenu(false); setShowPresentationModal(true); }}
-                        className="w-full p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-                          <span className="text-indigo-800 dark:text-indigo-200 font-semibold">30s Demo Video</span>
-                        </div>
-                        <span className="md-badge bg-amber-100 text-amber-800 border border-amber-200 text-[9px]">PLAY</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowToolsMenu(false); setShowMobileDownloadModal(true); }}
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-3.5 h-3.5 text-amber-600" />
-                          <span className="text-slate-800 dark:text-slate-200 font-semibold">Mobile App / APK</span>
-                        </div>
-                        <span className="md-badge bg-amber-50 text-amber-700 border border-amber-200 text-[9px]">v2.4</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowToolsMenu(false); setShowAdminAuditModal(true); }}
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                          <span className="text-slate-800 dark:text-slate-200 font-semibold">Admin Audit Tools</span>
-                        </div>
-                        <span className="text-[10px] text-amber-600 font-semibold">Admin</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
             {/* Messages */}
             <button
               type="button"
@@ -3288,153 +3144,213 @@ create policy "Allow public update" on app_states for update using (true) with c
               )}
             </div>
 
-            {/* Settings */}
-            <button onClick={() => setShowSettingsModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" aria-label="Settings" title="Settings">
-              <Settings className="w-4 h-4" />
-            </button>
+             {/* More Dropdown */}
+             <div className="relative shrink-0 hidden md:block">
+               <button
+                 onClick={() => setShowMoreMenu(!showMoreMenu)}
+                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                   showMoreMenu
+                     ? 'bg-indigo-600 text-white border-indigo-500'
+                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                 }`}
+               >
+                 <MoreHorizontal className="w-3.5 h-3.5" />
+                 <span className="hidden sm:inline">More</span>
+                 <ChevronDown className={`w-3 h-3 transition-transform ${showMoreMenu ? 'rotate-180' : ''}`} />
+               </button>
 
-            {/* Help */}
-            <button onClick={() => setShowGuideModal(true)} className="md-icon-btn border border-slate-200 dark:border-slate-700 hidden md:flex" aria-label="Help & Guide" title="Help">
-              <HelpCircle className="w-4 h-4" />
-            </button>
+               {showMoreMenu && (
+                 <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-[70] space-y-3"
+                   style={{ boxShadow: 'var(--md-elev-3)' }}>
+                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                     <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+                       <MoreHorizontal className="w-3.5 h-3.5 text-indigo-600" /> More Actions
+                     </h4>
+                     <button onClick={() => setShowMoreMenu(false)} className="md-icon-btn w-6 h-6">
+                       <X className="w-3.5 h-3.5" />
+                     </button>
+                   </div>
 
-            {/* Role Switcher */}
-            <div className="relative shrink-0 hidden md:block">
-              <button
-                onClick={() => setShowRoleMenu(!showRoleMenu)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  appUser?.role === 'admin'
-                    ? 'bg-amber-50 border-amber-200 text-amber-800'
-                    : appUser?.role === 'teacher'
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
-                    : 'bg-blue-50 border-blue-200 text-blue-800'
-                }`}
-              >
-                {appUser?.role === 'admin' && <Crown className="w-3.5 h-3.5 text-amber-600" />}
-                {appUser?.role === 'teacher' && <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />}
-                {appUser?.role === 'student' && <UserCheck className="w-3.5 h-3.5 text-blue-600" />}
-                <span className="hidden sm:inline">{appUser?.role === 'admin' ? 'Admin' : appUser?.role === 'teacher' ? 'Faculty' : 'Student'}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${showRoleMenu ? 'rotate-180' : ''}`} />
-              </button>
+                   <div className="space-y-1">
+                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Quick Access</p>
+                     <button
+                       onClick={() => { setShowMoreMenu(false); setShowPresentationModal(true); }}
+                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                     >
+                       <div className="flex items-center gap-2">
+                         <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
+                         <span className="text-slate-800 dark:text-slate-200 font-semibold">30s Demo Video</span>
+                       </div>
+                       <span className="md-badge bg-amber-100 text-amber-800 border border-amber-200 text-[9px]">PLAY</span>
+                     </button>
+                     <button
+                       onClick={() => { setShowMoreMenu(false); setShowCommandPalette(true); }}
+                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                     >
+                       <div className="flex items-center gap-2">
+                         <Search className="w-3.5 h-3.5 text-indigo-600" />
+                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Global Search</span>
+                       </div>
+                       <span className="text-[10px] text-indigo-600 font-semibold">⌘K</span>
+                     </button>
+                   </div>
 
-              {showRoleMenu && (
-                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 z-50 space-y-2"
-                  style={{ boxShadow: 'var(--md-elev-3)' }}>
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <div>
-                      <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Role Switcher
-                      </h4>
-                      <p className="text-[10px] text-slate-400">Preview portal as different roles</p>
-                    </div>
-                    <button onClick={() => setShowRoleMenu(false)} className="md-icon-btn w-6 h-6">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                   {appUser?.role === 'admin' && (
+                     <div className="space-y-1">
+                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Tools & Operations</p>
+                       <button
+                         onClick={() => { setShowMoreMenu(false); handlePushToCloud(); }}
+                         disabled={isCloudSyncing}
+                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                       >
+                         <div className="flex items-center gap-2">
+                           {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-indigo-600" />}
+                           <div>
+                             <p className="text-slate-800 dark:text-slate-200 font-semibold">Cloud Backup</p>
+                             {lastSyncedTime && <p className="text-[10px] text-slate-400 font-mono">{lastSyncedTime}</p>}
+                           </div>
+                         </div>
+                         <span className="text-[10px] text-indigo-600 font-semibold">Sync</span>
+                       </button>
+                       {dataSource === 'sheets' && (
+                         <button
+                           onClick={() => { setShowMoreMenu(false); handleLoadSheets(); }}
+                           disabled={isLoading}
+                           className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                         >
+                           <div className="flex items-center gap-2">
+                             <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isLoading ? 'animate-spin' : ''}`} />
+                             <span className="text-slate-800 dark:text-slate-200 font-semibold">Sync Google Sheets</span>
+                           </div>
+                           <span className="text-[10px] text-emerald-600 font-semibold">Sheets</span>
+                         </button>
+                       )}
+                       {records.length > 0 && (
+                         <div className="space-y-1">
+                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Exports</p>
+                           <div className="grid grid-cols-2 gap-1.5">
+                             <button
+                               onClick={() => { setShowMoreMenu(false); setShowReportModal(true); }}
+                               className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
+                             >
+                               <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                               <span className="text-slate-800 dark:text-slate-200">PDF Report</span>
+                             </button>
+                             <button
+                               onClick={() => { setShowMoreMenu(false); handleExportCSV(); }}
+                               className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
+                             >
+                               <Download className="w-3.5 h-3.5 text-slate-600" />
+                               <span className="text-slate-800 dark:text-slate-200">CSV Export</span>
+                             </button>
+                           </div>
+                         </div>
+                       )}
+                       <button
+                         onClick={() => { setShowMoreMenu(false); setShowBatchBroadcastModal(true); }}
+                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                       >
+                         <div className="flex items-center gap-2">
+                           <Radio className="w-3.5 h-3.5 text-indigo-600" />
+                           <span className="text-slate-800 dark:text-slate-200 font-semibold">Batch Broadcast</span>
+                         </div>
+                         <span className="text-[10px] text-indigo-600 font-semibold">Email & SMS</span>
+                       </button>
+                       <button
+                         onClick={() => { setShowMoreMenu(false); setShowAdminAuditModal(true); }}
+                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                       >
+                         <div className="flex items-center gap-2">
+                           <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                           <span className="text-slate-800 dark:text-slate-200 font-semibold">Admin Audit Tools</span>
+                         </div>
+                         <span className="text-[10px] text-amber-600 font-semibold">Admin</span>
+                       </button>
+                     </div>
+                   )}
 
-                  <div className="space-y-1.5">
-                    <button
-                      onClick={() => handleQuickRoleSwitch('admin')}
-                      className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                        appUser?.role === 'admin'
-                          ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-300'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-amber-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
-                          <Crown className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-white">Administrator</p>
-                          <p className="text-[10px] text-slate-400">Full governance & backups</p>
-                        </div>
-                      </div>
-                      {appUser?.role === 'admin' && <Check className="w-4 h-4 text-amber-600" />}
-                    </button>
+                   <div className="space-y-1">
+                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Preferences</p>
+                     <button
+                       onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
+                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                     >
+                       <div className="flex items-center gap-2">
+                         <Settings className="w-3.5 h-3.5 text-indigo-600" />
+                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Settings</span>
+                       </div>
+                     </button>
+                     <button
+                       onClick={() => { setShowMoreMenu(false); setShowGuideModal(true); }}
+                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                     >
+                       <div className="flex items-center gap-2">
+                         <HelpCircle className="w-3.5 h-3.5 text-indigo-600" />
+                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Help & Guide</span>
+                       </div>
+                     </button>
+                   </div>
 
-                    <button
-                      onClick={() => handleQuickRoleSwitch('teacher')}
-                      className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                        appUser?.role === 'teacher'
-                          ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-300'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-indigo-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
-                          <GraduationCap className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-white">Faculty / Instructor</p>
-                          <p className="text-[10px] text-slate-400">Scheduling, attendance & grading</p>
-                        </div>
-                      </div>
-                      {appUser?.role === 'teacher' && <Check className="w-4 h-4 text-indigo-600" />}
-                    </button>
-
-                    <div className="space-y-1">
-                      <button
-                        onClick={() => handleQuickRoleSwitch('student')}
-                        className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                          appUser?.role === 'student'
-                            ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300'
-                            : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-blue-50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
-                            <UserCheck className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-slate-800 dark:text-white">Student Account</p>
-                            <p className="text-[10px] text-slate-400">Student portal & attendance</p>
-                          </div>
-                        </div>
-                        {appUser?.role === 'student' && <Check className="w-4 h-4 text-blue-600" />}
-                      </button>
-
-                      {appUser?.role === 'student' && uniqueStudents.length > 0 && (
-                        <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-500 block uppercase tracking-wider">Preview as student:</label>
-                          <select
-                            value={appUser.studentName || appUser.name}
-                            onChange={(e) => handleQuickRoleSwitch('student', e.target.value)}
-                            className="md-input text-xs py-1.5 cursor-pointer"
-                          >
-                            {uniqueStudents.map(s => {
-                              const nameStr = typeof s === 'string' ? s : s.name;
-                              return <option key={nameStr} value={nameStr}>{nameStr}</option>;
-                            })}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
-                    <button
-                      onClick={() => { setShowRoleMenu(false); setShowLoginModal(true); }}
-                      className="md-btn-text text-xs px-2 py-1.5 text-amber-600"
-                    >
-                      Credentials Portal
-                    </button>
-                    <button
-                      onClick={() => {
-                        const prevUser = appUser;
-                        setShowRoleMenu(false);
-                        setAppUser(null);
-                        localStorage.removeItem('hteim_app_user');
-                        logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full transition-all cursor-pointer"
-                    >
-                      <LogOut className="w-3.5 h-3.5" /> Logout
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                   <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Account</p>
+                     <button
+                       onClick={() => setShowMoreMenu(false)}
+                       className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                         appUser?.role === 'admin'
+                           ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-300'
+                           : appUser?.role === 'teacher'
+                           ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-300'
+                           : 'bg-blue-50 border-blue-300 ring-1 ring-blue-300'
+                       }`}
+                     >
+                       <div className="flex items-center gap-2.5">
+                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
+                           appUser?.role === 'admin' ? 'bg-amber-100 text-amber-600' :
+                           appUser?.role === 'teacher' ? 'bg-indigo-100 text-indigo-600' :
+                           'bg-blue-100 text-blue-600'
+                         }`}>
+                           {appUser?.role === 'admin' && <Crown className="w-4 h-4" />}
+                           {appUser?.role === 'teacher' && <GraduationCap className="w-4 h-4" />}
+                           {appUser?.role === 'student' && <UserCheck className="w-4 h-4" />}
+                         </div>
+                         <div>
+                           <p className="text-xs font-semibold text-slate-800 dark:text-white">
+                             {appUser?.role === 'admin' ? 'Administrator' : appUser?.role === 'teacher' ? 'Faculty / Instructor' : 'Student Account'}
+                           </p>
+                           <p className="text-[10px] text-slate-400">{appUser?.name}</p>
+                         </div>
+                       </div>
+                       {showRoleMenu && <Check className="w-4 h-4 text-emerald-600" />}
+                     </button>
+                     <button
+                       onClick={() => { setShowMoreMenu(false); setShowRoleMenu(true); }}
+                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                     >
+                       <div className="flex items-center gap-2">
+                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Switch Role</span>
+                       </div>
+                       <span className="text-[10px] text-indigo-600 font-semibold">Preview</span>
+                     </button>
+                     <button
+                       onClick={() => {
+                         const prevUser = appUser;
+                         setShowMoreMenu(false);
+                         setAppUser(null);
+                         localStorage.removeItem('hteim_app_user');
+                         logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
+                       }}
+                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
+                     >
+                       <div className="flex items-center gap-2">
+                         <LogOut className="w-3.5 h-3.5 text-red-600" />
+                         <span className="text-red-700 dark:text-red-400 font-semibold">Logout</span>
+                       </div>
+                     </button>
+                   </div>
+                 </div>
+               )}
+             </div>
 
             {/* Profile Avatar */}
             <button
@@ -4318,9 +4234,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                       </AnimatePresence>
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-slate-400 text-xs">
-                      No students found matching your search or filter criteria.
-                    </div>
+                    <EmptyState
+                      title="No students found"
+                      description="No students match your current search or filter criteria."
+                    />
                   )}
                 </div>
               ) : (
@@ -4365,9 +4282,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                         ))}
                       </AnimatePresence>
                     ) : (
-                      <div className="p-8 text-center text-slate-400 text-xs">
-                        No students found matching your search or filter criteria.
-                      </div>
+                      <EmptyState
+                        title="No students found"
+                        description="No students match your current search or filter criteria."
+                      />
                     )}
                   </div>
 
@@ -4656,24 +4574,20 @@ create policy "Allow public update" on app_states for update using (true) with c
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center flex-1 text-slate-400 p-8 text-center animate-fadeIn">
-              <div className="relative mb-4">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-400 to-emerald-500 blur-sm opacity-60"></div>
-                <img 
-                  src={hteimLogoAsset} 
-                  alt="HTEIM School of Ministry" 
-                  className="relative w-20 h-20 rounded-full border-2 border-white shadow-xl object-contain bg-white p-1"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">HTEIM School of Ministry</h2>
-              <p className="text-xs font-bold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
-              <p className="text-xs italic font-serif text-slate-500 mt-1 max-w-sm">
-                "Bringing Heaven to Earth, Taking People to Heaven"
-              </p>
-              <p className="text-xs text-slate-500 max-w-md mt-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                Click <strong>"Load Uploaded CSV"</strong> on the right sidebar or sign in with Google to analyze multi-sheet class attendance matrices.
-              </p>
+            <div className="flex flex-col items-center justify-center flex-1 p-6 text-center animate-fadeIn">
+              <EmptyState
+                title="No attendance data loaded"
+                description="Load a CSV file or connect a Google Sheet to start tracking attendance."
+                action={
+                  <button
+                    onClick={handleLoadDemo}
+                    disabled={isLoading}
+                    className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Load Demo Data
+                  </button>
+                }
+              />
             </div>
           )}
         </motion.div>
@@ -6965,8 +6879,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           { tab: 'home',       Icon: Sparkles,      label: 'Home' },
           { tab: 'attendance', Icon: UserCheck,     label: 'Attendance', dot: uniqueStudents.length > 0 },
           { tab: 'courses',    Icon: BookOpen,      label: 'Courses' },
+          ...(appUser?.role !== 'student' ? [{ tab: 'students', Icon: GraduationCap, label: 'Students' }] : []),
           { tab: 'exams',      Icon: Award,         label: 'Exams' },
-          { tab: 'schedule',   Icon: Calendar,      label: 'Schedule' },
+          ...(appUser?.role === 'student' ? [{ tab: 'schedule', Icon: Calendar, label: 'Schedule' }] : []),
         ].map(({ tab, Icon, label, dot }: any) => (
           <button
             key={tab}
@@ -6999,16 +6914,16 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all touch-min-44"
         >
           <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${
-            showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
+            showMobileMoreMenu || ['library','payments','messages','students',...(appUser?.role === 'student' ? ['schedule'] : [])].includes(activeErpTab)
               ? 'md-nav-pill bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800' : 'text-slate-400 dark:text-slate-500'
           }`}>
             <Menu className={`w-5 h-5 ${
-              showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
+              showMobileMoreMenu || ['library','payments','messages','students',...(appUser?.role === 'student' ? ['schedule'] : [])].includes(activeErpTab)
                 ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
             }`} />
           </div>
           <span className={`text-[10px] mt-1 font-bold leading-none ${
-            showMobileMoreMenu || ['library','payments','messages','students'].includes(activeErpTab)
+            showMobileMoreMenu || ['library','payments','messages','students',...(appUser?.role === 'student' ? ['schedule'] : [])].includes(activeErpTab)
               ? 'text-indigo-700 dark:text-indigo-300 font-extrabold' : 'text-slate-400 dark:text-slate-500'
           }`}>More</span>
         </button>

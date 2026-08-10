@@ -43,6 +43,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 
+import { EmptyState } from './UXPrimitives';
 import { UserRole } from '../lib/userAuth';
 import { uploadToSupabaseStorage, syncAssignmentsFromSupabaseBucket } from '../lib/supabaseClient';
 import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment, QuizSubmission } from '../types';
@@ -1733,8 +1734,17 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Render rows for each student / assignment combination */}
-                    {displayedStudents.map(std => {
+                    {(displayedStudents.length === 0 || customAssignments.length === 0) && (
+                      <tr>
+                        <td colSpan={7} className="p-0">
+                          <EmptyState
+                            title="No submissions to display"
+                            description="There are no assignment submissions matching your current filters."
+                          />
+                        </td>
+                      </tr>
+                    )}
+                    {displayedStudents.length > 0 && customAssignments.length > 0 && displayedStudents.map(std => {
                       const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
 
                       return targetAsgs.map(asg => {
@@ -1867,9 +1877,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                             </td>
                           </tr>
                         );
-                      });
-                    })}
-                  </tbody>
+                       });
+                     })}
+                   </tbody>
                 </table>
               </div>
             </div>

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { pullFromGithub } from '../lib/api/github';
+import { logger } from '../lib/logger';
 import { 
   ShieldCheck, 
   X, 
@@ -215,15 +217,10 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
     setGithubPullStatus('idle');
     setGithubPullMessage('');
     try {
-      const response = await fetch('/api/pull-from-github', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoUrl: 'https://github.com/kpierre24/School-of-Ministry-2026.git' })
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
+      const result = await pullFromGithub('https://github.com/kpierre24/School-of-Ministry-2026.git');
+      if (result.success) {
         setGithubPullStatus('success');
-        setGithubPullMessage(data.message || 'Workspace successfully updated from GitHub!');
+        setGithubPullMessage(result.message || 'Workspace successfully updated from GitHub!');
         logActivity({
           actionCategory: 'Backup & Data',
           actionTitle: 'Pulled GitHub Updates',
@@ -235,10 +232,10 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
         refreshLogs();
       } else {
         setGithubPullStatus('error');
-        setGithubPullMessage(data.error || 'Server returned an error during synchronization.');
+        setGithubPullMessage(result.error || 'Server returned an error during synchronization.');
       }
     } catch (err: any) {
-      console.error('Failed to pull from GitHub:', err);
+      logger.error('Failed to pull from GitHub:', err);
       setGithubPullStatus('error');
       setGithubPullMessage(err.message || String(err));
     } finally {

@@ -9,6 +9,8 @@ export type AuditLogCategory =
   | 'System Settings'
   | 'Backup & Data';
 
+import { logger } from './logger';
+
 export type AuditLogEntry = {
   id: string;
   timestamp: string;
@@ -100,7 +102,7 @@ export function getAuditLogs(): AuditLogEntry[] {
       }
     }
   } catch (e) {
-    console.error('Failed to parse audit logs from storage:', e);
+    logger.error('Failed to parse audit logs from storage:', e);
   }
 
   // Initialize with sample records if empty
@@ -137,7 +139,7 @@ export function logActivity(entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { t
     // Dispatch window event so listening components update automatically
     window.dispatchEvent(new CustomEvent('hteim_audit_log_updated', { detail: newLog }));
   } catch (e) {
-    console.error('Failed to save audit log:', e);
+    logger.error('Failed to save audit log:', e);
   }
 
   return newLog;
@@ -148,7 +150,7 @@ export function clearAuditLogs(): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     window.dispatchEvent(new CustomEvent('hteim_audit_log_updated'));
   } catch (e) {
-    console.error('Failed to clear audit logs:', e);
+    logger.error('Failed to clear audit logs:', e);
   }
 }
 
@@ -161,6 +163,6 @@ export function pruneAuditLogs(maxCount: number = 30): void {
       window.dispatchEvent(new CustomEvent('hteim_audit_log_updated'));
     }
   } catch (e) {
-    console.error('Failed to prune audit logs:', e);
+    logger.error('Failed to prune audit logs:', e);
   }
 }

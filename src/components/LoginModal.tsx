@@ -78,6 +78,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scriptureIndex, setScriptureIndex] = useState(0);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // First-time login change PIN/password states
   const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
@@ -85,11 +87,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changeError, setChangeError] = useState<string | null>(null);
+  const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+
+  const validateUsername = (value: string): string | null => {
+    if (!value.trim()) return 'Username is required';
+    if (value.trim().length < 2) return 'Username must be at least 2 characters';
+    if (activeTab === 'student' && !/^[A-Z][a-z]+[A-Z][a-z]+$/i.test(value.trim())) {
+      return 'Student format: First Initial + Last Name (e.g. ABurke)';
+    }
+    return null;
+  };
+
+  const validatePassword = (value: string): string | null => {
+    if (!value) return 'Password is required';
+    if (value.length < 4) return 'Password must be at least 4 characters';
+    return null;
+  };
+
+  const isLoginFormValid = () => {
+    return validateUsername(usernameInput) === null && validatePassword(passwordInput) === null;
+  };
 
   React.useEffect(() => {
     setUsernameInput('');
     setPasswordInput('');
-  }, []);
+    setUsernameError(null);
+    setPasswordError(null);
+  }, [activeTab]);
 
   if (!isOpen) return null;
 
@@ -399,13 +424,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <input
                         type="password"
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          const err = validatePassword(e.target.value) || (e.target.value === '1234' || e.target.value === '12345' ? 'Cannot use default 1234 or 12345' : null);
+                          setNewPasswordError(err);
+                        }}
+                        onBlur={() => {
+                          const err = validatePassword(newPassword) || (newPassword === '1234' || newPassword === '12345' ? 'Cannot use default 1234 or 12345' : null);
+                          setNewPasswordError(err);
+                        }}
                         placeholder="Choose custom password"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${newPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                         autoFocus
                       />
                     </div>
+                    {newPasswordError && (
+                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {newPasswordError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -417,12 +455,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <input
                         type="password"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          const err = e.target.value !== newPassword ? 'Passwords do not match' : null;
+                          setConfirmPasswordError(err);
+                        }}
+                        onBlur={() => {
+                          const err = confirmPassword !== newPassword ? 'Passwords do not match' : null;
+                          setConfirmPasswordError(err);
+                        }}
                         placeholder="Verify chosen PIN"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${confirmPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                       />
                     </div>
+                    {confirmPasswordError && (
+                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {confirmPasswordError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -432,6 +483,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     onClick={() => {
                       setShowPasswordChangeForm(false);
                       setPendingUser(null);
+                      setNewPasswordError(null);
+                      setConfirmPasswordError(null);
                     }}
                     className="flex-1 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                   >
@@ -439,7 +492,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="flex-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer text-center"
+                    disabled={!!newPasswordError || !!confirmPasswordError || !newPassword || !confirmPassword}
+                    className="flex-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Set PIN & Enter Portal
                   </button>
@@ -469,12 +523,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <input
                         type="text"
                         value={usernameInput}
-                        onChange={(e) => setUsernameInput(e.target.value)}
+                        onChange={(e) => {
+                          setUsernameInput(e.target.value);
+                          setUsernameError(validateUsername(e.target.value));
+                        }}
+                        onBlur={() => setUsernameError(validateUsername(usernameInput))}
                         placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${usernameError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                       />
                     </div>
+                    {usernameError && (
+                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {usernameError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -486,18 +549,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <input
                         type="password"
                         value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
+                        onChange={(e) => {
+                          setPasswordInput(e.target.value);
+                          setPasswordError(validatePassword(e.target.value));
+                        }}
+                        onBlur={() => setPasswordError(validatePassword(passwordInput))}
                         placeholder="••••••"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${passwordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                       />
                     </div>
+                    {passwordError && (
+                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {passwordError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  disabled={!isLoginFormValid()}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>Enter {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
                   <ArrowRight className="w-4 h-4" />

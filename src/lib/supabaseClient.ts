@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeFileName } from './securityHelper';
+import { logger } from './logger';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mjaloptcpeytvecbxbza.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qYWxvcHRjcGV5dHZlY2J4YnphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MjQ1NjksImV4cCI6MjEwMTAwMDU2OX0.0eT8NJxGDMsPzh-y3w4LEt-oFxwkfiEIizBUY67DaFE';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing required Supabase env vars: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -32,7 +37,7 @@ export async function uploadToSupabaseStorage(
         }
         body = new Blob([u8arr], { type: contentType });
       } catch (e) {
-        console.error("Failed to parse base64 data URL for storage upload:", e);
+        logger.error("Failed to parse base64 data URL for storage upload:", e);
         return fileOrDataUrl;
       }
     } else {
@@ -58,7 +63,7 @@ export async function uploadToSupabaseStorage(
       });
 
     if (error) {
-      console.warn(`Supabase Storage upload returned error for bucket '${bucket}':`, error);
+      logger.warn(`Supabase Storage upload returned error for bucket '${bucket}':`, error);
       // Fallback: Return original string if string, or convert File to base64 data URL
       if (typeof fileOrDataUrl === 'string') {
         return fileOrDataUrl;
@@ -69,7 +74,7 @@ export async function uploadToSupabaseStorage(
     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(uniquePath);
     return urlData?.publicUrl || (typeof fileOrDataUrl === 'string' ? fileOrDataUrl : await fileToBase64(fileOrDataUrl));
   } catch (err) {
-    console.error(`Supabase Storage exception for bucket '${bucket}':`, err);
+    logger.error(`Supabase Storage exception for bucket '${bucket}':`, err);
     if (typeof fileOrDataUrl === 'string') {
       return fileOrDataUrl;
     }
@@ -251,7 +256,7 @@ export async function syncLibraryFromSupabaseBucket(existingResources: any[]): P
       .list('', { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
 
     if (error || !fileList) {
-      console.warn("Could not list Supabase 'library' storage bucket files:", error?.message);
+      logger.warn("Could not list Supabase 'library' storage bucket files:", error?.message);
       return { updatedResources: existingResources, addedCount: 0 };
     }
 
@@ -309,7 +314,7 @@ export async function syncLibraryFromSupabaseBucket(existingResources: any[]): P
 
     return { updatedResources: existingResources, addedCount: 0 };
   } catch (err) {
-    console.error("Failed to sync library from Supabase storage bucket:", err);
+    logger.error("Failed to sync library from Supabase storage bucket:", err);
     return { updatedResources: existingResources, addedCount: 0 };
   }
 }
@@ -336,7 +341,7 @@ export async function syncAssignmentsFromSupabaseBucket(
       .list('', { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
 
     if (error || !fileList) {
-      console.warn("Could not list Supabase 'assignments' storage bucket files:", error?.message);
+      logger.warn("Could not list Supabase 'assignments' storage bucket files:", error?.message);
       return {
         updatedAssignments: existingAssignments,
         updatedSubmissions: existingSubmissions,
@@ -506,7 +511,7 @@ export async function syncAssignmentsFromSupabaseBucket(
       addedAssignmentsCount: 0
     };
   } catch (err) {
-    console.error("Failed to sync assignments from Supabase storage bucket:", err);
+    logger.error("Failed to sync assignments from Supabase storage bucket:", err);
     return {
       updatedAssignments: existingAssignments,
       updatedSubmissions: existingSubmissions,

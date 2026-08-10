@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import mammoth from 'mammoth';
+import { evaluateLesson } from '../lib/api/ai';
+import { logger } from '../lib/logger';
 import { 
   BookOpen, 
   Search, 
@@ -538,16 +540,19 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
   // Helper to trigger AI Evaluation via API
   const evaluateWithAI = async (title: string, content: string, author: string, courseCode: string, fileName?: string) => {
     try {
-      const res = await fetch('/api/evaluate-lesson', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, author, courseCode, fileName })
-      });
-      if (!res.ok) throw new Error('API request failed');
-      const data = await res.json();
-      return data;
+      const result = await evaluateLesson({ title, content, author, courseCode, fileName });
+      if (result.success && result.data) {
+        return result.data;
+      }
+      logger.warn('AI evaluation API returned error:', result.error);
+      return {
+        summary: content ? `Summary: ${content.slice(0, 160)}...` : `Ministry lesson on ${title} structured for student training.`,
+        category: 'Study Guide',
+        keyTakeaways: ['Key ministerial concepts and biblical principles included.'],
+        courseCode: courseCode || 'SOM-CORE'
+      };
     } catch (err) {
-      console.warn('AI evaluation API call fallback:', err);
+      logger.warn('AI evaluation API call fallback:', err);
       return {
         summary: content ? `Summary: ${content.slice(0, 160)}...` : `Ministry lesson on ${title} structured for student training.`,
         category: 'Study Guide',

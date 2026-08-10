@@ -1,5 +1,6 @@
 // PWA & Mobile Installation Manager
 import { useState, useEffect } from 'react';
+import { logger } from './logger';
 
 export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -23,7 +24,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('appinstalled', () => {
     globalDeferredPrompt = null;
     listeners.forEach((listener) => listener(null));
-    console.log('HTEIM ERP PWA installed successfully.');
+    logger.info('HTEIM ERP PWA installed successfully.');
   });
 }
 
@@ -69,7 +70,7 @@ export function usePWAInstall() {
         return true;
       }
     } catch (err) {
-      console.error('PWA Installation error:', err);
+      logger.error('PWA Installation error:', err);
     }
     return false;
   };

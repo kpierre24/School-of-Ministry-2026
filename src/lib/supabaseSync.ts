@@ -1,19 +1,20 @@
 import { supabase } from './supabaseClient';
 import { SyncedAppState } from './firebaseSync';
+import { logger } from './logger';
 
 export async function testSupabaseConnection(): Promise<boolean> {
   try {
     const { error } = await supabase.from('app_states').select('id').limit(1);
     if (error) {
       if (error.code === '42P01') {
-        console.warn("app_states table does not exist in Supabase yet.");
+        logger.warn("app_states table does not exist in Supabase yet.");
         return false;
       }
       return false;
     }
     return true;
   } catch (err) {
-    console.warn("Supabase connection unavailable:", err);
+    logger.warn("Supabase connection unavailable:", err);
     return false;
   }
 }
@@ -46,7 +47,7 @@ export async function loadFromSupabase(userEmail: string | null | undefined): Pr
     if (error.message === 'TABLE_NOT_FOUND') {
       throw error;
     }
-    console.warn("Unable to load state from Supabase:", error?.message || error);
+    logger.warn("Unable to load state from Supabase:", error?.message || error);
     return null;
   }
 }
@@ -84,7 +85,7 @@ export async function saveToSupabase(
     if (error.message === 'TABLE_NOT_FOUND') {
       throw error;
     }
-    console.warn("Unable to save state to Supabase:", error?.message || error);
+    logger.warn("Unable to save state to Supabase:", error?.message || error);
     return false;
   }
 }
@@ -129,7 +130,7 @@ export function subscribeToAppState(
     )
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        console.log(`[Supabase RT] Subscribed to real-time updates for ${docId}`);
+        logger.info(`[Supabase RT] Subscribed to real-time updates for ${docId}`);
       }
     });
 

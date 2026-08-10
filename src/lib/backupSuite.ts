@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import { getAuditLogs, logActivity, AuditLogEntry } from './auditLogger';
 import { INITIAL_PAYMENTS } from '../components/PaymentTab';
 import { INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from '../components/ExamsTab';
+import { logger } from './logger';
 
 export type FullBackupBundle = {
   version: string;
@@ -302,7 +303,7 @@ export function restoreFullBackupJSON(jsonData: string, actor: string = 'Adminis
 
     return true;
   } catch (e) {
-    console.error('Backup restoration failed:', e);
+    logger.error('Backup restoration failed:', e);
     return false;
   }
 }

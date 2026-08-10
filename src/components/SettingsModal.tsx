@@ -30,7 +30,8 @@ import {
   Smartphone,
   Lock,
   ShieldAlert,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'system' | 'high-contrast';
@@ -87,6 +88,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importErrorMessage, setImportErrorMessage] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const [instAddressError, setInstAddressError] = useState<string | null>(null);
+  const [instPhoneError, setInstPhoneError] = useState<string | null>(null);
+  const [instEmailError, setInstEmailError] = useState<string | null>(null);
+  const [authorizedSignatureError, setAuthorizedSignatureError] = useState<string | null>(null);
+
+  const validateEmail = (value: string): string | null => {
+    if (!value.trim()) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+    return null;
+  };
+
+  const validatePhone = (value: string): string | null => {
+    if (!value.trim()) return 'Phone number is required';
+    if (!/^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/.test(value.trim())) return 'Please enter a valid phone number';
+    return null;
+  };
 
   // Expanded Recommended Settings States
   const [passingScore, setPassingScore] = useState<number>(() => {
@@ -942,10 +960,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         type="text"
                         disabled={isStudent}
                         value={instAddress}
-                        onChange={(e) => setInstAddress(e.target.value)}
+                        onChange={(e) => {
+                          setInstAddress(e.target.value);
+                          setInstAddressError(e.target.value.trim() ? null : 'Address is required');
+                        }}
+                        onBlur={() => setInstAddressError(instAddress.trim() ? null : 'Address is required')}
                         placeholder="e.g. 124 Ministry Lane, NY 10001"
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${instAddressError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
+                      {instAddressError && (
+                        <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> {instAddressError}
+                        </p>
+                      )}
                     </div>
 
                     {/* Phone & Email */}
@@ -955,10 +982,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         type="text"
                         disabled={isStudent}
                         value={instPhone}
-                        onChange={(e) => setInstPhone(e.target.value)}
+                        onChange={(e) => {
+                          setInstPhone(e.target.value);
+                          setInstPhoneError(validatePhone(e.target.value));
+                        }}
+                        onBlur={() => setInstPhoneError(validatePhone(instPhone))}
                         placeholder="e.g. +1 (555) 777-1212"
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${instPhoneError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
+                      {instPhoneError && (
+                        <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> {instPhoneError}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -967,10 +1003,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         type="email"
                         disabled={isStudent}
                         value={instEmail}
-                        onChange={(e) => setInstEmail(e.target.value)}
+                        onChange={(e) => {
+                          setInstEmail(e.target.value);
+                          setInstEmailError(validateEmail(e.target.value));
+                        }}
+                        onBlur={() => setInstEmailError(validateEmail(instEmail))}
                         placeholder="e.g. office@school.org"
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${instEmailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
+                      {instEmailError && (
+                        <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> {instEmailError}
+                        </p>
+                      )}
                     </div>
 
                     {/* Authorized Signatory */}
@@ -980,10 +1025,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         type="text"
                         disabled={isStudent}
                         value={authorizedSignature}
-                        onChange={(e) => setAuthorizedSignature(e.target.value)}
+                        onChange={(e) => {
+                          setAuthorizedSignature(e.target.value);
+                          setAuthorizedSignatureError(e.target.value.trim() ? null : 'Signatory name is required');
+                        }}
+                        onBlur={() => setAuthorizedSignatureError(authorizedSignature.trim() ? null : 'Signatory name is required')}
                         placeholder="e.g. Apostle Kendell Pierre"
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${authorizedSignatureError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
+                      {authorizedSignatureError && (
+                        <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> {authorizedSignatureError}
+                        </p>
+                      )}
                       <p className="text-[10px] text-slate-400 mt-0.5 font-normal">This name is digitally stamped on PDF receipt files and course completion certificates.</p>
                     </div>
                   </div>

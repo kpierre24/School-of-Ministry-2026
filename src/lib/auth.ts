@@ -6,8 +6,10 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { getFirebaseConfig } from './firebaseConfig';
+import { logger } from './logger';
 
+const firebaseConfig = getFirebaseConfig();
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
@@ -51,7 +53,7 @@ export const googleSignIn = async (): Promise<{
     cachedAccessToken = credential.accessToken;
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
-    console.error('Sign in error:', error);
+    logger.error('Sign in error:', error);
     throw error;
   } finally {
     isSigningIn = false;

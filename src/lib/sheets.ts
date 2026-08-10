@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 export const fetchSpreadsheetMetadata = async (
   spreadsheetId: string,
   accessToken: string
@@ -132,7 +134,7 @@ export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
       sheets = extractPublicSheetNames(htmlText);
     }
   } catch (err) {
-    console.warn("Could not fetch public sheet list:", err);
+    logger.warn("Could not fetch public sheet list:", err);
   }
 
   if (sheets.length === 0) {
@@ -188,7 +190,7 @@ export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
         });
       }
     } catch (err) {
-      console.warn(`Failed to fetch public sheet values for ${sheetName}:`, err);
+      logger.warn(`Failed to fetch public sheet values for ${sheetName}:`, err);
     }
   }
 
