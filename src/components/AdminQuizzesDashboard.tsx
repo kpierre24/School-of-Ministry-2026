@@ -654,9 +654,9 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
       {previewQuiz && (
         <QuizTakerView
           quiz={previewQuiz}
-          studentName="Teacher Practice Preview"
+          currentStudentName="Teacher Practice Preview"
           onClose={() => setPreviewQuiz(null)}
-          onComplete={(sub) => {
+          onSubmitQuiz={(sub) => {
             setPreviewQuiz(null);
             setCopiedToast(`Test completed with score ${sub.score}/${sub.totalPossible} (${sub.percentage}%).`);
             setTimeout(() => setCopiedToast(null), 3000);

@@ -335,7 +335,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [showQuizCreatorModal, setShowQuizCreatorModal] = useState(false);
   const [editingQuizData, setEditingQuizData] = useState<QuizAssignment | null>(null);
   const [activeQuizTaker, setActiveQuizTaker] = useState<QuizAssignment | null>(null);
-  const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<QuizAssignment | null>(null);
+  const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<CustomAssignment | null>(null);
   const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
 
   // Stored Quiz Submissions List
@@ -349,10 +349,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       totalPossible: 100,
       percentage: 100,
       responses: [
-        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25 },
-        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25 },
-        { questionId: 'q3', selectedOptionId: 'opt_3a', pointsEarned: 25 },
-        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25 }
+        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25, isCorrect: true },
+        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25, isCorrect: true },
+        { questionId: 'q3', selectedOptionId: 'opt_3a', pointsEarned: 25, isCorrect: true },
+        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25, isCorrect: true }
       ]
     },
     {
@@ -364,10 +364,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       totalPossible: 100,
       percentage: 75,
       responses: [
-        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25 },
-        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25 },
-        { questionId: 'q3', selectedOptionId: 'opt_3b', pointsEarned: 0 },
-        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25 }
+        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25, isCorrect: true },
+        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25, isCorrect: true },
+        { questionId: 'q3', selectedOptionId: 'opt_3b', pointsEarned: 0, isCorrect: false },
+        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25, isCorrect: true }
       ]
     }
   ]);
@@ -411,8 +411,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     setEditingQuizData(null);
   };
 
-  const handleDuplicateQuiz = (asg: CustomAssignment) => {
-    if (!asg.quizData) return;
+  const handleDuplicateQuiz = (quiz: QuizAssignment) => {
+    const asg = customAssignments.find(a => a.quizData?.id === quiz.id || a.id === quiz.id);
+    if (!asg?.quizData) return;
 
     const newShareCode = `qz_${Math.random().toString(36).substring(2, 8)}`;
     const newQuizId = `quiz_${Date.now()}`;
@@ -2011,7 +2012,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         {/* Copy / Duplicate Quiz for Future Class Days */}
                         {isTeacherOrAdmin && (
                           <button
-                            onClick={() => handleDuplicateQuiz(asg)}
+                            onClick={() => handleDuplicateQuiz(quiz)}
                             className="p-1.5 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
                             title="Duplicate Quiz for Future Class Day"
                           >
@@ -3178,9 +3179,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {activeQuizTaker && (
         <QuizTakerView
           quiz={activeQuizTaker}
-          studentName={activeStudentName}
+          currentStudentName={activeStudentName}
           onClose={() => setActiveQuizTaker(null)}
-          onComplete={handleQuizSubmissionComplete}
+          onSubmitQuiz={handleQuizSubmissionComplete}
         />
       )}
 

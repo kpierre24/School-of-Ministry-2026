@@ -23,6 +23,7 @@ interface QuizCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   quizToEdit?: QuizAssignment | null;
+  initialData?: QuizAssignment | null;
   onSaveQuiz: (quiz: QuizAssignment) => void;
   onDuplicateQuiz?: (quiz: QuizAssignment) => void;
 }
@@ -31,21 +32,23 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
   isOpen,
   onClose,
   quizToEdit,
+  initialData,
   onSaveQuiz,
   onDuplicateQuiz
 }) => {
-  const [title, setTitle] = useState(quizToEdit?.title || '');
-  const [courseCode, setCourseCode] = useState(quizToEdit?.courseCode || 'MIN-101');
-  const [moduleTrack, setModuleTrack] = useState(quizToEdit?.moduleTrack || 'Module 1: Introduction');
-  const [description, setDescription] = useState(quizToEdit?.description || 'Complete this Google Forms style daily quiz. Select the correct answer for each weighted question.');
-  const [dueDate, setDueDate] = useState(quizToEdit?.dueDate || new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0]);
-  const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | undefined>(quizToEdit?.timeLimitMinutes || undefined);
-  const [isTemplate, setIsTemplate] = useState(quizToEdit?.isTemplate || false);
+  const source = initialData ?? quizToEdit;
+  const [title, setTitle] = useState(source?.title || '');
+  const [courseCode, setCourseCode] = useState(source?.courseCode || 'MIN-101');
+  const [moduleTrack, setModuleTrack] = useState(source?.moduleTrack || 'Module 1: Introduction');
+  const [description, setDescription] = useState(source?.description || 'Complete this Google Forms style daily quiz. Select the correct answer for each weighted question.');
+  const [dueDate, setDueDate] = useState(source?.dueDate || new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0]);
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | undefined>(source?.timeLimitMinutes || undefined);
+  const [isTemplate, setIsTemplate] = useState(source?.isTemplate || false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Questions state
-  const [questions, setQuestions] = useState<QuizQuestion[]>(quizToEdit?.questions || [
+  const [questions, setQuestions] = useState<QuizQuestion[]>(source?.questions || [
     {
       id: 'q_1',
       questionText: 'What is the primary biblical foundation for the Great Commission in the Gospels?',

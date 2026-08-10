@@ -48,7 +48,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
         delayChildren: 0.1,
       }
     }
-  };
+  } as const;
 
   const letterVariants = {
     hidden: { 
@@ -68,24 +68,24 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
         stiffness: 150
       }
     }
-  };
+  } as const;
 
   const logoPulseVariants = {
     pulse: {
-      scale: [1, 1.04, 1],
-      rotate: [0, 0.5, -0.5, 0],
+      scale: [1, 1.04, 1] as any,
+      rotate: [0, 0.5, -0.5, 0] as any,
       boxShadow: [
         "0 0 15px 2px rgba(245, 158, 11, 0.15)",
         "0 0 35px 12px rgba(245, 158, 11, 0.35)",
         "0 0 15px 2px rgba(245, 158, 11, 0.15)"
-      ],
+      ] as any,
       transition: {
         duration: 3,
         repeat: Infinity,
         ease: "easeInOut"
       }
     }
-  };
+  } as any;
 
   return (
     <motion.div
