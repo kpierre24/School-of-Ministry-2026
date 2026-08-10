@@ -3376,7 +3376,7 @@ create policy "Allow public update" on app_states for update using (true) with c
         </div>
       </header>
 
-      {/* MD3 Mobile breadcrumb bar */}
+      {/* Mobile Navigation Bar */}
       <nav aria-label="Mobile portal navigation" className="md:hidden bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl px-3.5 py-2 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600">
