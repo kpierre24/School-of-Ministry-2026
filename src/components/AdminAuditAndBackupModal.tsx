@@ -26,7 +26,8 @@ import {
   Info,
   ShieldAlert,
   Sliders,
-  Check
+  Check,
+  Lock
 } from 'lucide-react';
 import { 
   getAuditLogs, 

@@ -274,6 +274,7 @@ export type ClassDay = {
 
 export type StudentSummary = {
   name: string;
+  totalDays: number;
   attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }>;
   rate: number;
   attended: number;

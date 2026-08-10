@@ -291,6 +291,7 @@ type MergeConflict = {
 
 type AttendanceRecord = {
   name: string;
+  studentName?: string;
   timestamp: string;
   score: string;
   classDay: string;
@@ -2232,12 +2233,13 @@ export default function App() {
         return;
       }
       
-      if (!studentMap.has(key)) {
+if (!studentMap.has(key)) {
         studentMap.set(key, { 
           name: canonicalName, 
           attendanceByDay: {}, 
           rate: 0, 
           attended: 0,
+          totalDays: 0,
           avgScore: null,
           note: studentNotes[key] || '',
           levelId: studentLevels[key] || getDefaultLevelForStudent(canonicalName, 0)
@@ -2393,7 +2395,7 @@ export default function App() {
       );
       return customAssignments.filter(a => !submittedIds.has(a.id)).length;
     }
-    const unGraded = submissions.filter(s => s.status === 'Submitted' || s.status === 'Pending Review' || s.status === 'Needs Review').length;
+    const unGraded = submissions.filter(s => s.status === 'Submitted' || s.status === 'Pending Review').length;
     return unGraded > 0 ? unGraded : customAssignments.length;
   }, [appUser, submissions, customAssignments]);
 
@@ -3043,7 +3045,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           {/* MD3 AppBar Actions */}
           <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0 flex-nowrap justify-end">
             {/* Live Check-In */}
-            {appUser?.role !== 'student' && (
+            {(appUser?.role as string) !== 'student' && (
               <button
                 onClick={() => {
                   setShowLiveCheckinModal(true);
@@ -3892,15 +3894,16 @@ create policy "Allow public update" on app_states for update using (true) with c
                 classDays={classDays}
                 rubricScores={rubricScores}
                 onUpdateStudentPhoto={handleUpdateStudentPhoto}
-                onRequestTranscript={(s) => {
-                  setSelectedStudent({
-                    name: s.name,
-                    rate: s.rate,
-                    attended: s.attended,
-                    totalDays: s.totalDays,
-                    avgScore: s.avgScore || 90,
-                    attendanceByDay: s.attendanceByDay
-                  });
+onRequestTranscript={(s) => {
+                    setSelectedStudent({
+                      name: s.name,
+                      rate: s.rate,
+                      attended: s.attended,
+                      totalDays: s.totalDays,
+                      avgScore: s.avgScore || 90,
+                      attendanceByDay: s.attendanceByDay,
+                      levelId: s.levelId || 'level_1'
+                    });
                   setShowStudentTranscriptModal(true);
                 }}
                 onRequestCertificate={(s) => {
@@ -4024,7 +4027,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     </div>
 
                     {/* Add Class Day & Manage Class Days Action Buttons */}
-                    {appUser?.role !== 'student' && (
+                    {(appUser?.role as string) !== 'student' && (
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleAddClassDay()}
@@ -4324,7 +4327,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                                     <span className={`${densityMode === 'dense' ? 'text-[11px]' : 'text-xs'} font-extrabold text-slate-800 truncate`} title={day.name}>
                                       {day.name}
                                     </span>
-                                    {appUser?.role !== 'student' && (
+{(appUser?.role as string) !== 'student' && (
                                       <div className="flex items-center gap-0.5 opacity-80 group-hover/th:opacity-100 transition-opacity">
                                         <button
                                           type="button"
@@ -4628,7 +4631,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-indigo-500" /> Class Sessions ({classDays.length})
                 </h3>
-                {appUser?.role !== 'student' && (
+                {(appUser?.role as string) !== 'student' && (
                   <button
                     onClick={() => handleAddClassDay()}
                     className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
@@ -4655,7 +4658,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                         <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                           {stats.count} ({Math.round(stats.percentage)}%)
                         </span>
-                        {appUser?.role !== 'student' && (
+                        {(appUser?.role as string) !== 'student' && (
                           <div className="flex items-center gap-1 ml-1.5 border-l border-slate-200 pl-1.5">
                             <button
                               type="button"
@@ -4988,7 +4991,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {appUser?.role !== 'student' && (
+                            {(appUser?.role as string) !== 'student' && (
                               <>
                                 <button
                                   onClick={() => handleToggleStudentAttendance(selectedStudent.name, day.id, isPresent ? 'absent' : 'present')}
@@ -5065,7 +5068,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     <Trash2 className="w-3.5 h-3.5" />
                     Exclude Student
                   </button>
-                  {appUser?.role !== 'student' && (
+                  {(appUser?.role as string) !== 'student' && (
                     <button
                       onClick={() => handleClearStudentAttendanceRecords(selectedStudent.name)}
                       className="flex items-center gap-1.5 px-3 py-2 text-amber-700 hover:bg-amber-100 font-bold text-xs rounded-lg transition-colors cursor-pointer"
@@ -6058,7 +6061,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
-                {appUser?.role !== 'student' && (
+                {(appUser?.role as string) !== 'student' && (
                   <>
                     <button
                       type="button"
@@ -6180,6 +6183,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       updatedRecords[existingIdx].present = true;
                     } else {
                       updatedRecords.push({
+                        name: s.name,
                         studentName: s.name,
                         classDay: liveCheckinDayId,
                         present: true,
@@ -6230,6 +6234,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         updated[existingIdx].present = true;
                       } else {
                         updated.push({
+                          name: name,
                           studentName: name,
                           classDay: liveCheckinDayId,
                           present: true,
@@ -6348,6 +6353,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         updated[existingIdx].present = true;
                       } else {
                         updated.push({
+                          name: s.name,
                           studentName: s.name,
                           classDay: liveCheckinDayId,
                           present: true,
@@ -6632,7 +6638,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
-                    {appUser?.role !== 'student' && (
+                    {(appUser?.role as string) !== 'student' && (
                       <button
                         onClick={() => {
                           setActiveErpTab('students');
@@ -6689,7 +6695,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 <div>
                   <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Mobile Class Operations</p>
                   <div className="space-y-1.5">
-                    {appUser?.role !== 'student' && (
+                    {(appUser?.role as string) !== 'student' && (
                       <button
                         onClick={() => {
                           setShowMobileMoreMenu(false);

@@ -6,6 +6,7 @@ export interface AppUser {
   name: string;
   role: UserRole;
   studentName?: string; // If role is student, links to student profile name
+  studentId?: string; // Student ID for messaging and records
   email?: string;
   avatarUrl?: string;
 }
