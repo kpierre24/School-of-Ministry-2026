@@ -591,7 +591,7 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
             setQuizToEdit(null);
           }}
           quizToEdit={quizToEdit}
-          initialData={quizToEdit}
+          initialData={quizToEdit as any}
           onSaveQuiz={(updatedQuiz) => {
             onSaveQuiz(updatedQuiz);
             setShowCreatorModal(false);
