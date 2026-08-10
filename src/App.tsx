@@ -372,9 +372,15 @@ export default function App() {
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setShowCommandPalette(prev => !prev);
+      } else if (e.key === 'Escape') {
+        setShowCommandPalette(false);
+        setShowRoleMenu(false);
+        setShowToolsMenu(false);
+        setShowMobileMoreMenu(false);
+        setShowMoreMenu(false);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);

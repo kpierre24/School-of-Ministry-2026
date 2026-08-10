@@ -75,6 +75,7 @@ import {
   DEFAULT_ENABLED_WIDGETS 
 } from './DashboardCustomizerModal';
 import { EmptyState } from './UXPrimitives';
+import { Modal } from './Modal';
 
 interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
@@ -1715,30 +1716,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* Prospective Student Admission Inquiry & Application Modal */}
       {showInquiryModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-amber-400/40 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
-            <button
-              onClick={() => {
-                setShowInquiryModal(false);
-                setInquirySubmitted(false);
-              }}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-500 font-bold flex items-center justify-center transition-colors cursor-pointer"
-            >
-              ✕
-            </button>
-
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-700 dark:text-amber-300 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-400/40">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>HTEIM School of Ministry Admissions</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-syne tracking-tight">
-                Apply / Inquire for Enrolment
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Join our upcoming cohort in anointed biblical exegesis, ministerial ethics, and five-fold leadership equipping.
-              </p>
-            </div>
+        <Modal
+          isOpen={showInquiryModal}
+          onClose={() => {
+            setShowInquiryModal(false);
+            setInquirySubmitted(false);
+          }}
+          title="Apply / Inquire for Enrolment"
+          subtitle="Join our upcoming cohort in anointed biblical exegesis, ministerial ethics, and five-fold leadership equipping."
+          icon={<Sparkles className="w-5 h-5 text-amber-500 shrink-0" />}
+          size="xl"
+        >
 
             {inquirySubmitted ? (
               <div className="p-6 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-center space-y-3 animate-fadeIn">
@@ -1873,8 +1861,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </div>
               </form>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
 
     </div>

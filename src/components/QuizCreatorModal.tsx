@@ -23,6 +23,7 @@ interface QuizCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   quizToEdit?: QuizAssignment | null;
+  initialData?: QuizAssignment | null;
   onSaveQuiz: (quiz: QuizAssignment) => void;
   onDuplicateQuiz?: (quiz: QuizAssignment) => void;
 }
@@ -31,13 +32,15 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
   isOpen,
   onClose,
   quizToEdit,
+  initialData,
   onSaveQuiz,
   onDuplicateQuiz
 }) => {
-  const [title, setTitle] = useState(quizToEdit?.title || '');
-  const [courseCode, setCourseCode] = useState(quizToEdit?.courseCode || 'MIN-101');
-  const [moduleTrack, setModuleTrack] = useState(quizToEdit?.moduleTrack || 'Module 1: Introduction');
-  const [description, setDescription] = useState(quizToEdit?.description || 'Complete this Google Forms style daily quiz. Select the correct answer for each weighted question.');
+  const targetQuiz = quizToEdit || initialData;
+  const [title, setTitle] = useState(targetQuiz?.title || '');
+  const [courseCode, setCourseCode] = useState(targetQuiz?.courseCode || 'MIN-101');
+  const [moduleTrack, setModuleTrack] = useState(targetQuiz?.moduleTrack || 'Module 1: Introduction');
+  const [description, setDescription] = useState(targetQuiz?.description || 'Complete this Google Forms style daily quiz. Select the correct answer for each weighted question.');
   const [dueDate, setDueDate] = useState(quizToEdit?.dueDate || new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0]);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | undefined>(quizToEdit?.timeLimitMinutes || undefined);
   const [isTemplate, setIsTemplate] = useState(quizToEdit?.isTemplate || false);

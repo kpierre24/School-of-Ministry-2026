@@ -42,6 +42,7 @@ import {
   CloudDownload
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
+import { Modal } from './Modal';
 import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
 import { uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from '../lib/supabaseClient';
@@ -1228,23 +1229,14 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
       {/* Upload Modal with File Drag-Drop & AI Processing */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleProcessUpload} className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Upload className="w-5 h-5 text-amber-400" />
-                <h3 className="text-sm font-extrabold">Upload Lessons & AI Content Evaluator</h3>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setShowUploadModal(false)}
-                className="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <Modal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          title="Upload Lessons & AI Content Evaluator"
+          icon={<Upload className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="xl"
+        >
+          <form onSubmit={handleProcessUpload} className="space-y-4">
               {/* Tab Selector: Upload Files vs Paste Text vs Google Drive */}
               <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
@@ -1474,48 +1466,38 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   <p className="text-xs font-extrabold">{evaluationProgress || 'Evaluating lesson content with Gemini AI...'}</p>
                 </div>
               )}
-            </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isEvaluating}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Evaluate & Save Lessons
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* Preview Full Lesson Modal */}
       {previewResource && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scaleUp">
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-400/20 px-2 py-0.5 rounded border border-emerald-400/30">
-                  {previewResource.courseCode} • {previewResource.category}
-                </span>
-                <h3 className="text-base font-extrabold mt-1">{previewResource.title}</h3>
-              </div>
-              <button 
-                onClick={() => setPreviewResource(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar text-xs text-slate-800">
+        <Modal
+          isOpen={!!previewResource}
+          onClose={() => setPreviewResource(null)}
+          title={previewResource.title}
+          subtitle={`${previewResource.courseCode} • ${previewResource.category}`}
+          icon={<BookMarked className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="2xl"
+        >
+          <div className="space-y-4 text-xs text-slate-800">
               {/* AI Evaluation Box */}
               <div className="p-4 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
@@ -1622,7 +1604,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <span className="text-[10px] font-bold text-slate-400">
                 Author: {previewResource.author}
               </span>
@@ -1652,29 +1634,19 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* Edit Resource Modal */}
       {editingResource && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleSaveEdit} className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-amber-400" />
-                <h3 className="text-sm font-extrabold">Edit Library Resource Details</h3>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setEditingResource(null)}
-                className="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <Modal
+          isOpen={!!editingResource}
+          onClose={() => setEditingResource(null)}
+          title="Edit Library Resource Details"
+          icon={<Pencil className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="xl"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Author / Instructor</label>
@@ -1770,45 +1742,43 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500 focus:bg-white font-mono text-[11px]"
                 />
               </div>
-            </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditingResource(null)}
-                className="px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 Save Changes
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* ========================================================= */}
       {/* MODAL: CLEAR ALL CONFIRMATION */}
       {/* ========================================================= */}
       {showClearAllConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden">
-            <div className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Clear Library</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Are you sure you want to clear all current lessons from the library? You will still be able to upload your own custom lessons later.
-                </p>
-              </div>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+        <Modal
+          isOpen={showClearAllConfirm}
+          onClose={() => setShowClearAllConfirm(false)}
+          title="Clear Library"
+          icon={<Trash2 className="w-5 h-5 text-rose-600 shrink-0" />}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Are you sure you want to clear all current lessons from the library? You will still be able to upload your own custom lessons later.
+            </p>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <button
                 onClick={() => setShowClearAllConfirm(false)}
                 className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer"
@@ -1823,7 +1793,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ========================================================= */}
@@ -1833,35 +1803,17 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         const parsed = parseVideoMediaUrl(playingVideoModalResource.downloadUrl || playingVideoModalResource.fileDataUrl || '');
 
         return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden text-slate-100 flex flex-col max-h-[90vh]">
-              {/* Header */}
-              <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-hidden pr-2">
-                  <span className="p-1.5 bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/30 flex-shrink-0">
-                    <Tv className="w-5 h-5" />
-                  </span>
-                  <div>
-                    <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
-                      {playingVideoModalResource.courseCode} • {playingVideoModalResource.category}
-                    </span>
-                    <h3 className="text-sm font-black text-white truncate max-w-md">
-                      {playingVideoModalResource.title}
-                    </h3>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setPlayingVideoModalResource(null)}
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-
+          <Modal
+            isOpen={!!playingVideoModalResource}
+            onClose={() => setPlayingVideoModalResource(null)}
+            title={playingVideoModalResource.title}
+            subtitle={`${playingVideoModalResource.courseCode} • ${playingVideoModalResource.category}`}
+            icon={<Tv className="w-5 h-5 text-indigo-400 shrink-0" />}
+            size="4xl"
+          >
+            <div className="space-y-4">
               {/* Video Player Frame */}
-              <div className="p-4 bg-black flex-1 flex flex-col justify-center items-center overflow-hidden">
+              <div className="p-4 bg-black flex flex-col justify-center items-center overflow-hidden rounded-2xl">
                 {parsed.isDrive && parsed.embedUrl ? (
                   <iframe
                     src={parsed.embedUrl}
@@ -1891,7 +1843,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               </div>
 
               {/* Controls & Details Footer */}
-              <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                 <div>
                   <p className="font-extrabold text-white flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-indigo-400" /> Instructor / Speaker: {playingVideoModalResource.author}
@@ -1939,7 +1891,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 </div>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 

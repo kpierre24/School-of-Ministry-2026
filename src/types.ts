@@ -68,10 +68,12 @@ export type PaymentRecord = {
   amountPaid: number;
   status: 'Paid In Full' | 'Partial' | 'Past Due' | 'Pending Review';
   lastPaymentDate: string;
-  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash';
+  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe';
   notes?: string;
   receiptUrl?: string;
   receiptName?: string;
+  receiptNumber?: string;
+  paymentPlan?: PaymentPlanType;
 };
 
 export type StudentProfile = {
@@ -141,12 +143,13 @@ export type QuizAssignment = {
   isTemplate?: boolean;
   shareCode: string; // e.g. "qz_9f8a2" for shareable links
   timeLimitMinutes?: number;
+  quizData?: QuizAssignment;
 };
 
 export type QuizSubmissionResponse = {
   questionId: string;
   selectedOptionId: string;
-  isCorrect: boolean;
+  isCorrect?: boolean;
   pointsEarned: number;
 };
 
@@ -188,6 +191,18 @@ export type ScheduleItem = {
   room: string;
   status: 'upcoming' | 'completed' | 'live';
   period?: string; // e.g. "1st Period", "2nd Period", "3rd Period", "4th Period", "5th Period", "Evening"
+  zoomUrl?: string;
+  recordingUrl?: string;
+  postClassMaterialsUrl?: string;
+  meetingPasscode?: string;
+};
+
+export type ResourceVersion = {
+  version: string;
+  date: string;
+  note: string;
+  author?: string;
+  downloadUrl?: string;
 };
 
 export type LibraryResource = {
@@ -208,6 +223,10 @@ export type LibraryResource = {
   keyTakeaways?: string[];
   aiEvaluated?: boolean;
   uploadedAt?: string;
+  downloadCount?: number;
+  versionsHistory?: ResourceVersion[];
+  version?: string;
+  audience?: string;
 };
 
 export type CustomAssignment = {
@@ -257,7 +276,7 @@ export type AppNotification = {
   id: string;
   title: string;
   message: string;
-  type: 'due_date' | 'past_due' | 'graded' | 'submission' | 'general';
+  type: 'due_date' | 'past_due' | 'graded' | 'submission' | 'general' | 'at_risk_attendance' | 'payment_past_due';
   targetRole?: 'admin' | 'teacher' | 'student' | 'all';
   studentName?: string;
   assignmentId?: string;
@@ -265,6 +284,7 @@ export type AppNotification = {
   read: boolean;
   priority?: 'high' | 'normal' | 'low';
   actionTab?: TabType;
+  channelSent?: ('portal' | 'email' | 'sms' | 'whatsapp')[];
 };
 
 export type ClassDay = {
@@ -282,6 +302,9 @@ export type StudentSummary = {
   note?: string;
   photoUrl?: string;
   levelId: string;
+  email?: string;
+  phone?: string;
+  enrolledModule?: string;
 };
 
 export type MessagePriority = 'normal' | 'important' | 'urgent';
@@ -325,5 +348,113 @@ export type AppMessage = {
   isReadBySender: boolean;
   status: 'open' | 'in_progress' | 'resolved' | 'archived';
   replies: MessageReply[];
+};
+
+export type PaymentPlanType = 'full' | 'monthly' | 'scholarship' | 'custom' | 'Monthly Installments' | 'Pay In Full' | 'Financial Aid / Scholarship';
+
+export type ExcusedAbsenceRequest = {
+  id: string;
+  studentName: string;
+  classDayId: string;
+  classDayName?: string;
+  date?: string;
+  reason: string;
+  submittedAt: string;
+  status: 'pending' | 'approved' | 'rejected' | 'Pending' | 'Approved' | 'Rejected';
+  documentUrl?: string;
+  proofDocumentName?: string;
+  approvedBy?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+};
+
+export type AttendanceCorrectionAudit = {
+  id: string;
+  studentName: string;
+  classDayId: string;
+  previousStatus: string;
+  newStatus: string;
+  changedBy: string;
+  reason: string;
+  timestamp: string;
+};
+
+export type PINCheckinSession = {
+  id: string;
+  classDayId: string;
+  pin: string;
+  active: boolean;
+  expiresAt: string;
+  checkedInStudents: string[];
+};
+
+export type Announcement = {
+  id: string;
+  title: string;
+  content: string;
+  author?: string;
+  sentBy?: string;
+  targetAudience?: 'all' | 'students' | 'faculty';
+  targetRole?: 'all' | 'students' | 'student' | 'faculty' | 'admin' | 'teacher';
+  targetCohort?: string;
+  targetModule?: string;
+  targetPaymentStatus?: string;
+  templateCategory?: string;
+  createdAt: string;
+  scheduledFor?: string;
+  isPublished?: boolean;
+  priority?: 'normal' | 'urgent';
+  readByStudentNames?: string[];
+  channels?: ('portal' | 'email' | 'sms' | 'whatsapp')[];
+};
+
+export type StudentTimelineEvent = {
+  id: string;
+  type: string;
+  title: string;
+  date: string;
+  description?: string;
+  studentName?: string;
+  badgeColor?: string;
+};
+
+export type StudentNote = {
+  id: string;
+  studentName: string;
+  author: string;
+  authorRole: 'admin' | 'teacher';
+  text: string;
+  date?: string;
+  createdAt?: string;
+  isPrivate?: boolean;
+};
+
+export type GraduationChecklist = {
+  id?: string;
+  studentName: string;
+  allModulesPassed?: boolean;
+  attendanceVerified?: boolean;
+  tuitionCleared?: boolean;
+  practicumCompleted?: boolean;
+  approvedForGraduation?: boolean;
+  attendanceRate?: number;
+  averageGrade?: number;
+  isReadyForGraduation?: boolean;
+  meetsAttendance?: boolean;
+  meetsGrade?: boolean;
+  meetsAssignments?: boolean;
+  assignmentsCompleted?: number;
+  totalAssignments?: number;
+  tuitionPaid?: boolean;
+};
+
+export type CertificateRecord = {
+  id: string;
+  studentName: string;
+  levelName: string;
+  issueDate: string;
+  certificateNumber: string;
+  signedBy: string;
+  pdfUrl?: string;
 };
 

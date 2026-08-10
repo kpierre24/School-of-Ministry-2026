@@ -30,6 +30,7 @@ import {
   Database
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
+import { Modal } from './Modal';
 import { AppMessage, MessageCategory, MessagePriority, MessageReply, MessageAttachment } from '../types';
 import { AppUser } from '../lib/userAuth';
 import { sanitizeInput } from '../lib/securityHelper';
@@ -904,30 +905,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
 
       {/* COMPOSE NEW MESSAGE MODAL */}
       {showNewMsgModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-fadeIn my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-md">
-                  <MessageSquarePlus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
-                    Compose Direct Message
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Send a typed message to faculty, staff, or fellow students
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowNewMsgModal(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <Modal
+          isOpen={showNewMsgModal}
+          onClose={() => setShowNewMsgModal(false)}
+          title="Compose Direct Message"
+          subtitle="Send a typed message to faculty, staff, or fellow students"
+          icon={<MessageSquarePlus className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="xl"
+        >
 
             {/* Student Presets */}
             {currentUserRole === 'student' && (
@@ -1100,9 +1085,8 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
     </div>
   );
 };

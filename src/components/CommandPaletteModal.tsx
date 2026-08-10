@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { 
   Search, 
   X, 
@@ -88,16 +89,32 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   // Use live payment data passed as prop; fall back to empty if not provided
   const corePayments = (paymentList ?? []).slice(0, 20);
 
-  // Focus input automatically when modal opens
+  // Focus input automatically when modal opens and bind global key listener
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setSelectedIndex(0);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
+
+      const handleGlobalModalKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+          e.preventDefault();
+          onClose();
+        }
+      };
+
+      window.addEventListener('keydown', handleGlobalModalKeyDown);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('keydown', handleGlobalModalKeyDown);
+      };
     }
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -112,7 +129,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Go to Home Dashboard',
       subtitle: 'Overview, Pillars & Ministry Curriculum Highlights',
       icon: <Sparkles className="w-4 h-4 text-amber-500" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
       action: () => { onNavigate('home'); onClose(); }
     },
@@ -122,7 +139,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Open Student Attendance Portal',
       subtitle: 'Live Attendance Records & Class Check-In Sheets',
       icon: <UserCheck className="w-4 h-4 text-indigo-500" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
       action: () => { onNavigate('attendance'); onClose(); }
     },
@@ -132,7 +149,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Open Students Directory',
       subtitle: 'View Student Roster, Contact Profiles & Enrolment Levels',
       icon: <User className="w-4 h-4 text-emerald-500" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       action: () => { onNavigate('students'); onClose(); }
     },
@@ -142,7 +159,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Courses & Curriculum Modules',
       subtitle: 'Browse 6 Core Ministry Modules & Syllabi Details',
       icon: <BookOpen className="w-4 h-4 text-blue-500" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
       action: () => { onNavigate('courses'); onClose(); }
     },
@@ -152,7 +169,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Exams, Assignments & Evaluations',
       subtitle: 'Scripture Examinations, Quizzes & Grade Books',
       icon: <Award className="w-4 h-4 text-amber-600" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
       action: () => { onNavigate('exams'); onClose(); }
     },
@@ -162,7 +179,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Academic Calendar & Schedule',
       subtitle: 'Classroom Days, Lecture Slots & Room Locations',
       icon: <Calendar className="w-4 h-4 text-purple-500" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
       action: () => { onNavigate('schedule'); onClose(); }
     },
@@ -172,7 +189,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Digital Library & Reading Resources',
       subtitle: 'Download Handouts, Manuals & Theological Syllabi',
       icon: <Bookmark className="w-4 h-4 text-teal-500" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
       action: () => { onNavigate('library'); onClose(); }
     },
@@ -182,7 +199,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       title: 'Tuition Statements & Payment Ledger',
       subtitle: 'Receipts, Payment Options & Financial Records',
       icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
-      badge: 'Tab',
+      badge: 'View',
       badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       action: () => { onNavigate('payments'); onClose(); }
     }
@@ -351,7 +368,15 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       setSelectedIndex(prev => (prev < filtered.length - 1 ? prev + 1 : 0));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedIndex(prev => (prev > 0 ? prev - 1 : filtered.length - 1));
+      setSelectedIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, filtered.length - 1)));
+    } else if (e.key === 'Tab') {
+      // Prevent tab key from losing focus and cycle items smoothly
+      e.preventDefault();
+      if (e.shiftKey) {
+        setSelectedIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, filtered.length - 1)));
+      } else {
+        setSelectedIndex(prev => (prev < filtered.length - 1 ? prev + 1 : 0));
+      }
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (filtered[safeSelectedIndex]) {
@@ -366,6 +391,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   // Group filtered results by Category
   const categories = ['Actions & Views', 'Students', 'Courses', 'Exams', 'Payments'] as const;
 
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn modal-material-scrim">
       {/* Outside Click Backdrop */}
@@ -373,6 +400,10 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
       {/* Main Command Box */}
       <div 
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Universal Search & Navigation Command Palette"
         className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] z-10 animate-scaleUp modal-material-dialog"
         onKeyDown={handleKeyDown}
       >
@@ -394,14 +425,20 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             <button
               onClick={() => setQuery('')}
               className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Clear Search"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <div className="flex items-center gap-1 shrink-0">
-            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 text-[10px] font-mono font-extrabold rounded border border-slate-700">
-              ESC
-            </kbd>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onClose}
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-mono font-extrabold rounded border border-slate-700 cursor-pointer flex items-center gap-1 transition-colors"
+              title="Close Command Palette (ESC)"
+            >
+              <span>ESC</span>
+              <X className="w-3 h-3 text-slate-400" />
+            </button>
           </div>
         </div>
 

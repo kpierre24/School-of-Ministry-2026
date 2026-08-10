@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import {
   X,
   Send,
@@ -332,9 +333,17 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
     setEditingPhoneId(null);
   };
 
+  const dialogRef = useAccessibleModal(true, onClose);
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 modal-material-scrim">
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog">
+      <div 
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bulk Tuition Payment & Statement Reminder Suite"
+        className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog"
+      >
         
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 flex items-center justify-between border-b border-indigo-900/50 modal-material-header">

@@ -63,7 +63,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
       scale: 1,
       filter: "blur(0px)",
       transition: {
-        type: "spring",
+        type: "spring" as const,
         damping: 12,
         stiffness: 150
       }
@@ -82,7 +82,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
       transition: {
         duration: 3,
         repeat: Infinity,
-        ease: "easeInOut"
+        ease: "easeInOut" as const
       }
     }
   };

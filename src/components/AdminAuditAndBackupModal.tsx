@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { pullFromGithub } from '../lib/api/github';
 import { logger } from '../lib/logger';
 import { 
@@ -330,6 +331,8 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
     setTimeout(() => setOpStatusMessage(null), 4000);
   };
 
+  const dialogRef = useAccessibleModal(true, onClose);
+
   if (currentUserRole !== 'admin') {
     return (
       <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -355,6 +358,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   return (
     <div className="modal-material-scrim fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fadeIn">
       <div 
+        ref={dialogRef}
         className="modal-material-dialog bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp text-slate-900 dark:text-slate-100"
         role="dialog"
         aria-modal="true"

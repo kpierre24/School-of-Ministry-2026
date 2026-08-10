@@ -40,7 +40,8 @@ import {
   Bookmark,
   ShieldCheck,
   CloudDownload,
-  UploadCloud
+  UploadCloud,
+  ArrowLeft
 } from 'lucide-react';
 
 import { EmptyState } from './UXPrimitives';
@@ -51,6 +52,8 @@ import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 import { QuizCreatorModal } from './QuizCreatorModal';
 import { QuizTakerView } from './QuizTakerView';
 import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
+import { Modal } from './Modal';
+import { usePortalRouter } from '../lib/usePortalRouter';
 
 type StudentScoreRecord = {
   name: string;
@@ -331,10 +334,35 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   // Sub tab view: 'assignments' (default) vs 'quizzes' vs 'admin_dashboard'
   const [subTab, setSubTab] = useState<'assignments' | 'quizzes' | 'admin_dashboard'>('assignments');
 
+  const { route, navigate } = usePortalRouter('exams');
+
   // Quiz Creator & Quiz Taker State
   const [showQuizCreatorModal, setShowQuizCreatorModal] = useState(false);
   const [editingQuizData, setEditingQuizData] = useState<QuizAssignment | null>(null);
   const [activeQuizTaker, setActiveQuizTaker] = useState<QuizAssignment | null>(null);
+
+  // Sync route parameters with quiz / assignment view state
+  useEffect(() => {
+    if (route.action === 'create-quiz' || route.action === 'edit-quiz') {
+      setShowQuizCreatorModal(true);
+      if (route.id) {
+        const found = customAssignments.find(a => a.id === route.id || a.quizData?.id === route.id);
+        if (found?.quizData) {
+          setEditingQuizData(found.quizData);
+        }
+      }
+    } else if (route.action === 'take-quiz') {
+      if (route.id) {
+        const found = customAssignments.find(a => a.id === route.id || a.quizData?.id === route.id);
+        if (found?.quizData) {
+          setActiveQuizTaker(found.quizData);
+        }
+      }
+    } else {
+      setShowQuizCreatorModal(false);
+      setActiveQuizTaker(null);
+    }
+  }, [route.action, route.id, customAssignments]);
   const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<QuizAssignment | null>(null);
   const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
 
@@ -409,36 +437,44 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
     setShowQuizCreatorModal(false);
     setEditingQuizData(null);
+    navigate({ action: undefined, id: undefined });
   };
 
-  const handleDuplicateQuiz = (asg: CustomAssignment) => {
-    if (!asg.quizData) return;
+  const handleDuplicateQuiz = (asgOrQuiz: CustomAssignment | QuizAssignment) => {
+    const quizData = ('quizData' in asgOrQuiz && asgOrQuiz.quizData) ? asgOrQuiz.quizData : (asgOrQuiz as QuizAssignment);
+    if (!quizData) return;
 
     const newShareCode = `qz_${Math.random().toString(36).substring(2, 8)}`;
     const newQuizId = `quiz_${Date.now()}`;
     const duplicatedQuiz: QuizAssignment = {
-      ...asg.quizData,
+      ...quizData,
       id: newQuizId,
-      title: `${asg.quizData.title} (Copy)`,
+      title: `${quizData.title} (Copy)`,
       shareCode: newShareCode,
       createdAt: new Date().toISOString().split('T')[0]
     };
 
     const newAsg: CustomAssignment = {
-      ...asg,
       id: `ASG-${newQuizId}`,
       title: duplicatedQuiz.title,
+      courseCode: duplicatedQuiz.courseCode,
+      moduleTrack: duplicatedQuiz.moduleTrack,
+      description: duplicatedQuiz.description || '',
+      dueDate: duplicatedQuiz.dueDate || new Date().toISOString().split('T')[0],
+      maxPoints: duplicatedQuiz.totalPoints || 100,
+      createdAt: new Date().toISOString().split('T')[0],
+      type: 'quiz',
       quizData: duplicatedQuiz
     };
 
-    setCustomAssignments([newAsg, ...customAssignments]);
+    setCustomAssignments(prev => [newAsg, ...prev]);
 
     logActivity({
       actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
       role: userRole === 'admin' ? 'admin' : 'teacher',
       actionCategory: 'Quiz Management',
       actionTitle: 'Class Day Quiz Duplicated',
-      details: `Duplicated "${asg.title}" to create "${newAsg.title}". New Share Code: ${newShareCode}`
+      details: `Duplicated "${quizData.title}" to create "${newAsg.title}". New Share Code: ${newShareCode}`
     });
   };
 
@@ -2036,7 +2072,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         {/* Collation Matrix View */}
                         {isTeacherOrAdmin && (
                           <button
-                            onClick={() => setActiveCollatingQuiz(asg)}
+                            onClick={() => setActiveCollatingQuiz((asg.quizData || asg) as QuizAssignment)}
                             className="py-1.5 px-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-xl transition-all cursor-pointer flex items-center gap-1"
                             title="View Collated Answers & Item Analysis"
                           >
@@ -2397,154 +2433,135 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL 1: ADD/EDIT ASSIGNMENT (TEACHER / ADMIN) */}
       {/* ========================================================= */}
       {showAddAssignmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
-            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                {editingAssignmentId ? <Edit3 className="w-5 h-5 text-amber-400 shrink-0" /> : <Plus className="w-5 h-5 text-amber-400 shrink-0" />}
-                <h3 className="text-sm sm:text-base font-extrabold">{editingAssignmentId ? 'Edit Course Assignment' : 'Create Manual Course Assignment'}</h3>
-              </div>
-              <button
-                onClick={handleCloseAddAssignmentModal}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <Modal
+          isOpen={showAddAssignmentModal}
+          onClose={handleCloseAddAssignmentModal}
+          title={editingAssignmentId ? 'Edit Course Assignment' : 'Create Manual Course Assignment'}
+          icon={editingAssignmentId ? <Edit3 className="w-5 h-5 text-indigo-600 shrink-0" /> : <Plus className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="lg"
+        >
+          <form onSubmit={handleSaveAssignment} className="space-y-4 text-xs font-medium">
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700">Assignment Title *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g., Exegesis Paper: Hermeneutical Principles"
+                value={newAsgTitle}
+                onChange={(e) => setNewAsgTitle(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
 
-            <form onSubmit={handleSaveAssignment} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Assignment Title *</label>
+                <label className="font-bold text-slate-700">Module / Track</label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g., Exegesis Paper: Hermeneutical Principles"
-                  value={newAsgTitle}
-                  onChange={(e) => setNewAsgTitle(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={newAsgModule}
+                  onChange={(e) => setNewAsgModule(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Module / Track</label>
-                  <input
-                    type="text"
-                    value={newAsgModule}
-                    onChange={(e) => setNewAsgModule(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" /> Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newAsgStartDate}
-                    onChange={(e) => setNewAsgStartDate(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Due Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={newAsgDueDate}
-                    onChange={(e) => setNewAsgDueDate(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                  />
-                </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Description / Instructions</label>
-                <textarea
-                  rows={3}
-                  placeholder="Enter explicit assignment instructions, word count, or grading expectations..."
-                  value={newAsgDescription}
-                  onChange={(e) => setNewAsgDescription(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                <label className="font-bold text-slate-700 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" /> Start Date
+                </label>
+                <input
+                  type="date"
+                  value={newAsgStartDate}
+                  onChange={(e) => setNewAsgStartDate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 />
               </div>
 
-              {/* Optional Teacher Reference File Upload */}
-              <div className="space-y-1 pt-1">
+              <div className="space-y-1">
                 <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <Paperclip className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Optional Worksheet / Rubric File
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Due Date *
                 </label>
-                <div className="flex items-center gap-2">
-                  {isUploadingFile ? (
-                    <div className="flex items-center gap-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse text-[11px] font-bold w-full">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                      <span>Uploading worksheet reference...</span>
-                    </div>
-                  ) : (
-                    <input
-                      type="file"
-                      onChange={(e) => handleFileUpload(e, (url, name) => {
-                        setNewAsgAttachmentUrl(url);
-                        setNewAsgAttachmentName(name);
-                      })}
-                      className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                    />
-                  )}
-                </div>
-                {newAsgAttachmentName && (
-                  <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
-                    <Check className="w-3.5 h-3.5 shrink-0" /> Attached: {newAsgAttachmentName}
-                  </p>
+                <input
+                  type="date"
+                  required
+                  value={newAsgDueDate}
+                  onChange={(e) => setNewAsgDueDate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700">Description / Instructions</label>
+              <textarea
+                rows={3}
+                placeholder="Enter explicit assignment instructions, word count, or grading expectations..."
+                value={newAsgDescription}
+                onChange={(e) => setNewAsgDescription(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Optional Teacher Reference File Upload */}
+            <div className="space-y-1 pt-1">
+              <label className="font-bold text-slate-700 flex items-center gap-1">
+                <Paperclip className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Optional Worksheet / Rubric File
+              </label>
+              <div className="flex items-center gap-2">
+                {isUploadingFile ? (
+                  <div className="flex items-center gap-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 animate-pulse text-[11px] font-bold w-full">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    <span>Uploading worksheet reference...</span>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    onChange={(e) => handleFileUpload(e, (url, name) => {
+                      setNewAsgAttachmentUrl(url);
+                      setNewAsgAttachmentName(name);
+                    })}
+                    className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                  />
                 )}
               </div>
+              {newAsgAttachmentName && (
+                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
+                  <Check className="w-3.5 h-3.5 shrink-0" /> Attached: {newAsgAttachmentName}
+                </p>
+              )}
+            </div>
 
-              <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCloseAddAssignmentModal}
-                  className="px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer text-center"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer text-center"
-                >
-                  {editingAssignmentId ? 'Save Changes' : 'Create Assignment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
+              <button
+                type="button"
+                onClick={handleCloseAddAssignmentModal}
+                className="px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md cursor-pointer text-center"
+              >
+                {editingAssignmentId ? 'Save Changes' : 'Create Assignment'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* ========================================================= */}
       {/* MODAL 2: STUDENT UPLOAD RESPONSE */}
       {/* ========================================================= */}
       {showUploadModal && activeAssignmentForStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
-            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 overflow-hidden pr-2">
-                <Upload className="w-5 h-5 text-indigo-400 shrink-0" />
-                <div className="overflow-hidden">
-                  <h3 className="text-sm sm:text-base font-extrabold truncate">Upload Assignment Response</h3>
-                  <p className="text-[11px] text-slate-300 truncate">{activeAssignmentForStudent.title}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveStudentSubmission} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
+        <Modal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          title="Upload Assignment Response"
+          subtitle={activeAssignmentForStudent.title}
+          icon={<Upload className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="lg"
+        >
+          <form onSubmit={handleSaveStudentSubmission} className="space-y-4 text-xs font-medium">
               <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-900">
                 <p className="font-bold text-xs">Student Candidate: <strong>{activeStudentName}</strong></p>
                 <p className="text-[11px] text-indigo-700 mt-0.5">Due Date: {activeAssignmentForStudent.dueDate} | Max Points: {activeAssignmentForStudent.maxPoints}</p>
@@ -2766,33 +2783,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* ========================================================= */}
       {/* MODAL 3: TEACHER GRADE & UPLOAD CORRECTED ASSIGNMENT */}
       {/* ========================================================= */}
       {showCorrectionModal && activeSubmissionForCorrection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
-            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 overflow-hidden pr-2">
-                <FileCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-                <div className="overflow-hidden">
-                  <h3 className="text-sm sm:text-base font-extrabold truncate">Grade & Attach Correction</h3>
-                  <p className="text-[11px] text-slate-300 truncate">Student: <strong>{activeSubmissionForCorrection.studentName}</strong></p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowCorrectionModal(false)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCorrection} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
+        <Modal
+          isOpen={showCorrectionModal}
+          onClose={() => setShowCorrectionModal(false)}
+          title="Grade & Attach Correction"
+          subtitle={`Student: ${activeSubmissionForCorrection.studentName}`}
+          icon={<FileCheck className="w-5 h-5 text-emerald-600 shrink-0" />}
+          size="lg"
+        >
+          <form onSubmit={handleSaveCorrection} className="space-y-4 text-xs font-medium">
               {/* Student Submission Quick View */}
               {activeSubmissionForCorrection.submission?.studentFiles && activeSubmissionForCorrection.submission.studentFiles.length > 0 ? (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
@@ -2919,30 +2925,21 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* ========================================================= */}
       {/* MODAL 4: TEACHER DIRECT UPLOAD TO SPECIFIC STUDENT / EDIT UPLOAD */}
       {/* ========================================================= */}
       {showDirectStudentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
-            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <FileUp className="w-5 h-5 text-amber-400 shrink-0" />
-                <h3 className="text-sm sm:text-base font-extrabold">Upload or Edit Student Assignment File</h3>
-              </div>
-              <button
-                onClick={() => setShowDirectStudentModal(false)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveDirectStudentUpload} className="p-4 sm:p-6 space-y-4 text-xs font-medium overflow-y-auto custom-scrollbar flex-1">
+        <Modal
+          isOpen={showDirectStudentModal}
+          onClose={() => setShowDirectStudentModal(false)}
+          title="Upload or Edit Student Assignment File"
+          icon={<FileUp className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="lg"
+        >
+          <form onSubmit={handleSaveDirectStudentUpload} className="space-y-4 text-xs font-medium">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Select Target Student</label>
@@ -3065,30 +3062,21 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* ========================================================= */}
       {/* MODAL 5: DOCUMENT PREVIEW MODAL */}
       {/* ========================================================= */}
       {previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[92vh] my-auto flex flex-col overflow-hidden">
-            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 overflow-hidden pr-2">
-                <Eye className="w-5 h-5 text-indigo-400 shrink-0" />
-                <h3 className="text-sm sm:text-base font-extrabold truncate">{previewFile.name}</h3>
-              </div>
-              <button
-                onClick={() => setPreviewFile(null)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+        <Modal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          title={previewFile.name}
+          icon={<Eye className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="2xl"
+        >
+          <div className="space-y-4">
               {previewFile.content && (
                 <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                   <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
@@ -3145,17 +3133,17 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </div>
             )}
 
-            <div className="p-3 sm:p-4 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
+            <div className="pt-3 flex justify-end">
               <button
+                type="button"
                 onClick={() => setPreviewFile(null)}
-                className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer text-center"
+                className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer text-center hover:bg-slate-200"
               >
                 Close Preview
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* ========================================================= */}
       {/* MODAL: GOOGLE FORMS QUIZ CREATOR */}
@@ -3166,6 +3154,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           onClose={() => {
             setShowQuizCreatorModal(false);
             setEditingQuizData(null);
+            navigate({ action: undefined, id: undefined });
           }}
           onSaveQuiz={handleSaveQuiz}
           initialData={editingQuizData}
@@ -3179,8 +3168,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         <QuizTakerView
           quiz={activeQuizTaker}
           studentName={activeStudentName}
-          onClose={() => setActiveQuizTaker(null)}
-          onComplete={handleQuizSubmissionComplete}
+          onClose={() => {
+            setActiveQuizTaker(null);
+            navigate({ action: undefined, id: undefined });
+          }}
+          onComplete={(submission) => {
+            handleQuizSubmissionComplete(submission);
+            navigate({ action: undefined, id: undefined });
+          }}
         />
       )}
 
@@ -3188,25 +3183,15 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* MODAL: QUIZ COLLATION & ANSWER MATRIX */}
       {/* ========================================================= */}
       {activeCollatingQuiz && activeCollatingQuiz.quizData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fadeIn overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] my-auto overflow-hidden flex flex-col">
-            <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 overflow-hidden pr-2">
-                <FileSpreadsheet className="w-5 h-5 text-amber-400 shrink-0" />
-                <div className="overflow-hidden">
-                  <h3 className="text-xs sm:text-sm font-extrabold truncate">{activeCollatingQuiz.quizData.title} — Answers Matrix</h3>
-                  <p className="text-[11px] text-slate-300 truncate">Collated student submission analytics</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setActiveCollatingQuiz(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer shrink-0"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+        <Modal
+          isOpen={!!activeCollatingQuiz}
+          onClose={() => setActiveCollatingQuiz(null)}
+          title={`${activeCollatingQuiz.quizData.title} — Answers Matrix`}
+          subtitle="Collated student submission analytics"
+          icon={<FileSpreadsheet className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="4xl"
+        >
+          <div className="space-y-6">
               {/* Question Item Analysis Summary */}
               <div className="space-y-3">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Question Item Analytics ({activeCollatingQuiz.quizData.questions.length} Questions)</h4>
@@ -3287,36 +3272,33 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="pt-3 flex justify-end">
               <button 
                 onClick={() => setActiveCollatingQuiz(null)}
-                className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+                className="px-5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Close Matrix
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* ========================================================= */}
       {/* MODAL: DELETE CONFIRMATION */}
       {/* ========================================================= */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden">
-            <div className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Delete Assignment</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Are you sure you want to delete this assignment and all associated student submissions? This action cannot be undone.
-                </p>
-              </div>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+        <Modal
+          isOpen={!!deleteConfirmId}
+          onClose={() => setDeleteConfirmId(null)}
+          title="Delete Assignment"
+          icon={<Trash2 className="w-5 h-5 text-rose-600 shrink-0" />}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Are you sure you want to delete this assignment and all associated student submissions? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setDeleteConfirmId(null)}
                 className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer"
@@ -3331,7 +3313,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
     </div>
