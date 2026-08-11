@@ -1,16 +1,26 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import path from "path";
 import fs from "fs";
 import { logger } from "../../lib/logger";
+import { isValidGitUrl } from "../middleware/security";
 
 export function pullFromGithub(
   repoUrl: string = "https://github.com/kpierre24/School-of-Ministry-2026.git",
   targetDir: string = process.cwd()
 ): { success: boolean; message?: string; error?: string } {
+  if (!isValidGitUrl(repoUrl)) {
+    logger.warn(`Rejected invalid or untrusted GitHub repository URL: ${repoUrl}`);
+    return {
+      success: false,
+      error: "Invalid repository URL format. Only verified GitHub HTTPS repository URLs are permitted."
+    };
+  }
+
   const tempDir = path.join("/tmp", `github_pull_${Date.now()}`);
   try {
-    logger.info(`Cloning ${repoUrl} into temporary directory...`);
-    execSync(`git clone --depth 1 ${repoUrl} ${tempDir}`, { stdio: "inherit" });
+    logger.info(`Cloning ${repoUrl} safely into temporary directory...`);
+    // execFileSync passes arguments in an array preventing shell command injection
+    execFileSync("git", ["clone", "--depth", "1", repoUrl, tempDir], { stdio: "pipe" });
 
     const copyRecursive = (src: string, dst: string) => {
       const entries = fs.readdirSync(src, { withFileTypes: true });

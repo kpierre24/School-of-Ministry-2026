@@ -24,7 +24,9 @@ interface QuizTakerViewProps {
   quiz: QuizAssignment;
   studentRoster?: { name: string }[];
   currentStudentName?: string;
-  onSubmitQuiz: (submission: QuizSubmission) => void;
+  studentName?: string;
+  onSubmitQuiz?: (submission: QuizSubmission) => void;
+  onComplete?: (submission: QuizSubmission) => void;
   onClose: () => void;
 }
 
@@ -32,10 +34,13 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   quiz,
   studentRoster = [],
   currentStudentName,
+  studentName,
   onSubmitQuiz,
+  onComplete,
   onClose
 }) => {
-  const [selectedStudentName, setSelectedStudentName] = useState(currentStudentName || (studentRoster[0]?.name || ''));
+  const initialStudentName = studentName || currentStudentName || (studentRoster[0]?.name || '');
+  const [selectedStudentName, setSelectedStudentName] = useState(initialStudentName);
   const [customStudentName, setCustomStudentName] = useState('');
   const [isCustomName, setIsCustomName] = useState(!currentStudentName && studentRoster.length === 0);
 
@@ -222,7 +227,8 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
       localStorage.removeItem(`quiz_draft_${quiz.id}`);
     } catch (err) {}
 
-    onSubmitQuiz(newSubmission);
+    onSubmitQuiz?.(newSubmission);
+    onComplete?.(newSubmission);
   };
 
   const formatTimer = (seconds: number) => {

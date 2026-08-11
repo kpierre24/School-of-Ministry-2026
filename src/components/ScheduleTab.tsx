@@ -38,12 +38,15 @@ import {
   Tag,
   CalendarDays,
   CheckCheck,
-  Send
+  Send,
+  ArrowLeft
 } from 'lucide-react';
 import { ScheduleItem } from '../types';
 import { UserRole } from '../lib/userAuth';
 import { downloadICSFile, generateGoogleCalendarUrl, CalendarEventItem } from '../lib/calendarExport';
 import { EmptyState } from './UXPrimitives';
+import { Modal } from './Modal';
+import { usePortalRouter } from '../lib/usePortalRouter';
 
 export const CORE_MODULES = [
   { id: 'm1', code: 'SOM-MOD-1', name: 'Module 1: Introduction', shortName: 'Introduction', color: 'emerald' },
@@ -354,6 +357,36 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
   const [isCopyingMode, setIsCopyingMode] = useState(false);
 
+  const { route, navigate } = usePortalRouter('schedule');
+
+  // Sync route parameters with schedule modal / panel state
+  useEffect(() => {
+    if (route.action === 'add-session' || route.action === 'edit-session') {
+      setShowScheduleModal(true);
+      if (route.id) {
+        const found = schedules.find(s => s.id === route.id);
+        if (found) {
+          setEditingItem(found);
+          setFormDate(found.date);
+          setFormModuleCode(found.courseCode);
+          setFormTitle(found.title);
+          setFormPeriod(found.period || 'EVENING SESSION');
+          setFormTimeSlot(found.timeSlot);
+          setFormInstructor(found.instructor);
+          setFormRoom(found.room || 'Main Sanctuary Hall A');
+          setFormStatus(found.status);
+          setFormDeliveryMode(found.room?.toLowerCase().includes('zoom') ? 'virtual' : 'hybrid');
+          setFormZoomUrl('https://zoom.us/j/hteim-school-of-ministry');
+        }
+      }
+    } else if (route.action === 'broadcast-setup') {
+      setShowZoomExceptionModal(true);
+    } else {
+      setShowScheduleModal(false);
+      setShowZoomExceptionModal(false);
+    }
+  }, [route.action, route.id, schedules]);
+
   // Form State
   const [formDate, setFormDate] = useState<string>('2026-07-24');
   const [formModuleCode, setFormModuleCode] = useState<string>('SOM-MOD-1');
@@ -422,6 +455,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     setFormSyncAttendance(true);
     setFormRepeatWeeks(1);
     setShowScheduleModal(true);
+    navigate({ action: 'add-session' });
   };
 
   const handleOpenEditModal = (item: ScheduleItem) => {
@@ -441,6 +475,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     setFormSyncAttendance(true);
     setFormRepeatWeeks(1);
     setShowScheduleModal(true);
+    navigate({ action: 'edit-session', id: item.id });
   };
 
   // Save Scheduled Class
@@ -509,6 +544,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     }
 
     setShowScheduleModal(false);
+    navigate({ action: undefined, id: undefined });
   };
 
   // Delete Scheduled Class
@@ -516,6 +552,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     if (isStudent) return;
     setSchedules(prev => prev.filter(s => s.id !== id));
     setShowScheduleModal(false);
+    navigate({ action: undefined, id: undefined });
   };
 
   // Copy / Duplicate Scheduled Class to a target date
@@ -1481,52 +1518,26 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
       {/* SCHEDULE LECTURE MODAL (OPTIMIZED & MOBILE READY) */}
       {!isStudent && showScheduleModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden animate-scaleUp text-slate-100">
-            {/* Modal Sticky Header */}
-            <div className="p-3.5 sm:p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-white flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-2xl ${
-                  isCopyingMode 
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
-                    : editingItem 
-                      ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' 
-                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                }`}>
-                  {isCopyingMode ? (
-                    <Copy className="w-5 h-5" />
-                  ) : editingItem ? (
-                    <Edit3 className="w-5 h-5" />
-                  ) : (
-                    <Plus className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black tracking-tight">
-                      {editingItem ? 'Edit Scheduled Class' : isCopyingMode ? 'Duplicate Class Card' : 'Schedule New Class Lecture'}
-                    </h3>
-                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
-                      Academic Schedule
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    {editingItem ? 'Modify details for this class session' : 'Configure date, period, instructor, and streaming parameters'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowScheduleModal(false)}
-                className="w-9 h-9 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all flex items-center justify-center cursor-pointer"
-                title="Close Modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Scrollable Form Body */}
-            <form onSubmit={handleSaveSchedule} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 custom-scrollbar bg-slate-900/95">
+        <Modal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            navigate({ action: undefined, id: undefined });
+          }}
+          title={editingItem ? 'Edit Scheduled Class' : isCopyingMode ? 'Duplicate Class Card' : 'Schedule New Class Lecture'}
+          subtitle={editingItem ? 'Modify details for this class session' : 'Configure date, period, instructor, and streaming parameters'}
+          icon={
+            isCopyingMode ? (
+              <Copy className="w-5 h-5 text-indigo-400 shrink-0" />
+            ) : editingItem ? (
+              <Edit3 className="w-5 h-5 text-indigo-400 shrink-0" />
+            ) : (
+              <Plus className="w-5 h-5 text-indigo-400 shrink-0" />
+            )
+          }
+          size="2xl"
+        >
+          <form onSubmit={handleSaveSchedule} className="space-y-5">
               {/* Duplication Notice Banner */}
               {isCopyingMode && (
                 <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 text-xs flex items-start gap-2.5">
@@ -1900,16 +1911,15 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                   </div>
                 )}
               </div>
-            </form>
 
             {/* Modal Sticky Actions Footer */}
-            <div className="p-3.5 sm:p-4 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
+            <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
               {editingItem ? (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleDeleteSchedule(editingItem.id)}
-                    className="px-3 py-2.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer min-h-[44px]"
+                    className="px-3 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                     <span>Delete</span>
@@ -1920,7 +1930,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                       setEditingItem(null);
                       setIsCopyingMode(true);
                     }}
-                    className="px-3 py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800/60 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer min-h-[44px]"
+                    className="px-3 py-2 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800/60 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                     title="Convert this into a copy to place on a new target date"
                   >
                     <Copy className="w-4 h-4" />
@@ -1933,14 +1943,14 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(false)}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer min-h-[44px]"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveSchedule}
-                  className={`px-5 py-2.5 text-white font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 min-h-[44px] ${
+                  className={`px-5 py-2 text-white font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                     isCopyingMode 
                       ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/30' 
                       : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
@@ -1960,29 +1970,20 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
 
       {/* Admin Schedule Exception / Alert Modal */}
       {showZoomExceptionModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-scaleUp text-slate-100">
-            <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <h3 className="text-sm font-black text-white">Broadcast Schedule Exception Alert</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowZoomExceptionModal(false)}
-                className="w-7 h-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveZoomException} className="p-6 space-y-4">
+        <Modal
+          isOpen={showZoomExceptionModal}
+          onClose={() => setShowZoomExceptionModal(false)}
+          title="Broadcast Schedule Exception Alert"
+          icon={<AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />}
+          size="md"
+        >
+          <form onSubmit={handleSaveZoomException} className="space-y-4 text-xs font-medium text-slate-300">
               <div className="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-xs text-blue-200">
                 Standard Rule: <strong>Classes go live via Zoom every Tuesday (7:00 PM - 9:00 PM EST)</strong>. Use this toggle to notify students if a specific Tuesday class is modified, canceled, or moved.
               </div>
@@ -2016,7 +2017,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-800">
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowZoomExceptionModal(false)}
@@ -2032,9 +2033,8 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
     </div>
   );
 };

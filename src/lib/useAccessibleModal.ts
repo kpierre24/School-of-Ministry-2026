@@ -11,10 +11,25 @@ export function useAccessibleModal(isOpen: boolean, onClose: () => void) {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
+    // Prevent background scrolling while modal is active
+    const originalStyle = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
     const focusInitialElement = () => {
-      const firstFocusable = dialog.querySelector<HTMLElement>('[data-autofocus], ' + focusableSelector);
-      firstFocusable?.focus();
+      if (!dialog) return;
+      const autofocusEl = dialog.querySelector<HTMLElement>('[data-autofocus]');
+      if (autofocusEl) {
+        autofocusEl.focus();
+        return;
+      }
+      const firstFocusable = dialog.querySelector<HTMLElement>(focusableSelector);
+      if (firstFocusable) {
+        firstFocusable.focus();
+      } else {
+        dialog.setAttribute('tabindex', '-1');
+        dialog.focus();
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -39,8 +54,11 @@ export function useAccessibleModal(isOpen: boolean, onClose: () => void) {
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    focusInitialElement();
+    const timer = setTimeout(focusInitialElement, 50);
+
     return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = originalStyle;
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocusedRef.current?.focus();
     };
@@ -48,3 +66,4 @@ export function useAccessibleModal(isOpen: boolean, onClose: () => void) {
 
   return dialogRef;
 }
+

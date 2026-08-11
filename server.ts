@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { githubRouter } from "./src/server/routes/github";
 import { aiRouter } from "./src/server/routes/ai";
 import { logger } from "./src/lib/logger";
+import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
 
 dotenv.config();
 
@@ -14,7 +15,17 @@ const app = express();
 const httpServer = createHttpServer(app);
 const PORT = 3000;
 
-app.use(express.json({ limit: "20mb" }));
+// Apply security response headers globally
+app.use(securityHeaders);
+
+// Limit payload size to prevent payload bombing attacks
+app.use(express.json({ limit: "10mb" }));
+
+// Sanitize incoming JSON bodies
+app.use(sanitizeBody);
+
+// Apply rate limiting specifically to /api endpoints
+app.use("/api", rateLimiter(100, 15 * 60 * 1000));
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });

@@ -13,10 +13,10 @@ import { logger } from './logger';
 
 const firebaseConfig = getFirebaseConfig();
 
-// Initialize Firestore using the explicit database ID from config
-export const db = initializeFirestore(app, {
-  ignoreUndefinedProperties: true
-}, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore using the explicit database ID from config if present
+export const db = firebaseConfig.firestoreDatabaseId 
+  ? initializeFirestore(app, { ignoreUndefinedProperties: true }, firebaseConfig.firestoreDatabaseId)
+  : initializeFirestore(app, { ignoreUndefinedProperties: true });
 
 // Enable offline persistence if available in browser context
 if (typeof window !== 'undefined') {

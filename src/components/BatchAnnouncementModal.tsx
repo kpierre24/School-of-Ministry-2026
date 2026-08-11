@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { 
   Send, 
   Mail, 
@@ -166,9 +167,17 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
     setMessage(prev => prev + ` ${variableStr} `);
   };
 
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 modal-material-scrim">
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-scaleUp flex flex-col max-h-[90vh] modal-material-dialog">
+      <div 
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Batch Email & SMS Announcement Broadcast"
+        className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-scaleUp flex flex-col max-h-[90vh] modal-material-dialog"
+      >
         {/* Header */}
         <div className="p-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
           <div className="flex items-center gap-3">

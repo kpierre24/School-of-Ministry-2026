@@ -34,13 +34,16 @@ import {
   Phone,
   Mail,
   Share2,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
 import { PaymentRecord } from '../types';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { EmptyState } from './UXPrimitives';
+import { Modal } from './Modal';
+import { usePortalRouter } from '../lib/usePortalRouter';
 
 interface PaymentTabProps {
   availableStudents: { name: string; email?: string }[];
@@ -929,13 +932,51 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const payments = propPayments !== undefined ? propPayments : localPayments;
   const setPayments = propSetPayments !== undefined ? propSetPayments : setLocalPayments;
 
+  const { route, navigate } = usePortalRouter('payments');
+
   const [activeSubTab, setActiveSubTab] = useState<'ledger' | 'analytics'>('ledger');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid In Full' | 'Partial' | 'Past Due' | 'Pending Review'>('All');
   
-  // Modals
+  // Modals / Panels
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
   const [selectedPaymentForModal, setSelectedPaymentForModal] = useState<PaymentRecord | null>(null);
+
+  // Sync URL parameters with workspace panel state
+  useEffect(() => {
+    if (route.action === 'record-payment' || route.action === 'record') {
+      if (route.id) {
+        const match = payments.find(p => p.id === route.id || p.studentId === route.id);
+        if (match) {
+          setSelectedPaymentForModal(match);
+          setPaymentAmountInput(prev => Math.min(300, match.totalTuition - match.amountPaid));
+          setPaymentMethodInput('Credit Card');
+          setPaymentNotesInput('');
+          setReceiptFileUrl(match.receiptUrl || '');
+          setReceiptFileName(match.receiptName || '');
+          setShowRecordPaymentModal(true);
+        }
+      }
+    } else if (route.action === 'receipt' || route.action === 'statement') {
+      if (route.id) {
+        const match = payments.find(p => p.id === route.id || p.studentId === route.id);
+        if (match) {
+          setReceiptRecord(match);
+        }
+      }
+    } else if (route.action === 'add-student' || route.action === 'new-agreement') {
+      setShowAddStudentModal(true);
+    } else if (route.action === 'bulk-reminder') {
+      setShowBulkReminderModal(true);
+    } else if (route.action === 'archive') {
+      setShowRemovedArchiveModal(true);
+    } else {
+      setShowRecordPaymentModal(false);
+      setShowAddStudentModal(false);
+      setShowBulkReminderModal(false);
+      setShowRemovedArchiveModal(false);
+    }
+  }, [route.action, route.id, payments]);
   
   // Payment Form State
   const [paymentAmountInput, setPaymentAmountInput] = useState<number>(300);
@@ -1308,6 +1349,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     setReceiptFileName(p.receiptName || '');
     setUploadError('');
     setShowRecordPaymentModal(true);
+    navigate({ action: 'record-payment', id: p.id });
   };
 
   const handleConfirmAddPayment = (e: React.FormEvent) => {
@@ -1345,6 +1387,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
     setShowRecordPaymentModal(false);
     setSelectedPaymentForModal(null);
+    navigate({ action: undefined, id: undefined });
   };
 
   const handleAddStudentTuition = (e: React.FormEvent) => {
@@ -1380,6 +1423,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     setShowAddStudentModal(false);
     setNewStudentName('');
     setNewInitialPayment(0);
+    navigate({ action: undefined, id: undefined });
   };
 
   const handleExportCSV = () => {
@@ -1859,7 +1903,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2 w-full lg:w-auto">
           <button
-            onClick={() => setShowBulkReminderModal(true)}
+            onClick={() => {
+              setShowBulkReminderModal(true);
+              navigate({ action: 'bulk-reminder' });
+            }}
             className="col-span-2 sm:col-span-1 min-h-11 px-3.5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 hover:from-emerald-700 hover:to-indigo-800 text-white font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-95 border border-emerald-400/30"
           >
             <MessageSquare className="w-4 h-4 text-emerald-300 animate-pulse" />
@@ -1876,7 +1923,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           </button>
           {removedStudentRecords.length > 0 && (
             <button
-              onClick={() => setShowRemovedArchiveModal(true)}
+              onClick={() => {
+                setShowRemovedArchiveModal(true);
+                navigate({ action: 'archive' });
+              }}
               className="min-h-11 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               title="View or restore previously removed students and fees"
             >
@@ -1888,7 +1938,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             </button>
           )}
           <button
-            onClick={() => setShowAddStudentModal(true)}
+            onClick={() => {
+              setShowAddStudentModal(true);
+              navigate({ action: 'add-student' });
+            }}
             className="min-h-11 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Plus className="w-3.5 h-3.5 text-emerald-400" /> Log Tuition
@@ -1999,7 +2052,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                               type="button"
                               className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[9px] font-black uppercase cursor-pointer transition-colors"
                               title="Click to view attached receipt"
-                              onClick={() => setReceiptRecord(p)}
+                              onClick={() => {
+                                setReceiptRecord(p);
+                                navigate({ action: 'receipt', id: p.id });
+                              }}
                             >
                               <Paperclip className="w-2.5 h-2.5" /> Receipt
                             </button>
@@ -2040,7 +2096,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                             </>
                           )}
                           <button
-                            onClick={() => setReceiptRecord(p)}
+                            onClick={() => {
+                              setReceiptRecord(p);
+                              navigate({ action: 'receipt', id: p.id });
+                            }}
                             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                             title="Generate Receipt / Statement"
                           >
@@ -2158,21 +2217,14 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 2: Record Tuition Payment */}
       {showRecordPaymentModal && selectedPaymentForModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <form onSubmit={handleConfirmAddPayment} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md my-auto flex flex-col max-h-[90vh] overflow-hidden animate-scaleUp">
-            <div className="p-3.5 sm:p-4 bg-emerald-900 text-white flex items-center justify-between shrink-0">
-              <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" /> Log Tuition Payment
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowRecordPaymentModal(false)}
-                className="p-1.5 hover:bg-emerald-800 rounded-lg text-emerald-200 hover:text-white cursor-pointer"
-                title="Close Modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <Modal
+          isOpen={showRecordPaymentModal}
+          onClose={() => setShowRecordPaymentModal(false)}
+          title="Log Tuition Payment"
+          icon={<DollarSign className="w-5 h-5 text-emerald-600 shrink-0" />}
+          size="md"
+        >
+          <form onSubmit={handleConfirmAddPayment} className="space-y-4">
 
             <div className="p-4 sm:p-6 space-y-3.5 text-xs text-slate-700 overflow-y-auto custom-scrollbar flex-1">
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
@@ -2321,11 +2373,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </div>
             </div>
 
-            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
+            <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowRecordPaymentModal(false)}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
@@ -2337,7 +2389,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* MODAL 3: Printable Official Tuition Receipt & Statement */}
@@ -2481,23 +2533,14 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 4: Add New Tuition Record */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <form onSubmit={handleAddStudentTuition} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md my-auto flex flex-col max-h-[90vh] overflow-hidden animate-scaleUp">
-            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-400 shrink-0" /> Log Student Tuition Agreement
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddStudentModal(false)}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-                title="Close Modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 space-y-3.5 text-xs text-slate-700 overflow-y-auto custom-scrollbar flex-1">
+        <Modal
+          isOpen={showAddStudentModal}
+          onClose={() => setShowAddStudentModal(false)}
+          title="Log Student Tuition Agreement"
+          icon={<Plus className="w-5 h-5 text-indigo-600 shrink-0" />}
+          size="md"
+        >
+          <form onSubmit={handleAddStudentTuition} className="space-y-4 font-medium text-xs">
               <div>
                 <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
                   Student Name
@@ -2554,13 +2597,12 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
+            <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddStudentModal(false)}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
@@ -2572,7 +2614,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* Bulk Payment Reminder Modal */}
@@ -2585,33 +2627,18 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* Student Removal Verification Modal */}
       {showRemoveVerificationModal && studentToRemove && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white border border-rose-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg my-auto flex flex-col overflow-hidden animate-scaleUp">
-            
-            {/* Header */}
-            <div className="p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-rose-950 text-white flex items-center justify-between shrink-0 border-b border-rose-800/40">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-400 flex items-center justify-center shrink-0">
-                  <ShieldAlert className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-xs sm:text-sm text-white">Verify Student & Fee Removal</h3>
-                  <p className="text-[10px] text-rose-200">Financial Ledger Purge Verification</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowRemoveVerificationModal(false);
-                  setStudentToRemove(null);
-                }}
-                className="p-1.5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white cursor-pointer transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConfirmRemoveStudent} className="p-5 space-y-4 text-xs text-slate-800 overflow-y-auto custom-scrollbar">
+        <Modal
+          isOpen={showRemoveVerificationModal}
+          onClose={() => {
+            setShowRemoveVerificationModal(false);
+            setStudentToRemove(null);
+          }}
+          title="Verify Student & Fee Removal"
+          subtitle="Financial Ledger Purge Verification"
+          icon={<ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />}
+          size="lg"
+        >
+          <form onSubmit={handleConfirmRemoveStudent} className="space-y-4">
               
               {/* Warning Context */}
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
@@ -2707,7 +2734,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                     setShowRemoveVerificationModal(false);
                     setStudentToRemove(null);
                   }}
-                  className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2728,35 +2755,20 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* Removed Students Archive Modal */}
       {showRemovedArchiveModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl my-auto flex flex-col max-h-[85vh] overflow-hidden animate-scaleUp">
-            
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/30 text-rose-400 flex items-center justify-center shrink-0">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-xs sm:text-sm text-white">Removed Students & Fees Archive</h3>
-                  <p className="text-[10px] text-slate-300">Audited List of Excluded & Purged Financial Records ({removedStudentRecords.length})</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowRemovedArchiveModal(false)}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+        <Modal
+          isOpen={showRemovedArchiveModal}
+          onClose={() => setShowRemovedArchiveModal(false)}
+          title="Removed Students & Fees Archive"
+          subtitle={`Audited List of Excluded & Purged Financial Records (${removedStudentRecords.length})`}
+          icon={<Trash2 className="w-5 h-5 text-rose-600 shrink-0" />}
+          size="2xl"
+        >
+          <div className="space-y-4 font-medium text-xs">
               {removedStudentRecords.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 space-y-2">
                   <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
@@ -2798,18 +2810,17 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               )}
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowRemovedArchiveModal(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Close Archive
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
     </div>
   );
 };

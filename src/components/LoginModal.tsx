@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 import hteimLogoAsset from '../assets/hteim_logo.png';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { 
@@ -608,9 +609,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // ELSE WORKFLOW:
   // Render the original compact Modal overlay (when the user is ALREADY logged in and clicked "Switch User role")
+  const dialogRef = useAccessibleModal(!isDashboardLayout && (isOpen ?? true), onClose || (() => {}));
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn modal-material-scrim">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog">
+      <div 
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="HTEIM School of Ministry Portal Authentication"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog"
+      >
         
         {/* Header Banner */}
         <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 relative modal-material-header">
