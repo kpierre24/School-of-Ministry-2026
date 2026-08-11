@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
-import hteimLogoAsset from '../assets/hteim_logo.png';
+import { LogoImage } from './LogoImage';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { 
   ShieldCheck, 
@@ -207,8 +207,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Top Minimalist Brand Banner */}
         <div className="w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-between border-b border-slate-200/60 relative z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img 
-              src={hteimLogoAsset} 
+            <LogoImage 
               alt="HTEIM Logo" 
               className="w-14 h-14 rounded-xl border-2 border-amber-300 shadow-sm object-contain bg-white p-0.5 flex-shrink-0"
             />
@@ -633,8 +632,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           )}
 
           <div className="flex items-center gap-3 mb-2">
-            <img 
-              src={hteimLogoAsset} 
+            <LogoImage 
               alt="HTEIM Logo" 
               className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-600 object-contain bg-white p-0.5"
             />

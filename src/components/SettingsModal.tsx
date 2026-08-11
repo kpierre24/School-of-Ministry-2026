@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
-import hteimLogoAsset from '../assets/hteim_logo.png';
+import { LogoImage } from './LogoImage';
 import { 
   Settings, 
   X, 
@@ -908,12 +908,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-4">
               {/* Institution Hero */}
               <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-100/30 to-indigo-50 border border-amber-200 rounded-2xl flex items-center gap-4">
-                <img 
-                  src={hteimLogoAsset} 
-                  alt="HTEIM Logo" 
-                  className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                  referrerPolicy="no-referrer"
-                />
+                <LogoImage className="w-16 h-16 shrink-0" />
                 <div>
                   <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">
                     HTEIM SCHOOL OF MINISTRY

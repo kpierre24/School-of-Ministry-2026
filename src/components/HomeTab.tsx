@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import biblicalHeroAsset from '../assets/images/caribbean_bible_school_clean_1786453783620.jpg';
-import hteimLogoAsset from '../assets/hteim_logo.png';
+import { LogoImage } from './LogoImage';
 import { 
   BookOpen, 
   GraduationCap, 
