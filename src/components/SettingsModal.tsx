@@ -799,19 +799,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                     <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                       {onOpenAdminTools && userRole === 'admin' && (
-                        <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-3.5 rounded-xl text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-indigo-800/80">
+                        <div className="bg-slate-100 dark:bg-slate-800 p-3.5 rounded-lg text-slate-900 dark:text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-slate-200 dark:border-slate-700">
                           <div>
-                            <h4 className="font-extrabold text-amber-300 text-xs flex items-center gap-1.5">
-                              <ShieldCheck className="w-4 h-4 text-amber-400" />
+                            <h4 className="font-semibold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                              <ShieldCheck className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                               Institutional Governance & Data Suite
                             </h4>
-                            <p className="text-[10px] text-slate-300 mt-0.5">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                               Access full Audit Trail, action logging, and one-click ZIP backup suite.
                             </p>
                           </div>
                           <button
                             onClick={onOpenAdminTools}
-                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-lg transition-all cursor-pointer flex-shrink-0 shadow-sm"
+                            className="px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex-shrink-0"
                           >
                             Launch Suite
                           </button>
@@ -1045,35 +1045,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Developer & Software Technology Partner Information */}
-              <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl border border-indigo-900/50 shadow-md space-y-2">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300">
                       <Building2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-black text-xs uppercase tracking-wider text-indigo-200">
+                      <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         App Developer & Technology Partner
                       </h4>
-                      <p className="text-sm font-black text-white">Rockproxy Technologies</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Rockproxy Technologies</p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono rounded-full font-bold">
+                  <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 text-[10px] font-mono rounded-full font-semibold">
                     Official Software Partner
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1 border-t border-indigo-900/60">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <UserCheck className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                    <span>Director: <strong className="text-white">Kendell Pierre</strong></span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <UserCheck className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                    <span>Director: <strong className="text-slate-900 dark:text-white">Kendell Pierre</strong></span>
                   </div>
 
                   <a 
                     href="mailto:rockproxytechnologies@gmail.com" 
-                    className="flex items-center gap-2 text-indigo-300 hover:text-white transition-colors group"
+                    className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors group"
                   >
-                    <Mail className="w-3.5 h-3.5 text-indigo-400 group-hover:text-amber-400 flex-shrink-0" />
+                    <Mail className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-700 flex-shrink-0" />
                     <span className="underline font-mono text-[11px] truncate">rockproxytechnologies@gmail.com</span>
                   </a>
                 </div>

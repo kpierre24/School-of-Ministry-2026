@@ -264,60 +264,60 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       )}
 
       {/* Weekly Tuesday Live Zoom Class Notice Card */}
-      <div className="material-banner rounded-3xl p-5 text-white border border-blue-500/30 shadow-lg relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-bold flex-shrink-0 shadow-inner">
-              <Video className="w-6 h-6 animate-pulse" />
+            <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
+              <Video className="w-6 h-6" />
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[10px] font-mono font-black uppercase rounded-full">
+                <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-mono font-semibold uppercase rounded-full">
                   Weekly Live Schedule
                 </span>
-                <span className="text-xs font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
                   Every Tuesday @ 7:00 PM EST
                 </span>
               </div>
-              <h3 className="text-sm font-extrabold text-white">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Classes Go Live via Zoom Every Tuesday (Unless Notified Otherwise)
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 Official School of Ministry live lectures take place every Tuesday evening at 7:00 PM EST. Check announcements for any schedule updates.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto flex-shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-blue-800/60">
-            <div className="bg-slate-950/80 border border-blue-400/30 rounded-2xl p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto flex-shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-200 dark:border-slate-700">
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
               <div>
-                <p className="text-[9px] uppercase font-bold text-slate-400">Meeting ID</p>
-                <p className="font-extrabold text-blue-200">815 0537 7396</p>
+                <p className="text-[9px] uppercase font-semibold text-slate-400">Meeting ID</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">815 0537 7396</p>
               </div>
               <button
                 type="button"
                 onClick={() => handleCopyText('815 0537 7396', 'meetingId')}
-                className="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                 title="Copy Meeting ID"
                 aria-label="Copy Zoom Meeting ID"
               >
-                {copiedField === 'meetingId' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedField === 'meetingId' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
 
-            <div className="bg-slate-950/80 border border-blue-400/30 rounded-2xl p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
               <div>
-                <p className="text-[9px] uppercase font-bold text-slate-400">Passcode</p>
-                <p className="font-extrabold text-amber-300">163738</p>
+                <p className="text-[9px] uppercase font-semibold text-slate-400">Passcode</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">163738</p>
               </div>
               <button
                 type="button"
                 onClick={() => handleCopyText('163738', 'passcode')}
-                className="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                 title="Copy Passcode"
                 aria-label="Copy Zoom Passcode"
               >
-                {copiedField === 'passcode' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedField === 'passcode' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
 
@@ -325,10 +325,10 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               <button
                 type="button"
                 onClick={handleAddZoomToCalendar}
-                className="px-3 py-3 bg-slate-800/90 hover:bg-slate-800 text-slate-200 font-extrabold text-xs rounded-2xl border border-slate-700 flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 title="Download .ics event to sync to Google Calendar / iCal"
               >
-                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <Calendar className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Add to Calendar</span>
               </button>
 
@@ -336,7 +336,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 href="https://zoom.us/j/81505377396"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 shrink-0"
+                className="px-4 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
               >
                 <span>Join Tuesday Live Zoom</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -347,7 +347,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       </div>
 
       {/* Student Welcome & Status Hero Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white border border-indigo-900/50 shadow-xl relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 md:p-8 border border-slate-200 dark:border-slate-700 relative">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <input 
@@ -359,7 +359,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
             />
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-lg border-2 border-white/20 flex-shrink-0 group cursor-pointer bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-2xl flex items-center justify-center uppercase"
+              className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 flex-shrink-0 group cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-2xl flex items-center justify-center uppercase"
               title="Click to upload profile photo"
             >
               {currentPhoto ? (
@@ -374,30 +374,30 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
               {/* Upload overlay on hover */}
               <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1">
-                <Camera className="w-5 h-5 text-amber-300" />
-                <span className="text-[8px] font-bold uppercase tracking-wider text-amber-200 mt-0.5">Upload</span>
+                <Camera className="w-5 h-5" />
+                <span className="text-[8px] font-semibold uppercase tracking-wider mt-0.5">Upload</span>
               </div>
             </div>
 
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white break-words">{safeName}</h2>
-                <span className="px-3 py-0.5 text-xs font-bold uppercase tracking-wider bg-amber-400 text-slate-950 rounded-full flex items-center gap-1 shadow-xs">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white break-words">{safeName}</h2>
+                <span className="px-3 py-0.5 text-xs font-semibold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5" /> Student Portal
                 </span>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-indigo-100 hover:text-white rounded-lg text-[11px] font-bold border border-white/20 flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition-colors cursor-pointer"
                 >
-                  <Camera className="w-3.5 h-3.5 text-amber-300" />
+                  <Camera className="w-3.5 h-3.5" />
                   <span>{currentPhoto ? 'Change Photo' : 'Upload Photo'}</span>
                 </button>
               </div>
-              <p className="text-xs text-indigo-200 mt-1 flex items-center gap-2 flex-wrap font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap font-medium">
                 <span>HTEIM Ministry Candidate</span>
                 <span>•</span>
-                <span className="font-mono text-amber-300">ID: HTEIM-2026-{Math.abs(safeName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}</span>
+                <span className="font-mono">ID: HTEIM-2026-{Math.abs(safeName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}</span>
               </p>
             </div>
           </div>
@@ -406,79 +406,79 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
         </div>
 
         {/* Graduation Readiness Visual Bar */}
-        <div className="mt-6 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 space-y-2">
-          <div className="flex items-center justify-between text-xs font-extrabold text-indigo-100">
+        <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4 text-amber-400" /> Graduation Requirement Attendance Threshold (75%)
+              <GraduationCap className="w-4 h-4" /> Graduation Requirement Attendance Threshold (75%)
             </span>
-            <span className="font-mono text-amber-300">{Math.round(safeRate)}% Current</span>
+            <span className="font-mono">{Math.round(safeRate)}% Current</span>
           </div>
 
-          <div className="relative w-full h-3 bg-slate-950/60 rounded-full overflow-hidden p-0.5 border border-white/10">
+          <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
             <div 
               className={`h-full rounded-full transition-all duration-1000 ${
-                safeRate >= 75 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-amber-500'
+                safeRate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'
               }`}
               style={{ width: `${Math.min(100, safeRate)}%` }}
             />
             {/* Target Marker at 75% */}
             <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-sm"
+              className="absolute top-0 bottom-0 w-0.5 bg-amber-400"
               style={{ left: '75%' }}
               title="75% Graduation Target"
             />
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-indigo-300">
+          <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
             <span>0%</span>
-            <span className="font-bold text-amber-300">★ 75% Minimum Required</span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">★ 75% Minimum Required</span>
             <span>100% Perfect</span>
           </div>
         </div>
 
         {/* 4 Summary Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Attendance Rate</p>
-            <p className="text-2xl font-black font-mono text-white mt-1">{Math.round(safeRate)}%</p>
-            <p className="text-[10px] text-indigo-300 mt-0.5">{safeAttended} of {safeTotalDays} sessions attended</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Attendance Rate</p>
+            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{Math.round(safeRate)}%</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{safeAttended} of {safeTotalDays} sessions attended</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Active Streak</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Streak</p>
             <div className="mt-1 flex items-center gap-1.5">
-              <span className="text-2xl font-black font-mono text-amber-300">{streakCount}</span>
-              <span className="text-xs font-bold text-amber-400 flex items-center gap-0.5">
-                <Flame className="w-4 h-4 text-amber-400 animate-bounce" /> Sessions
+              <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{streakCount}</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-0.5">
+                <Flame className="w-4 h-4" /> Sessions
               </span>
             </div>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Consecutive classes present</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Consecutive classes present</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Academic Standing</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Academic Standing</p>
             <div className="mt-1">
               {safeRate >= 100 ? (
-                <span className="inline-flex items-center gap-1 font-bold text-amber-300 text-sm">
-                  <Trophy className="w-4 h-4 text-amber-400" /> Perfect Standing
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400 text-sm">
+                  <Trophy className="w-4 h-4" /> Perfect Standing
                 </span>
               ) : safeRate >= 75 ? (
-                <span className="inline-flex items-center gap-1 font-bold text-emerald-400 text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Good Standing
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 text-sm">
+                  <CheckCircle2 className="w-4 h-4" /> Good Standing
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 font-bold text-rose-300 text-sm">
-                  <AlertCircle className="w-4 h-4 text-rose-400" /> Attendance Advisory
+                <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 text-sm">
+                  <AlertCircle className="w-4 h-4" /> Attendance Advisory
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Required for graduation: ≥ 75%</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Required for graduation: ≥ 75%</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200">Absences Recorded</p>
-            <p className="text-2xl font-black font-mono text-indigo-200 mt-1">{Math.max(0, safeTotalDays - safeAttended)}</p>
-            <p className="text-[10px] text-indigo-300 mt-0.5">Missed Sessions</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Absences Recorded</p>
+            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{Math.max(0, safeTotalDays - safeAttended)}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Missed Sessions</p>
           </div>
         </div>
       </div>

@@ -1437,21 +1437,21 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     return (
       <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
         {/* Student Welcome Banner */}
-        <div className="material-banner border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
             <div>
               <div className="flex items-center gap-2">
-                <CreditCard className="w-6 h-6 text-emerald-400" />
-                <h2 className="text-xl font-black tracking-tight">My Tuition & Payments</h2>
+                <CreditCard className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">My Tuition & Payments</h2>
               </div>
-              <p className="text-xs text-emerald-200 mt-1">
-                Student: <strong className="text-white font-black">{studentPayment.studentName}</strong> • ID: <strong className="text-white font-mono">{studentPayment.studentId}</strong>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Student: <strong className="text-slate-900 dark:text-white">{studentPayment.studentName}</strong> • ID: <strong className="text-slate-900 dark:text-white font-mono">{studentPayment.studentId}</strong>
               </p>
             </div>
 
             <button
               onClick={() => setReceiptRecord(studentPayment)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer flex-shrink-0"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer flex-shrink-0"
             >
               <Receipt className="w-4 h-4" /> View My Statement
             </button>
@@ -1459,35 +1459,31 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Total Tuition Fees</p>
-              <p className="text-2xl font-black font-mono text-white mt-1">${studentPayment.totalTuition.toLocaleString()}</p>
-              <p className="text-[10px] text-emerald-300 mt-0.5">{studentPayment.moduleTrack}</p>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Tuition Fees</p>
+              <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">${studentPayment.totalTuition.toLocaleString()}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{studentPayment.moduleTrack}</p>
             </div>
 
-            <div className="bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 rounded-2xl p-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Total Amount Paid</p>
-              <p className="text-2xl font-black font-mono text-emerald-300 mt-1">${studentPayment.amountPaid.toLocaleString()}</p>
-              <p className="text-[10px] text-emerald-200 mt-0.5">{progressPercent}% paid to date</p>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Amount Paid</p>
+              <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">${studentPayment.amountPaid.toLocaleString()}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{progressPercent}% paid to date</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Balance Outstanding</p>
-              <p className="text-2xl font-black font-mono text-white mt-1">${outstandingBalance.toLocaleString()}</p>
-              <p className="text-[10px] text-emerald-300 mt-0.5">Remaining tuition dues</p>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Balance Outstanding</p>
+              <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">${outstandingBalance.toLocaleString()}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Remaining tuition dues</p>
             </div>
 
-            <div className={`backdrop-blur-md border rounded-2xl p-4 ${
-              studentPayment.status === 'Paid In Full' ? 'bg-emerald-500/20 border-emerald-500/30' :
-              studentPayment.status === 'Partial' ? 'bg-amber-500/20 border-amber-500/30' :
-              'bg-slate-500/20 border-slate-500/30'
-            }`}>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Account Status</p>
-              <p className={`text-2xl font-black mt-1 ${
-                studentPayment.status === 'Paid In Full' ? 'text-emerald-300' :
-                studentPayment.status === 'Partial' ? 'text-amber-300' : 'text-slate-300'
-              }`}>{studentPayment.status}</p>
-              <p className="text-[10px] text-emerald-200 mt-0.5">Tuition Ledger Standing</p>
+            <div className={`border rounded-lg p-4 ${studentPayment.status === 'Paid In Full' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' :
+              studentPayment.status === 'Partial' ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800' :
+              'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account Status</p>
+              <p className={`text-2xl font-bold mt-1 ${studentPayment.status === 'Paid In Full' ? 'text-emerald-600 dark:text-emerald-400' :
+                studentPayment.status === 'Partial' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}`}>{studentPayment.status}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Tuition Ledger Standing</p>
             </div>
           </div>
         </div>
@@ -1787,20 +1783,20 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Header Banner */}
-      <div className="material-banner border border-emerald-800/40 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 relative">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 flex items-center justify-center shadow-lg font-black text-2xl flex-shrink-0">
+            <div className="w-14 h-14 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
               <DollarSign className="w-8 h-8" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-2xl font-black tracking-tight text-white">Student Tuition & Payment Analytics</h2>
-                <span className="px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-400 text-slate-950 rounded-full flex items-center gap-1 shadow-xs">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Student Tuition & Payment Analytics</h2>
+                <span className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full flex items-center gap-1">
                   <Sparkles className="w-3 h-3" /> Admin Portal
                 </span>
               </div>
-              <p className="text-xs text-emerald-200 mt-1 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
                 HTEIM School of Ministry • Student Tuition Management Ledger & Financial Analytics
               </p>
             </div>
@@ -1808,29 +1804,29 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         </div>
 
         {/* Quick KPI Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Total Revenue Collected</p>
-            <p className="text-2xl font-black font-mono text-white mt-1">${stats.totalCollected.toLocaleString()}</p>
-            <p className="text-[10px] text-emerald-300 mt-0.5">{stats.collectionRate}% of total tuition target</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Revenue Collected</p>
+            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">${stats.totalCollected.toLocaleString()}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{stats.collectionRate}% of total tuition target</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Outstanding Balance</p>
-            <p className="text-2xl font-black font-mono text-amber-300 mt-1">${stats.totalOutstanding.toLocaleString()}</p>
-            <p className="text-[10px] text-amber-200 mt-0.5">{stats.pastDueCount} accounts past due</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding Balance</p>
+            <p className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">${stats.totalOutstanding.toLocaleString()}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{stats.pastDueCount} accounts past due</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Paid In Full</p>
-            <p className="text-2xl font-black font-mono text-emerald-300 mt-1">{stats.paidInFullCount} / {stats.totalStudents}</p>
-            <p className="text-[10px] text-emerald-300 mt-0.5">Students with 100% tuition clear</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Paid In Full</p>
+            <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{stats.paidInFullCount} / {stats.totalStudents}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Students with 100% tuition clear</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Expected Total</p>
-            <p className="text-2xl font-black font-mono text-white mt-1">${stats.totalTuition.toLocaleString()}</p>
-            <p className="text-[10px] text-emerald-300 mt-0.5">Full semester tuition value</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expected Total</p>
+            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">${stats.totalTuition.toLocaleString()}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Full semester tuition value</p>
           </div>
         </div>
       </div>

@@ -613,11 +613,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog">
         
         {/* Header Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 relative modal-material-header">
+        <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 relative modal-material-header">
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
              aria-label="Close">
               <X className="w-5 h-5" />
             </button>
@@ -627,16 +627,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <img 
               src={hteimLogoAsset} 
               alt="HTEIM Logo" 
-              className="w-12 h-12 rounded-full border-2 border-amber-400 object-contain shadow-md bg-white p-0.5"
+              className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-600 object-contain bg-white p-0.5"
             />
             <div>
-              <h2 className="text-xl font-black tracking-tight text-white">HTEIM School of Ministry</h2>
-              <p className="text-xs text-amber-300 font-bold flex items-center gap-1 mt-0.5">
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">HTEIM School of Ministry</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
                 <Sparkles className="w-3.5 h-3.5" /> Portal Authentication & Access Control
               </p>
             </div>
           </div>
-          <p className="text-xs text-indigo-200 mt-2 leading-relaxed">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
             Log in to access your designated view. Administrators, Teachers, and Ministry Students have custom tailored dashboards and permissions.
           </p>
         </div>

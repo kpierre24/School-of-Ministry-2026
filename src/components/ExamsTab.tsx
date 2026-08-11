@@ -1192,14 +1192,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       )}
 
       {/* Top Banner & Sub-Tab Switcher */}
-      <div className="material-banner rounded-2xl p-4 sm:p-5 text-white border border-indigo-900/50 shadow-xl relative md:sticky md:top-0 z-30 backdrop-blur-md">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700 relative md:sticky md:top-0 z-30">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 shrink-0" />
-              <h2 className="text-base sm:text-xl font-black tracking-tight leading-snug break-words">Exams, Written Assignments & Evaluations</h2>
+              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600 dark:text-slate-300 shrink-0" />
+              <h2 className="text-base sm:text-xl font-bold tracking-tight leading-snug break-words text-slate-900 dark:text-white">Exams, Written Assignments & Evaluations</h2>
             </div>
-            <p className="text-xs text-indigo-200 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
               HTEIM School of Ministry portal for manual course assignments, student document uploads, instructor corrections, and Google Forms quiz logs.
             </p>
           </div>
@@ -1212,16 +1212,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     setEditingQuizData(null);
                     setShowQuizCreatorModal(true);
                   }}
-                  className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-900 shrink-0" />
+                  <Sparkles className="w-4 h-4 shrink-0" />
                   <span>Create Class Day Quiz</span>
                 </button>
 
                 {subTab === 'assignments' && (
                   <button
                     onClick={handleOpenCreateAssignment}
-                    className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-4 h-4 shrink-0" />
                     <span>Add Assignment</span>
@@ -1234,7 +1234,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
             <button
               onClick={exportExamsCSV}
-              className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
               <Download className="w-4 h-4 shrink-0" />
               <span>Export CSV</span>
@@ -1243,13 +1243,13 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         </div>
 
         {/* Sub Navigation Switcher */}
-        <div className="grid grid-cols-3 md:flex md:items-center gap-1 sm:gap-2 bg-white/10 p-1 rounded-xl border border-white/10 w-full shrink-0">
+        <div className="grid grid-cols-3 md:flex md:items-center gap-1 sm:gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-full shrink-0">
           <button
             onClick={() => setSubTab('assignments')}
-            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
+            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'assignments'
-                ? 'bg-amber-400 text-slate-950 shadow-sm'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -1262,10 +1262,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           <button
             onClick={() => setSubTab('quizzes')}
-            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
+            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'quizzes'
-                ? 'bg-amber-400 text-slate-950 shadow-sm'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
@@ -1278,10 +1278,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           <button
             onClick={() => setSubTab('admin_dashboard')}
-            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
+            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'admin_dashboard'
-                ? 'bg-amber-400 text-slate-950 shadow-sm'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
@@ -1339,37 +1339,37 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           {/* STUDENT PROGRESS ANALYTICS DASHBOARD (IF STUDENT) */}
           {isStudent && (
-            <div className="material-banner text-white rounded-3xl p-6 shadow-xl border border-indigo-500/30 space-y-5">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700 space-y-5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 font-bold text-lg">
                     {activeStudentName.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-base font-extrabold flex items-center gap-2">
+                    <h3 className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
                       <span>{activeStudentName}</span>
-                      <span className="text-[10px] bg-indigo-500/40 text-indigo-200 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Student Candidate</span>
+                      <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider">Student Candidate</span>
                     </h3>
-                    <p className="text-xs text-indigo-300 mt-0.5">Personalized Academic Trajectory & Performance Analytics</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Personalized Academic Trajectory & Performance Analytics</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <div className="bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10 text-center">
-                    <p className="text-[10px] text-indigo-300 uppercase font-bold tracking-wider">Overall Quiz Score</p>
-                    <p className="text-base font-mono font-black text-amber-400">
+                  <div className="bg-slate-50 dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider">Overall Quiz Score</p>
+                    <p className="text-base font-mono font-bold text-slate-900 dark:text-white">
                       {studentRecord?.percentage !== null ? `${Math.round(studentRecord!.percentage)}%` : 'N/A'}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10 text-center">
-                    <p className="text-[10px] text-indigo-300 uppercase font-bold tracking-wider">Attendance Rate</p>
-                    <p className="text-base font-mono font-black text-emerald-400">
+                  <div className="bg-slate-50 dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider">Attendance Rate</p>
+                    <p className="text-base font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       {studentRecord ? `${Math.round(studentRecord.attendanceRate)}%` : '100%'}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10 text-center">
-                    <p className="text-[10px] text-indigo-300 uppercase font-bold tracking-wider">Assignments Completed</p>
-                    <p className="text-base font-mono font-black text-indigo-200">
+                  <div className="bg-slate-50 dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider">Assignments Completed</p>
+                    <p className="text-base font-mono font-bold text-slate-900 dark:text-white">
                       {submissions.filter(s => s.studentName.toLowerCase().trim() === activeStudentName.toLowerCase().trim() && s.score !== undefined).length} / {customAssignments.length}
                     </p>
                   </div>
@@ -1378,58 +1378,58 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
               {/* Graphical Trajectory Sparkline & Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-indigo-200">
-                    <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Grade Trajectory</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">+4.2% this month</span>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-slate-500" /> Grade Trajectory</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">+4.2% this month</span>
                   </div>
                   <div className="h-14 flex items-end gap-1.5 pt-2">
                     {[78, 82, 88, 85, 92, 96].map((val, idx) => (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-1">
                         <div 
-                          className="w-full bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-sm transition-all hover:brightness-125"
+                          className="w-full bg-slate-900 dark:bg-white rounded-t-sm transition-all"
                           style={{ height: `${val}%` }}
                           title={`Score: ${val}%`}
                         />
-                        <span className="text-[9px] text-indigo-300 font-mono">Q{idx+1}</span>
+                        <span className="text-[9px] text-slate-400 font-mono">Q{idx+1}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-indigo-200">
-                    <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-indigo-400" /> Coursework Breakdown</span>
-                    <span className="text-[10px] text-indigo-300 font-mono">4 Modules</span>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-slate-500" /> Coursework Breakdown</span>
+                    <span className="text-[10px] text-slate-400 font-mono">4 Modules</span>
                   </div>
                   <div className="space-y-1.5 text-xs pt-1">
                     <div>
-                      <div className="flex justify-between text-[11px] mb-0.5 text-indigo-200">
+                      <div className="flex justify-between text-[11px] mb-0.5 text-slate-600 dark:text-slate-300">
                         <span>Hermeneutics Exegesis</span>
-                        <span className="font-bold text-amber-400">96/100</span>
+                        <span className="font-bold text-slate-900 dark:text-white">96/100</span>
                       </div>
-                      <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '96%' }} />
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-slate-900 dark:bg-white h-full rounded-full" style={{ width: '96%' }} />
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-[11px] mb-0.5 text-indigo-200">
+                      <div className="flex justify-between text-[11px] mb-0.5 text-slate-600 dark:text-slate-300">
                         <span>Homiletics Outline</span>
-                        <span className="font-bold text-emerald-400">92/100</span>
+                        <span className="font-bold text-slate-900 dark:text-white">92/100</span>
                       </div>
-                      <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-400 h-full rounded-full" style={{ width: '92%' }} />
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: '92%' }} />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2 flex flex-col justify-between">
-                  <div className="flex items-center justify-between text-xs font-bold text-indigo-200">
-                    <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-amber-400" /> Academic Standing</span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold">First Class Honor</span>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-slate-500" /> Academic Standing</span>
+                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold">First Class Honor</span>
                   </div>
-                  <p className="text-[11px] text-indigo-300 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Student is meeting all School of Ministry theological and practical competency requirements with distinction.
                   </p>
                 </div>

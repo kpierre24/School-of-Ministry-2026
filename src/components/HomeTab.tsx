@@ -436,93 +436,75 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
+    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
       
-      {/* 1. HERO BANNER: Cinematic Biblical Training Atmosphere with Glassmorphism Overlay */}
-      <section className={`relative overflow-hidden rounded-3xl border border-amber-300/60 dark:border-amber-500/30 shadow-xl group transition-all duration-300 material-hero ${
-        isBannerCollapsed ? 'min-h-0' : 'min-h-[380px] sm:min-h-[440px] flex flex-col justify-between'
+      {/* Hero Banner */}
+      <section className={`relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-300 ${
+        isBannerCollapsed ? 'min-h-0' : 'min-h-[300px] sm:min-h-[360px] flex flex-col justify-between'
       }`}>
         {/* Background Artwork */}
         <div className="absolute inset-0 z-0">
           <img 
             src={biblicalHeroAsset} 
-            alt="HTEIM School of Ministry Discipleship, Bible Study & Evangelism Outreach" 
+            alt="HTEIM School of Ministry" 
             referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-[1.02]"
+            className="w-full h-full object-cover object-center"
           />
-          {/* Subtle Watermark Branding Overlay (Bottom Right) */}
-          <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 flex items-center gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-slate-950/65 border border-amber-400/40 backdrop-blur-md shadow-lg opacity-75 hover:opacity-100 transition-opacity duration-300 pointer-events-none select-none">
-            <img 
-              src={hteimLogoAsset} 
-              alt="HTEIM Logo Watermark" 
-              className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded-full border border-amber-300/50 p-0.5 bg-slate-900/90" 
-            />
-            <span className="text-[10px] sm:text-[11px] font-black tracking-widest uppercase text-amber-300/95 font-mono drop-shadow-xs">
-              HTEIM OFFICIAL
-            </span>
-          </div>
-          {/* Multi-stage Gradient Mask for Readable Contrast */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/40 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-950/60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-950/40 dark:from-slate-950 dark:via-slate-950/80 dark:to-slate-950/50" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-70" />
         </div>
 
-        {/* Banner Top Header */}
-        <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between gap-4 w-full">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-400/20 text-amber-300 text-[10px] sm:text-[11px] font-black tracking-widest uppercase rounded-full border border-amber-400/40 backdrop-blur-md shadow-xs">
-            <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-            <span>HTEIM School of Ministry • Kingdom Equipping</span>
+        {/* Banner Header */}
+        <div className="relative z-10 p-4 sm:p-5 flex items-center justify-between gap-3 w-full">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white text-[10px] sm:text-[11px] font-semibold tracking-wide rounded-full border border-white/10">
+            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span>HTEIM School of Ministry</span>
           </div>
 
           <button
             type="button"
             onClick={toggleBannerCollapse}
-            className="px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-slate-200 hover:text-white text-[11px] font-extrabold rounded-xl border border-amber-400/40 shadow-xs backdrop-blur-md flex items-center gap-1.5 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0"
-            title={isBannerCollapsed ? "Expand hero banner" : "Collapse hero banner"}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
           >
             {isBannerCollapsed ? (
               <>
-                <span>Expand Banner</span>
-                <ChevronDown className="w-4 h-4 text-amber-400" />
+                <span>Expand</span>
+                <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
               </>
             ) : (
               <>
                 <span>Collapse</span>
-                <ChevronUp className="w-4 h-4 text-amber-400" />
+                <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
               </>
             )}
           </button>
         </div>
 
         {!isBannerCollapsed ? (
-          <div className="relative z-10 px-6 pb-8 pt-2 sm:px-10 sm:pb-10 md:px-12 md:pb-12 w-full max-w-4xl space-y-5 animate-fadeIn">
+          <div className="relative z-10 px-6 pb-8 pt-2 sm:px-10 sm:pb-10 md:px-12 md:pb-12 w-full max-w-4xl space-y-4 animate-fadeIn">
             <div className="space-y-2">
               <span className="text-[11px] font-extrabold font-mono uppercase tracking-widest text-amber-400/90">
                 Heaven Touching Earth International Ministries
               </span>
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-white font-syne">
                 Anointed Biblical Instruction & <br className="hidden sm:inline" />
-                <span className="inline-block my-1 px-3 py-0.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black rounded-xl shadow-md border border-amber-300">
+                <span className="inline-block my-1 px-3 py-0.5 bg-amber-400 text-slate-950 font-black rounded-lg">
                   Ministerial Governance
                 </span>
               </h1>
             </div>
 
-            {/* Top Visual Marker Badges Overlaid on Hero */}
             <div className="flex items-center gap-2 flex-wrap pt-1">
-              <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
+              <span className="px-3 py-1 bg-white/10 text-white border border-white/10 rounded-full text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                 <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
                 6 Core Curriculum Modules
               </span>
-              <span className="px-3 py-1 bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
+              <span className="px-3 py-1 bg-white/10 text-white border border-white/10 rounded-full text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 75% Attendance Standard
               </span>
-              <span className="px-3 py-1 bg-indigo-400/20 text-indigo-300 border border-indigo-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
-                <Users className="w-3.5 h-3.5 text-indigo-300" />
-                Family & Community Discipleship
-              </span>
-              <span className="px-3 py-1 bg-rose-400/20 text-rose-300 border border-rose-400/40 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-3xs">
-                <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span className="px-3 py-1 bg-white/10 text-white border border-white/10 rounded-full text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 text-amber-400" />
                 Live Hybrid Classes
               </span>
             </div>
@@ -534,18 +516,18 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-2 flex-wrap">
               <button
                 onClick={() => setShowInquiryModal(true)}
-                className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-200 ring-2 ring-amber-400/40 animate-pulseSoft"
+                className="w-full sm:w-auto px-5 py-3 bg-white text-slate-900 font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
+                <Sparkles className="w-4 h-4" />
                 <span>Apply / Prospective Student Inquiry</span>
               </button>
 
               {onOpenPresentationDemo && (
                 <button
                   onClick={onOpenPresentationDemo}
-                  className="w-full sm:w-auto px-4 py-3 bg-slate-900/80 hover:bg-slate-900 text-amber-300 font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-400/50 backdrop-blur-md"
+                  className="w-full sm:w-auto px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-white/10"
                 >
-                  <Play className="w-4 h-4 text-amber-400 fill-amber-400" /> 30s Student Presentation
+                  <Play className="w-4 h-4 text-amber-400" /> 30s Student Presentation
                 </button>
               )}
 
@@ -587,26 +569,24 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         )}
       </section>
 
-      {/* 1B. INSTANT WELCOME & USER PATHWAY SELECTOR STRIP */}
-      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-5 border border-amber-400/30 shadow-lg text-white space-y-3.5 material-banner">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+      {/* Welcome & Pathway Selector */}
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30">
+            <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               <Compass className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs sm:text-sm font-black text-white font-syne tracking-tight">
-                Welcome to HTEIM School of Ministry Portal Gateway
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                Welcome to HTEIM School of Ministry Portal
               </h2>
-              <p className="text-[10px] text-slate-300">
-                Select your path below for instant, guided access to curriculum, student tools, or faculty controls.
-              </p>
+              <p className="text-[10px] text-slate-500">Select your path below for guided access.</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold bg-slate-950/80 px-2.5 py-1 rounded-full border border-white/10 self-start sm:self-auto">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-amber-300">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-slate-600 dark:text-slate-300">
               {appUser ? `Logged in as ${appUser.role.toUpperCase()}` : 'Guest / Prospective Student Mode'}
             </span>
           </div>
@@ -615,16 +595,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         {/* 3 Pathway Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Card 1: Prospective Students / Guests */}
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-amber-400/30 hover:border-amber-400/60 transition-all flex flex-col justify-between space-y-3 group">
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  New Applicants & Guests
-                </span>
-                <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-xs font-black text-white">Explore & Apply for Admission</h3>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                New Applicants & Guests
+              </span>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white">Explore & Apply for Admission</h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Review our 6 Core Modules, tuition information, and submit a 1-click prospective student inquiry.
               </p>
             </div>
@@ -632,14 +609,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             <div className="pt-2 flex items-center gap-2">
               <button
                 onClick={() => setShowInquiryModal(true)}
-                className="flex-1 py-2 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+                className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
               >
                 <span>Inquire / Apply</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onNavigate('courses')}
-                className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] rounded-xl border border-white/10 cursor-pointer"
+                className="py-2 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 Syllabus
               </button>
@@ -647,16 +624,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
 
           {/* Card 2: Enrolled Students */}
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-indigo-400/30 hover:border-indigo-400/60 transition-all flex flex-col justify-between space-y-3 group">
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-400/20 text-indigo-300 border border-indigo-400/30">
-                  Enrolled Students
-                </span>
-                <GraduationCap className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-xs font-black text-white">Student Academic Hub</h3>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                Enrolled Students
+              </span>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white">Student Academic Hub</h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Log attendance, take scripture evaluation quizzes, download lecture handouts, and view tuition records.
               </p>
             </div>
@@ -664,14 +638,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             <div className="pt-2 flex items-center gap-2">
               <button
                 onClick={() => onNavigate('attendance')}
-                className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+                className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
               >
                 <span>My Attendance</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onNavigate('exams')}
-                className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] rounded-xl border border-white/10 cursor-pointer"
+                className="py-2 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 Quizzes
               </button>
@@ -679,16 +653,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
 
           {/* Card 3: Faculty & Staff */}
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-400/30 hover:border-emerald-400/60 transition-all flex flex-col justify-between space-y-3 group">
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                  Faculty & Leadership
-                </span>
-                <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-xs font-black text-white">Faculty & Administrative Suite</h3>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                Faculty & Leadership
+              </span>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white">Faculty & Administrative Suite</h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
                 Oversee student roster, monitor the 75% at-risk attendance triggers, manage payments, and sync cloud data.
               </p>
             </div>
@@ -697,7 +668,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               {appUser ? (
                 <button
                   onClick={() => onNavigate('students')}
-                  className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+                  className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                 >
                   <span>Roster Directory</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -705,7 +676,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               ) : (
                 <button
                   onClick={onOpenLogin}
-                  className="flex-1 py-2 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] rounded-xl transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1"
+                  className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                 >
                   <Lock className="w-3 h-3" />
                   <span>Faculty Sign In</span>
@@ -713,7 +684,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               )}
               <button
                 onClick={() => onNavigate('schedule')}
-                className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] rounded-xl border border-white/10 cursor-pointer"
+                className="py-2 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 Schedule
               </button>
@@ -722,52 +693,52 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* Student Quick Touch Command Hub - Mobile & Student View Optimization */}
+      {/* Student Quick Command Hub */}
       {isStudent && (
-        <section className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 border border-indigo-500/30 shadow-lg space-y-4 animate-fadeIn material-banner">
-          <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3 flex-wrap gap-2">
+        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 animate-fadeIn">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-amber-400 shrink-0">
-                <Sparkles className="w-4 h-4 animate-pulse" />
+              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
+                <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-black text-white font-syne tracking-tight">Student Quick Command Hub</h3>
-                <p className="text-[10px] text-slate-300 leading-none mt-0.5">1-Touch mobile actions optimized for student accounts</p>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">Student Quick Hub</h3>
+                <p className="text-[10px] text-slate-500 leading-none mt-0.5">Quick actions for your account</p>
               </div>
             </div>
             {loggedInStudentData && (
-              <span className={`px-2.5 py-1 text-[9px] font-black rounded-full uppercase tracking-wider shrink-0 ${
+              <span className={`px-2.5 py-1 text-[9px] font-bold rounded-full uppercase tracking-wider shrink-0 ${
                 loggedInStudentData.rate >= atRiskThreshold 
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' 
-                  : 'bg-rose-500/20 text-rose-300 border border-rose-400/30 animate-pulse'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
               }`}>
-                {loggedInStudentData.rate >= atRiskThreshold ? 'Satisfactory Standing' : 'At-Risk Standing'}
+                {loggedInStudentData.rate >= atRiskThreshold ? 'Satisfactory' : 'At-Risk'}
               </span>
             )}
           </div>
 
-          {/* Quick Stats Grid for Students on Mobile */}
+          {/* Quick Stats Grid */}
           <div className="grid grid-cols-3 gap-2.5 text-center">
-            <div className="p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider truncate">My Attendance</p>
-              <p className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
-                loggedInStudentData && loggedInStudentData.rate < atRiskThreshold ? 'text-rose-400' : 'text-emerald-400'
+            <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <p className="text-[9px] uppercase font-bold text-slate-500 tracking-wider truncate">My Attendance</p>
+              <p className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${
+                loggedInStudentData && loggedInStudentData.rate < atRiskThreshold ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
               }`}>
                 {loggedInStudentData ? `${Math.round(loggedInStudentData.rate)}%` : '—'}
               </p>
             </div>
-            <div className="p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider truncate">My Avg Grade</p>
-              <p className="text-sm sm:text-base font-black text-amber-300 font-mono mt-0.5">
+            <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <p className="text-[9px] uppercase font-bold text-slate-500 tracking-wider truncate">My Avg Grade</p>
+              <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-mono mt-0.5">
                 {loggedInStudentData?.avgScore !== null && loggedInStudentData?.avgScore !== undefined
                   ? `${Math.round(loggedInStudentData.avgScore)}%`
                   : 'N/A'}
               </p>
             </div>
-            <div className="p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider truncate">Pending Tasks</p>
-              <p className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
-                pendingAssignmentsCount > 0 ? 'text-indigo-300' : 'text-slate-400'
+            <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <p className="text-[9px] uppercase font-bold text-slate-500 tracking-wider truncate">Pending Tasks</p>
+              <p className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${
+                pendingAssignmentsCount > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'
               }`}>
                 {pendingAssignmentsCount}
               </p>
@@ -778,77 +749,75 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <button
               onClick={() => onNavigate('attendance')}
-              className="p-3 bg-indigo-600/10 hover:bg-indigo-600/35 border border-indigo-400/20 hover:border-indigo-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-colors cursor-pointer"
             >
-              <UserCheck className="w-5 h-5 text-indigo-400" />
-              <span className="text-[11px] font-extrabold text-white">Self-Attendance</span>
+              <UserCheck className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Self-Attendance</span>
             </button>
 
             <button
               onClick={() => onNavigate('exams')}
-              className="p-3 bg-amber-500/10 hover:bg-amber-500/35 border border-amber-400/20 hover:border-amber-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Award className="w-5 h-5 text-amber-400" />
-              <span className="text-[11px] font-extrabold text-white">Quizzes & Grades</span>
+              <Award className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Quizzes & Grades</span>
             </button>
 
             <button
               onClick={() => onNavigate('library')}
-              className="p-3 bg-teal-500/10 hover:bg-teal-500/35 border border-teal-400/20 hover:border-teal-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-colors cursor-pointer"
             >
-              <FileText className="w-5 h-5 text-teal-400" />
-              <span className="text-[11px] font-extrabold text-white">Handouts & PDFs</span>
+              <FileText className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Handouts & PDFs</span>
             </button>
 
             <button
               onClick={() => onNavigate('messages')}
-              className="p-3 bg-purple-500/10 hover:bg-purple-500/35 border border-purple-400/20 hover:border-purple-400/40 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center text-center gap-1.5 transition-colors cursor-pointer"
             >
-              <MessageSquare className="w-5 h-5 text-purple-400" />
-              <span className="text-[11px] font-extrabold text-white">Message Teacher</span>
+              <MessageSquare className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Message Teacher</span>
             </button>
           </div>
         </section>
       )}
 
-      {/* 2. DAILY SCRIPTURE MEMORY SPOTLIGHT & REFLECTION CARD */}
-      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-md border border-indigo-900/80 relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+      {/* Daily Scripture Spotlight */}
+      <section className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-3 flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950">
-                Scripture Memory Spotlight
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-900 dark:bg-white text-white dark:text-slate-900">
+                Scripture Spotlight
               </span>
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/10 text-indigo-200 border border-white/10">
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 {currentScripture.tag}
               </span>
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm sm:text-lg font-serif italic text-amber-100 font-bold leading-relaxed">
+              <p className="text-sm sm:text-lg font-serif italic text-slate-800 dark:text-slate-100 font-semibold leading-relaxed">
                 "{currentScripture.verse}"
               </p>
-              <p className="text-xs font-black text-amber-400 font-mono tracking-wider">
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono tracking-wider">
                 — {currentScripture.reference}
               </p>
             </div>
 
-            <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] uppercase font-bold text-indigo-300 block">Ministry Application</span>
-              <p className="text-slate-300 leading-normal">{currentScripture.application}</p>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Ministry Application</span>
+              <p className="text-slate-600 dark:text-slate-300 leading-normal">{currentScripture.application}</p>
             </div>
           </div>
 
           <div className="flex flex-row md:flex-col items-center gap-2 w-full md:w-auto shrink-0 justify-between">
-            <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
               {dailyScriptures.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveVerseIndex(idx)}
-                  className={`w-6 h-6 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
-                    activeVerseIndex === idx ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-white'
+                  className={`w-6 h-6 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                    activeVerseIndex === idx ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   0{idx+1}
@@ -858,59 +827,57 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
             <button
               onClick={handleCopyScripture}
-              className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs rounded-xl border border-amber-400/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              {copiedVerse ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedVerse ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedVerse ? 'Copied' : 'Copy Verse'}</span>
             </button>
           </div>
         </div>
       </section>
 
-      {/* 3. KEY METRICS DASHBOARD (Clean, Uncluttered, Customizable Grid) */}
+      {/* Key Metrics Dashboard */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>Portal Academic Overview</span>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
+              Academic Overview
             </h2>
             <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-[9px] font-mono font-bold border border-slate-200 dark:border-slate-700">
-              {widgetOrder.filter(id => enabledWidgets.includes(id)).length} Metrics Active
+              {widgetOrder.filter(id => enabledWidgets.includes(id)).length} Metrics
             </span>
           </div>
 
           <button
             onClick={() => setShowCustomizerModal(true)}
-            className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[11px] rounded-xl border border-slate-200 dark:border-slate-700 shadow-3xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-            title="Drag, reorder, or toggle metric cards on your dashboard"
+            className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
           >
-            <Sliders className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Customize View</span>
+            <Sliders className="w-3.5 h-3.5 text-slate-500" />
+            <span>Customize</span>
           </button>
         </div>
 
         {/* Metric Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {widgetOrder
             .filter(id => enabledWidgets.includes(id))
             .map(widgetId => {
               switch (widgetId) {
                 case 'total_enrolled':
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate(isStudent ? 'attendance' : 'students')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <Users className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">
                           {isStudent ? 'My Classmates' : 'Enrolled Students'}
                         </p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-syne">
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
                           {isStudent ? `${activeStudents} Cohort` : `${activeStudents} Enrollees`}
                         </p>
                       </div>
@@ -919,34 +886,34 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
                 case 'active_curriculum':
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('courses')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-amber-300 dark:hover:border-amber-500/50 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <GraduationCap className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">Core Modules</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-syne">{coursesCount} Modules</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">Core Modules</p>
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">{coursesCount} Modules</p>
                       </div>
                     </div>
                   );
 
                 case 'scheduled_lessons':
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('schedule')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-500/50 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <Calendar className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">Class Sessions</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-syne">{scheduledClasses} Class Days</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">Class Sessions</p>
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">{scheduledClasses} Class Days</p>
                       </div>
                     </div>
                   );
@@ -955,31 +922,31 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   const studentRate = loggedInStudentData ? Math.round(loggedInStudentData.rate) : null;
                   const isAtRisk = studentRate !== null && studentRate < atRiskThreshold;
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('attendance')}
-                      className={`bg-white dark:bg-slate-900 border rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md transition-all flex items-center gap-3 cursor-pointer group ${
-                        isStudent && isAtRisk 
-                          ? 'border-rose-300 dark:border-rose-950/85 hover:border-rose-400' 
-                          : 'border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-500/50'
+                      className={`bg-white dark:bg-slate-900 border rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer ${
+                        isStudent && isAtRisk
+                          ? 'border-rose-300 dark:border-rose-800 hover:border-rose-400'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                      <div className={`w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 ${
                         isStudent && isAtRisk
                           ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900/50'
-                          : 'bg-rose-50 dark:bg-rose-950/80 border-rose-200 dark:border-rose-800'
+                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                       }`}>
-                        <TrendingUp className={`w-5 h-5 ${isStudent && isAtRisk ? 'text-rose-500' : 'text-rose-600 dark:text-rose-400'}`} />
+                        <TrendingUp className={`w-5 h-5 ${isStudent && isAtRisk ? 'text-rose-500' : 'text-slate-600 dark:text-slate-300'}`} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 leading-tight truncate">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">
                           {isStudent ? 'My Attendance' : 'Avg Attendance'}
                         </p>
-                        <p className={`text-sm sm:text-lg font-black leading-tight font-syne ${
+                        <p className={`text-sm sm:text-lg font-bold leading-tight ${
                           isStudent && isAtRisk ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
                         }`}>
-                          {isStudent 
-                            ? (studentRate !== null ? `${studentRate}% Rate` : 'No Record') 
+                          {isStudent
+                            ? (studentRate !== null ? `${studentRate}% Rate` : 'No Record')
                             : `${attendanceRate}% Rate`}
                         </p>
                       </div>
@@ -989,42 +956,42 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
                 case 'pending_assignments':
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('exams')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-purple-300 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <PenSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <PenSquare className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">
+                        <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">
                           {isStudent ? 'My Pending Tasks' : 'Pending Quizzes'}
                         </p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono">{pendingAssignmentsCount} Tasks</p>
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">{pendingAssignmentsCount} Tasks</p>
                       </div>
                     </div>
                   );
 
                 case 'uncollected_tuition': {
-                  const balanceDue = loggedInStudentPayment 
+                  const balanceDue = loggedInStudentPayment
                     ? Math.max(0, loggedInStudentPayment.totalTuition - loggedInStudentPayment.amountPaid)
                     : 0;
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('payments')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-rose-300 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <DollarSign className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <DollarSign className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">
+                        <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">
                           {isStudent ? 'My Tuition Due' : 'Unpaid Tuition'}
                         </p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono">
-                          {isStudent 
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                          {isStudent
                             ? `$${balanceDue.toLocaleString()}`
                             : `$${uncollectedTuitionAmount.toLocaleString()} Due`}
                         </p>
@@ -1035,34 +1002,34 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
                 case 'library_resources':
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('library')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-teal-300 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <BookOpen className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <BookOpen className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">Library Resources</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono">{libraryResourcesCount} Handouts</p>
+                        <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">Library Resources</p>
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">{libraryResourcesCount} Handouts</p>
                       </div>
                     </div>
                   );
 
                 case 'upcoming_class':
                   return (
-                    <div 
-                      key={widgetId} 
+                    <div
+                      key={widgetId}
                       onClick={() => onNavigate('schedule')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-3xs hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-3 cursor-pointer group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 transition-colors flex items-center gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/80 border border-sky-200 dark:border-sky-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Clock className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <Clock className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-400 leading-tight truncate">Next Class</p>
-                        <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white leading-tight font-mono truncate">{nextClassTitle}</p>
+                        <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">Next Class</p>
+                        <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">{nextClassTitle}</p>
                       </div>
                     </div>
                   );
@@ -1173,8 +1140,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           {/* School of Ministry Core Pillars */}
           <section className="space-y-4">
             <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <BookMarked className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                <BookMarked className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 Four Pillars of Kingdom Formation
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1182,7 +1149,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-3xs space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 sm:p-6 space-y-6">
               {/* Interactive Pillar Selector Tabs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {ministryPillars.map((pillar, idx) => {
@@ -1191,20 +1158,20 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     <button
                       key={pillar.id}
                       onClick={() => setActivePillarTab(idx)}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                        isActive 
-                          ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/60 shadow-sm ring-2 ring-indigo-500/20' 
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      className={`p-3.5 rounded-lg border text-left transition-colors cursor-pointer flex flex-col justify-between gap-2 ${
+                        isActive
+                          ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900 shadow-3xs">
+                        <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
                           {pillar.icon}
                         </div>
                         <span className="text-[10px] font-mono font-bold text-slate-400">0{idx+1}</span>
                       </div>
                       <div>
-                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-1">{pillar.title}</h4>
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-1">{pillar.title}</h4>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">{pillar.subtitle}</p>
                       </div>
                     </button>
@@ -1216,32 +1183,32 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               {(() => {
                 const active = ministryPillars[activePillarTab];
                 return (
-                  <div className={`p-5 rounded-2xl border ${active.color} space-y-4 relative overflow-hidden transition-all duration-300 animate-fadeIn`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/5 dark:border-white/10 pb-3">
+                  <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 transition-all duration-300 animate-fadeIn">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 shadow-sm">
+                        <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800">
                           {active.icon}
                         </div>
                         <div>
-                          <h3 className="text-sm font-black">{active.title}</h3>
-                          <p className="text-xs font-medium opacity-80">{active.subtitle}</p>
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{active.title}</h3>
+                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{active.subtitle}</p>
                         </div>
                       </div>
-                      <span className="px-3 py-1 bg-white/80 dark:bg-slate-900/80 border border-black/5 dark:border-white/10 rounded-full text-[10px] font-black uppercase tracking-wider shadow-3xs self-start sm:self-auto">
+                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 self-start sm:self-auto">
                         {active.badge}
                       </span>
                     </div>
 
                     <div className="space-y-3">
-                      <p className="text-xs leading-relaxed font-sans">
+                      <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                         {active.description}
                       </p>
 
-                      <div className="p-3 bg-white/90 dark:bg-slate-900/90 rounded-xl border border-black/5 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                        <span className="font-serif italic font-bold text-slate-900 dark:text-amber-300">{active.scripture}</span>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <span className="font-serif italic font-semibold text-slate-700 dark:text-slate-200">{active.scripture}</span>
                         <button
                           onClick={() => onNavigate('courses')}
-                          className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                          className="px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-center gap-1 shrink-0"
                         >
                           Explore Modules <ChevronRight className="w-3.5 h-3.5" />
                         </button>
@@ -1259,35 +1226,33 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         <div className="space-y-6">
           
           {/* Portal Access Card */}
-          <section className="bg-gradient-to-b from-indigo-950 via-slate-950 to-slate-950 border border-indigo-900/80 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-            
-            <div className="space-y-4 relative z-10">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4">
+            <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-amber-300 font-mono">Academic Portal Account</h3>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Academic Portal Account</h3>
               </div>
 
               {appUser ? (
                 <div className="space-y-4">
-                  <div className="p-3 bg-white/10 border border-white/10 rounded-2xl flex items-center gap-3">
-                    <div className="w-10 h-10 bg-amber-500 text-slate-950 rounded-xl flex items-center justify-center font-black text-sm">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
                       {appUser.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-xs font-black text-white">{appUser.name}</p>
-                      <p className="text-[9px] font-mono text-amber-300 uppercase font-bold">{appUser.role} Account</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{appUser.name}</p>
+                      <p className="text-[9px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">{appUser.role} Account</p>
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                     Signed in to HTEIM Academic Portal. Check attendance, take scripture quizzes, download handouts, and view tuition balances.
                   </p>
 
                   <div className="space-y-2 pt-1">
                     <button
                       onClick={() => onNavigate('attendance')}
-                      className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                      className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>Attendance Portal</span>
                       <ArrowRight className="w-4 h-4" />
@@ -1296,14 +1261,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     {isStudent ? (
                       <button
                         onClick={() => onNavigate('payments')}
-                        className="w-full py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white border border-white/10 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                       >
                         Tuition Statement
                       </button>
                     ) : (
                       <button
                         onClick={() => onNavigate('students')}
-                        className="w-full py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white border border-white/10 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                       >
                         Student Roster Directory
                       </button>
@@ -1312,14 +1277,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                     Sign in to access your student records, submit assignments, view tuition statements, and track academic attendance.
                   </p>
 
                   <div className="space-y-2 pt-1">
                     <button
                       onClick={onOpenLogin}
-                      className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                      className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       <span>Log in to Student Portal</span>
@@ -1327,7 +1292,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
                     <button
                       onClick={onOpenLogin}
-                      className="w-full py-2.5 px-3 bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold rounded-xl transition-all border border-white/10 cursor-pointer"
+                      className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
                     >
                       Faculty Sign In
                     </button>
@@ -1338,21 +1303,21 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </section>
 
           {/* Live Broadcast & Upcoming Class Day */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-3xs space-y-3.5">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-rose-500 animate-pulse" /> Live Class Schedule
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> Live Class Schedule
               </span>
-              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                 Next: {nextClassTitle}
               </span>
             </div>
 
             <div className="space-y-2.5 text-xs">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-black text-slate-900 dark:text-white">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-900 dark:text-white">
                   <span>Tuesday & Thursday Session</span>
-                  <span className="text-amber-600 font-mono">7:00 PM EST</span>
+                  <span className="text-slate-600 dark:text-slate-300 font-mono">7:00 PM EST</span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Live online broadcast & in-person lecture hall check-in.
@@ -1361,28 +1326,28 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               <button
                 onClick={() => onNavigate('schedule')}
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-300 text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <Calendar className="w-3.5 h-3.5" />
                 <span>View All Class Sessions</span>
               </button>
             </div>
           </section>
 
           {/* Core Vision & Covenant Mandate */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-3xs space-y-3.5">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">HTEIM Covenant Mandate</h3>
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5">
+            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">HTEIM Covenant Mandate</h3>
             
             <div className="space-y-3 text-xs">
-              <div className="border-l-2 border-amber-500 pl-3">
-                <span className="font-black text-[10px] uppercase text-amber-700 dark:text-amber-400 block">Vision</span>
+              <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
+                <span className="font-semibold text-[10px] uppercase text-slate-600 dark:text-slate-300 block">Vision</span>
                 <p className="text-slate-800 dark:text-slate-200 font-bold italic font-serif">
                   "Bringing Heaven to Earth, Taking People to Heaven"
                 </p>
               </div>
 
-              <div className="border-l-2 border-indigo-500 pl-3">
-                <span className="font-black text-[10px] uppercase text-indigo-700 dark:text-indigo-400 block">Ephesians 2:20 Grounded</span>
+              <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
+                <span className="font-semibold text-[10px] uppercase text-slate-600 dark:text-slate-300 block">Ephesians 2:20 Grounded</span>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                   Built on the foundation of the apostles and prophets, Christ Jesus Himself being the chief cornerstone.
                 </p>
@@ -1394,24 +1359,24 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       </div>
 
-      {/* 5. ADMIN & FACULTY ACADEMIC INSIGHTS PANEL (Collapsible Section for At-Risk Triggers & Trends) */}
+      {/* Admin & Faculty Academic Insights Panel */}
       {isAdminOrTeacher && (
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
         <div 
           onClick={() => setIsAdminPanelExpanded(prev => !prev)}
-          className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+          className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
+            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
               <BarChart2 className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-                  Academic Analytics & At-Risk Monitoring System
+                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+                  Academic Analytics & At-Risk Monitoring
                 </h3>
                 {rawAtRiskStudents.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-500 text-white shadow-3xs">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
                     {rawAtRiskStudents.length} At-Risk
                   </span>
                 )}
@@ -1423,8 +1388,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hidden sm:inline">
-              {isAdminPanelExpanded ? 'Collapse Insights' : 'Expand Insights'}
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
+              {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
             </span>
             {isAdminPanelExpanded ? (
               <ChevronUp className="w-5 h-5 text-slate-500" />
@@ -1437,14 +1402,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         {isAdminPanelExpanded && (
           <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
             {/* Sub-Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 flex-wrap">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
               <button
                 type="button"
                 onClick={() => setAdminTab('at_risk')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   adminTab === 'at_risk'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
@@ -1454,10 +1419,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <button
                 type="button"
                 onClick={() => setAdminTab('trends')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   adminTab === 'trends'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 <BarChart2 className="w-3.5 h-3.5" />
@@ -1476,29 +1441,29 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       placeholder="Search student..."
                       value={atRiskSearch}
                       onChange={(e) => setAtRiskSearch(e.target.value)}
-                      className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
+                      className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
                     />
                   </div>
 
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
                     <button
                       type="button"
                       onClick={() => setAtRiskFilter('all')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-2xs' : 'text-slate-500'}`}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
                     >
                       All ({rawAtRiskStudents.length})
                     </button>
                     <button
                       type="button"
                       onClick={() => setAtRiskFilter('critical')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-500'}`}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
                     >
                       Critical (≤50%)
                     </button>
                     <button
                       type="button"
                       onClick={() => setAtRiskFilter('moderate')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white shadow-2xs' : 'text-slate-500'}`}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
                     >
                       Warning (51-74%)
                     </button>
@@ -1515,25 +1480,25 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       return (
                         <div 
                           key={student.name}
-                          className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${
                             isCritical 
-                              ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' 
-                              : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
+                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' 
+                              : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 shadow-2xs ${
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${
                                 isCritical ? 'bg-rose-600' : 'bg-amber-600'
                               }`}>
                                 {student.photoUrl ? (
-                                  <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-xl" />
+                                  <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
                                 ) : (
                                   student.name.charAt(0).toUpperCase()
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{student.name}</h4>
+                                <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
                                 <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
                                   Missed {missedClasses} of {totalClasses} Sessions
                                 </p>
@@ -1541,7 +1506,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                             </div>
 
                             <div className="text-right shrink-0">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black font-mono border ${
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
                                 isCritical 
                                   ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200' 
                                   : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
@@ -1552,7 +1517,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                           </div>
 
                           <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                            <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                               <span>Attendance Rate</span>
                               <span>{student.attended} / {totalClasses} Attended</span>
                             </div>
@@ -1568,14 +1533,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                             <button
                               type="button"
                               onClick={() => onNavigate('attendance')}
-                              className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <UserX className="w-3 h-3 text-rose-500" /> Review
                             </button>
                             <button
                               type="button"
                               onClick={() => onNavigate('messages')}
-                              className="flex-1 py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <MessageSquare className="w-3 h-3" /> Direct Msg
                             </button>
@@ -1585,7 +1550,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                                 setSentAlertStudent(student.name);
                                 setTimeout(() => setSentAlertStudent(null), 3000);
                               }}
-                              className={`py-1 px-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${
                                 sentAlertStudent === student.name
                                   ? 'bg-emerald-600 text-white'
                                   : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
@@ -1613,13 +1578,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             {adminTab === 'trends' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500">Attendance Rates by Core Module</span>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                  <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                     <button
                       type="button"
                       onClick={() => setTrendChartType('bar')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs' : 'text-slate-500'
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                        trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
                       }`}
                     >
                       <BarChart2 className="w-3.5 h-3.5" /> Bar View
@@ -1627,8 +1592,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     <button
                       type="button"
                       onClick={() => setTrendChartType('area')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs' : 'text-slate-500'
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                        trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
                       }`}
                     >
                       <Activity className="w-3.5 h-3.5" /> Trend Line
@@ -1636,7 +1601,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   </div>
                 </div>
 
-                <div className="h-64 w-full bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 rounded-2xl p-3">
+                <div className="h-64 w-full bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
                   <ResponsiveContainer width="100%" height="100%">
                     {trendChartType === 'bar' ? (
                       <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>

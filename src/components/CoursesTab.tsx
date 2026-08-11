@@ -338,13 +338,13 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Banner */}
-      <div className="material-banner rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-amber-400 shrink-0" />
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight font-syne">Ministry Courses & Academic Curriculum</h2>
+            <BookOpen className="w-6 h-6 text-slate-600 dark:text-slate-300 shrink-0" />
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ministry Courses & Curriculum</h2>
           </div>
-          <p className="text-xs text-indigo-200 mt-1 max-w-2xl font-sans">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
             Manage structured theological modules, syllabus guidelines, and course cards for HTEIM School of Ministry.
           </p>
         </div>
@@ -352,7 +352,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
         {!isStudent && (
           <button
             onClick={handleOpenAddModal}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer flex-shrink-0"
+            className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0"
           >
             <Plus className="w-4 h-4" /> Add New Course
           </button>

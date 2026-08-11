@@ -4404,7 +4404,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               {/* Modal Header */}
               <div className="p-5 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-lg flex items-center justify-center flex-shrink-0 border border-white/20 uppercase">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 text-white font-bold text-lg flex items-center justify-center flex-shrink-0 border border-slate-600 uppercase">
                     {modalPhoto ? (
                       <img src={modalPhoto} alt={selectedStudent.name} className="w-full h-full object-cover" />
                     ) : (
@@ -5907,13 +5907,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               if (selectedCheckinStudents.length === 0) return null;
 
               return (
-                <div className="px-4 py-3 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 border-b border-indigo-500/30 text-white flex flex-col sm:flex-row items-center justify-between gap-3 animate-slideDown shadow-md flex-shrink-0">
+                <div className="px-4 py-3 bg-slate-900 dark:bg-slate-800 border-b border-slate-700 dark:border-slate-700 text-white flex flex-col sm:flex-row items-center justify-between gap-3 animate-slideDown flex-shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className="bg-indigo-500/20 text-indigo-300 p-1.5 rounded-lg border border-indigo-400/30 animate-pulse">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                    <div className="bg-slate-700 text-slate-300 p-1.5 rounded-lg border border-slate-600">
+                      <CheckCircle2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-white">
+                      <p className="text-xs font-bold text-white">
                         {selectedCheckinStudents.length} {selectedCheckinStudents.length === 1 ? 'Student' : 'Students'} Selected
                       </p>
                       <p className="text-[10px] text-slate-400">Apply status to all selected records</p>
@@ -6468,7 +6468,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         <button
           type="button"
           onClick={() => handleNavigate('messages')}
-          className="px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-xl btn-glow-indigo flex items-center gap-2 border border-indigo-400/40 cursor-pointer active:scale-95 transition-all group touch-min-44"
+          className="px-4 py-3 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs sm:text-sm shadow-lg flex items-center gap-2 border border-slate-700 dark:border-slate-300 cursor-pointer active:scale-95 transition-colors group touch-min-44"
           title="Direct Message Teacher or Admin"
         >
           <div className="relative">

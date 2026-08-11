@@ -337,19 +337,19 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
       <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog">
         
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 flex items-center justify-between border-b border-indigo-900/50 modal-material-header">
+        <div className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white p-5 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 flex items-center justify-center font-black text-xl shadow-md">
+            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-slate-600">
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black tracking-tight">Bulk Payment Reminders & Financial Communication</h2>
-                <span className="px-2.5 py-0.5 bg-emerald-400 text-slate-950 text-[10px] font-black uppercase rounded-full">
+                <h2 className="text-lg font-bold tracking-tight">Bulk Payment Reminders & Financial Communication</h2>
+                <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold uppercase rounded-full">
                   WhatsApp & Email
                 </span>
               </div>
-              <p className="text-xs text-indigo-200">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Send personalized tuition notices, WhatsApp direct messages, and email reminders to students with outstanding balances.
               </p>
             </div>
@@ -357,7 +357,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
 
           <button
             onClick={onClose}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors cursor-pointer"
+            className="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
            aria-label="Close">
             <X className="w-5 h-5" />
           </button>

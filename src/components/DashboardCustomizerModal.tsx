@@ -170,20 +170,20 @@ export const DashboardCustomizerModal: React.FC<DashboardCustomizerModalProps> =
       <div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] z-10 animate-scaleUp modal-material-dialog">
         
         {/* Header */}
-        <div className="p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between modal-material-header">
+        <div className="p-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500 text-slate-950 rounded-xl font-black">
+            <div className="p-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
               <Sliders className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white">Customize Dashboard Metric Widgets</h3>
-              <p className="text-xs text-slate-300">Reorder or toggle key performance metric cards on the Home dashboard</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Customize Dashboard Metric Widgets</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Reorder or toggle key performance metric cards on the Home dashboard</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
            aria-label="Close">
             <X className="w-5 h-5" />
           </button>

@@ -277,44 +277,44 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8 material-screen">
       {/* Top Banner & Quick Metrics */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl material-banner">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-indigo-400 shrink-0" />
-              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight font-syne text-white">Student Enrolment Directory</h2>
+              <GraduationCap className="w-6 h-6 text-slate-600 dark:text-slate-300 shrink-0" />
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Student Enrolment Directory</h2>
             </div>
-            <p className="text-xs text-indigo-200 mt-1 max-w-2xl font-sans">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
               Centralized management of student profiles, attendance records, academic standing, and official transcripts.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-indigo-900/80 border border-indigo-700/60 px-3.5 py-1.5 rounded-xl text-xs font-jetbrains font-bold text-indigo-200 shadow-xs">
-            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <Sparkles className="w-4 h-4 text-slate-500" />
             <span>HTEIM Ministry Cohort 2026</span>
           </div>
         </div>
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition-all hover:bg-white/15">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-200 font-jetbrains">Total Enrolled</p>
-            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-white">{totalStudents}</p>
-            <p className="text-[10px] text-indigo-300 mt-0.5 font-medium">Ministry Candidates</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Enrolled</p>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">{totalStudents}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Ministry Candidates</p>
           </div>
-          <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/35 rounded-2xl p-4 transition-all hover:bg-emerald-500/25">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 font-jetbrains">Satisfactory Standing</p>
-            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-emerald-300">{satisfactoryStudents}</p>
-            <p className="text-[10px] text-emerald-200 mt-0.5 font-medium">&ge; {satisfactoryThreshold}% Attendance</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Satisfactory Standing</p>
+            <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{satisfactoryStudents}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">&ge; {satisfactoryThreshold}% Attendance</p>
           </div>
-          <div className="bg-amber-500/20 backdrop-blur-md border border-amber-500/35 rounded-2xl p-4 transition-all hover:bg-amber-500/25">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-200 font-jetbrains">Perfect Attendance</p>
-            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-amber-300">{perfectStudents}</p>
-            <p className="text-[10px] text-amber-200 mt-0.5 font-medium">100% Session Commendation</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Perfect Attendance</p>
+            <p className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1">{perfectStudents}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">100% Session Commendation</p>
           </div>
-          <div className="bg-rose-500/20 backdrop-blur-md border border-rose-500/35 rounded-2xl p-4 transition-all hover:bg-rose-500/25">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-200 font-jetbrains">At-Risk Alert</p>
-            <p className="text-2xl sm:text-3xl font-extrabold font-syne mt-1 text-rose-300">{atRiskStudents}</p>
-            <p className="text-[10px] text-rose-200 mt-0.5 font-medium">&lt; {atRiskThreshold}% Attendance</p>
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">At-Risk Alert</p>
+            <p className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 mt-1">{atRiskStudents}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">&lt; {atRiskThreshold}% Attendance</p>
           </div>
         </div>
       </div>
@@ -476,19 +476,19 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         /* Visual Student Photo Gallery View */
         <div className="space-y-5 animate-fadeIn">
           {/* Gallery Header Banner: Active Class Session Selector, Stats & Batch Actions */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl border border-indigo-800/50 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 material-banner">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold shrink-0">
                 <Camera className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>Student Photo Gallery</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-mono font-bold">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-mono font-semibold">
                     {filteredAndSortedStudents.length} Profiles
                   </span>
                 </h3>
-                <p className="text-xs text-indigo-200 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Visual thumbnail grid for rapid identification, photo management, and manual attendance marking.
                 </p>
               </div>
@@ -497,16 +497,16 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             {/* Session Selector & Batch Actions */}
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
               {classDays && classDays.length > 0 && (
-                <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-slate-200 w-full sm:w-auto">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span className="font-bold text-slate-400 text-[11px]">Marking Session:</span>
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 w-full sm:w-auto">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 text-[11px]">Marking Session:</span>
                   <select
                     value={activeGalleryDayId}
                     onChange={(e) => setSelectedGalleryDayId(e.target.value)}
-                    className="bg-transparent font-extrabold text-xs text-white focus:outline-none cursor-pointer w-full sm:w-auto pr-2"
+                    className="bg-transparent font-semibold text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer w-full sm:w-auto pr-2"
                   >
                     {classDays.map(day => (
-                      <option key={day.id} value={day.id} className="bg-slate-900 text-white">
+                      <option key={day.id} value={day.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                         {day.name}
                       </option>
                     ))}
@@ -518,7 +518,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handleMarkAllGalleryStudents('present')}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition-all shadow-sm cursor-pointer active:scale-95 flex items-center gap-1"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                     title="Mark all displayed students as Present for this session"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -526,7 +526,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </button>
                   <button
                     onClick={() => handleMarkAllGalleryStudents('absent')}
-                    className="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer active:scale-95 flex items-center gap-1"
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                     title="Mark all displayed students as Absent for this session"
                   >
                     <XCircle className="w-3.5 h-3.5" />

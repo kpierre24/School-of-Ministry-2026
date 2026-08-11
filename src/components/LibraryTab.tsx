@@ -751,13 +751,13 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
       )}
 
       {/* Top Header Banner */}
-      <div className="material-banner rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <BookMarked className="w-6 h-6 text-emerald-400" />
-            <h2 className="text-xl font-black tracking-tight">Digital Library & AI Lesson Repository</h2>
+            <BookMarked className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Digital Library & AI Lesson Repository</h2>
           </div>
-          <p className="text-xs text-indigo-200 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Upload custom lesson files or transcripts. AI automatically evaluates content, generates concise summaries, and makes files instantly downloadable anytime.
           </p>
         </div>
@@ -767,43 +767,43 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             <button
               onClick={handleSyncFromSupabaseStorage}
               disabled={isSyncingStorage}
-              className="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               title="Fetch and import any documents from Supabase Storage bucket 'library' into your app"
             >
-              <CloudDownload className={`w-4 h-4 text-emerald-400 ${isSyncingStorage ? 'animate-bounce' : ''}`} /> 
+              <CloudDownload className={`w-4 h-4 text-slate-600 dark:text-slate-300 ${isSyncingStorage ? 'animate-bounce' : ''}`} /> 
               {isSyncingStorage ? 'Scanning Storage...' : 'Sync Storage Files'}
             </button>
 
             {onOpenDiagnostics && (
               <button
                 onClick={onOpenDiagnostics}
-                className="px-3.5 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 title="Evaluate Supabase storage buckets and permissions for missing files"
               >
-                <ShieldAlert className="w-4 h-4 text-indigo-400" /> Storage Diagnostics
+                <ShieldAlert className="w-4 h-4 text-slate-600 dark:text-slate-300" /> Storage Diagnostics
               </button>
             )}
 
             {resources.length > 0 ? (
               <button
                 onClick={handleClearAllLessons}
-                className="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 title="Clear current lessons to upload fresh lesson files"
               >
-                <Trash2 className="w-4 h-4 text-rose-400" /> Clear All Lessons
+                <Trash2 className="w-4 h-4" /> Clear All Lessons
               </button>
             ) : (
               <button
                 onClick={handleResetSampleLessons}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4 text-slate-400" /> Restore Sample Lessons
+                <RotateCcw className="w-4 h-4 text-slate-500" /> Restore Sample Lessons
               </button>
             )}
 
             <button
               onClick={() => setShowUploadModal(true)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
             >
               <Upload className="w-4 h-4" /> Upload Lesson Files
             </button>

@@ -209,25 +209,23 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
       )}
 
       {/* DASHBOARD HEADER */}
-      <div className="material-banner text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
-        
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Admin & Teacher Portal
+              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold uppercase tracking-wider rounded-lg flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" /> Admin & Teacher Portal
               </span>
-              <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold rounded-lg font-mono">
+              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold rounded-lg font-mono">
                 {quizzes.length} Stored Quizzes
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
               Admin Quizzes Dashboard
             </h1>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Centralized repository for all School of Ministry class day interactive quizzes, weighted question banks, share codes, and student submission matrices.
             </p>
           </div>
@@ -235,10 +233,10 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={handleExportJSON}
-              className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-2"
+              className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-2"
               title="Export All Quizzes to JSON"
             >
-              <Download className="w-4 h-4 text-indigo-400" /> Backup JSON
+              <Download className="w-4 h-4" /> Backup JSON
             </button>
 
             <button
@@ -246,7 +244,7 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
                 setQuizToEdit(null);
                 setShowCreatorModal(true);
               }}
-              className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-400/20 transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+              className="px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> Create New Quiz
             </button>
@@ -254,25 +252,25 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
         </div>
 
         {/* METRICS SUMMARY STRIP */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80">
-          <div className="bg-slate-900/60 backdrop-blur-xs p-3.5 rounded-2xl border border-slate-800/80">
-            <div className="text-[10px] font-bold uppercase text-slate-400">Total Quizzes</div>
-            <div className="text-xl font-black text-white font-mono mt-0.5">{quizzes.length}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="bg-slate-50 dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">Total Quizzes</div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">{quizzes.length}</div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xs p-3.5 rounded-2xl border border-slate-800/80">
-            <div className="text-[10px] font-bold uppercase text-slate-400">Stored Questions</div>
-            <div className="text-xl font-black text-amber-400 font-mono mt-0.5">{totalQuestions}</div>
+          <div className="bg-slate-50 dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">Stored Questions</div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">{totalQuestions}</div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xs p-3.5 rounded-2xl border border-slate-800/80">
-            <div className="text-[10px] font-bold uppercase text-slate-400">Student Responses</div>
-            <div className="text-xl font-black text-emerald-400 font-mono mt-0.5">{totalSubmissions}</div>
+          <div className="bg-slate-50 dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">Student Responses</div>
+            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{totalSubmissions}</div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xs p-3.5 rounded-2xl border border-slate-800/80">
-            <div className="text-[10px] font-bold uppercase text-slate-400">Share Codes Active</div>
-            <div className="text-xl font-black text-indigo-400 font-mono mt-0.5">{quizzes.filter(q => q.shareCode).length}</div>
+          <div className="bg-slate-50 dark:bg-slate-800 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">Share Codes Active</div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5">{quizzes.filter(q => q.shareCode).length}</div>
           </div>
         </div>
       </div>

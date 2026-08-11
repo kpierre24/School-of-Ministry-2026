@@ -31,26 +31,26 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
         aria-modal="true"
         aria-labelledby="payment-banner-title"
       >
-        {/* Top Gradient Banner Header */}
-        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 p-5 text-white flex items-center justify-between shadow-md">
+        {/* Top Banner Header */}
+        <div className="bg-amber-50 dark:bg-amber-950/40 p-5 text-slate-900 dark:text-white flex items-center justify-between border-b border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner flex-shrink-0 animate-pulse">
-              <AlertTriangle className="w-5 h-5 text-amber-100" />
+            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center border border-amber-200 dark:border-amber-800 flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-950/40 text-amber-200 border border-amber-300/30">
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-widest bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                   Account Notice
                 </span>
               </div>
-              <h3 id="payment-banner-title" className="text-lg font-black tracking-tight text-white mt-0.5">
+              <h3 id="payment-banner-title" className="text-lg font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
                 Outstanding Tuition Balance
               </h3>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-400"
             title="Close Notice"
             aria-label="Close Notice">
             <X className="w-5 h-5" />

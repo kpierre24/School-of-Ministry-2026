@@ -78,23 +78,23 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in modal-material-scrim">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] modal-material-dialog">
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white flex items-center justify-between modal-material-header">
+        <div className="px-6 py-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 border border-white/20 rounded-xl backdrop-blur-md">
-              <Calendar className="w-6 h-6 text-indigo-300" />
+            <div className="p-2.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg">
+              <Calendar className="w-6 h-6 text-slate-600 dark:text-slate-300" />
             </div>
             <div>
-              <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                 Manage Class Days & Sessions
               </h2>
-              <p className="text-xs text-indigo-200">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Add, rename, or reorder ministry class session titles on the fly.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
            aria-label="Close">
             <X className="w-5 h-5" />
           </button>
