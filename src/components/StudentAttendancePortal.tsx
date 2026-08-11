@@ -33,6 +33,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { downloadICSFile } from '../lib/calendarExport';
+import { ActiveZoomSession } from './ZoomCoPilotTab';
 
 export type StudentPortalSummary = {
   name: string;
@@ -54,6 +55,8 @@ interface StudentAttendancePortalProps {
   onUpdateStudentPhoto?: (studentName: string, photoDataUrl: string) => void;
   atRiskThreshold: number;
   satisfactoryThreshold: number;
+  activeZoomSession?: ActiveZoomSession;
+  onChangeActiveZoomSession?: (session: ActiveZoomSession) => void;
 }
 
 export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalProps>> = ({
@@ -64,7 +67,9 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
   onRequestCertificate = (_s?: any) => {},
   onUpdateStudentPhoto,
   atRiskThreshold = 75,
-  satisfactoryThreshold = 85
+  satisfactoryThreshold = 85,
+  activeZoomSession,
+  onChangeActiveZoomSession
 }) => {
   const safeName = student?.name || 'Student';
   const studentKey = safeName.toLowerCase().trim();
@@ -80,6 +85,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
   // Filter & Search states for attendance log
   const [logFilter, setLogFilter] = useState<'all' | 'present' | 'absent'>('all');
   const [logSearch, setLogSearch] = useState('');
+  const [showEmbeddedZoom, setShowEmbeddedZoom] = useState(false);
 
   // Excuse note modal state
   const [excuseModalDay, setExcuseModalDay] = useState<{ id: string; name: string } | null>(null);
@@ -345,6 +351,272 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           </div>
         </div>
       </div>
+
+      {/* Live Zoom Co-Pilot Class Panel (Visible only when session is live) */}
+      {activeZoomSession?.isSessionLive && (
+        <div className="bg-amber-50/70 dark:bg-amber-950/20 border-2 border-amber-300/80 dark:border-amber-600/40 rounded-xl p-5 md:p-6 shadow-md transition-all relative overflow-hidden">
+          {/* Decorative subtle background cross/emblem */}
+          <div className="absolute right-[-20px] top-[-20px] opacity-[0.04] dark:opacity-[0.08] pointer-events-none">
+            <Video className="w-48 h-48 text-amber-950 dark:text-amber-100" />
+          </div>
+
+          <div className="relative z-10">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Live Class Co-Pilot</h3>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Class Session Live: Meeting ID {activeZoomSession.meetingId}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmbeddedZoom(!showEmbeddedZoom)}
+                  className={`px-3 py-1.5 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95 touch-min-44 ${
+                    showEmbeddedZoom 
+                      ? 'bg-slate-700 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700' 
+                      : 'bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600'
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>{showEmbeddedZoom ? "Exit Embedded Player" : "Play Embedded"}</span>
+                </button>
+                <a
+                  href={`https://zoom.us/j/${activeZoomSession.meetingId.replace(/\s+/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95 touch-min-44"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open in Zoom App</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Embedded Zoom Iframe */}
+            {showEmbeddedZoom && (
+              <div className="mb-5 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-950 shadow-lg relative">
+                {/* Control utility banner */}
+                <div className="bg-slate-900 px-4 py-2 flex flex-wrap items-center justify-between text-slate-400 text-xs border-b border-slate-800 gap-2">
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="font-semibold text-[11px]">Secure Embedded Player (Web Client)</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px]">
+                    <span className="hidden sm:inline text-slate-500">💡 Enable camera & microphone inside the iframe if prompted</span>
+                    <a
+                      href={`https://zoom.us/wc/join/${activeZoomSession.meetingId.replace(/\s+/g, '')}?prefer=1&un=${(() => {
+                        try {
+                          return btoa(unescape(encodeURIComponent(safeName)));
+                        } catch (e) {
+                          return btoa("Student");
+                        }
+                      })()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amber-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                    >
+                      <span>Web Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Zoom Web Client iframe */}
+                <div className="aspect-video w-full min-h-[360px] md:min-h-[500px]">
+                  <iframe
+                    src={`https://zoom.us/wc/join/${activeZoomSession.meetingId.replace(/\s+/g, '')}?prefer=1&un=${(() => {
+                      try {
+                        return btoa(unescape(encodeURIComponent(safeName)));
+                      } catch (e) {
+                        return btoa("Student");
+                      }
+                    })()}`}
+                    sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
+                    allow="camera; microphone; fullscreen; speaker; display-capture; autoplay"
+                    className="w-full h-full border-0 bg-slate-950"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Pinned Scripture Card */}
+            {activeZoomSession.activeScripture && (
+              <div className="bg-white/80 dark:bg-slate-900/85 border border-amber-200 dark:border-amber-900/60 rounded-xl p-4 md:p-5 mb-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-400">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>PINNED SCRIPTURE FOR MEDITATION</span>
+                  </div>
+                  
+                  {/* Quick Translation Link */}
+                  <a
+                    href={`https://www.biblegateway.com/passage/?search=${encodeURIComponent(activeZoomSession.activeScripture.reference)}&version=NKJV`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 flex items-center gap-1 hover:underline transition-all cursor-pointer touch-min-44"
+                  >
+                    <span>Read Full Chapter</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                
+                <blockquote className="text-sm md:text-base italic text-slate-800 dark:text-slate-200 pl-3 border-l-2 border-amber-500 dark:border-amber-600 py-0.5 leading-relaxed font-serif">
+                  "{activeZoomSession.activeScripture.text}" — <span className="font-bold font-sans not-italic text-xs text-amber-700 dark:text-amber-400">{activeZoomSession.activeScripture.reference}</span>
+                </blockquote>
+
+                {/* Translation comparisons */}
+                <div className="mt-3.5 pt-3 border-t border-amber-100 dark:border-amber-900/40 flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                    Active Scripture Translation Search:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { code: 'KJV', name: 'King James (KJV)' },
+                      { code: 'NKJV', name: 'New King James (NKJV)' },
+                      { code: 'NIV', name: 'New International (NIV)' },
+                      { code: 'ESV', name: 'English Standard (ESV)' },
+                      { code: 'AMP', name: 'Amplified (AMP)' }
+                    ].map(trans => (
+                      <a
+                        key={trans.code}
+                        href={`https://www.biblegateway.com/passage/?search=${encodeURIComponent(activeZoomSession.activeScripture!.reference)}&version=${trans.code}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border border-amber-200/40 dark:border-amber-900/30 rounded-md font-bold text-[10px] text-amber-800 dark:text-amber-300 transition-colors flex items-center gap-1 cursor-pointer touch-min-44"
+                        title={`Search ${activeZoomSession.activeScripture!.reference} in ${trans.name}`}
+                      >
+                        <span>{trans.code}</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-65" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Featured Handout Card */}
+              {activeZoomSession.activeHandout ? (
+                <div className="bg-white/80 dark:bg-slate-900/85 border border-amber-200 dark:border-amber-900/60 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2.5 text-xs font-bold text-amber-800 dark:text-amber-400">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>FEATURED LECTURE HANDOUT</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-2">
+                      {activeZoomSession.activeHandout.title}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1 uppercase font-semibold">
+                      Required Reading for Assignment
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <a
+                      href={activeZoomSession.activeHandout.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 transition-colors cursor-pointer touch-min-44"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download PDF Material</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                  <FileText className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-1" />
+                  <p className="text-xs text-slate-400">No lecture handout pinned yet</p>
+                </div>
+              )}
+
+              {/* Active Prompt Response Card */}
+              {activeZoomSession.activePrompt ? (
+                <div className="bg-white/80 dark:bg-slate-900/85 border border-amber-200 dark:border-amber-900/60 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2 text-xs font-bold text-amber-800 dark:text-amber-400">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>LIVE STUDY PROMPT / DISCUSSION</span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 bg-amber-500/10 dark:bg-amber-400/5 p-2.5 rounded-lg border border-amber-300/30">
+                    {activeZoomSession.activePrompt}
+                  </p>
+
+                  {activeZoomSession.studentResponses?.[studentKey] ? (
+                    <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>RESPONSE SUBMITTED</span>
+                      </div>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 italic">
+                        "{activeZoomSession.studentResponses[studentKey].text}"
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedResponses = { ...activeZoomSession.studentResponses };
+                          delete updatedResponses[studentKey];
+                          onChangeActiveZoomSession?.({
+                            ...activeZoomSession,
+                            studentResponses: updatedResponses
+                          });
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-red-500 transition-colors mt-2 underline block cursor-pointer"
+                      >
+                        Edit Response
+                      </button>
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const val = (e.currentTarget.elements.namedItem('response') as HTMLTextAreaElement).value;
+                        if (val.trim()) {
+                          const studentResponses = { ...(activeZoomSession.studentResponses || {}) };
+                          studentResponses[studentKey] = {
+                            studentName: safeName,
+                            text: val.trim(),
+                            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                          };
+                          onChangeActiveZoomSession?.({
+                            ...activeZoomSession,
+                            studentResponses
+                          });
+                        }
+                      }}
+                    >
+                      <textarea
+                        name="response"
+                        placeholder="Type your discussion response or scripture question here..."
+                        rows={2}
+                        className="w-full text-xs p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        required
+                      ></textarea>
+                      <div className="flex justify-end mt-2">
+                        <button
+                          type="submit"
+                          className="px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold text-xs flex items-center gap-1 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all cursor-pointer active:scale-95 touch-min-44"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Push response to Teacher</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                  <Sparkles className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-1" />
+                  <p className="text-xs text-slate-400">No active study prompt pinned yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Student Welcome & Status Hero Banner */}
       <div className="bg-white dark:bg-slate-900 rounded-xl p-6 md:p-8 border border-slate-200 dark:border-slate-700 relative">

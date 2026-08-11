@@ -1,4 +1,4 @@
-export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
+export type TabType = 'home' | 'attendance' | 'zoom-copilot' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
 
 export type AcademicLevel = {
   id: string;
@@ -285,6 +285,16 @@ export type AppNotification = {
   priority?: 'high' | 'normal' | 'low';
   actionTab?: TabType;
   channelSent?: ('portal' | 'email' | 'sms' | 'whatsapp')[];
+};
+
+export type AttendanceRecord = {
+  name: string;
+  studentName?: string;
+  timestamp: string;
+  score: string;
+  classDay: string;
+  present: boolean;
+  manualOverride?: boolean;
 };
 
 export type ClassDay = {

@@ -1,6 +1,6 @@
 {
   "name": "HTEIM School of Ministry",
   "description": "An introductory landing page, curriculum guide, and analytics portal for the HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries).",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

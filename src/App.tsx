@@ -76,10 +76,12 @@ import {
   Menu,
   MessageSquare,
   LogOut,
-  MoreHorizontal
+  MoreHorizontal,
+  Video
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
 import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from './lib/supabaseClient';
+import { ZoomCoPilotTab, ActiveZoomSession } from './components/ZoomCoPilotTab';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
@@ -98,7 +100,7 @@ import {
 import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
 import { getDemoAttendance } from './data';
-import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment } from './types';
+import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword } from './lib/userAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
@@ -133,7 +135,7 @@ const EXCLUDED_STUDENTS = [
   'sam selk',
 ];
 
-const VALID_TABS: TabType[] = ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages'];
+const VALID_TABS: TabType[] = ['home', 'attendance', 'zoom-copilot', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages'];
 
 const getTabFromLocation = (): TabType => {
   if (typeof window === 'undefined') return 'home';
@@ -288,16 +290,6 @@ type MergeConflict = {
   sheetsStatus: 'present' | 'absent';
   sheetsScore: string;
   sheetsTimestamp: string;
-};
-
-type AttendanceRecord = {
-  name: string;
-  studentName?: string;
-  timestamp: string;
-  score: string;
-  classDay: string;
-  present: boolean;
-  manualOverride?: boolean;
 };
 
 const parseScorePercentage = (scoreStr?: any): number | null => {
@@ -568,6 +560,22 @@ export default function App() {
   const [hasZoomException, setHasZoomException] = useState<boolean>(() => {
     return localStorage.getItem('hteim_has_zoom_exception') === 'true';
   });
+  
+  const [activeZoomSession, setActiveZoomSession] = useState<ActiveZoomSession>(() => {
+    const saved = localStorage.getItem('hteim_active_zoom_session');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return {
+      isSessionLive: false,
+      meetingId: '815 0537 7396',
+      passcode: '163738',
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_active_zoom_session', JSON.stringify(activeZoomSession));
+  }, [activeZoomSession]);
   
   const [records, setRecords] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('attendanceRecords');
@@ -1422,6 +1430,7 @@ export default function App() {
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
           if (cloudState.userCredentials !== undefined) setUserCredentials(cloudState.userCredentials);
+          if (cloudState.activeZoomSession !== undefined) setActiveZoomSession(cloudState.activeZoomSession);
           
           if (cloudState.updatedAt) {
             const timeStr = new Date(cloudState.updatedAt).toLocaleTimeString('en-US', { 
@@ -1456,7 +1465,8 @@ export default function App() {
             messages,
             zoomExceptionNote,
             hasZoomException,
-            userCredentials
+            userCredentials,
+            activeZoomSession
           };
           const success = await saveToSupabase(activeEmail, stateToSave);
           if (success) {
@@ -1516,7 +1526,8 @@ export default function App() {
         messages,
         zoomExceptionNote,
         hasZoomException,
-        userCredentials
+        userCredentials,
+        activeZoomSession
       };
       const success = await saveToSupabase(activeEmail, stateToSave);
       if (success) {
@@ -1574,6 +1585,7 @@ export default function App() {
           if (cloudState.payments !== undefined) setPayments(cloudState.payments);
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
+          if (cloudState.activeZoomSession !== undefined) setActiveZoomSession(cloudState.activeZoomSession);
           
           setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
             hour: '2-digit', 
@@ -1625,7 +1637,8 @@ export default function App() {
           messages,
           zoomExceptionNote,
           hasZoomException,
-          userCredentials
+          userCredentials,
+          activeZoomSession
         };
         await saveToSupabase(activeEmail, stateToSave);
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
@@ -1664,6 +1677,7 @@ export default function App() {
     zoomExceptionNote,
     hasZoomException,
     userCredentials,
+    activeZoomSession,
     user
   ]);
 
@@ -2509,6 +2523,35 @@ if (!studentMap.has(key)) {
     });
   };
 
+  const handleRecordBatchAttendance = (newRecords: AttendanceRecord[]) => {
+    setRecords(prev => {
+      let updated = [...prev];
+      newRecords.forEach(newRec => {
+        const studentKey = newRec.name.toLowerCase().trim();
+        const existingIdx = updated.findIndex(r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === newRec.classDay);
+        if (existingIdx >= 0) {
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            present: newRec.present,
+            manualOverride: true,
+            timestamp: newRec.timestamp
+          };
+        } else {
+          updated.push(newRec);
+        }
+      });
+      return updated;
+    });
+    
+    logActivity({
+      actor: appUser?.name || 'Admin',
+      role: appUser?.role === 'student' ? 'student' : 'admin',
+      actionCategory: 'Attendance Override',
+      actionTitle: 'Batch Zoom Attendance Registered',
+      details: `Registered Zoom attendance for ${newRecords.length} students`
+    });
+  };
+
   const handleEditClassDayTitle = (dayId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
     const trimmed = newTitle.trim();
@@ -3209,6 +3252,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           {[
             { tab: 'home', label: 'Home', Icon: Sparkles },
             { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
+            { tab: 'zoom-copilot', label: 'Zoom Co-Pilot', Icon: Video, adminOrTeacherOnly: true },
             { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
             { tab: 'courses', label: 'Courses', Icon: BookOpen },
             { tab: 'exams', label: 'Exams', Icon: Award },
@@ -3218,6 +3262,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             { tab: 'messages', label: 'Messages', Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
           ].filter(item => {
             if ((item as any).adminOnly && appUser?.role === 'student') return false;
+            if ((item as any).adminOrTeacherOnly && appUser?.role === 'student') return false;
             if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
             return true;
           }).map(({ tab, label, Icon, badgeAlert, badgeCount }: any) => {
@@ -3533,6 +3578,29 @@ create policy "Allow public update" on app_states for update using (true) with c
             </motion.div>
           )}
 
+          {activeErpTab === 'zoom-copilot' && (
+            <motion.div
+              key="zoom-copilot"
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 overflow-y-auto custom-scrollbar"
+            >
+              <ErrorBoundary label="Zoom Co-Pilot Tab">
+                <ZoomCoPilotTab
+                  students={uniqueStudents}
+                  libraryResources={libraryResources}
+                  classDays={classDays}
+                  onAddClassDay={handleAddClassDay}
+                  onRecordBatchAttendance={handleRecordBatchAttendance}
+                  activeZoomSession={activeZoomSession}
+                  onChangeActiveZoomSession={setActiveZoomSession}
+                />
+              </ErrorBoundary>
+            </motion.div>
+          )}
+
           {activeErpTab === 'messages' && (
             <motion.div
               key="messages"
@@ -3578,6 +3646,8 @@ create policy "Allow public update" on app_states for update using (true) with c
                 classDays={classDays}
                 rubricScores={rubricScores}
                 onUpdateStudentPhoto={handleUpdateStudentPhoto}
+                activeZoomSession={activeZoomSession}
+                onChangeActiveZoomSession={setActiveZoomSession}
 onRequestTranscript={(s) => {
                     setSelectedStudent({
                       name: s.name,

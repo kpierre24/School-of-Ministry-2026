@@ -70,6 +70,7 @@ export interface SyncedAppState {
   zoomExceptionNote?: string;
   hasZoomException?: boolean;
   userCredentials?: any[];
+  activeZoomSession?: any;
   updatedAt?: string;
   updatedBy?: string;
 }
