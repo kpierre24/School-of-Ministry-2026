@@ -2988,62 +2988,25 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-md mb-4 flex-shrink-0 sticky top-2 z-[60] max-w-full overflow-visible transition-all"
-        style={{ boxShadow: 'var(--md-elev-1)' }}>
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-0 dark:border-0 border-b border-slate-200/60 dark:border-slate-800/60 px-3 sm:px-4 py-2 sm:py-2.5 shadow-none mb-3 flex-shrink-0 sticky top-2 z-[60] max-w-full overflow-visible transition-all">
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
           {/* Logo & Brand */}
           <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink-0 group" onClick={() => setActiveErpTab('home')}>
             <img
               src={hteimLogoAsset}
               alt="HTEIM Logo"
-              className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl border-2 border-amber-400 shadow-md object-contain bg-white p-0.5 group-hover:scale-105 transition-transform"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-70 transition-opacity"
               referrerPolicy="no-referrer"
             />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <h1 className="text-xs xs:text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none font-syne">
-                  HTEIM School of Ministry
-                </h1>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 rounded-full border border-indigo-200 dark:border-indigo-800 shrink-0 shadow-2xs">
-                  <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-amber-500 animate-pulse" /> Portal
-                </span>
-              </div>
-              <p className="text-slate-500 text-[9px] sm:text-[10px] hidden sm:block font-medium">Heaven Touching Earth Int'l Ministries</p>
+              <h1 className="text-sm sm:text-base font-semibold tracking-tight text-slate-900 dark:text-white truncate max-w-[160px] sm:max-w-[240px]">
+                HTEIM School of Ministry
+              </h1>
             </div>
           </div>
 
-          {/* Quick KPI Stat Chips */}
-          {records.length > 0 && (
-            <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800/80 px-3 py-1 rounded-xl text-xs font-medium shrink-0">
-              {appUser?.role === 'student' ? (
-                <>
-                  <div className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>My Att: {loggedInStudentData ? loggedInStudentData.rate.toFixed(1) : '0.0'}%</span>
-                  </div>
-                  <span className="text-slate-700">•</span>
-                  <div className="flex items-center gap-1 text-indigo-300 font-mono text-[10px]">
-                    <span>ID: {getStudentIdForName(appUser.studentName || appUser.name)}</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
-                    <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Att: {avgAttendance.toFixed(1)}%</span>
-                  </div>
-                  <span className="text-slate-700">•</span>
-                  <div className="flex items-center gap-1 text-indigo-300 font-bold text-[11px]">
-                    <UserCheck className="w-3.5 h-3.5" />
-                    <span>{uniqueStudents.length} Students</span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
           {/* MD3 AppBar Actions */}
-          <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0 flex-nowrap justify-end">
+          <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
             {/* Live Check-In */}
             {(appUser?.role as string) !== 'student' && (
               <button
@@ -3053,34 +3016,24 @@ create policy "Allow public update" on app_states for update using (true) with c
                     setLiveCheckinDayId(classDays[classDays.length - 1].id);
                   }
                 }}
-                className="md-btn-filled hidden md:flex items-center gap-1.5 text-xs px-3.5 py-2 btn-enhanced btn-glow-amber font-bold"
-                style={{ background: '#d97706' }}
+                className="hidden md:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                </span>
                 <Smartphone className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Live Check-In</span>
+                <span>Check-In</span>
               </button>
             )}
-
 
             {/* Messages */}
             <button
               type="button"
               onClick={() => handleNavigate('messages')}
               aria-label="Open messages"
-              className={`md-icon-btn border relative ${
-                activeErpTab === 'messages'
-                  ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
-                  : 'border-slate-200 dark:border-slate-700'
-              }`}
+              className="relative p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               title="Messages"
             >
               <MessageSquare className="w-4 h-4" />
               {unreadMessagesCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center px-1">
                   {unreadMessagesCount}
                 </span>
               )}
@@ -3099,276 +3052,133 @@ create policy "Allow public update" on app_states for update using (true) with c
               currentStudentName={appUser?.studentName || appUser?.name}
             />
 
-            {/* Sync Status */}
-            <div className="hidden sm:flex items-center shrink-0">
-              {isOffline ? (
-                appUser?.role === 'admin' ? (
-                  <button
-                    onClick={() => setShowDiagnosticModal(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
-                    title="Click for Supabase Storage & Data Diagnostics"
-                  >
-                    <WifiOff className="w-3 h-3" /> Offline (Diagnose)
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-[10px] font-semibold">
-                    <WifiOff className="w-3 h-3" /> Offline
-                  </span>
-                )
-              ) : isCloudSyncing ? (
-                appUser?.role === 'admin' ? (
-                  <button
-                    onClick={() => setShowDiagnosticModal(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
-                    title="Click for Supabase Storage & Data Diagnostics"
-                  >
-                    <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-[10px] font-semibold">
-                    <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
-                  </span>
-                )
-              ) : (
-                appUser?.role === 'admin' ? (
-                  <button
-                    onClick={() => setShowDiagnosticModal(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold cursor-pointer transition"
-                    title="Click to run Supabase Storage & Data Diagnostics"
-                  >
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Synced (Diagnose)
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Synced
-                  </span>
-                )
+            {/* More Dropdown */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+
+              {showMoreMenu && (
+                <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-1.5 z-[70] space-y-0.5"
+                  style={{ boxShadow: 'var(--md-elev-2)' }}>
+                  <div className="space-y-0.5">
+                    <button
+                      onClick={() => { setShowMoreMenu(false); setShowPresentationModal(true); }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <Play className="w-3.5 h-3.5 text-slate-500" />
+                      <span>30s Demo</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowMoreMenu(false); setShowCommandPalette(true); }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <Search className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Search</span>
+                      <span className="ml-auto text-[10px] text-slate-400 font-mono">⌘K</span>
+                    </button>
+                  </div>
+
+                  {appUser?.role === 'admin' && (
+                    <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-2 pt-1">Tools</p>
+                      <button
+                        onClick={() => { setShowMoreMenu(false); handlePushToCloud(); }}
+                        disabled={isCloudSyncing}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-slate-500 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-slate-500" />}
+                        <span>Cloud Backup</span>
+                      </button>
+                      {dataSource === 'sheets' && (
+                        <button
+                          onClick={() => { setShowMoreMenu(false); handleLoadSheets(); }}
+                          disabled={isLoading}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
+                          <span>Sync Sheets</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setShowMoreMenu(false); setShowBatchBroadcastModal(true); }}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <Radio className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Broadcast</span>
+                      </button>
+                      <button
+                        onClick={() => { setShowMoreMenu(false); setShowAdminAuditModal(true); }}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Audit Log</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Settings</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowMoreMenu(false); setShowGuideModal(true); }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Help</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => { setShowMoreMenu(false); setShowRoleMenu(true); }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Switch Role</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const prevUser = appUser;
+                        setShowMoreMenu(false);
+                        setAppUser(null);
+                        localStorage.removeItem('hteim_app_user');
+                        logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
+                      }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-
-             {/* More Dropdown */}
-             <div className="relative shrink-0 hidden md:block">
-               <button
-                 onClick={() => setShowMoreMenu(!showMoreMenu)}
-                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                   showMoreMenu
-                     ? 'bg-indigo-600 text-white border-indigo-500'
-                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                 }`}
-               >
-                 <MoreHorizontal className="w-3.5 h-3.5" />
-                 <span className="hidden sm:inline">More</span>
-                 <ChevronDown className={`w-3 h-3 transition-transform ${showMoreMenu ? 'rotate-180' : ''}`} />
-               </button>
-
-               {showMoreMenu && (
-                 <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 z-[70] space-y-3"
-                   style={{ boxShadow: 'var(--md-elev-3)' }}>
-                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                     <h4 className="text-xs font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                       <MoreHorizontal className="w-3.5 h-3.5 text-indigo-600" /> More Actions
-                     </h4>
-                     <button onClick={() => setShowMoreMenu(false)} className="md-icon-btn w-6 h-6">
-                       <X className="w-3.5 h-3.5" />
-                     </button>
-                   </div>
-
-                   <div className="space-y-1">
-                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Quick Access</p>
-                     <button
-                       onClick={() => { setShowMoreMenu(false); setShowPresentationModal(true); }}
-                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                     >
-                       <div className="flex items-center gap-2">
-                         <Play className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-                         <span className="text-slate-800 dark:text-slate-200 font-semibold">30s Demo Video</span>
-                       </div>
-                       <span className="md-badge bg-amber-100 text-amber-800 border border-amber-200 text-[9px]">PLAY</span>
-                     </button>
-                     <button
-                       onClick={() => { setShowMoreMenu(false); setShowCommandPalette(true); }}
-                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                     >
-                       <div className="flex items-center gap-2">
-                         <Search className="w-3.5 h-3.5 text-indigo-600" />
-                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Global Search</span>
-                       </div>
-                       <span className="text-[10px] text-indigo-600 font-semibold">⌘K</span>
-                     </button>
-                   </div>
-
-                   {appUser?.role === 'admin' && (
-                     <div className="space-y-1">
-                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Tools & Operations</p>
-                       <button
-                         onClick={() => { setShowMoreMenu(false); handlePushToCloud(); }}
-                         disabled={isCloudSyncing}
-                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                       >
-                         <div className="flex items-center gap-2">
-                           {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-indigo-600" />}
-                           <div>
-                             <p className="text-slate-800 dark:text-slate-200 font-semibold">Cloud Backup</p>
-                             {lastSyncedTime && <p className="text-[10px] text-slate-400 font-mono">{lastSyncedTime}</p>}
-                           </div>
-                         </div>
-                         <span className="text-[10px] text-indigo-600 font-semibold">Sync</span>
-                       </button>
-                       {dataSource === 'sheets' && (
-                         <button
-                           onClick={() => { setShowMoreMenu(false); handleLoadSheets(); }}
-                           disabled={isLoading}
-                           className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                         >
-                           <div className="flex items-center gap-2">
-                             <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isLoading ? 'animate-spin' : ''}`} />
-                             <span className="text-slate-800 dark:text-slate-200 font-semibold">Sync Google Sheets</span>
-                           </div>
-                           <span className="text-[10px] text-emerald-600 font-semibold">Sheets</span>
-                         </button>
-                       )}
-                       {records.length > 0 && (
-                         <div className="space-y-1">
-                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Exports</p>
-                           <div className="grid grid-cols-2 gap-1.5">
-                             <button
-                               onClick={() => { setShowMoreMenu(false); setShowReportModal(true); }}
-                               className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
-                             >
-                               <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                               <span className="text-slate-800 dark:text-slate-200">PDF Report</span>
-                             </button>
-                             <button
-                               onClick={() => { setShowMoreMenu(false); handleExportCSV(); }}
-                               className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2"
-                             >
-                               <Download className="w-3.5 h-3.5 text-slate-600" />
-                               <span className="text-slate-800 dark:text-slate-200">CSV Export</span>
-                             </button>
-                           </div>
-                         </div>
-                       )}
-                       <button
-                         onClick={() => { setShowMoreMenu(false); setShowBatchBroadcastModal(true); }}
-                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                       >
-                         <div className="flex items-center gap-2">
-                           <Radio className="w-3.5 h-3.5 text-indigo-600" />
-                           <span className="text-slate-800 dark:text-slate-200 font-semibold">Batch Broadcast</span>
-                         </div>
-                         <span className="text-[10px] text-indigo-600 font-semibold">Email & SMS</span>
-                       </button>
-                       <button
-                         onClick={() => { setShowMoreMenu(false); setShowAdminAuditModal(true); }}
-                         className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                       >
-                         <div className="flex items-center gap-2">
-                           <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                           <span className="text-slate-800 dark:text-slate-200 font-semibold">Admin Audit Tools</span>
-                         </div>
-                         <span className="text-[10px] text-amber-600 font-semibold">Admin</span>
-                       </button>
-                     </div>
-                   )}
-
-                   <div className="space-y-1">
-                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Preferences</p>
-                     <button
-                       onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
-                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                     >
-                       <div className="flex items-center gap-2">
-                         <Settings className="w-3.5 h-3.5 text-indigo-600" />
-                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Settings</span>
-                       </div>
-                     </button>
-                     <button
-                       onClick={() => { setShowMoreMenu(false); setShowGuideModal(true); }}
-                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                     >
-                       <div className="flex items-center gap-2">
-                         <HelpCircle className="w-3.5 h-3.5 text-indigo-600" />
-                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Help & Guide</span>
-                       </div>
-                     </button>
-                   </div>
-
-                   <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
-                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Account</p>
-                     <button
-                       onClick={() => setShowMoreMenu(false)}
-                       className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                         appUser?.role === 'admin'
-                           ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-300'
-                           : appUser?.role === 'teacher'
-                           ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-300'
-                           : 'bg-blue-50 border-blue-300 ring-1 ring-blue-300'
-                       }`}
-                     >
-                       <div className="flex items-center gap-2.5">
-                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
-                           appUser?.role === 'admin' ? 'bg-amber-100 text-amber-600' :
-                           appUser?.role === 'teacher' ? 'bg-indigo-100 text-indigo-600' :
-                           'bg-blue-100 text-blue-600'
-                         }`}>
-                           {appUser?.role === 'admin' && <Crown className="w-4 h-4" />}
-                           {appUser?.role === 'teacher' && <GraduationCap className="w-4 h-4" />}
-                           {appUser?.role === 'student' && <UserCheck className="w-4 h-4" />}
-                         </div>
-                         <div>
-                           <p className="text-xs font-semibold text-slate-800 dark:text-white">
-                             {appUser?.role === 'admin' ? 'Administrator' : appUser?.role === 'teacher' ? 'Faculty / Instructor' : 'Student Account'}
-                           </p>
-                           <p className="text-[10px] text-slate-400">{appUser?.name}</p>
-                         </div>
-                       </div>
-                       {showRoleMenu && <Check className="w-4 h-4 text-emerald-600" />}
-                     </button>
-                     <button
-                       onClick={() => { setShowMoreMenu(false); setShowRoleMenu(true); }}
-                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                     >
-                       <div className="flex items-center gap-2">
-                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                         <span className="text-slate-800 dark:text-slate-200 font-semibold">Switch Role</span>
-                       </div>
-                       <span className="text-[10px] text-indigo-600 font-semibold">Preview</span>
-                     </button>
-                     <button
-                       onClick={() => {
-                         const prevUser = appUser;
-                         setShowMoreMenu(false);
-                         setAppUser(null);
-                         localStorage.removeItem('hteim_app_user');
-                         logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
-                       }}
-                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs font-medium transition-all cursor-pointer flex items-center justify-between"
-                     >
-                       <div className="flex items-center gap-2">
-                         <LogOut className="w-3.5 h-3.5 text-red-600" />
-                         <span className="text-red-700 dark:text-red-400 font-semibold">Logout</span>
-                       </div>
-                     </button>
-                   </div>
-                 </div>
-               )}
-             </div>
 
             {/* Profile Avatar */}
             <button
               onClick={() => setShowLoginModal(true)}
-              className="flex items-center gap-2 p-1 pr-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 p-1 pr-2 rounded-full transition-colors cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label={appUser ? `Account: ${appUser.name}` : 'Log in'}
               title="Account"
             >
               <div className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${
-                appUser?.role === 'admin' ? 'bg-amber-500 text-white' :
-                appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' :
-                'bg-blue-600 text-white'
+                appUser?.role === 'admin' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' :
+                appUser?.role === 'teacher' ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900' :
+                'bg-slate-500 dark:bg-slate-400 text-white'
               }`}>
                 {appUser ? appUser.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
               </div>
-              <span className="text-xs font-medium text-slate-700 dark:text-slate-200 hidden xl:block">
+              <span className="text-xs font-medium hidden xl:block">
                 {appUser ? appUser.name.split(' ')[0] : 'Guest'}
               </span>
             </button>
@@ -3377,224 +3187,62 @@ create policy "Allow public update" on app_states for update using (true) with c
       </header>
 
       {/* Mobile Navigation Bar */}
-      <nav aria-label="Mobile portal navigation" className="md:hidden bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl px-3.5 py-2 mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600">
-            {activeErpTab === 'home' && <Sparkles className="w-4 h-4" />}
-            {activeErpTab === 'attendance' && <UserCheck className="w-4 h-4" />}
-            {activeErpTab === 'students' && <GraduationCap className="w-4 h-4" />}
-            {activeErpTab === 'courses' && <BookOpen className="w-4 h-4" />}
-            {activeErpTab === 'exams' && <Award className="w-4 h-4" />}
-            {activeErpTab === 'schedule' && <Calendar className="w-4 h-4" />}
-            {activeErpTab === 'library' && <Bookmark className="w-4 h-4" />}
-            {activeErpTab === 'payments' && <DollarSign className="w-4 h-4" />}
-            {activeErpTab === 'messages' && <MessageSquare className="w-4 h-4" />}
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-800 dark:text-white">
-              {activeErpTab === 'home' && 'Home'}
-              {activeErpTab === 'attendance' && 'Attendance'}
-              {activeErpTab === 'students' && 'Students'}
-              {activeErpTab === 'courses' && 'Courses'}
-              {activeErpTab === 'exams' && 'Exams'}
-              {activeErpTab === 'schedule' && 'Schedule'}
-              {activeErpTab === 'library' && 'Library'}
-              {activeErpTab === 'payments' && 'Payments'}
-              {activeErpTab === 'messages' && 'Messages'}
-            </p>
-            <p className="text-[10px] text-slate-400">HTEIM Portal</p>
-          </div>
+      <nav aria-label="Mobile portal navigation" className="md:hidden bg-transparent border-0 px-1 py-1.5 mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white capitalize">{activeErpTab}</p>
         </div>
         <button
           type="button"
           onClick={() => setShowMobileMoreMenu(true)}
-          className="md-btn-tonal text-xs px-3 py-1.5 flex items-center gap-1.5"
+          className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           aria-label="Open more portal sections"
         >
           <Menu className="w-3.5 h-3.5" />
-          <span>Menu</span>
         </button>
       </nav>
 
-      {/* MD3 Desktop Navigation Bar */}
+      {/* Desktop Navigation */}
       <nav aria-label="Primary portal navigation" className="hidden md:block relative z-40 mb-4">
-        {/* Horizontal Navigation Bar */}
-        <div 
-          className="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-1.5 shadow-sm backdrop-blur-md flex items-center justify-between gap-1"
-          style={{ boxShadow: 'var(--md-elev-1)' }}
-        >
-          {/* Direct Tab Options */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[85%] py-0.5">
-            {[
-              { tab: 'home',       label: 'Home',             Icon: Sparkles },
-              { tab: 'attendance', label: 'Attendance',        Icon: UserCheck },
-              { tab: 'students',   label: 'Students',          Icon: GraduationCap, adminOnly: true },
-              { tab: 'courses',    label: 'Courses',           Icon: BookOpen },
-              { tab: 'exams',      label: 'Exams',             Icon: Award },
-              { tab: 'schedule',   label: 'Schedule',          Icon: Calendar },
-              { tab: 'library',    label: 'Library',           Icon: Bookmark },
-              { tab: 'payments',   label: appUser?.role === 'student' ? 'Payments' : 'Payments', Icon: DollarSign, paymentOnly: true },
-              { tab: 'messages',   label: 'Messages',          Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
-            ].filter(item => {
-              if ((item as any).adminOnly && appUser?.role === 'student') return false;
-              if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
-              return true;
-            }).map(({ tab, label, Icon, badgeAlert, badgeCount }: any) => {
-              const isActive = activeErpTab === tab;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => {
-                    handleNavigate(tab as TabType);
-                  }}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 btn-enhanced cursor-pointer whitespace-nowrap shrink-0 ${
-                    isActive
-                      ? 'md-nav-pill shadow-sm'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--md-primary)]' : 'text-slate-400 dark:text-slate-500'}`} />
-                  <span>{label}</span>
-                  {badgeAlert && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                      isActive ? 'bg-white text-indigo-700' : 'bg-red-500 text-white animate-pulse'
-                    }`}>
-                      {badgeCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Quick All Modules Trigger Button */}
-          <button
-            type="button"
-            onClick={() => setIsNavOpen(!isNavOpen)}
-            aria-expanded={isNavOpen}
-            aria-controls="portal-modules-menu"
-            aria-label="Toggle portal modules"
-            className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border shrink-0 ${
-              isNavOpen
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            <Menu className="w-4 h-4" />
-            <span>Modules</span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isNavOpen ? 'rotate-180' : ''}`} />
-          </button>
+        <div className="flex items-center gap-0.5 p-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl w-fit">
+          {[
+            { tab: 'home', label: 'Home', Icon: Sparkles },
+            { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
+            { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
+            { tab: 'courses', label: 'Courses', Icon: BookOpen },
+            { tab: 'exams', label: 'Exams', Icon: Award },
+            { tab: 'schedule', label: 'Schedule', Icon: Calendar },
+            { tab: 'library', label: 'Library', Icon: Bookmark },
+            { tab: 'payments', label: 'Payments', Icon: DollarSign, paymentOnly: true },
+            { tab: 'messages', label: 'Messages', Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
+          ].filter(item => {
+            if ((item as any).adminOnly && appUser?.role === 'student') return false;
+            if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
+            return true;
+          }).map(({ tab, label, Icon, badgeAlert, badgeCount }: any) => {
+            const isActive = activeErpTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => handleNavigate(tab as TabType)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                <span className="hidden lg:inline">{label}</span>
+                {badgeAlert && isActive && (
+                  <span className="text-[10px] min-w-4 h-4 px-1 rounded-full font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center">
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-
-        {/* Click-Away Backdrop Overlay when Drawer is open */}
-        {isNavOpen && (
-          <div
-            onClick={() => setIsNavOpen(false)}
-            className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-2xs animate-fadeIn"
-          />
-        )}
-
-        {/* Explicit Click Drawer / Dropdown */}
-        {isNavOpen && (
-          <div
-            id="portal-modules-menu"
-            className="absolute top-full right-0 mt-2 w-80 max-w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 z-50 space-y-2 shadow-2xl animate-scaleUp origin-top-right"
-            style={{ boxShadow: 'var(--md-elev-3)' }}
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Portal Modules Overview
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsNavOpen(false)}
-                className="text-xs text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
-              {[
-                { tab: 'home',       label: 'Home Dashboard',   Icon: Sparkles,      badge: 'Main' },
-                { tab: 'attendance', label: 'Attendance System',Icon: UserCheck,     badge: `${uniqueStudents.length} Students` },
-                { tab: 'students',   label: 'Students Directory',Icon: GraduationCap, badge: `${uniqueStudents.length} Profiles`, adminOnly: true },
-                { tab: 'courses',    label: 'Courses & Modules', Icon: BookOpen,      badge: '6 Modules' },
-                { tab: 'exams',      label: 'Exams & Grades',    Icon: Award,         badge: `${uniqueStudents.filter(s => s.avgScore !== null).length} Records` },
-                { tab: 'schedule',   label: 'Class Schedule',    Icon: Calendar,      badge: `${classDays.length} Days` },
-                { tab: 'library',    label: 'Library & Media',   Icon: Bookmark,      badge: '6 Files' },
-                { tab: 'payments',   label: appUser?.role === 'student' ? 'My Payments' : 'Tuition & Billing', Icon: DollarSign, badge: appUser?.role === 'student' ? 'Statement' : 'Admin', paymentOnly: true },
-                { tab: 'messages',   label: 'Direct Messaging',  Icon: MessageSquare, badge: unreadMessagesCount > 0 ? `${unreadMessagesCount} New` : 'Direct', badgeAlert: unreadMessagesCount > 0 },
-              ].filter(item => {
-                if ((item as any).adminOnly && appUser?.role === 'student') return false;
-                if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
-                return true;
-              }).map(({ tab, label, Icon, badge, badgeAlert }: any) => {
-                const isActive = activeErpTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => {
-                      handleNavigate(tab as TabType);
-                    }}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                      <span>{label}</span>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : badgeAlert
-                        ? 'bg-red-500 text-white animate-pulse'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                    }`}>
-                      {badge}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Session footer */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                  appUser?.role === 'admin' ? 'bg-amber-500 text-white' :
-                  appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'
-                }`}>
-                  {appUser ? appUser.name.charAt(0).toUpperCase() : '?'}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{appUser ? appUser.name : 'Guest'}</p>
-                  <p className="text-[10px] text-slate-400 capitalize">{appUser?.role || 'guest'}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const prevUser = appUser;
-                  setIsNavOpen(false);
-                  setAppUser(null);
-                  localStorage.removeItem('hteim_app_user');
-                  logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" /> Logout
-              </button>
-            </div>
-          </div>
-        )}
       </nav>
 
       {/* Main Workspace */}
@@ -6596,25 +6244,25 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               </div>
 
               {/* Mobile Quick Modules Section */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div>
-                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Portal Academic Modules</p>
+                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Modules</p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {
                         setActiveErpTab('library');
                         setShowMobileMoreMenu(false);
                       }}
-                      className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                      className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
                         activeErpTab === 'library'
-                          ? 'bg-indigo-600 border-indigo-400 text-white font-bold'
-                          : 'bg-slate-950/60 border-slate-800 text-slate-200'
+                          ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
                       }`}
                     >
-                      <Bookmark className="w-4 h-4 text-teal-400" />
+                      <Bookmark className="w-4 h-4" />
                       <div>
-                        <p className="text-xs font-bold">Library & Files</p>
-                        <p className="text-[9px] text-slate-400">PDFs & Audio</p>
+                        <p className="text-xs font-semibold">Library</p>
+                        <p className="text-[9px] text-slate-400">Files & Media</p>
                       </div>
                     </button>
 
@@ -6624,16 +6272,16 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           setActiveErpTab('payments');
                           setShowMobileMoreMenu(false);
                         }}
-                        className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                        className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
                           activeErpTab === 'payments'
-                            ? 'bg-indigo-600 border-indigo-400 text-white font-bold'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-200'
+                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
                         }`}
                       >
-                        <DollarSign className="w-4 h-4 text-emerald-400" />
+                        <DollarSign className="w-4 h-4" />
                         <div>
-                          <p className="text-xs font-bold">Payments</p>
-                          <p className="text-[9px] text-slate-400">Tuition Statement</p>
+                          <p className="text-xs font-semibold">Payments</p>
+                          <p className="text-[9px] text-slate-400">Tuition</p>
                         </div>
                       </button>
                     )}
@@ -6644,15 +6292,15 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           setActiveErpTab('students');
                           setShowMobileMoreMenu(false);
                         }}
-                        className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                        className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
                           activeErpTab === 'students'
-                            ? 'bg-indigo-600 border-indigo-400 text-white font-bold'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-200'
+                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
                         }`}
                       >
-                        <GraduationCap className="w-4 h-4 text-indigo-400" />
+                        <GraduationCap className="w-4 h-4" />
                         <div>
-                          <p className="text-xs font-bold">Students Roster</p>
+                          <p className="text-xs font-semibold">Students</p>
                           <p className="text-[9px] text-slate-400">{uniqueStudents.length} Enrolled</p>
                         </div>
                       </button>
@@ -6663,27 +6311,25 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         setActiveErpTab('messages');
                         setShowMobileMoreMenu(false);
                       }}
-                      className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all col-span-2 ${
+                      className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all col-span-2 ${
                         activeErpTab === 'messages'
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400 text-white font-bold shadow-md'
-                          : 'bg-slate-950/60 border-slate-800 text-slate-200 hover:border-indigo-500/50'
+                          ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
-                          <MessageSquare className="w-4 h-4" />
-                        </div>
+                        <MessageSquare className="w-4 h-4" />
                         <div>
-                          <p className="text-xs font-bold text-white">Messaging & Support Inbox</p>
-                          <p className="text-[9px] text-slate-400">Direct Messages to Teacher & Admin</p>
+                          <p className="text-xs font-semibold">Messaging</p>
+                          <p className="text-[9px] text-slate-400">Direct Messages</p>
                         </div>
                       </div>
                       {unreadMessagesCount > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold">
                           {unreadMessagesCount} New
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[9px] font-mono">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-mono">
                           Open
                         </span>
                       )}
@@ -6691,9 +6337,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   </div>
                 </div>
 
-                {/* Mobile Quick Actions for Teachers / Students */}
+                {/* Mobile Quick Actions */}
                 <div>
-                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Mobile Class Operations</p>
+                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Quick Actions</p>
                   <div className="space-y-1.5">
                     {(appUser?.role as string) !== 'student' && (
                       <button
@@ -6704,13 +6350,12 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                             setLiveCheckinDayId(classDays[classDays.length - 1].id);
                           }
                         }}
-                        className="w-full p-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs rounded-xl flex items-center justify-between shadow-sm cursor-pointer"
+                        className="w-full p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
                       >
                         <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-slate-950" />
-                          <span>Launch Mobile Live Check-In</span>
+                          <Smartphone className="w-4 h-4" />
+                          <span>Live Check-In</span>
                         </div>
-                        <span className="px-2 py-0.5 bg-slate-950 text-amber-300 rounded text-[9px] font-mono">1-TAP</span>
                       </button>
                     )}
 
@@ -6719,13 +6364,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         setShowMobileMoreMenu(false);
                         setShowCommandPalette(true);
                       }}
-                      className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
-                        <Search className="w-4 h-4 text-amber-400" />
-                        <span>Search & Jump (Cmd+K)</span>
+                        <Search className="w-4 h-4 text-slate-400" />
+                        <span>Search</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono">Quick Search</span>
+                      <span className="text-[10px] text-slate-400 font-mono">⌘K</span>
                     </button>
 
                     <button
@@ -6733,58 +6378,30 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         setShowMobileMoreMenu(false);
                         setShowSettingsModal(true);
                       }}
-                      className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
-                        <Settings className="w-4 h-4 text-indigo-400" />
-                        <span>Display & Portal Settings</span>
+                        <Settings className="w-4 h-4 text-slate-400" />
+                        <span>Settings</span>
                       </div>
-                      <span className="text-[10px] text-indigo-300 font-mono">Theme & Fonts</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowMobileMoreMenu(false);
-                        setShowPresentationModal(true);
-                      }}
-                      className="w-full p-2.5 bg-gradient-to-r from-indigo-950 to-purple-950 border border-indigo-500/40 hover:bg-indigo-900 text-white text-xs font-black rounded-xl flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
-                        <span>30s Student Presentation Demo</span>
-                      </div>
-                      <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black font-mono">VIDEO</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowMobileMoreMenu(false);
-                        setShowMobileDownloadModal(true);
-                      }}
-                      className="w-full p-2.5 bg-slate-950/80 border border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="w-4 h-4 text-emerald-400" />
-                        <span>Install PWA / Download APK</span>
-                      </div>
-                      <span className="text-[10px] text-emerald-400 font-mono">Offline Ready</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Role & Account Section */}
-                <div className="pt-2 border-t border-slate-800">
-                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Active User & Role</p>
-                  <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between">
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Account</p>
+                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
-                        appUser?.role === 'admin' ? 'bg-amber-500 text-slate-950' :
-                        appUser?.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                        appUser?.role === 'admin' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' :
+                        appUser?.role === 'teacher' ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900' :
+                        'bg-slate-500 dark:bg-slate-400 text-white'
                       }`}>
                         {appUser ? appUser.name.charAt(0).toUpperCase() : 'G'}
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-white">{appUser ? appUser.name : 'Guest User'}</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-white">{appUser ? appUser.name : 'Guest User'}</p>
                         <p className="text-[10px] text-slate-400 uppercase font-mono">{appUser?.role || 'Guest'}</p>
                       </div>
                     </div>
@@ -6794,7 +6411,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         setShowMobileMoreMenu(false);
                         setShowRoleMenu(true);
                       }}
-                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all"
+                      className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors"
                     >
                       Switch Role
                     </button>
@@ -6822,40 +6439,29 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         onNavigateTab={(tab) => setActiveErpTab(tab)}
       />
 
-      {/* Portal Global Footer */}
-      <footer className="mt-8 mb-16 md:mb-4 px-4 py-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-2.5">
-          <img
-            src={hteimLogoAsset}
-            alt="HTEIM Logo"
-            className="w-6 h-6 object-contain rounded-lg border border-amber-400 bg-white p-0.5"
-            referrerPolicy="no-referrer"
-          />
-          <div>
-            <p className="font-extrabold text-slate-800 dark:text-slate-200 font-syne">HTEIM School of Ministry</p>
-            <p className="text-[10px] text-slate-400 font-medium">Heaven Touching Earth Int'l Ministries • Academic Portal v2.4</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[11px] font-medium italic font-serif text-slate-500">
-          <span>"Bringing Heaven to Earth, Taking People to Heaven"</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 rounded-full text-[10px] font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            System Operational
-          </span>
-          {appUser?.role === 'admin' && (
-            <button
-              onClick={() => setShowDiagnosticModal(true)}
-              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-            >
-              Diagnostics
-            </button>
-          )}
-        </div>
+      {/* Portal Footer */}
+      <footer className="mt-6 mb-20 md:mb-6 px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
+        <p>HTEIM School of Ministry • Academic Portal</p>
+        <p>Heaven Touching Earth Int'l Ministries</p>
       </footer>
+
+      {/* Quick Message */}
+      <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50">
+        <button
+          type="button"
+          onClick={() => handleNavigate('messages')}
+          className="px-4 py-3 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-sm border border-slate-200 dark:border-slate-300 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
+          title="Message Teacher or Admin"
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span className="hidden sm:inline">Message</span>
+          {unreadMessagesCount > 0 && (
+            <span className="min-w-4 h-4 px-1 rounded-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-[9px] font-bold flex items-center justify-center border border-slate-200 dark:border-slate-300">
+              {unreadMessagesCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Floating Quick Messages Launcher (Bottom Right) */}
       <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50">
@@ -6878,35 +6484,27 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         </button>
       </div>
 
-      {/* MD3 Mobile Bottom Navigation Bar */}
-      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-50 mobile-nav-glass border-t border-slate-200/80 dark:border-slate-800 shadow-2xl flex items-center justify-around md:hidden pb-safe"
-        style={{ boxShadow: '0 -4px 20px rgba(0,0,0,.12)' }}>
+      {/* Mobile Bottom Navigation */}
+      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-700 backdrop-blur-lg">
         {[
-          { tab: 'home',       Icon: Sparkles,      label: 'Home' },
-          { tab: 'attendance', Icon: UserCheck,     label: 'Attendance', dot: uniqueStudents.length > 0 },
-          { tab: 'courses',    Icon: BookOpen,      label: 'Courses' },
+          { tab: 'home', Icon: Sparkles, label: 'Home' },
+          { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
+          { tab: 'courses', Icon: BookOpen, label: 'Courses' },
           ...(appUser?.role !== 'student' ? [{ tab: 'students', Icon: GraduationCap, label: 'Students' }] : []),
-          { tab: 'exams',      Icon: Award,         label: 'Exams' },
+          { tab: 'exams', Icon: Award, label: 'Exams' },
           ...(appUser?.role === 'student' ? [{ tab: 'schedule', Icon: Calendar, label: 'Schedule' }] : []),
-        ].map(({ tab, Icon, label, dot }: any) => (
+        ].map(({ tab, Icon, label }: any) => (
           <button
             key={tab}
             type="button"
             onClick={() => handleNavigate(tab as TabType)}
             aria-label={`Open ${label}`}
             aria-current={activeErpTab === tab ? 'page' : undefined}
-            className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center relative cursor-pointer active:scale-95 transition-all touch-min-44"
+            className="flex-1 min-w-0 py-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
           >
-            <div className={`relative flex items-center justify-center w-12 h-7 rounded-full transition-all ${
-              activeErpTab === tab ? 'md-nav-pill bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800' : 'text-slate-400 dark:text-slate-500'
-            }`}>
-              <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'}`} />
-              {dot && activeErpTab !== tab && (
-                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900" />
-              )}
-            </div>
-            <span className={`text-[10px] mt-1 font-bold leading-none truncate max-w-full transition-all ${
-              activeErpTab === tab ? 'text-indigo-700 dark:text-indigo-300 font-extrabold' : 'text-slate-400 dark:text-slate-500'
+            <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+            <span className={`text-[10px] font-medium leading-none ${
+              activeErpTab === tab ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-slate-500'
             }`}>{label}</span>
           </button>
         ))}
@@ -6916,21 +6514,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           type="button"
           onClick={() => setShowMobileMoreMenu(true)}
           aria-label="Open more portal sections"
-          aria-expanded={showMobileMoreMenu}
-          className="flex-1 min-w-0 min-h-[56px] py-1.5 px-1 flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-all touch-min-44"
+          className="flex-1 min-w-0 py-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
         >
-          <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${
-            showMobileMoreMenu || ['library','payments','messages','students',...(appUser?.role === 'student' ? ['schedule'] : [])].includes(activeErpTab)
-              ? 'md-nav-pill bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800' : 'text-slate-400 dark:text-slate-500'
-          }`}>
-            <Menu className={`w-5 h-5 ${
-              showMobileMoreMenu || ['library','payments','messages','students',...(appUser?.role === 'student' ? ['schedule'] : [])].includes(activeErpTab)
-                ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
-            }`} />
-          </div>
-          <span className={`text-[10px] mt-1 font-bold leading-none ${
-            showMobileMoreMenu || ['library','payments','messages','students',...(appUser?.role === 'student' ? ['schedule'] : [])].includes(activeErpTab)
-              ? 'text-indigo-700 dark:text-indigo-300 font-extrabold' : 'text-slate-400 dark:text-slate-500'
+          <Menu className={`w-5 h-5 ${
+            showMobileMoreMenu ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'
+          }`} />
+          <span className={`text-[10px] font-medium leading-none ${
+            showMobileMoreMenu ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-slate-500'
           }`}>More</span>
         </button>
       </nav>
