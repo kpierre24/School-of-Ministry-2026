@@ -424,9 +424,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     const newShareCode = `qz_${Math.random().toString(36).substring(2, 8)}`;
     const newQuizId = `quiz_${Date.now()}`;
     const duplicatedQuiz: QuizAssignment = {
-      ...quizData,
+      ...quiz,
       id: newQuizId,
-      title: `${quizData.title} (Copy)`,
+      title: `${quiz.title} (Copy)`,
       shareCode: newShareCode,
       createdAt: new Date().toISOString().split('T')[0]
     };
@@ -451,7 +451,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       role: userRole === 'admin' ? 'admin' : 'teacher',
       actionCategory: 'Quiz Management',
       actionTitle: 'Class Day Quiz Duplicated',
-      details: `Duplicated "${quizData.title}" to create "${newAsg.title}". New Share Code: ${newShareCode}`
+      details: `Duplicated "${quiz.title}" to create "${newAsg.title}". New Share Code: ${newShareCode}`
     });
   };
 
@@ -2049,7 +2049,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         {/* Collation Matrix View */}
                         {isTeacherOrAdmin && (
                           <button
-                            onClick={() => setActiveCollatingQuiz((asg.quizData || asg) as QuizAssignment)}
+                            onClick={() => setActiveCollatingQuiz(asg)}
                             className="py-1.5 px-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-xl transition-all cursor-pointer flex items-center gap-1"
                             title="View Collated Answers & Item Analysis"
                           >
