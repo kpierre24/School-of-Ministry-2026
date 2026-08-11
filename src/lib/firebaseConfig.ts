@@ -1,4 +1,11 @@
-import defaultConfig from '../../firebase-applet-config.json';
+// Optional local fallback config. The file is git-ignored and may not exist in all
+// environments; when present it is merged under VITE_FIREBASE_* env vars.
+const jsonModules = import.meta.glob('../../firebase-applet-config.json', {
+  eager: true,
+  import: 'default',
+}) as Record<string, any>;
+
+const defaultConfig: any = Object.values(jsonModules)[0] ?? {};
 
 export function getFirebaseConfig() {
   const env = (import.meta.env || {}) as Record<string, string | undefined>;
@@ -30,3 +37,4 @@ export function getFirebaseConfig() {
     recaptchaSiteKey,
   };
 }
+
