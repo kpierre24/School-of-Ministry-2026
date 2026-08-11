@@ -117,6 +117,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setPasswordError(null);
   }, [activeTab]);
 
+  const isDashboardLayout = currentUser === null;
+  const dialogRef = useAccessibleModal(!isDashboardLayout && (isOpen ?? true), onClose || (() => {}));
+
   if (!isOpen) return null;
 
   // Quick tab switch handler
@@ -192,7 +195,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const currentScripture = MINISTRY_SCRIPTURES[scriptureIndex];
-  const isDashboardLayout = currentUser === null;
 
   if (isDashboardLayout) {
     return (
@@ -609,8 +611,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // ELSE WORKFLOW:
   // Render the original compact Modal overlay (when the user is ALREADY logged in and clicked "Switch User role")
-  const dialogRef = useAccessibleModal(!isDashboardLayout && (isOpen ?? true), onClose || (() => {}));
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn modal-material-scrim">
       <div 

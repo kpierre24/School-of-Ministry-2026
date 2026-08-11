@@ -82,6 +82,8 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
     }
   ]);
 
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   // Filter students by target group
@@ -166,8 +168,6 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
   const insertVariable = (variableStr: string) => {
     setMessage(prev => prev + ` ${variableStr} `);
   };
-
-  const dialogRef = useAccessibleModal(isOpen, onClose);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 modal-material-scrim">

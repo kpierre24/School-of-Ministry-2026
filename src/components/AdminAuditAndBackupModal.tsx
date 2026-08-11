@@ -144,6 +144,8 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
     });
   }, [logs, searchQuery, selectedCategory, selectedRole]);
 
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   if (currentUserRole === 'student') {
@@ -330,8 +332,6 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
     setOpStatusMessage(`Demonstration mask ${newVal ? 'ENABLED' : 'DISABLED'}. Personal student data is now masked across the ERP.`);
     setTimeout(() => setOpStatusMessage(null), 4000);
   };
-
-  const dialogRef = useAccessibleModal(true, onClose);
 
   if (currentUserRole !== 'admin') {
     return (

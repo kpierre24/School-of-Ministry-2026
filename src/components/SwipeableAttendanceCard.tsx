@@ -234,15 +234,71 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
           </div>
         </div>
 
-        {/* Quick Swipe Banner Info if Instructor */}
-        {appRole !== 'student' && (
-          <div className="flex items-center justify-between text-[8px] sm:text-[9px] text-slate-400 px-1.5 bg-slate-50 dark:bg-slate-800/40 py-1 rounded-lg gap-1 overflow-hidden">
-            <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0">
-              <span>👉 Right: Present</span>
-            </span>
-            <span className="flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap shrink-0">
-              <span>Left: Excused/Absent 👈</span>
-            </span>
+        {/* Quick Swipe & 1-Tap Quick Status Buttons for Active Session */}
+        {appRole !== 'student' && targetDayId && (
+          <div className="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/70 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
+              <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 truncate max-w-[90px] sm:max-w-[120px]" title={targetDay?.name}>
+                {targetDay?.name || 'Active Session'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleAttendance(student.name, targetDayId, 'present');
+                  if (navigator.vibrate) navigator.vibrate(25);
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all min-h-[32px] cursor-pointer active:scale-95 touch-min-32 ${
+                  isPresent 
+                    ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' 
+                    : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+                }`}
+                title="Mark Present"
+              >
+                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                <span>Present</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleAttendance(student.name, targetDayId, 'excused');
+                  if (navigator.vibrate) navigator.vibrate(25);
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all min-h-[32px] cursor-pointer active:scale-95 touch-min-32 ${
+                  isExcused 
+                    ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-300' 
+                    : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                }`}
+                title="Mark Excused"
+              >
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>Excused</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleAttendance(student.name, targetDayId, 'absent');
+                  if (navigator.vibrate) navigator.vibrate(25);
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all min-h-[32px] cursor-pointer active:scale-95 touch-min-32 ${
+                  !isPresent && !isExcused && currentAttendance?.present === false
+                    ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400' 
+                    : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/40'
+                }`}
+                title="Mark Absent"
+              >
+                <XCircle className="w-3 h-3 shrink-0" />
+                <span>Absent</span>
+              </button>
+            </div>
           </div>
         )}
 

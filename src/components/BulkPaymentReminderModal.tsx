@@ -197,6 +197,8 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
     }
   }, [templateType]);
 
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   // Selected payment objects
@@ -332,8 +334,6 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
     }
     setEditingPhoneId(null);
   };
-
-  const dialogRef = useAccessibleModal(true, onClose);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 modal-material-scrim">

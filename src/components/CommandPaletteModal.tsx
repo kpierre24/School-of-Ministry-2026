@@ -116,6 +116,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     }
   }, [isOpen, onClose]);
 
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   if (!isOpen) return null;
 
   // Build searchable list
@@ -390,8 +392,6 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
   // Group filtered results by Category
   const categories = ['Actions & Views', 'Students', 'Courses', 'Exams', 'Payments'] as const;
-
-  const dialogRef = useAccessibleModal(isOpen, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn modal-material-scrim">

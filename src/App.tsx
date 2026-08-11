@@ -105,12 +105,14 @@ import { generateAutomatedNotifications, filterNotificationsForUser } from './li
 import { LoginModal } from './components/LoginModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
-import { INITIAL_COURSES } from './components/CoursesTab';
-import { INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
-import { INITIAL_SCHEDULE } from './components/ScheduleTab';
-import { INITIAL_RESOURCES } from './components/LibraryTab';
-import { INITIAL_PAYMENTS } from './components/PaymentTab';
-import { INITIAL_MESSAGES } from './components/MessagesTab';
+import { HomeTab } from './components/HomeTab';
+import { StudentsTab } from './components/StudentsTab';
+import { CoursesTab, INITIAL_COURSES } from './components/CoursesTab';
+import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
+import { ScheduleTab, INITIAL_SCHEDULE } from './components/ScheduleTab';
+import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
+import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
+import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
@@ -326,14 +328,14 @@ const parseScorePercentage = (scoreStr?: any): number | null => {
   return null;
 };
 
-const LazyHomeTab = React.lazy(() => import('./components/HomeTab').then(m => ({ default: m.HomeTab })));
-const LazyStudentsTab = React.lazy(() => import('./components/StudentsTab').then(m => ({ default: m.StudentsTab })));
-const LazyCoursesTab = React.lazy(() => import('./components/CoursesTab').then(m => ({ default: m.CoursesTab })));
-const LazyExamsTab = React.lazy(() => import('./components/ExamsTab').then(m => ({ default: m.ExamsTab })));
-const LazyScheduleTab = React.lazy(() => import('./components/ScheduleTab').then(m => ({ default: m.ScheduleTab })));
-const LazyLibraryTab = React.lazy(() => import('./components/LibraryTab').then(m => ({ default: m.LibraryTab })));
-const LazyPaymentTab = React.lazy(() => import('./components/PaymentTab').then(m => ({ default: m.PaymentTab })));
-const LazyMessagesTab = React.lazy(() => import('./components/MessagesTab').then(m => ({ default: m.MessagesTab })));
+const LazyHomeTab = HomeTab;
+const LazyStudentsTab = StudentsTab;
+const LazyCoursesTab = CoursesTab;
+const LazyExamsTab = ExamsTab;
+const LazyScheduleTab = ScheduleTab;
+const LazyLibraryTab = LibraryTab;
+const LazyPaymentTab = PaymentTab;
+const LazyMessagesTab = MessagesTab;
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -1006,6 +1008,7 @@ export default function App() {
 
   // View Mode: Matrix (Grid) vs Cards
   const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
+  const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>('cards');
 
   // Density Mode: Comfortable vs Dense
   const [densityMode, setDensityMode] = useState<'comfortable' | 'dense'>(() => {
@@ -3009,11 +3012,11 @@ create policy "Allow public update" on app_states for update using (true) with c
             <img
               src={hteimLogoAsset}
               alt="HTEIM Logo"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-70 transition-opacity"
+              className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
               referrerPolicy="no-referrer"
             />
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-semibold tracking-tight text-slate-900 dark:text-white truncate max-w-[160px] sm:max-w-[240px]">
+            <div className="min-w-0 shrink">
+              <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[130px] xs:max-w-[180px] sm:max-w-[260px]">
                 HTEIM School of Ministry
               </h1>
             </div>
@@ -3200,20 +3203,7 @@ create policy "Allow public update" on app_states for update using (true) with c
         </div>
       </header>
 
-      {/* Mobile Navigation Bar */}
-      <nav aria-label="Mobile portal navigation" className="md:hidden bg-transparent border-0 px-1 py-1.5 mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white capitalize">{activeErpTab}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowMobileMoreMenu(true)}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          aria-label="Open more portal sections"
-        >
-          <Menu className="w-3.5 h-3.5" />
-        </button>
-      </nav>
+
 
       {/* Desktop Navigation */}
       <nav aria-label="Primary portal navigation" className="hidden md:block relative z-40 mb-4">
@@ -3944,42 +3934,215 @@ onRequestTranscript={(s) => {
                 <div className="flex-1 overflow-hidden flex flex-col min-h-0 relative">
                   
                   {/* Mobile Attendance Matrix Card Format (< 768px / md:hidden) */}
-                  <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
-                    {filteredAndSortedStudents.length > 0 ? (
-                      <AnimatePresence mode="popLayout">
-                        {filteredAndSortedStudents.map((student) => (
-                          <motion.div
-                            key={student.name}
-                            layout
-                            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                            transition={{
-                              layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
-                              opacity: { duration: 0.2 },
-                              scale: { duration: 0.2 },
-                              y: { duration: 0.2 }
+                  <div className="md:hidden flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
+                    {/* Mobile Active Check-in Session Quick Controller Bar */}
+                    {(appUser?.role as string) !== 'student' && effectiveClassDays.length > 0 && (
+                      <div className="sticky top-0 z-10 p-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-mono uppercase tracking-wider text-slate-400 font-bold">Active Roll Call Session</p>
+                              <select
+                                value={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
+                                onChange={(e) => setLiveCheckinDayId(e.target.value)}
+                                className="bg-transparent font-black text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer truncate max-w-[190px]"
+                              >
+                                {effectiveClassDays.map(d => (
+                                  <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                                    {d.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Mobile View Mode Switcher: Cards vs Rapid List */}
+                          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setMobileRollCallMode('cards')}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                                mobileRollCallMode === 'cards' 
+                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
+                                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              <LayoutGrid className="w-3 h-3" />
+                              <span>Cards</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMobileRollCallMode('rapid')}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                                mobileRollCallMode === 'rapid' 
+                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
+                                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              <Zap className="w-3 h-3 text-amber-500" />
+                              <span>Rapid</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Quick Batch Button for Active Session */}
+                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
+                            Tap P/E/A buttons to mark attendance.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const activeDay = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
+                              if (!activeDay) return;
+                              filteredAndSortedStudents.forEach(s => {
+                                const currentAtt = s.attendanceByDay[activeDay];
+                                if (!currentAtt || currentAtt.present === undefined) {
+                                  handleToggleStudentAttendance(s.name, activeDay, 'present');
+                                }
+                              });
+                              if (navigator.vibrate) navigator.vibrate([20, 50, 20]);
                             }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black shrink-0 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
                           >
-                            <SwipeableAttendanceCard
-                              student={student}
-                              effectiveClassDays={effectiveClassDays}
-                              activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
-                              studentPhotos={studentPhotos}
-                              studentNotes={studentNotes}
-                              excusedAbsences={excusedAbsences}
-                              isSelected={selectedStudentNames.includes(student.name)}
-                              satisfactoryThreshold={satisfactoryThreshold}
-                              atRiskThreshold={atRiskThreshold}
-                              studentBadges={getStudentBadges(student)}
-                              onToggleAttendance={handleToggleStudentAttendance}
-                              onSelectStudent={setSelectedStudent}
-                              onToggleSelectStudent={toggleSelectStudent}
-                              appRole={appUser?.role}
-                            />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Mark Remaining Present</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {filteredAndSortedStudents.length > 0 ? (
+                      mobileRollCallMode === 'cards' ? (
+                        <AnimatePresence mode="popLayout">
+                          {filteredAndSortedStudents.map((student) => (
+                            <motion.div
+                              key={student.name}
+                              layout
+                              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                              transition={{
+                                layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
+                                opacity: { duration: 0.2 },
+                                scale: { duration: 0.2 },
+                                y: { duration: 0.2 }
+                              }}
+                            >
+                              <SwipeableAttendanceCard
+                                student={student}
+                                effectiveClassDays={effectiveClassDays}
+                                activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
+                                studentPhotos={studentPhotos}
+                                studentNotes={studentNotes}
+                                excusedAbsences={excusedAbsences}
+                                isSelected={selectedStudentNames.includes(student.name)}
+                                satisfactoryThreshold={satisfactoryThreshold}
+                                atRiskThreshold={atRiskThreshold}
+                                studentBadges={getStudentBadges(student)}
+                                onToggleAttendance={handleToggleStudentAttendance}
+                                onSelectStudent={setSelectedStudent}
+                                onToggleSelectStudent={toggleSelectStudent}
+                                appRole={appUser?.role}
+                              />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      ) : (
+                        /* Rapid Roll Call Mode: Super Compact 1-Line Row per Student */
+                        <div className="space-y-2">
+                          {filteredAndSortedStudents.map((student) => {
+                            const studentKey = student.name.toLowerCase().trim();
+                            const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
+                            const activeDayId = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
+                            const att = student.attendanceByDay[activeDayId];
+                            const isPresent = att?.present === true;
+                            const isExcused = !isPresent && !!(excusedAbsences[studentKey] || {})[activeDayId];
+                            const isAbsent = !isPresent && !isExcused && att?.present === false;
+
+                            return (
+                              <div
+                                key={student.name}
+                                className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2"
+                              >
+                                <div 
+                                  onClick={() => setSelectedStudent(student)}
+                                  className="flex items-center gap-2 min-w-0 cursor-pointer group"
+                                >
+                                  {cardPhoto ? (
+                                    <img src={cardPhoto} alt={student.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs flex items-center justify-center shrink-0">
+                                      {student.name.charAt(0)}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <h4 className="text-xs font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">
+                                      {student.name}
+                                    </h4>
+                                    <p className="text-[9px] text-slate-400 font-mono">
+                                      {student.attended}/{effectiveClassDays.length} ({Math.round(student.rate)}%)
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {(appUser?.role as string) !== 'student' && activeDayId && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleToggleStudentAttendance(student.name, activeDayId, 'present');
+                                        if (navigator.vibrate) navigator.vibrate(20);
+                                      }}
+                                      className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-36 ${
+                                        isPresent 
+                                          ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                      }`}
+                                      title="Mark Present"
+                                    >
+                                      P
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleToggleStudentAttendance(student.name, activeDayId, 'excused');
+                                        if (navigator.vibrate) navigator.vibrate(20);
+                                      }}
+                                      className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-36 ${
+                                        isExcused 
+                                          ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-300' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                                      }`}
+                                      title="Mark Excused"
+                                    >
+                                      E
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleToggleStudentAttendance(student.name, activeDayId, 'absent');
+                                        if (navigator.vibrate) navigator.vibrate(20);
+                                      }}
+                                      className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-36 ${
+                                        isAbsent 
+                                          ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+                                      }`}
+                                      title="Mark Absent"
+                                    >
+                                      A
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )
                     ) : (
                       <EmptyState
                         title="No students found"
@@ -6490,39 +6653,24 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Portal Footer */}
-      <footer className="mt-6 mb-20 md:mb-6 px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
-        <p>HTEIM School of Ministry • Academic Portal</p>
-        <p>Heaven Touching Earth Int'l Ministries</p>
+      <footer id="portal-footer" className="mt-8 mb-20 md:mb-2 px-4 sm:px-6 py-3.5 border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative pr-16 sm:pr-48 md:pr-56 shrink-0 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+          <p className="font-medium">HTEIM School of Ministry • Academic Portal</p>
+        </div>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500">Heaven Touching Earth Int'l Ministries © 2026</p>
       </footer>
 
-      {/* Quick Message */}
-      <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50">
+      {/* Floating Quick Messages Launcher (Desktop only) */}
+      <div className="hidden md:flex fixed bottom-5 right-4 sm:right-6 z-30">
         <button
           type="button"
           onClick={() => handleNavigate('messages')}
-          className="px-4 py-3 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-sm border border-slate-200 dark:border-slate-300 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
-          title="Message Teacher or Admin"
-        >
-          <MessageSquare className="w-4 h-4" />
-          <span className="hidden sm:inline">Message</span>
-          {unreadMessagesCount > 0 && (
-            <span className="min-w-4 h-4 px-1 rounded-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-[9px] font-bold flex items-center justify-center border border-slate-200 dark:border-slate-300">
-              {unreadMessagesCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Floating Quick Messages Launcher (Bottom Right) */}
-      <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 z-50">
-        <button
-          type="button"
-          onClick={() => handleNavigate('messages')}
-          className="px-4 py-3 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs sm:text-sm shadow-lg flex items-center gap-2 border border-slate-700 dark:border-slate-300 cursor-pointer active:scale-95 transition-colors group touch-min-44"
+          className="px-4 py-2.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs sm:text-sm shadow-xl flex items-center gap-2 border border-slate-700/80 dark:border-slate-200/80 cursor-pointer active:scale-95 transition-all hover:shadow-2xl group touch-min-44"
           title="Direct Message Teacher or Admin"
         >
           <div className="relative">
-            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-6 transition-transform text-amber-300" />
+            <MessageSquare className="w-4 h-4 sm:w-4.5 sm:h-4.5 group-hover:rotate-6 transition-transform text-amber-300 dark:text-amber-600" />
             {unreadMessagesCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center border border-slate-950 animate-bounce">
                 {unreadMessagesCount}
@@ -6535,42 +6683,53 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-700 backdrop-blur-lg">
+      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/90 dark:border-slate-800/90 backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
         {[
           { tab: 'home', Icon: Sparkles, label: 'Home' },
           { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
           { tab: 'courses', Icon: BookOpen, label: 'Courses' },
-          ...(appUser?.role !== 'student' ? [{ tab: 'students', Icon: GraduationCap, label: 'Students' }] : []),
           { tab: 'exams', Icon: Award, label: 'Exams' },
-          ...(appUser?.role === 'student' ? [{ tab: 'schedule', Icon: Calendar, label: 'Schedule' }] : []),
-        ].map(({ tab, Icon, label }: any) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => handleNavigate(tab as TabType)}
-            aria-label={`Open ${label}`}
-            aria-current={activeErpTab === tab ? 'page' : undefined}
-            className="flex-1 min-w-0 py-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
-          >
-            <Icon className={`w-5 h-5 ${activeErpTab === tab ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-            <span className={`text-[10px] font-medium leading-none ${
-              activeErpTab === tab ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-slate-500'
-            }`}>{label}</span>
-          </button>
-        ))}
+        ].map(({ tab, Icon, label }: any) => {
+          const isActive = activeErpTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => handleNavigate(tab as TabType)}
+              aria-label={`Open ${label}`}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+                isActive
+                  ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <div className="relative">
+                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
+              </div>
+              <span className={`text-[10px] tracking-tight truncate max-w-full ${
+                isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+              }`}>{label}</span>
+            </button>
+          );
+        })}
 
         {/* More button */}
         <button
           type="button"
           onClick={() => setShowMobileMoreMenu(true)}
           aria-label="Open more portal sections"
-          className="flex-1 min-w-0 py-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
+          className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+            showMobileMoreMenu
+              ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
         >
-          <Menu className={`w-5 h-5 ${
-            showMobileMoreMenu ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'
+          <Menu className={`w-5 h-5 transition-transform ${
+            showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
           }`} />
-          <span className={`text-[10px] font-medium leading-none ${
-            showMobileMoreMenu ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-slate-500'
+          <span className={`text-[10px] tracking-tight ${
+            showMobileMoreMenu ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
           }`}>More</span>
         </button>
       </nav>
