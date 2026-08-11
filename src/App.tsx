@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import hteimLogoAsset from './assets/hteim_logo.png';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from 'firebase/auth';
@@ -105,15 +105,13 @@ import { generateAutomatedNotifications, filterNotificationsForUser } from './li
 import { LoginModal } from './components/LoginModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
-import { StudentsTab } from './components/StudentsTab';
-import { CoursesTab, INITIAL_COURSES } from './components/CoursesTab';
-import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
-import { ScheduleTab, INITIAL_SCHEDULE } from './components/ScheduleTab';
-import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
-import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
-import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
+import { INITIAL_COURSES } from './components/CoursesTab';
+import { INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
+import { INITIAL_SCHEDULE } from './components/ScheduleTab';
+import { INITIAL_RESOURCES } from './components/LibraryTab';
+import { INITIAL_PAYMENTS } from './components/PaymentTab';
+import { INITIAL_MESSAGES } from './components/MessagesTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
-import { HomeTab } from './components/HomeTab';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
 import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
@@ -122,6 +120,7 @@ import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal'
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { AppPresentationModal } from './components/AppPresentationModal';
 import { EmptyState } from './components/UXPrimitives';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
 import { trackUxEvent } from './lib/uxTelemetry';
@@ -326,6 +325,15 @@ const parseScorePercentage = (scoreStr?: any): number | null => {
 
   return null;
 };
+
+const LazyHomeTab = React.lazy(() => import('./components/HomeTab').then(m => ({ default: m.HomeTab })));
+const LazyStudentsTab = React.lazy(() => import('./components/StudentsTab').then(m => ({ default: m.StudentsTab })));
+const LazyCoursesTab = React.lazy(() => import('./components/CoursesTab').then(m => ({ default: m.CoursesTab })));
+const LazyExamsTab = React.lazy(() => import('./components/ExamsTab').then(m => ({ default: m.ExamsTab })));
+const LazyScheduleTab = React.lazy(() => import('./components/ScheduleTab').then(m => ({ default: m.ScheduleTab })));
+const LazyLibraryTab = React.lazy(() => import('./components/LibraryTab').then(m => ({ default: m.LibraryTab })));
+const LazyPaymentTab = React.lazy(() => import('./components/PaymentTab').then(m => ({ default: m.PaymentTab })));
+const LazyMessagesTab = React.lazy(() => import('./components/MessagesTab').then(m => ({ default: m.MessagesTab })));
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -1873,11 +1881,11 @@ export default function App() {
     }
   };
 
-  const handleLoadDemo = () => {
+  const handleLoadDemo = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = getDemoAttendance();
+      const data = await getDemoAttendance();
       if (data.length === 0) throw new Error("Demo data is empty");
       
       const headers = Object.keys(data[0]);
@@ -3263,7 +3271,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <HomeTab
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Home Tab">
+                  <LazyHomeTab
                 onNavigate={(tab) => setActiveErpTab(tab)}
                 appUser={appUser}
                 onOpenLogin={() => setShowLoginModal(true)}
@@ -3286,8 +3296,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                 onPushToCloud={handlePushToCloud}
                 userEmail={user?.email}
                 supabaseTableMissing={supabaseTableMissing}
-                onVerifySetup={handleVerifySupabase}
-              />
+                  onVerifySetup={handleVerifySupabase}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3301,7 +3313,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <StudentsTab
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Students Tab">
+                  <LazyStudentsTab
                 classDays={classDays}
                 students={uniqueStudents.map(s => ({
                   name: s.name,
@@ -3367,8 +3381,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                 onToggleAttendance={handleToggleStudentAttendance}
                 excusedAbsences={excusedAbsences}
                 appRole={appUser?.role}
-                onResetPassword={handleResetStudentPassword}
-              />
+                  onResetPassword={handleResetStudentPassword}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3381,11 +3397,15 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <CoursesTab 
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Courses Tab">
+                  <LazyCoursesTab
                 userRole={appUser?.role} 
                 courses={courses}
-                setCourses={setCourses}
-              />
+                  setCourses={setCourses}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3398,7 +3418,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <ExamsTab
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Exams Tab">
+                  <LazyExamsTab
                 students={uniqueStudents.map(s => {
                   const rawRec = records.find(r => r.name.toLowerCase().trim() === s.name.toLowerCase().trim() && r.score);
                   return {
@@ -3432,8 +3454,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                 isLoadingSheets={isLoading}
                 lastSyncedTime={lastSyncedTime}
                 recentSheets={recentSheets}
-                onRemoveRecentSheet={handleRemoveRecentSheet}
-              />
+                  onRemoveRecentSheet={handleRemoveRecentSheet}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3446,7 +3470,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <ScheduleTab
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Schedule Tab">
+                  <LazyScheduleTab
                 classDays={classDays}
                 userRole={appUser?.role}
                 onDeleteClassDay={handleDeleteClassDay}
@@ -3462,8 +3488,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                 zoomExceptionNote={zoomExceptionNote}
                 setZoomExceptionNote={setZoomExceptionNote}
                 hasZoomException={hasZoomException}
-                setHasZoomException={setHasZoomException}
-              />
+                  setHasZoomException={setHasZoomException}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3476,14 +3504,18 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <LibraryTab 
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Library Tab">
+                  <LazyLibraryTab
                 userRole={appUser?.role} 
                 resources={libraryResources}
                 setResources={setLibraryResources}
                 classroomMedia={classroomMedia}
                 setClassroomMedia={setClassroomMedia}
-                onOpenDiagnostics={appUser?.role === 'admin' ? () => setShowDiagnosticModal(true) : undefined}
-              />
+                  onOpenDiagnostics={appUser?.role === 'admin' ? () => setShowDiagnosticModal(true) : undefined}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3496,7 +3528,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar"
             >
-              <PaymentTab
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Payments Tab">
+                  <LazyPaymentTab
                 availableStudents={uniqueStudents.map(s => ({ name: s.name || '', email: `${(s.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu` }))}
                 isAdmin={appUser?.role === 'admin'}
                 userRole={appUser?.role}
@@ -3504,8 +3538,10 @@ create policy "Allow public update" on app_states for update using (true) with c
                 payments={payments}
                 setPayments={setPayments}
                 onDeleteStudent={handleDeleteStudent}
-                onRestoreStudent={handleRestoreStudent}
-              />
+                  onRestoreStudent={handleRestoreStudent}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3518,18 +3554,22 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 overflow-y-auto custom-scrollbar min-h-0"
             >
-              <MessagesTab
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Messages Tab">
+                  <LazyMessagesTab
                 appUser={appUser}
                 messages={messages}
                 onSendMessage={handleSendMessage}
                 onReplyMessage={handleReplyMessage}
                 onUpdateStatus={handleUpdateMessageStatus}
                 onDeleteMessage={handleDeleteMessage}
-                availableStudents={uniqueStudents.map(s => {
-                  const name = typeof s === 'string' ? s : s.name;
-                  return { name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
-                })}
-              />
+                  availableStudents={uniqueStudents.map(s => {
+                    const name = typeof s === 'string' ? s : s.name;
+                    return { name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
+                  })}
+                />
+              </ErrorBoundary>
+            </Suspense>
             </motion.div>
           )}
 
@@ -3542,7 +3582,9 @@ create policy "Allow public update" on app_states for update using (true) with c
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto md:overflow-hidden"
             >
-            {appUser?.role === 'student' ? (
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+                <ErrorBoundary label="Attendance Tab">
+                  {appUser?.role === 'student' ? (
               <StudentAttendancePortal
                 student={currentStudentPortalData}
                 classDays={classDays}
@@ -4247,6 +4289,8 @@ onRequestTranscript={(s) => {
               />
             </div>
           )}
+              </ErrorBoundary>
+            </Suspense>
         </motion.div>
       )}
 

@@ -1,5 +1,3 @@
-import JSZip from 'jszip';
-import Papa from 'papaparse';
 import { getAuditLogs, logActivity, AuditLogEntry } from './auditLogger';
 import { INITIAL_PAYMENTS } from '../components/PaymentTab';
 import { INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from '../components/ExamsTab';
@@ -138,6 +136,10 @@ export function exportFullBackupJSON(exportedBy: string = 'Administrator'): void
 
 export async function exportFullBackupZip(exportedBy: string = 'Administrator'): Promise<void> {
   const bundle = collectAllPortalData(exportedBy);
+  const [{ default: JSZip }, { default: Papa }] = await Promise.all([
+    import('jszip'),
+    import('papaparse'),
+  ]);
   const zip = new JSZip();
 
   // 1. JSON Master Backup File

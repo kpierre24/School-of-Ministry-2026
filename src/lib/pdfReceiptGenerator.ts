@@ -2,9 +2,6 @@ import { jsPDF } from 'jspdf';
 import { PaymentRecord } from '../types';
 import hteimLogoAsset from '../assets/hteim_logo.png';
 
-/**
- * Converts image file to base64 for jsPDF inclusion if available
- */
 async function getLogoBase64(): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -30,10 +27,8 @@ async function getLogoBase64(): Promise<string | null> {
   });
 }
 
-/**
- * Generate official PDF receipt for a single payment record
- */
 export async function generateTuitionReceiptPDF(payment: PaymentRecord): Promise<void> {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

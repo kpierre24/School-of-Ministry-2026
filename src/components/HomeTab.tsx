@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import biblicalHeroAsset from '../assets/images/hteim_people_hero_banner_1786036369689.jpg';
 import hteimLogoAsset from '../assets/hteim_logo.png';
@@ -272,16 +272,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   // Collapsible banner state
   const [isBannerCollapsed, setIsBannerCollapsed] = useState<boolean>(() => {
-    return localStorage.getItem('hteim_home_banner_collapsed') === 'true';
+    return false;
   });
 
   const toggleBannerCollapse = () => {
-    setIsBannerCollapsed(prev => {
-      const next = !prev;
-      localStorage.setItem('hteim_home_banner_collapsed', String(next));
-      return next;
-    });
+    setIsBannerCollapsed(prev => !prev);
   };
+
+  useEffect(() => {
+    localStorage.setItem('hteim_home_banner_collapsed', String(isBannerCollapsed));
+  }, [isBannerCollapsed]);
 
   // Widget customizer local state
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
@@ -441,7 +441,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       
       {/* Hero Banner */}
       <section className={`relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-300 ${
-        isBannerCollapsed ? 'min-h-0' : 'min-h-[300px] sm:min-h-[360px] flex flex-col justify-between'
+        isBannerCollapsed ? 'min-h-[60px] sm:min-h-[72px]' : 'min-h-[300px] sm:min-h-[360px] flex flex-col justify-between'
       }`}>
         {/* Background Artwork */}
         <div className="absolute inset-0 z-0">

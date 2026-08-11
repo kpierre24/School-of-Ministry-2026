@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for auth & role verification
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -11,24 +10,18 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Rules for application state synchronization
     match /app_states/{stateId} {
-      // Permit state synchronization while guarding against massive payload flooding (< 2MB)
-      allow read: if true;
-      allow create, update: if request.resource.data.keys().hasAll(['version']) 
-                            || request.resource.size < 2 * 1024 * 1024;
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
     }
 
-    // Rules for student profiles and user settings
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isOwner(userId);
       allow write: if isOwner(userId);
     }
 
-    // Default catch-all rule: restrict write operations unless explicitly matched above
     match /{document=**} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
   }

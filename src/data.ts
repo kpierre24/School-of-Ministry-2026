@@ -1,11 +1,8 @@
-import Papa from 'papaparse';
-
 export const RAW_CSV_DATA = `Timestamp,Score,Enter First and Last Name,"1. Apostles are the first servants of God commissioned to carry out the Matthew 28:19,20 mandate.","2. According to Eph.2:20, Apostles and prophets are the ….",3. Tick the wrong answer. The role of an apostle is to go,4. A false apostle ….. Indicate the wrong answer.,"5. Apostles are always needed to guide, govern, guard and mentor the people of God.",6. Choose the wrong answer. The marks of an apostle are:
 05/05/2026 21:30:40,6 / 6,Afeshia ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:32:11,6 / 6,Alicia Noray Bowles ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:29:22,5 / 6,Atiya Williams,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,iii. Challenges and competes with true apostles for the hearts of the people.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:33:20,5 / 6,"Beverly Selkridge 
-
 ",TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,ii. FALSE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:32:52,6 / 6,Candy Webb,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:31:27,6 / 6,Catherine Vidale ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
@@ -38,7 +35,7 @@ export const RAW_CSV_DATA = `Timestamp,Score,Enter First and Last Name,"1. Apost
 05/05/2026 21:32:56,6 / 6,Natalie Webb Lewis ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:31:23,6 / 6,Niomi Loverne Joseph Marksman,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:30:38,5 / 6,Racian Roy,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,ii. Is facilitated by the devil to confuse people and lead them away from God.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
-05/05/2026 21:29:57,6 / 6,Racquel Gumbs ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
+05/05/2026 21:29:57,6 / 6,Racquel Gumbs ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,ii. Is facilitated by the devil to confuse people and lead them away from God.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:30:41,6 / 6,Regina Joseph-Gonzales ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:33:15,3 / 6,Rennie bowles,TRUE,iii. Foundation on which the church is built.,"i. FIRST, to preach the gospel, teach the babes, plant churches and raise up leaders to do the work of ministry.",ii. Is facilitated by the devil to confuse people and lead them away from God.,i. TRUE,ii. Taking more and more territories for Jesus.
 05/05/2026 21:31:06,6 / 6,Richard Roberts ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
@@ -53,7 +50,8 @@ export const RAW_CSV_DATA = `Timestamp,Score,Enter First and Last Name,"1. Apost
 05/05/2026 21:27:37,4 / 6,Whitney Seelochan,TRUE,iii. Foundation on which the church is built.,"i. FIRST, to preach the gospel, teach the babes, plant churches and raise up leaders to do the work of ministry.",ii. Is facilitated by the devil to confuse people and lead them away from God.,i. TRUE,"iii. They are popular, well known by the government and are attractive."
 05/05/2026 21:29:43,6 / 6,Zahra Andrews ,TRUE,iii. Foundation on which the church is built.,iii. To establish his or her church so people could understand that they are the best apostle in the land.,i. Does not exist.,i. TRUE,"iii. They are popular, well known by the government and are attractive."`;
 
-export const getDemoAttendance = () => {
+export const getDemoAttendance = async () => {
+  const Papa = (await import('papaparse')).default;
   const result = Papa.parse(RAW_CSV_DATA, {
     header: true,
     skipEmptyLines: true,
