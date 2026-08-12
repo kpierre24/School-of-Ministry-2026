@@ -93,178 +93,9 @@ interface ExamsTabProps {
   onRemoveRecentSheet?: (id: string, e: React.MouseEvent) => void;
 }
 
-export const INITIAL_ASSIGNMENTS: CustomAssignment[] = [
-  {
-    id: 'ASG-Q100',
-    title: 'Daily Class Quiz: Hermeneutics & Covenant Theology',
-    courseCode: 'MIN-101',
-    moduleTrack: 'Biblical Foundations & Hermeneutics',
-    description: 'Class day interactive quiz. Choose the correct answer from options available. Questions are weighted and scores tallied upon submission.',
-    dueDate: '2026-08-15',
-    maxPoints: 100,
-    createdAt: '2026-08-01',
-    type: 'quiz',
-    quizData: {
-      id: 'quiz_100',
-      title: 'Daily Class Quiz: Hermeneutics & Covenant Theology',
-      courseCode: 'MIN-101',
-      moduleTrack: 'Biblical Foundations & Hermeneutics',
-      description: 'Class day interactive quiz. Choose the correct answer from options available. Questions are weighted and scores tallied.',
-      shareCode: 'qz_herm101',
-      totalPoints: 100,
-      createdAt: '2026-08-01',
-      dueDate: '2026-08-15',
-      questions: [
-        {
-          id: 'q1',
-          questionText: 'What is the literal meaning of the Greek word "Hermeneuo" in biblical exegesis?',
-          type: 'multiple_choice',
-          options: [
-            { id: 'opt_1a', text: 'To translate, interpret, or explain scripture context' },
-            { id: 'opt_1b', text: 'To memorize chapter numbers strictly' },
-            { id: 'opt_1c', text: 'To write poetic music' },
-            { id: 'opt_1d', text: 'To debate secular historical timelines' }
-          ],
-          correctOptionId: 'opt_1a',
-          weight: 25,
-          explanation: '"Hermeneuo" means to interpret or translate.'
-        },
-        {
-          id: 'q2',
-          questionText: 'Which chapter in the Book of Romans contains the primary treatise on life in the Spirit and sonship?',
-          type: 'multiple_choice',
-          options: [
-            { id: 'opt_2a', text: 'Romans 1' },
-            { id: 'opt_2b', text: 'Romans 8' },
-            { id: 'opt_2c', text: 'Romans 14' },
-            { id: 'opt_2d', text: 'Romans 16' }
-          ],
-          correctOptionId: 'opt_2b',
-          weight: 25,
-          explanation: 'Romans 8 focuses on divine adoption and freedom in the Spirit.'
-        },
-        {
-          id: 'q3',
-          questionText: 'What is the primary biblical reference for the Great Commission in the Gospel of Matthew?',
-          type: 'multiple_choice',
-          options: [
-            { id: 'opt_3a', text: 'Matthew 28:18-20' },
-            { id: 'opt_3b', text: 'Matthew 5:1-3' },
-            { id: 'opt_3c', text: 'Matthew 12:15' },
-            { id: 'opt_3d', text: 'Matthew 18:20' }
-          ],
-          correctOptionId: 'opt_3a',
-          weight: 25,
-          explanation: 'Matthew 28:18-20 commands believers to make disciples of all nations.'
-        },
-        {
-          id: 'q4',
-          questionText: 'According to Ephesians 4:11-12, why are five-fold ministry leadership gifts given to the church?',
-          type: 'multiple_choice',
-          options: [
-            { id: 'opt_4a', text: 'To equip the saints for ministry work and build up the Body of Christ' },
-            { id: 'opt_4b', text: 'To perform all church duties exclusively without member participation' },
-            { id: 'opt_4c', text: 'To collect administrative record fees' },
-            { id: 'opt_4d', text: 'To replace congregational fellowship' }
-          ],
-          correctOptionId: 'opt_4a',
-          weight: 25,
-          explanation: 'Ephesians 4:12 states leaders equip believers to do the work of ministry.'
-        }
-      ]
-    }
-  },
-  {
-    id: 'ASG-100',
-    title: 'Biblical Worldview & Apologetics Reflection Paper',
-    courseCode: 'MIN-100',
-    moduleTrack: 'Biblical Foundations & Hermeneutics',
-    description: 'A 2-page critical essay reflecting on foundational worldview principles and responding to contemporary secular philosophical objections.',
-    dueDate: '2026-07-20',
-    maxPoints: 100,
-    createdAt: '2026-07-05'
-  },
-  {
-    id: 'ASG-101',
-    title: 'Exegesis Paper: Hermeneutical Principles of Romans 8',
-    courseCode: 'MIN-101',
-    moduleTrack: 'Biblical Foundations & Hermeneutics',
-    description: 'Provide a comprehensive 4-page exegetical analysis of Romans 8:14-28. Analyze key Greek terminology (e.g., "huiothesia", "prothesis"), historical context, and practical ministerial applications for modern believers.',
-    dueDate: '2026-08-10',
-    maxPoints: 100,
-    createdAt: '2026-07-15',
-    teacherAttachmentName: 'Romans_8_Exegesis_Rubric.pdf',
-    teacherAttachmentUrl: 'data:text/plain;base64,Uk9NQU5TIDggRVhFR0VTSVMgUlVCUklDAjEuIEdyZWVrIFRlcm1pbm9sb2d5IChDMikNCjIuIENvbnRleHQgJiBUaGVvbG9neSAoQzMpDQozLiBNaW5pc3RlcmlhbCBBcHBsaWNhdGlvbiAocDQuKQ=='
-  },
-  {
-    id: 'ASG-102',
-    title: 'Homiletics Expository Sermon Outline & Reflection',
-    courseCode: 'MIN-202',
-    moduleTrack: 'Practical Ministry & Preaching',
-    description: 'Construct a 3-point expository sermon outline on Matthew 28:18-20. Include an introductory hook, main points supported by scripture cross-references, and a clear altar call application.',
-    dueDate: '2026-08-20',
-    maxPoints: 100,
-    createdAt: '2026-07-18',
-    teacherAttachmentName: 'Expository_Sermon_Template.docx'
-  },
-  {
-    id: 'ASG-103',
-    title: 'Field Ministry Practicum & Evangelism Journal',
-    courseCode: 'MIN-303',
-    moduleTrack: 'Global Missions & Outreach',
-    description: 'Document 5 hours of practical community outreach, visitation, or prayer ministry. Detail individual conversations, prayer requests, and field ministry observations.',
-    startDate: '2026-06-28',
-    dueDate: '2026-08-28',
-    maxPoints: 100,
-    createdAt: '2026-07-20'
-  }
-];
+export const INITIAL_ASSIGNMENTS: CustomAssignment[] = [];
 
-export const INITIAL_SUBMISSIONS: AssignmentSubmission[] = [
-  {
-    id: 'SUB-101-ABurke',
-    assignmentId: 'ASG-101',
-    studentName: 'A. Burke',
-    submittedAt: '2026-07-22 14:30',
-    studentFileName: 'A_Burke_Romans8_Exegesis_Final.pdf',
-    studentFileType: 'application/pdf',
-    studentNotes: 'Attached is my completed exegesis paper focusing on Romans 8:28-30 and divine purpose in ministry trials.',
-    score: 96,
-    teacherFeedback: 'Outstanding work! Your breakdown of "prothesis" in verse 28 was exceptional. I attached my corrected document with a few structural suggestions on page 3.',
-    teacherCorrectedFileName: 'A_Burke_Romans8_Exegesis_GRADED_CORRECTED.pdf',
-    teacherCorrectedFileType: 'application/pdf',
-    teacherCorrectedFileUrl: 'data:text/plain;base64,R1JBREVEIEFORCBDT1JSRUNURUQgQllBIEZBQ1VMVFk6DQpTY29yZTogOTYvMTAwLg0KR3JlYXQgZXhlZ2VzaXMgYW5kIHNjcmlwdHVyYWwgY29udGV4dC4=',
-    status: 'Correction Returned',
-    updatedAt: '2026-07-23 10:15'
-  },
-  {
-    id: 'SUB-101-CDavis',
-    assignmentId: 'ASG-101',
-    studentName: 'C. Davis',
-    submittedAt: '2026-07-24 09:15',
-    studentFileName: 'C_Davis_Romans_Exegesis_Paper.docx',
-    studentFileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    studentNotes: 'Submitted for instructor evaluation.',
-    status: 'Submitted',
-    updatedAt: '2026-07-24 09:15'
-  },
-  {
-    id: 'SUB-102-EEvans',
-    assignmentId: 'ASG-102',
-    studentName: 'E. Evans',
-    submittedAt: '2026-07-23 11:00',
-    studentFileName: 'E_Evans_Homiletics_Outline.pdf',
-    studentFileType: 'application/pdf',
-    studentNotes: 'Sermon title: The Authority of the Believer in the Great Commission.',
-    score: 92,
-    teacherFeedback: 'Very clear sermon outline! Great transitions between points. Check attached file for formatting notes.',
-    teacherCorrectedFileName: 'E_Evans_Homiletics_Outline_CORRECTED.pdf',
-    teacherCorrectedFileType: 'application/pdf',
-    teacherCorrectedFileUrl: 'data:text/plain;base64,R1JBREVEIEJZIElOU1RSVUNUT1I6IDkyLzEwMC4gQ2xlYXIgZXhwb3NpdG9yeSBvdXRsaW5lLg==',
-    status: 'Correction Returned',
-    updatedAt: '2026-07-24 16:20'
-  }
-];
+export const INITIAL_SUBMISSIONS: AssignmentSubmission[] = [];
 
 const parseScorePercentage = (scoreStr?: string): number | null => {
   if (!scoreStr) return null;
@@ -344,38 +175,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
 
   // Stored Quiz Submissions List
-  const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>([
-    {
-      id: 'qsub_1',
-      quizId: 'quiz_100',
-      studentName: 'A. Burke',
-      submittedAt: '2026-08-01 10:15',
-      score: 100,
-      totalPossible: 100,
-      percentage: 100,
-      responses: [
-        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25, isCorrect: true },
-        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25, isCorrect: true },
-        { questionId: 'q3', selectedOptionId: 'opt_3a', pointsEarned: 25, isCorrect: true },
-        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25, isCorrect: true }
-      ]
-    },
-    {
-      id: 'qsub_2',
-      quizId: 'quiz_100',
-      studentName: 'D. Miller',
-      submittedAt: '2026-08-01 11:30',
-      score: 75,
-      totalPossible: 100,
-      percentage: 75,
-      responses: [
-        { questionId: 'q1', selectedOptionId: 'opt_1a', pointsEarned: 25, isCorrect: true },
-        { questionId: 'q2', selectedOptionId: 'opt_2b', pointsEarned: 25, isCorrect: true },
-        { questionId: 'q3', selectedOptionId: 'opt_3b', pointsEarned: 0, isCorrect: false },
-        { questionId: 'q4', selectedOptionId: 'opt_4a', pointsEarned: 25, isCorrect: true }
-      ]
-    }
-  ]);
+  const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>([]);
 
   // Quiz Management Handlers
   const handleSaveQuiz = (quizData: QuizAssignment) => {
@@ -1060,8 +860,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
   // 5. Teacher Direct Upload / Edit Student Upload
   const handleOpenDirectStudentUpload = (studentName?: string, asgId?: string) => {
-    const selectedStudent = studentName || (students[0]?.name || 'A. Burke');
-    const selectedAsg = asgId || (customAssignments[0]?.id || 'ASG-101');
+    const selectedStudent = studentName || (students[0]?.name || '');
+    const selectedAsg = asgId || (customAssignments[0]?.id || '');
 
     setTargetStudentName(selectedStudent);
     setTargetAssignmentId(selectedAsg);

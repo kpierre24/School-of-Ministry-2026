@@ -13,7 +13,7 @@ dotenv.config();
 
 const app = express();
 const httpServer = createHttpServer(app);
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Apply security response headers globally
 app.use(securityHeaders);

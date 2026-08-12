@@ -78,13 +78,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     { code: 'SOM-MOD-6', title: 'Module 6: School of Pastors & Expository Preaching', instructor: 'Rev. Academic Dean' },
   ];
 
-  const coreExams = [
-    { code: 'EXAM-01', title: 'Module 1 Hermeneutics Midterm Exam', weight: '20%' },
-    { code: 'EXAM-02', title: 'Evangelism Strategy & Recitation Quiz', weight: '15%' },
-    { code: 'EXAM-03', title: 'Ministerial Ethics Comprehensive Final', weight: '30%' },
-    { code: 'EXAM-04', title: 'Apostolic Epistles Exegesis Paper', weight: '25%' },
-    { code: 'EXAM-05', title: 'Prophetic Discernment Practical Practicum', weight: '20%' },
-  ];
+  const coreExams: { code: string; title: string; weight: string }[] = [];
 
   // Use live payment data passed as prop; fall back to empty if not provided
   const corePayments = (paymentList ?? []).slice(0, 20);

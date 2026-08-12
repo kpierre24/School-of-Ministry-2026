@@ -720,6 +720,25 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             )}
           </div>
 
+          {/* At-Risk Mobile Alert Banner for Student */}
+          {loggedInStudentData && loggedInStudentData.rate < atRiskThreshold && (
+            <div className="p-3 bg-rose-500/10 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/80 rounded-xl flex items-center justify-between gap-3 text-xs shadow-xs">
+              <div className="flex items-center gap-2.5 text-rose-800 dark:text-rose-200">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400" />
+                <div>
+                  <p className="font-bold">Attendance Alert ({Math.round(loggedInStudentData.rate)}%)</p>
+                  <p className="text-[10px] text-rose-700 dark:text-rose-300">Below the 75% threshold. Check in during live classes.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('attendance')}
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg shrink-0 shadow-xs cursor-pointer active:scale-95 transition-transform"
+              >
+                Check-In
+              </button>
+            </div>
+          )}
+
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-3 gap-2.5 text-center">
             <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">

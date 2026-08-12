@@ -540,15 +540,33 @@ export default function App() {
   });
   const [schedules, setSchedules] = useState<ScheduleItem[]>(() => {
     const saved = localStorage.getItem('hteim_scheduled_classes');
-    return saved ? JSON.parse(saved) : INITIAL_SCHEDULE;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((s: any) => !String(s.id).startsWith('sch_p'));
+      } catch {}
+    }
+    return [];
   });
   const [libraryResources, setLibraryResources] = useState<LibraryResource[]>(() => {
     const saved = localStorage.getItem('hteim_library_resources');
-    return saved ? JSON.parse(saved) : INITIAL_RESOURCES;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((r: any) => !['r_gdrive_livestream_1', 'r1', 'r2', 'r3', 'r4'].includes(r.id));
+      } catch {}
+    }
+    return [];
   });
   const [classroomMedia, setClassroomMedia] = useState<MediaResource[]>(() => {
     const saved = localStorage.getItem('hteim_classroom_media');
-    return saved ? JSON.parse(saved) : DEFAULT_PRESET_MEDIA;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((m: any) => !['m_preset_gdrive_1', 'm_preset_1', 'm_preset_2', 'm_preset_3'].includes(m.id));
+      } catch {}
+    }
+    return [];
   });
   const [payments, setPayments] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('hteim_student_payments');
@@ -736,17 +754,23 @@ export default function App() {
   const [customAssignments, setCustomAssignments] = useState<CustomAssignment[]>(() => {
     const saved = localStorage.getItem('hteim_custom_assignments');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((a: any) => !['ASG-Q100', 'ASG-100', 'ASG-101', 'ASG-102', 'ASG-103'].includes(a.id));
+      } catch (e) { console.error(e); }
     }
-    return INITIAL_ASSIGNMENTS;
+    return [];
   });
 
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(() => {
     const saved = localStorage.getItem('hteim_assignment_submissions');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((s: any) => !['SUB-101-ABurke', 'SUB-101-CDavis', 'SUB-102-EEvans'].includes(s.id));
+      } catch (e) { console.error(e); }
     }
-    return INITIAL_SUBMISSIONS;
+    return [];
   });
 
   useEffect(() => {
@@ -761,9 +785,12 @@ export default function App() {
   const [messages, setMessages] = useState<AppMessage[]>(() => {
     const saved = localStorage.getItem('hteim_app_messages');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((m: any) => !['msg_welcome_101', 'msg_tuition_inquiry_1', 'msg_zoom_class_1'].includes(m.id));
+      } catch (e) { console.error(e); }
     }
-    return INITIAL_MESSAGES;
+    return [];
   });
 
   useEffect(() => {
@@ -2917,7 +2944,7 @@ if (!studentMap.has(key)) {
       </AnimatePresence>
 
       <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
-      <div className="flex flex-col min-h-[100dvh] md:h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 overflow-y-auto md:overflow-hidden overscroll-y-contain select-text">
+      <div className="flex flex-col h-[100dvh] w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 overflow-hidden overscroll-y-contain select-text">
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
@@ -3636,7 +3663,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto md:overflow-hidden"
+              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Attendance Tab">
@@ -6723,12 +6750,12 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         <p className="text-[10px] text-slate-400 dark:text-slate-500">Heaven Touching Earth Int'l Ministries © 2026</p>
       </footer>
 
-      {/* Floating Quick Messages Launcher (Desktop only) */}
-      <div className="hidden md:flex fixed bottom-5 right-4 sm:right-6 z-30">
+      {/* Floating Quick Messages Launcher */}
+      <div className="flex fixed bottom-16 right-3.5 sm:bottom-5 sm:right-6 z-30">
         <button
           type="button"
           onClick={() => handleNavigate('messages')}
-          className="px-4 py-2.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs sm:text-sm shadow-xl flex items-center gap-2 border border-slate-700/80 dark:border-slate-200/80 cursor-pointer active:scale-95 transition-all hover:shadow-2xl group touch-min-44"
+          className="px-3 py-2 sm:px-4 sm:py-2.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs sm:text-sm shadow-2xl flex items-center gap-2 border border-slate-700/80 dark:border-slate-200/80 cursor-pointer active:scale-95 transition-all hover:shadow-2xl group touch-min-44"
           title="Direct Message Teacher or Admin"
         >
           <div className="relative">
@@ -6740,7 +6767,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             )}
           </div>
           <span className="hidden sm:inline font-bold">Message Teacher / Admin</span>
-          <span className="sm:hidden font-bold text-[11px]">Contact</span>
+          <span className="sm:inline font-bold text-[11px] text-amber-300 dark:text-indigo-700">Message</span>
         </button>
       </div>
 

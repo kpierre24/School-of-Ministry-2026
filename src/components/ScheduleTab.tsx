@@ -66,182 +66,7 @@ export const PERIODS = [
   { id: 'eve', label: 'EVENING SESSION', time: '07:00 - 09:00 pm EST' },
 ];
 
-export const INITIAL_SCHEDULE: ScheduleItem[] = [
-  // Past Classes (June 2026)
-  {
-    id: 'sch_p1',
-    classDayId: 'cd_1',
-    title: 'Orientation & Kingdom Citizenship Mandate',
-    courseCode: 'SOM-MOD-1',
-    moduleName: 'Module 1: Introduction',
-    date: '2026-06-02',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Dr. Faculty Director',
-    room: 'Main Sanctuary Hall',
-    status: 'completed'
-  },
-  {
-    id: 'sch_p2',
-    classDayId: 'cd_2',
-    title: 'Scripture Memory Recitation & Attendance Integrity',
-    courseCode: 'SOM-MOD-1',
-    moduleName: 'Module 1: Introduction',
-    date: '2026-06-09',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Rev. Academic Dean',
-    room: 'Main Sanctuary Hall',
-    status: 'completed'
-  },
-  {
-    id: 'sch_p3',
-    classDayId: 'cd_3',
-    title: 'Great Commission Mandate & Personal Witnessing (Matt 28)',
-    courseCode: 'SOM-MOD-2',
-    moduleName: 'Module 2: Evangelism',
-    date: '2026-06-16',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Evangelism Ministry Lead',
-    room: 'Outreach Training Room',
-    status: 'completed'
-  },
-  {
-    id: 'sch_p4',
-    classDayId: 'cd_4',
-    title: 'Overcoming Objections & Street Evangelism Practicum',
-    courseCode: 'SOM-MOD-2',
-    moduleName: 'Module 2: Evangelism',
-    date: '2026-06-23',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Evangelism Ministry Lead',
-    room: 'Outreach Training Room',
-    status: 'completed'
-  },
-
-  // July 2026 Classes
-  {
-    id: 'sch_p5',
-    classDayId: 'cd_5',
-    title: 'Character & Financial Integrity in Ministry',
-    courseCode: 'SOM-MOD-3',
-    moduleName: 'Module 3: Ministerial Ethics',
-    date: '2026-07-07',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Pastor Senior Advisor',
-    room: 'Leadership Center B',
-    status: 'completed'
-  },
-  {
-    id: 'sch_p6',
-    classDayId: 'cd_6',
-    title: 'Conflict Resolution & Confidentiality in Counseling',
-    courseCode: 'SOM-MOD-3',
-    moduleName: 'Module 3: Ministerial Ethics',
-    date: '2026-07-14',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Pastor Senior Advisor',
-    room: 'Leadership Center B',
-    status: 'completed'
-  },
-  {
-    id: 'sch_live_1',
-    classDayId: 'cd_7',
-    title: 'Apostolic Mandate & Five-Fold Governance (Eph 2:20)',
-    courseCode: 'SOM-MOD-4',
-    moduleName: 'Module 4: Apostolic Ministry',
-    date: '2026-07-24', // Today
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Dr. Faculty Director',
-    room: 'Main Sanctuary Hall A',
-    status: 'live'
-  },
-  {
-    id: 'sch_fut_1',
-    classDayId: 'cd_8',
-    title: 'Marks & Signs of True Apostolic Oversight',
-    courseCode: 'SOM-MOD-4',
-    moduleName: 'Module 4: Apostolic Ministry',
-    date: '2026-07-28',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Dr. Faculty Director',
-    room: 'Main Sanctuary Hall A',
-    status: 'upcoming'
-  },
-
-  // Future Classes (August 2026 & September 2026)
-  {
-    id: 'sch_fut_2',
-    classDayId: 'cd_9',
-    title: 'Hearing the Voice of God & Prophetic Discernment',
-    courseCode: 'SOM-MOD-5',
-    moduleName: 'Module 5: Prophetic Ministry',
-    date: '2026-08-04',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Prophetic Faculty Director',
-    room: 'Prayer & Warfare Chapel',
-    status: 'upcoming'
-  },
-  {
-    id: 'sch_fut_3',
-    classDayId: 'cd_10',
-    title: 'Testing & Judging Prophecy Against Scripture',
-    courseCode: 'SOM-MOD-5',
-    moduleName: 'Module 5: Prophetic Ministry',
-    date: '2026-08-11',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Prophetic Faculty Director',
-    room: 'Prayer & Warfare Chapel',
-    status: 'upcoming'
-  },
-  {
-    id: 'sch_fut_4',
-    classDayId: 'cd_11',
-    title: 'Shepherding the Flock & Pastoral Care',
-    courseCode: 'SOM-MOD-6',
-    moduleName: 'Module 6: School of the Pastors and Teachers',
-    date: '2026-08-18',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Rev. Academic Dean',
-    room: 'Lecture Hall A',
-    status: 'upcoming'
-  },
-  {
-    id: 'sch_fut_5',
-    classDayId: 'cd_12',
-    title: 'Expository Preaching & Teaching Sound Doctrine',
-    courseCode: 'SOM-MOD-6',
-    moduleName: 'Module 6: School of the Pastors and Teachers',
-    date: '2026-08-25',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'Rev. Academic Dean',
-    room: 'Lecture Hall A',
-    status: 'upcoming'
-  },
-  {
-    id: 'sch_fut_6',
-    classDayId: 'cd_13',
-    title: 'Ministerial Commissioning & Practical Ordination Practicum',
-    courseCode: 'SOM-MOD-6',
-    moduleName: 'Module 6: School of the Pastors and Teachers',
-    date: '2026-09-08',
-    timeSlot: '07:00 - 09:00 pm EST',
-    period: 'EVENING SESSION',
-    instructor: 'HTEIM Academic Directorate',
-    room: 'Main Sanctuary Hall',
-    status: 'upcoming'
-  }
-];
+export const INITIAL_SCHEDULE: ScheduleItem[] = [];
 
 interface ScheduleTabProps {
   classDays: { id: string; name: string }[];
@@ -287,7 +112,12 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   }, [schedules]);
 
   // View mode: 'calendar' (Monthly Grid), 'timetable' (Weekly Matrix Grid), or 'agenda' (List)
-  const [viewMode, setViewMode] = useState<'calendar' | 'timetable' | 'agenda'>('calendar');
+  const [viewMode, setViewMode] = useState<'calendar' | 'timetable' | 'agenda'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return 'agenda';
+    }
+    return 'calendar';
+  });
 
   // Selected module filter
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string>('all');

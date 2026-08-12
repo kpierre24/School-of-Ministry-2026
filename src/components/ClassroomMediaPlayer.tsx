@@ -34,48 +34,7 @@ interface ClassroomMediaPlayerProps {
   onRemoveMedia?: (mediaId: string) => void;
 }
 
-export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
-  {
-    id: 'm_preset_gdrive_1',
-    title: 'Google Drive Livestream: Sunday Worship & Prophetic Teaching (HD Recording)',
-    speaker: 'Dr. Faculty Director',
-    duration: '1:05:30',
-    type: 'video',
-    url: 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing',
-    description: 'Full Sunday livestream video recording stored directly on Google Drive. Click to play inside the app.',
-    dateAdded: '2026-08-01'
-  },
-  {
-    id: 'm_preset_1',
-    title: 'Lecture 1: Kingdom Citizenship & Purpose Mandate (Audio Sermon)',
-    speaker: 'Dr. Faculty Director',
-    duration: '45:20',
-    type: 'audio',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    description: 'Key lecture on kingdom authority, covenant discipline, and ministerial commitment.',
-    dateAdded: '2026-06-02'
-  },
-  {
-    id: 'm_preset_2',
-    title: 'Lecture 3: Great Commission Witnessing & Street Evangelism',
-    speaker: 'Evangelism Ministry Lead',
-    duration: '38:15',
-    type: 'audio',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    description: 'Anointing for personal witnessing, answering tough objections, and disciple follow-up.',
-    dateAdded: '2026-06-16'
-  },
-  {
-    id: 'm_preset_3',
-    title: 'Video Stream: Apostolic Authority & Church Governance',
-    speaker: 'Dr. Faculty Director',
-    duration: '52:10',
-    type: 'video',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    description: 'Video recording of Tuesday live session covering Ephesians 2:20 and 5-fold order.',
-    dateAdded: '2026-07-24'
-  }
-];
+export const DEFAULT_PRESET_MEDIA: MediaResource[] = [];
 
 export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   mediaResources,
