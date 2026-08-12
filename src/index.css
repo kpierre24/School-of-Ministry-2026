@@ -166,19 +166,29 @@ main:focus-visible { outline: none; }
     padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom, 1rem)));
   }
 
-  /* Universal WebKit Momentum & Mobile Touch Scrolling */
+  /* Universal WebKit Momentum & Mobile Touch Scrolling Across All Containers */
   .overflow-y-auto,
-  .overflow-auto,
-  .custom-scrollbar {
+  .overflow-y-scroll,
+  .custom-scrollbar,
+  [class*="overflow-y-"] {
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-y;
-    overscroll-behavior-y: auto;
+    overscroll-behavior-y: contain;
   }
 
-  .overflow-x-auto {
+  .overflow-x-auto,
+  .overflow-x-scroll,
+  [class*="overflow-x-"] {
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-x;
-    overscroll-behavior-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y;
+    overscroll-behavior-y: contain;
+    overscroll-behavior-x: contain;
   }
 
   .custom-scrollbar {
@@ -856,7 +866,8 @@ button, a, input, select, textarea {
 
   .modal-material-dialog > form,
   .modal-material-dialog > .overflow-y-auto {
-    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
 

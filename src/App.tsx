@@ -3083,15 +3083,30 @@ create policy "Allow public update" on app_states for update using (true) with c
               alt="HTEIM Logo"
               className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
             />
-            <div className="min-w-0 shrink">
+            <div className="min-w-0 shrink flex items-center gap-2">
               <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[130px] xs:max-w-[180px] sm:max-w-[260px]">
                 HTEIM School of Ministry
               </h1>
+              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Spring 2026 • Term 2
+              </span>
             </div>
           </div>
 
           {/* MD3 AppBar Actions */}
           <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
+            {/* Quick Command Trigger */}
+            <button
+              onClick={() => setShowCommandPalette(true)}
+              className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer font-medium"
+              title="Search Portal (⌘K)"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="hidden md:inline text-xs">Search...</span>
+              <kbd className="hidden md:inline-block text-[9px] font-mono opacity-70 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1 py-0.2 rounded shadow-2xs">⌘K</kbd>
+            </button>
+
             {/* Live Check-In */}
             {(appUser?.role as string) !== 'student' && (
               <button
@@ -3252,26 +3267,34 @@ create policy "Allow public update" on app_states for update using (true) with c
             {/* Profile Avatar */}
             <button
               onClick={() => setShowLoginModal(true)}
-              className="flex items-center gap-1.5 p-1 pr-2 rounded-full transition-colors cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="flex items-center gap-2 p-1 pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800/80"
               aria-label={appUser ? `Account: ${appUser.name}` : 'Log in'}
-              title="Account"
+              title="Account & Role Settings"
             >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${
-                appUser?.role === 'admin' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' :
-                appUser?.role === 'teacher' ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900' :
-                'bg-slate-500 dark:bg-slate-400 text-white'
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
+                appUser?.role === 'admin' ? 'bg-purple-900 dark:bg-purple-100 text-white dark:text-purple-900' :
+                appUser?.role === 'teacher' ? 'bg-emerald-800 dark:bg-emerald-100 text-white dark:text-emerald-900' :
+                'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
               }`}>
                 {appUser ? appUser.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
               </div>
-              <span className="text-xs font-medium hidden xl:block">
-                {appUser ? appUser.name.split(' ')[0] : 'Guest'}
-              </span>
+              <div className="hidden xl:flex flex-col text-left leading-none pr-0.5">
+                <span className="text-xs font-bold truncate max-w-[100px]">
+                  {appUser ? appUser.name.split(' ')[0] : 'Guest'}
+                </span>
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                  appUser?.role === 'admin' ? 'text-purple-600 dark:text-purple-400' :
+                  appUser?.role === 'teacher' ? 'text-emerald-600 dark:text-emerald-400' :
+                  appUser?.role === 'student' ? 'text-amber-600 dark:text-amber-400' :
+                  'text-slate-400'
+                }`}>
+                  {appUser ? appUser.role : 'Guest'}
+                </span>
+              </div>
             </button>
           </div>
         </div>
       </header>
-
-
 
       {/* Desktop Navigation */}
       <nav aria-label="Primary portal navigation" className="hidden md:block relative z-40 mb-4">
@@ -3300,17 +3323,21 @@ create policy "Allow public update" on app_states for update using (true) with c
                 type="button"
                 onClick={() => handleNavigate(tab as TabType)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer active:scale-95 ${
                   isActive
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
                 <span className="hidden lg:inline">{label}</span>
-                {badgeAlert && isActive && (
-                  <span className="text-[10px] min-w-4 h-4 px-1 rounded-full font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center">
-                    {badgeCount}
+                {badgeAlert && (
+                  <span className={`text-[10px] min-w-4 h-4 px-1 rounded-full font-bold flex items-center justify-center ${
+                    isActive 
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' 
+                      : 'bg-rose-500 text-white animate-pulse'
+                  }`}>
+                    {badgeCount || '•'}
                   </span>
                 )}
               </button>
@@ -6742,12 +6769,43 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Portal Footer */}
-      <footer id="portal-footer" className="mt-8 mb-20 md:mb-2 px-4 sm:px-6 py-3.5 border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative pr-16 sm:pr-48 md:pr-56 shrink-0 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
-          <p className="font-medium">HTEIM School of Ministry • Academic Portal</p>
+      <footer id="portal-footer" className="mt-8 mb-20 md:mb-2 px-4 sm:px-6 py-3 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative shrink-0 shadow-xs">
+        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" title="System Operational"></span>
+            <p className="font-semibold text-slate-800 dark:text-slate-200">HTEIM School of Ministry</p>
+          </div>
+          <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>75% Attendance Policy Enforced</span>
+          </div>
+          <span className="hidden md:inline text-slate-300 dark:text-slate-700">•</span>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+            <Cloud className="w-3 h-3 text-indigo-500 shrink-0" />
+            <span>Cloud & Offline PWA Active</span>
+          </div>
         </div>
-        <p className="text-[10px] text-slate-400 dark:text-slate-500">Heaven Touching Earth Int'l Ministries © 2026</p>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setShowGuideModal(true)}
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>Guide</span>
+          </button>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Settings</span>
+          </button>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">HTEIM © 2026</p>
+        </div>
       </footer>
 
       {/* Floating Quick Messages Launcher */}
@@ -6808,15 +6866,22 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           type="button"
           onClick={() => setShowMobileMoreMenu(true)}
           aria-label="Open more portal sections"
-          className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+          className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
             showMobileMoreMenu
               ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Menu className={`w-5 h-5 transition-transform ${
-            showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
-          }`} />
+          <div className="relative">
+            <Menu className={`w-5 h-5 transition-transform ${
+              showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+            }`} />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
+                {unreadMessagesCount}
+              </span>
+            )}
+          </div>
           <span className={`text-[10px] tracking-tight ${
             showMobileMoreMenu ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
           }`}>More</span>
