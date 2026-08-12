@@ -118,6 +118,18 @@ import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
+
+// Subtle Page-Fade transition variants for smooth tab navigation
+const pageFadeVariants = {
+  initial: { opacity: 0, y: 8, filter: 'blur(3px)' },
+  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  exit: { opacity: 0, y: -6, filter: 'blur(2px)' },
+};
+
+const pageFadeTransition = {
+  duration: 0.22,
+  ease: [0.16, 1, 0.3, 1] as const,
+};
 import { getStudentPaymentDetails, StudentPaymentSummary } from './lib/paymentUtils';
 import { SwipeableAttendanceCard } from './components/SwipeableAttendanceCard';
 import { AdminAuditAndBackupModal } from './components/AdminAuditAndBackupModal';
@@ -3360,10 +3372,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'home' && (
             <motion.div
               key="home"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 touch-pan-y w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3402,10 +3415,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'students' && appUser?.role !== 'student' && (
             <motion.div
               key="students"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3486,10 +3500,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'courses' && (
             <motion.div
               key="courses"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3507,10 +3522,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'exams' && (
             <motion.div
               key="exams"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3559,10 +3575,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'schedule' && (
             <motion.div
               key="schedule"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3593,10 +3610,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'library' && (
             <motion.div
               key="library"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3617,10 +3635,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'payments' && (appUser?.role === 'admin' || appUser?.role === 'student') && (
             <motion.div
               key="payments"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3643,10 +3662,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'zoom-copilot' && (
             <motion.div
               key="zoom-copilot"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <ErrorBoundary label="Zoom Co-Pilot Tab">
@@ -3666,10 +3686,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'messages' && (
             <motion.div
               key="messages"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
@@ -3694,10 +3715,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           {activeErpTab === 'attendance' && (
             <motion.div
               key="attendance"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
               className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col touch-pan-y w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
