@@ -2944,7 +2944,7 @@ if (!studentMap.has(key)) {
       </AnimatePresence>
 
       <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
-      <div className="flex flex-col h-[100dvh] w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 overflow-hidden overscroll-y-contain select-text">
+      <div className="flex flex-col h-[100dvh] w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 overflow-hidden touch-pan-y select-text">
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
@@ -3320,7 +3320,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       </nav>
 
       {/* Main Workspace */}
-      <main id="main-workspace" tabIndex={-1} className="flex flex-1 gap-6 min-h-0 relative">
+      <main id="main-workspace" tabIndex={-1} className="flex flex-1 gap-6 min-h-0 relative touch-pan-y">
         <AnimatePresence mode="wait">
           {activeErpTab === 'home' && (
             <motion.div
@@ -3663,7 +3663,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden"
+              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto custom-scrollbar touch-pan-y"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Attendance Tab">

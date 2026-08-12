@@ -166,10 +166,24 @@ main:focus-visible { outline: none; }
     padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom, 1rem)));
   }
 
+  /* Universal WebKit Momentum & Mobile Touch Scrolling */
+  .overflow-y-auto,
+  .overflow-auto,
+  .custom-scrollbar {
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
+  }
+
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x;
+    overscroll-behavior-x: auto;
+  }
+
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
-    -webkit-overflow-scrolling: touch;
   }
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
