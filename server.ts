@@ -43,7 +43,16 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    app.use(
+      express.static(distPath, {
+        setHeaders: (res) => {
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.setHeader("X-Frame-Options", "SAMEORIGIN");
+          res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+          res.setHeader("X-XSS-Protection", "1; mode=block");
+        },
+      })
+    );
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
