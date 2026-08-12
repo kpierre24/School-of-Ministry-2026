@@ -52,7 +52,8 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-center relative overflow-hidden">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
+          className="absolute top-4 right-4 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer touch-min-44"
+          aria-label="Close dialog"
         >
           ✕
         </button>
@@ -79,7 +80,8 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
             <button
               onClick={handleCopy}
               title="Copy PIN"
-              className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer touch-min-44"
+              aria-label="Copy PIN code"
             >
               {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
             </button>

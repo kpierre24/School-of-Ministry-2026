@@ -2944,7 +2944,7 @@ if (!studentMap.has(key)) {
       </AnimatePresence>
 
       <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
-      <div className="flex flex-col h-[100dvh] w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 overflow-hidden touch-pan-y select-text">
+      <div className="flex flex-col min-h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 touch-pan-y select-text">
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
@@ -3075,7 +3075,9 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-0 dark:border-0 border-b border-slate-200/60 dark:border-slate-800/60 px-3 sm:px-4 py-2 sm:py-2.5 shadow-none mb-3 flex-shrink-0 sticky top-2 z-[60] max-w-full overflow-visible transition-all">
+      <header className="relative bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-30 max-w-full overflow-hidden transition-all rounded-2xl">
+        {/* Subtle Brand Accent Line */}
+        <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/40 via-amber-500/40 to-indigo-500/0 pointer-events-none" />
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
           {/* Logo & Brand */}
           <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink-0 group" onClick={() => setActiveErpTab('home')}>
@@ -3163,7 +3165,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               </button>
 
               {showMoreMenu && (
-                <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-1.5 z-[70] space-y-0.5"
+                <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-1.5 z-40 space-y-0.5"
                   style={{ boxShadow: 'var(--md-elev-2)' }}>
                   <div className="space-y-0.5">
                     <button
@@ -3346,8 +3348,14 @@ create policy "Allow public update" on app_states for update using (true) with c
         </div>
       </nav>
 
+      {/* Horizontal Gradient Divider Delineating Navigation from Main Workspace */}
+      <div 
+        aria-hidden="true" 
+        className="w-full h-px bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700/80 to-transparent my-3.5 shrink-0 opacity-90" 
+      />
+
       {/* Main Workspace */}
-      <main id="main-workspace" tabIndex={-1} className="flex flex-1 gap-6 min-h-0 relative touch-pan-y">
+      <main id="main-workspace" tabIndex={-1} className="flex flex-col flex-1 gap-6 relative touch-pan-y min-h-[calc(100vh-220px)] sm:min-h-[calc(100vh-240px)]">
         <AnimatePresence mode="wait">
           {activeErpTab === 'home' && (
             <motion.div
@@ -3356,7 +3364,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 touch-pan-y w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Home Tab">
@@ -3398,7 +3406,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Students Tab">
@@ -3482,7 +3490,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Courses Tab">
@@ -3503,7 +3511,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Exams Tab">
@@ -3555,7 +3563,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Schedule Tab">
@@ -3589,7 +3597,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Library Tab">
@@ -3613,7 +3621,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Payments Tab">
@@ -3639,7 +3647,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar"
+              className="flex-1 w-full"
             >
               <ErrorBoundary label="Zoom Co-Pilot Tab">
                 <ZoomCoPilotTab
@@ -3662,7 +3670,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 overflow-y-auto custom-scrollbar min-h-0"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Messages Tab">
@@ -3690,7 +3698,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col min-h-0 overflow-y-auto custom-scrollbar touch-pan-y"
+              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col touch-pan-y w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Attendance Tab">
@@ -4210,14 +4218,14 @@ onRequestTranscript={(s) => {
                                 </div>
 
                                 {(appUser?.role as string) !== 'student' && activeDayId && (
-                                  <div className="flex items-center gap-1 shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     <button
                                       type="button"
                                       onClick={() => {
                                         handleToggleStudentAttendance(student.name, activeDayId, 'present');
                                         if (navigator.vibrate) navigator.vibrate(20);
                                       }}
-                                      className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-36 ${
+                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-44 ${
                                         isPresent 
                                           ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400' 
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
@@ -4233,7 +4241,7 @@ onRequestTranscript={(s) => {
                                         handleToggleStudentAttendance(student.name, activeDayId, 'excused');
                                         if (navigator.vibrate) navigator.vibrate(20);
                                       }}
-                                      className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-36 ${
+                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-44 ${
                                         isExcused 
                                           ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-300' 
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
@@ -4249,7 +4257,7 @@ onRequestTranscript={(s) => {
                                         handleToggleStudentAttendance(student.name, activeDayId, 'absent');
                                         if (navigator.vibrate) navigator.vibrate(20);
                                       }}
-                                      className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-36 ${
+                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-44 ${
                                         isAbsent 
                                           ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400' 
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40'
@@ -6769,8 +6777,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Portal Footer */}
-      <footer id="portal-footer" className="mt-8 mb-20 md:mb-2 px-4 sm:px-6 py-3 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative shrink-0 shadow-xs">
-        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+      <footer id="portal-footer" className="mt-auto md:mt-8 mb-16 md:mb-0 px-3 sm:px-6 py-2.5 sm:py-3 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl flex flex-col md:flex-row items-center justify-between gap-2.5 sm:gap-3 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative shrink-0 shadow-xs">
+        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" title="System Operational"></span>
             <p className="font-semibold text-slate-800 dark:text-slate-200">HTEIM School of Ministry</p>
@@ -6808,26 +6816,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         </div>
       </footer>
 
-      {/* Floating Quick Messages Launcher */}
-      <div className="flex fixed bottom-16 right-3.5 sm:bottom-5 sm:right-6 z-30">
-        <button
-          type="button"
-          onClick={() => handleNavigate('messages')}
-          className="px-3 py-2 sm:px-4 sm:py-2.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs sm:text-sm shadow-2xl flex items-center gap-2 border border-slate-700/80 dark:border-slate-200/80 cursor-pointer active:scale-95 transition-all hover:shadow-2xl group touch-min-44"
-          title="Direct Message Teacher or Admin"
-        >
-          <div className="relative">
-            <MessageSquare className="w-4 h-4 sm:w-4.5 sm:h-4.5 group-hover:rotate-6 transition-transform text-amber-300 dark:text-amber-600" />
-            {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center border border-slate-950 animate-bounce">
-                {unreadMessagesCount}
-              </span>
-            )}
-          </div>
-          <span className="hidden sm:inline font-bold">Message Teacher / Admin</span>
-          <span className="sm:inline font-bold text-[11px] text-amber-300 dark:text-indigo-700">Message</span>
-        </button>
-      </div>
+
 
       {/* Mobile Bottom Navigation */}
       <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/90 dark:border-slate-800/90 backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">

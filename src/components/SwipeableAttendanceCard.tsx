@@ -252,14 +252,14 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   onToggleAttendance(student.name, targetDayId, 'present');
                   if (navigator.vibrate) navigator.vibrate(25);
                 }}
-                className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all min-h-[32px] cursor-pointer active:scale-95 touch-min-32 ${
+                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:scale-95 touch-min-44 ${
                   isPresent 
                     ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' 
                     : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
                 }`}
                 title="Mark Present"
               >
-                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span>Present</span>
               </button>
 
@@ -270,14 +270,14 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   onToggleAttendance(student.name, targetDayId, 'excused');
                   if (navigator.vibrate) navigator.vibrate(25);
                 }}
-                className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all min-h-[32px] cursor-pointer active:scale-95 touch-min-32 ${
+                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:scale-95 touch-min-44 ${
                   isExcused 
                     ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-300' 
                     : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/40'
                 }`}
                 title="Mark Excused"
               >
-                <AlertCircle className="w-3 h-3 shrink-0" />
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Excused</span>
               </button>
 
@@ -288,14 +288,14 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   onToggleAttendance(student.name, targetDayId, 'absent');
                   if (navigator.vibrate) navigator.vibrate(25);
                 }}
-                className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all min-h-[32px] cursor-pointer active:scale-95 touch-min-32 ${
+                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:scale-95 touch-min-44 ${
                   !isPresent && !isExcused && currentAttendance?.present === false
                     ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400' 
                     : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/40'
                 }`}
                 title="Mark Absent"
               >
-                <XCircle className="w-3 h-3 shrink-0" />
+                <XCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Absent</span>
               </button>
             </div>
@@ -344,7 +344,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                       dayPresent ? 'excused' : dayExcused ? 'absent' : 'present'
                     );
                   }}
-                  className={`shrink-0 min-w-[90px] sm:min-w-[105px] p-1.5 sm:p-2 rounded-xl border flex flex-col items-center justify-between gap-1 sm:gap-1.5 transition-all text-center select-none ${
+                  className={`shrink-0 min-w-[95px] sm:min-w-[108px] min-h-[48px] p-2 rounded-xl border flex flex-col items-center justify-between gap-1 sm:gap-1.5 transition-all text-center select-none touch-min-44 ${
                     isCurrentSession ? 'ring-2 ring-indigo-500/80 shadow-xs' : ''
                   } ${
                     dayPresent 

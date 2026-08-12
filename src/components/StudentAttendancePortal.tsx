@@ -254,7 +254,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
   };
 
   return (
-    <div className="material-screen h-full min-w-0 overflow-y-auto p-2.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn custom-scrollbar">
+    <div className="material-screen min-w-0 p-2.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn">
       
       {/* Toast Notification */}
       {excuseSubmittedToast && (
@@ -303,11 +303,11 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               <button
                 type="button"
                 onClick={() => handleCopyText('815 0537 7396', 'meetingId')}
-                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors cursor-pointer touch-min-44"
                 title="Copy Meeting ID"
                 aria-label="Copy Zoom Meeting ID"
               >
-                {copiedField === 'meetingId' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedField === 'meetingId' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
 
@@ -319,11 +319,11 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               <button
                 type="button"
                 onClick={() => handleCopyText('163738', 'passcode')}
-                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors cursor-pointer touch-min-44"
                 title="Copy Passcode"
                 aria-label="Copy Zoom Passcode"
               >
-                {copiedField === 'passcode' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedField === 'passcode' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
 
@@ -822,22 +822,22 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               />
             </div>
 
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold w-full sm:w-auto">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold w-full sm:w-auto">
               <button
                 onClick={() => setLogFilter('all')}
-                className={`flex-1 sm:flex-none min-h-10 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${logFilter === 'all' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-3xs' : 'text-slate-500'}`}
+                className={`flex-1 sm:flex-none min-h-[44px] px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center touch-min-44 ${logFilter === 'all' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 All
               </button>
               <button
                 onClick={() => setLogFilter('present')}
-                className={`flex-1 sm:flex-none min-h-10 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${logFilter === 'present' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-3xs' : 'text-slate-500'}`}
+                className={`flex-1 sm:flex-none min-h-[44px] px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center touch-min-44 ${logFilter === 'present' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Present
               </button>
               <button
                 onClick={() => setLogFilter('absent')}
-                className={`flex-1 sm:flex-none min-h-10 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${logFilter === 'absent' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-300 shadow-3xs' : 'text-slate-500'}`}
+                className={`flex-1 sm:flex-none min-h-[44px] px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center touch-min-44 ${logFilter === 'absent' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-300 shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Absent
               </button>

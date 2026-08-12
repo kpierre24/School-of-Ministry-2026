@@ -24,7 +24,7 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
   onViewStatement
 }) => {
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
       <div 
         className="relative bg-white dark:bg-slate-900 border border-amber-300/80 dark:border-amber-500/40 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-scaleUp text-slate-900 dark:text-slate-100"
         role="dialog"

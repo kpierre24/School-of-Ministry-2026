@@ -389,50 +389,50 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             </span>
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
                 statusFilter === 'all' 
-                  ? 'bg-slate-900 text-white shadow-xs' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' 
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               All Candidates ({students.length})
             </button>
             <button
               onClick={() => setStatusFilter('satisfactory')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
                 statusFilter === 'satisfactory' 
                   ? 'bg-emerald-600 text-white shadow-xs' 
-                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
               }`}
             >
               Good Standing ({satisfactoryStudents})
             </button>
             <button
               onClick={() => setStatusFilter('perfect')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
                 statusFilter === 'perfect' 
                   ? 'bg-amber-500 text-slate-950 shadow-xs' 
-                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                  : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
               }`}
             >
               Honor Roll ({perfectStudents})
             </button>
             <button
               onClick={() => setStatusFilter('at_risk')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
                 statusFilter === 'at_risk' 
                   ? 'bg-rose-600 text-white shadow-xs' 
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40'
               }`}
             >
               At-Risk ({atRiskStudents})
             </button>
             <button
               onClick={() => setStatusFilter('fifty_percent')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
                 statusFilter === 'fifty_percent' 
                   ? 'bg-purple-600 text-white shadow-xs' 
-                  : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                  : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800'
               }`}
             >
               Low Attendance (&le;50%) ({fiftyPercentStudents})
@@ -717,15 +717,15 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     )}
 
                     {/* Quick Document Actions Bar */}
-                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleTriggerUpload(s.name)}
-                          className="hover:text-indigo-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="hover:text-indigo-600 min-w-[44px] min-h-[44px] p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer touch-min-44"
                           title="Upload/Update Photo"
                           aria-label={`Upload photo for ${s.name}`}
                         >
-                          <Camera className="w-3.5 h-3.5 text-indigo-500" />
+                          <Camera className="w-4 h-4 text-indigo-500" />
                         </button>
 
                         {appRole === 'admin' && onResetPassword && (
@@ -735,11 +735,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                 onResetPassword(s.name);
                               }
                             }}
-                            className="hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                            className="hover:text-rose-600 min-w-[44px] min-h-[44px] p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer touch-min-44"
                             title="Reset Password/PIN to 1234"
                             aria-label={`Reset password for ${s.name}`}
                           >
-                            <Lock className="w-3.5 h-3.5 text-rose-500" />
+                            <Lock className="w-4 h-4 text-rose-500" />
                           </button>
                         )}
                       </div>
@@ -747,27 +747,27 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => onSelectStudentForTranscript(s)}
-                          className="p-1 text-slate-600 hover:text-indigo-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-2.5 min-w-[44px] min-h-[44px] text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer touch-min-44"
                           title="Transcript"
                           aria-label={`View transcript for ${s.name}`}
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onSelectStudentForCertificate(s)}
-                          className="p-1 text-slate-600 hover:text-amber-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-2.5 min-w-[44px] min-h-[44px] text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer touch-min-44"
                           title="Certificate"
                           aria-label={`View certificate for ${s.name}`}
                         >
-                          <Award className="w-3.5 h-3.5 text-amber-500" />
+                          <Award className="w-4 h-4 text-amber-500" />
                         </button>
                         <button
                           onClick={() => onSelectStudentForEmail(s)}
-                          className="p-1 text-slate-600 hover:text-rose-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-2.5 min-w-[44px] min-h-[44px] text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer touch-min-44"
                           title="Email Notice"
                           aria-label={`Send email notice to ${s.name}`}
                         >
-                          <Mail className="w-3.5 h-3.5" />
+                          <Mail className="w-4 h-4" />
                         </button>
                       </div>
                     </div>

@@ -437,7 +437,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
+    <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
       
       {/* Hero Banner */}
       <section className={`relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-300 ${
