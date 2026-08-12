@@ -64,11 +64,26 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
  * Appends industry-standard protective HTTP response headers.
  */
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  const cspDirectives = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https: wss: ws:",
+    "frame-ancestors 'self' https://*.run.app https://*.google.com https://ai.studio",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Content-Security-Policy", cspDirectives);
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   next();
 }
 
