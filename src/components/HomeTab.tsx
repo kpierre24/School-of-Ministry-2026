@@ -113,6 +113,8 @@ interface HomeTabProps {
   customAssignments?: CustomAssignment[];
   submissions?: AssignmentSubmission[];
   onTakeQuiz?: (quiz: QuizAssignment) => void;
+  facultyTeachers?: FacultyTeacher[];
+  onSaveFacultyTeachers?: (newList: FacultyTeacher[]) => void;
 }
 
 export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
@@ -195,7 +197,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   atRiskThreshold = 75,
   customAssignments = [],
   submissions = [],
-  onTakeQuiz
+  onTakeQuiz,
+  facultyTeachers: facultyTeachersProp,
+  onSaveFacultyTeachers
 }) => {
   const isStudent = appUser?.role === 'student';
   const isAdminOrTeacher = appUser?.role === 'admin' || appUser?.role === 'teacher';
@@ -208,8 +212,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     return customAssignments.filter(a => a.type === 'quiz' && a.quizData && a.quizData.isPublished !== false);
   }, [customAssignments]);
 
-  // Faculty Teachers State (Persisted in localStorage)
-  const [facultyTeachers, setFacultyTeachers] = useState<FacultyTeacher[]>(() => {
+  // Internal Faculty Teachers State (Fallback if prop not provided)
+  const [internalFacultyTeachers, setInternalFacultyTeachers] = useState<FacultyTeacher[]>(() => {
     try {
       const saved = localStorage.getItem('hteim_faculty_teachers_v1');
       if (saved) {
@@ -224,60 +228,45 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     return DEFAULT_FACULTY_TEACHERS;
   });
 
+  const facultyTeachers = (facultyTeachersProp && facultyTeachersProp.length > 0)
+    ? facultyTeachersProp
+    : internalFacultyTeachers;
+
   const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
 
-  // Automatically sync faculty images to Supabase Storage bucket ('classroom_media')
-  useEffect(() => {
-    let isMounted = true;
-    syncFacultyImagesToSupabase(facultyTeachers).then(syncedList => {
-      if (!isMounted) return;
-      const hasChanges = syncedList.some((item, idx) => item.image !== facultyTeachers[idx]?.image);
-      if (hasChanges) {
-        setFacultyTeachers(syncedList);
-        try {
-          localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
-        } catch (e) {
-          console.error("Failed saving synced faculty list:", e);
-        }
-      }
-    });
-    return () => { isMounted = false; };
-  }, []);
-
   const handleSaveFacultyList = (newList: FacultyTeacher[]) => {
-    setFacultyTeachers(newList);
+    setInternalFacultyTeachers(newList);
     try {
       localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(newList));
     } catch (err) {
       console.error("Failed saving faculty teachers:", err);
     }
 
-    // Ensure all images in newList are saved to Supabase Storage bucket
-    syncFacultyImagesToSupabase(newList).then(syncedList => {
-      setFacultyTeachers(syncedList);
-      try {
-        localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
-      } catch (err) {
-        console.error("Failed saving updated faculty list:", err);
-      }
-    });
+    if (onSaveFacultyTeachers) {
+      onSaveFacultyTeachers(newList);
+    } else {
+      // Ensure images in newList are saved to Supabase Storage bucket
+      syncFacultyImagesToSupabase(newList).then(syncedList => {
+        setInternalFacultyTeachers(syncedList);
+        try {
+          localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
+        } catch (err) {
+          console.error("Failed saving updated faculty list:", err);
+        }
+      });
+    }
   };
 
   const handleResetFacultyList = () => {
-    setFacultyTeachers(DEFAULT_FACULTY_TEACHERS);
+    setInternalFacultyTeachers(DEFAULT_FACULTY_TEACHERS);
     try {
       localStorage.removeItem('hteim_faculty_teachers_v1');
     } catch (err) {
       console.error("Failed resetting faculty teachers:", err);
     }
-    syncFacultyImagesToSupabase(DEFAULT_FACULTY_TEACHERS).then(syncedList => {
-      setFacultyTeachers(syncedList);
-      try {
-        localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
-      } catch (err) {
-        console.error("Failed saving reset faculty list:", err);
-      }
-    });
+    if (onSaveFacultyTeachers) {
+      onSaveFacultyTeachers(DEFAULT_FACULTY_TEACHERS);
+    }
   };
 
   // Showcase & Faculty Revolving Carousel State (Slide 0 = Opening Intro, Slide 1..N = Faculty Members)

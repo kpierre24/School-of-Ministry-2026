@@ -45,7 +45,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   currentStudentName = 'Student'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'due' | 'graded' | 'submission'>('all');
+  const isAdminOrTeacher = currentRole === 'admin' || currentRole === 'teacher';
+  const [activeTab, setActiveTab] = useState<'all' | 'due' | 'graded' | 'submission' | 'announcements'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -70,6 +71,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     if (activeTab === 'due') return n.type === 'due_date' || n.type === 'past_due';
     if (activeTab === 'graded') return n.type === 'graded';
     if (activeTab === 'submission') return n.type === 'submission';
+    if (activeTab === 'announcements') return n.type === 'general' || n.type === 'at_risk_attendance' || n.type === 'payment_past_due';
     return true;
   });
 
@@ -83,6 +85,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return <Award className="w-4 h-4 text-emerald-600" />;
       case 'submission':
         return <FileUp className="w-4 h-4 text-indigo-600" />;
+      case 'at_risk_attendance':
+      case 'payment_past_due':
+        return <AlertCircle className="w-4 h-4 text-rose-600" />;
       default:
         return <Bell className="w-4 h-4 text-blue-600" />;
     }
@@ -98,6 +103,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return 'bg-emerald-100 text-emerald-800 border-emerald-300';
       case 'submission':
         return 'bg-indigo-100 text-indigo-800 border-indigo-300';
+      case 'at_risk_attendance':
+      case 'payment_past_due':
+        return 'bg-rose-100 text-rose-800 border-rose-300';
       default:
         return 'bg-slate-100 text-slate-800 border-slate-300';
     }
@@ -128,11 +136,45 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       title: '⏰ Due Date Reminder: Homiletics Sermon Outline',
       message: 'The Homiletics sermon outline assignment is due in 24 hours. Ensure your document is uploaded in the Exams tab.',
       type: 'due_date',
-      targetRole: 'all',
+      targetRole: 'student',
+      studentName: currentStudentName,
       createdAt: nowStr,
       read: false,
       priority: 'high',
       actionTab: 'exams'
+    });
+  };
+
+  const handleSimulateSubmissionAlert = () => {
+    if (!onAddTestNotification) return;
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    onAddTestNotification({
+      id: `SIM-SUBMIT-${Date.now()}`,
+      title: '📄 New Submission: Alicia Noray Bowles',
+      message: 'Alicia Noray Bowles uploaded "Module_3_Exegesis_Paper.pdf" for Romans 8 Hermeneutics. Pending faculty review & evaluation.',
+      type: 'submission',
+      targetRole: 'admin',
+      studentName: 'Alicia Noray Bowles',
+      createdAt: nowStr,
+      read: false,
+      priority: 'normal',
+      actionTab: 'exams'
+    });
+  };
+
+  const handleSimulateAnnouncementAlert = () => {
+    if (!onAddTestNotification) return;
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    onAddTestNotification({
+      id: `SIM-ANN-${Date.now()}`,
+      title: '📢 Ministry Broadcast: Schedule Update',
+      message: 'Saturday morning live Zoom session will start promptly at 9:00 AM EST. Please check the Schedule tab.',
+      type: 'general',
+      targetRole: 'all',
+      createdAt: nowStr,
+      read: false,
+      priority: 'normal',
+      actionTab: 'schedule'
     });
   };
 
@@ -226,40 +268,63 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             </button>
           </div>
 
-          {/* Filter Sub-Tabs */}
-          <div className="flex items-center justify-around bg-slate-100 p-1 border-b border-slate-200 text-[10px] font-extrabold">
+          {/* Filter Sub-Tabs (Role-Aware) */}
+          <div className="flex items-center justify-around bg-slate-100 p-1 border-b border-slate-200 text-[10px] font-extrabold flex-wrap gap-1">
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 activeTab === 'all' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               All ({notifications.length})
             </button>
-            <button
-              onClick={() => setActiveTab('due')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                activeTab === 'due' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-600 hover:text-amber-700'
-              }`}
-            >
-              Due Dates ({notifications.filter(n => n.type === 'due_date' || n.type === 'past_due').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('graded')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                activeTab === 'graded' ? 'bg-white text-emerald-700 shadow-2xs font-black' : 'text-slate-600 hover:text-emerald-700'
-              }`}
-            >
-              Grading ({notifications.filter(n => n.type === 'graded').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('submission')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                activeTab === 'submission' ? 'bg-white text-indigo-700 shadow-2xs font-black' : 'text-slate-600 hover:text-indigo-700'
-              }`}
-            >
-              Submissions ({notifications.filter(n => n.type === 'submission').length})
-            </button>
+            {isAdminOrTeacher ? (
+              <>
+                <button
+                  onClick={() => setActiveTab('submission')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    activeTab === 'submission' ? 'bg-white text-indigo-700 shadow-2xs font-black' : 'text-slate-600 hover:text-indigo-700'
+                  }`}
+                >
+                  Submissions ({notifications.filter(n => n.type === 'submission').length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('announcements')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    activeTab === 'announcements' ? 'bg-white text-blue-700 shadow-2xs font-black' : 'text-slate-600 hover:text-blue-700'
+                  }`}
+                >
+                  Alerts & Broadcasts ({notifications.filter(n => n.type === 'general' || n.type === 'at_risk_attendance' || n.type === 'payment_past_due').length})
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setActiveTab('due')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    activeTab === 'due' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-600 hover:text-amber-700'
+                  }`}
+                >
+                  Due Dates ({notifications.filter(n => n.type === 'due_date' || n.type === 'past_due').length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('graded')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    activeTab === 'graded' ? 'bg-white text-emerald-700 shadow-2xs font-black' : 'text-slate-600 hover:text-emerald-700'
+                  }`}
+                >
+                  Grading ({notifications.filter(n => n.type === 'graded').length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('announcements')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    activeTab === 'announcements' ? 'bg-white text-blue-700 shadow-2xs font-black' : 'text-slate-600 hover:text-blue-700'
+                  }`}
+                >
+                  Announcements ({notifications.filter(n => n.type === 'general').length})
+                </button>
+              </>
+            )}
           </div>
 
           {/* Notifications List */}
@@ -268,7 +333,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <div className="p-8 text-center space-y-2">
                 <Bell className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-xs font-bold text-slate-600">No Notifications</p>
-                <p className="text-[10px] text-slate-400">You are all caught up! Automated due date and grading alerts will appear here.</p>
+                <p className="text-[10px] text-slate-400">
+                  {isAdminOrTeacher 
+                    ? 'No new student submissions or administrative alerts pending.' 
+                    : 'You are all caught up! Automated due dates and instructor feedback will appear here.'}
+                </p>
               </div>
             ) : (
               filteredNotifications.map(notif => (
@@ -307,7 +376,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
                     <div className="flex items-center justify-between text-[10px] pt-1">
                       <span className="text-indigo-600 font-extrabold flex items-center gap-0.5 hover:underline">
-                        View in Exams Tab <ChevronRight className="w-3 h-3" />
+                        {notif.actionTab ? `View in ${notif.actionTab.charAt(0).toUpperCase() + notif.actionTab.slice(1)} Tab` : 'View Details'} <ChevronRight className="w-3 h-3" />
                       </span>
                       {!notif.read && (
                         <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
@@ -320,23 +389,42 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
           </div>
 
           {/* Test / Simulation Action Footer */}
-          <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex items-center justify-between text-[11px]">
+          <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex items-center justify-between text-[11px] flex-wrap gap-2">
             <span className="text-slate-400 font-medium text-[10px] flex items-center gap-1">
               <Zap className="w-3 h-3 text-amber-400" /> Test Triggers:
             </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleSimulateGradeAlert}
-                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded transition-all cursor-pointer"
-              >
-                + Test Grade
-              </button>
-              <button
-                onClick={handleSimulateDueDateAlert}
-                className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] rounded transition-all cursor-pointer"
-              >
-                + Test Due Date
-              </button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {isAdminOrTeacher ? (
+                <>
+                  <button
+                    onClick={handleSimulateSubmissionAlert}
+                    className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] rounded transition-all cursor-pointer"
+                  >
+                    + Test Submission
+                  </button>
+                  <button
+                    onClick={handleSimulateAnnouncementAlert}
+                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[10px] rounded border border-slate-700 transition-all cursor-pointer"
+                  >
+                    + Test Broadcast
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSimulateGradeAlert}
+                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded transition-all cursor-pointer"
+                  >
+                    + Test Grade
+                  </button>
+                  <button
+                    onClick={handleSimulateDueDateAlert}
+                    className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] rounded transition-all cursor-pointer"
+                  >
+                    + Test Due Date
+                  </button>
+                </>
+              )}
             </div>
           </div>
 

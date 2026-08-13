@@ -32,17 +32,29 @@ export async function loadFromSupabase(userEmail: string | null | undefined): Pr
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Record not found
-        return null;
-      }
       if (error.code === '42P01') {
         throw new Error('TABLE_NOT_FOUND');
       }
-      return null;
     }
 
-    return data?.state || null;
+    if (data?.state) {
+      return data.state;
+    }
+
+    // Fall back to shared_default_state if user-specific record was not found
+    if (docId !== 'shared_default_state') {
+      const fallback = await supabase
+        .from('app_states')
+        .select('state')
+        .eq('id', 'shared_default_state')
+        .single();
+
+      if (fallback.data?.state) {
+        return fallback.data.state;
+      }
+    }
+
+    return null;
   } catch (error: any) {
     if (error.message === 'TABLE_NOT_FOUND') {
       throw error;
@@ -78,6 +90,18 @@ export async function saveToSupabase(
         throw new Error('TABLE_NOT_FOUND');
       }
       return false;
+    }
+
+    // Always keep shared_default_state updated so published or guest views get the latest workspace state
+    if (docId !== 'shared_default_state') {
+      await supabase
+        .from('app_states')
+        .upsert({
+          id: 'shared_default_state',
+          state: state,
+          updated_at: timestamp,
+          updated_by: updater
+        });
     }
 
     return true;

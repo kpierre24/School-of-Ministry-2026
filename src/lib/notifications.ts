@@ -15,7 +15,7 @@ export function generateAutomatedNotifications(
 
   const hasNotification = (id: string) => generated.some(n => n.id === id);
 
-  // 1. Scan Custom Assignments for Due Date Alerts
+  // 1. Scan Custom Assignments for Due Date Alerts (Targeted exclusively to STUDENTS)
   assignments.forEach(asg => {
     if (!asg.dueDate) return;
 
@@ -32,7 +32,7 @@ export function generateAutomatedNotifications(
           title: `⚠️ Past Due: ${asg.title}`,
           message: `The assignment "${asg.title}" was due on ${asg.dueDate}. Please submit your work immediately.`,
           type: 'past_due',
-          targetRole: 'all',
+          targetRole: 'student',
           assignmentId: asg.id,
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
@@ -50,7 +50,7 @@ export function generateAutomatedNotifications(
           title: `⏰ Due Today: ${asg.title}`,
           message: `"${asg.title}" is due today (${asg.dueDate})! Ensure your document response is uploaded before end of day.`,
           type: 'due_date',
-          targetRole: 'all',
+          targetRole: 'student',
           assignmentId: asg.id,
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
@@ -68,7 +68,7 @@ export function generateAutomatedNotifications(
           title: `📅 Upcoming Due Date: ${asg.title}`,
           message: `"${asg.title}" is due in ${daysDiff} day(s) on ${asg.dueDate}.`,
           type: 'due_date',
-          targetRole: 'all',
+          targetRole: 'student',
           assignmentId: asg.id,
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
@@ -79,12 +79,12 @@ export function generateAutomatedNotifications(
     }
   });
 
-  // 2. Scan Submissions for Grading & Feedback Notifications
+  // 2. Scan Submissions for Grading & Feedback Notifications (Targeted to STUDENTS) and Submission Alerts (Targeted to ADMIN/TEACHER)
   submissions.forEach(sub => {
     const asg = assignments.find(a => a.id === sub.assignmentId);
     const asgTitle = asg?.title || 'Coursework Assignment';
 
-    // GRADED / CORRECTION RETURNED
+    // GRADED / CORRECTION RETURNED -> Goes to the specific student
     if (sub.status === 'Graded' || sub.status === 'Correction Returned') {
       const notifId = `NOTIF-GRADED-${sub.id}-${sub.updatedAt}`;
       if (!hasNotification(notifId)) {
@@ -104,7 +104,7 @@ export function generateAutomatedNotifications(
       }
     }
 
-    // SUBMISSION LOGGED (For Instructors)
+    // SUBMISSION LOGGED -> Goes to Administrators and Teachers for grading
     if (sub.status === 'Submitted') {
       const notifId = `NOTIF-SUBMISSION-${sub.id}`;
       if (!hasNotification(notifId)) {
@@ -129,24 +129,53 @@ export function generateAutomatedNotifications(
 }
 
 /**
- * Filter notifications relevant for current user role and student identity
+ * Filter notifications relevant for current user role and student identity with strict RBAC
  */
 export function filterNotificationsForUser(
   notifications: AppNotification[],
   role?: string,
   studentName?: string
 ): AppNotification[] {
+  const normalizedRole = (role || 'admin').toLowerCase().trim();
+  const normalizedStudentName = (studentName || '').toLowerCase().trim();
+
   return notifications.filter(n => {
-    if (!n.targetRole || n.targetRole === 'all') return true;
-    if (role === 'admin' || role === 'teacher') {
-      if (n.targetRole === 'admin' || n.targetRole === 'teacher') return true;
+    const target = (n.targetRole || 'all').toLowerCase().trim();
+
+    // 1. RBAC: Administrator or Teacher view
+    if (normalizedRole === 'admin' || normalizedRole === 'teacher') {
+      // Administrators and Teachers should NEVER receive student homework/quiz due date or student grade notifications
+      if (target === 'student') return false;
+      if (n.type === 'due_date' || n.type === 'past_due' || n.type === 'graded') {
+        return false;
+      }
+      // Administrators and Teachers receive submissions to review, admin alerts, teacher announcements, and general notices
+      return target === 'admin' || target === 'teacher' || target === 'all';
     }
-    if (role === 'student' && n.targetRole === 'student') {
-      if (!n.studentName) return true;
-      if (studentName && n.studentName.toLowerCase().trim() === studentName.toLowerCase().trim()) return true;
-      if (studentName && n.studentName.toLowerCase().includes(studentName.toLowerCase().trim())) return true;
-      return false;
+
+    // 2. RBAC: Student view
+    if (normalizedRole === 'student') {
+      // Students should NEVER see administrative submission review alerts or faculty-only items
+      if (target === 'admin' || target === 'teacher') return false;
+      if (n.type === 'submission') return false;
+
+      // If targeted to a specific individual student, strictly enforce identity matching
+      if (n.studentName) {
+        if (!normalizedStudentName) return false;
+        const targetStudent = n.studentName.toLowerCase().trim();
+        const matches = (
+          targetStudent === normalizedStudentName ||
+          targetStudent.includes(normalizedStudentName) ||
+          normalizedStudentName.includes(targetStudent)
+        );
+        return matches;
+      }
+
+      // General student notifications (e.g. general quiz published, course-wide due date alerts)
+      return target === 'student' || target === 'all';
     }
-    return true;
+
+    // Fallback: general public / guest accounts only see general announcements
+    return target === 'all' && n.type !== 'submission' && n.type !== 'due_date' && n.type !== 'past_due' && n.type !== 'graded';
   });
 }

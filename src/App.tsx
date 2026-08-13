@@ -81,7 +81,7 @@ import {
   Video
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
-import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from './lib/supabaseClient';
+import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase } from './lib/supabaseClient';
 import { ZoomCoPilotTab, ActiveZoomSession } from './components/ZoomCoPilotTab';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
@@ -108,7 +108,7 @@ import { generateAutomatedNotifications, filterNotificationsForUser } from './li
 import { LoginModal } from './components/LoginModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
-import { HomeTab } from './components/HomeTab';
+import { HomeTab, DEFAULT_FACULTY_TEACHERS } from './components/HomeTab';
 import { StudentsTab } from './components/StudentsTab';
 import { CoursesTab, INITIAL_COURSES } from './components/CoursesTab';
 import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
@@ -582,6 +582,16 @@ export default function App() {
   const [payments, setPayments] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('hteim_student_payments');
     return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+  });
+  const [facultyTeachers, setFacultyTeachers] = useState<any[]>(() => {
+    const saved = localStorage.getItem('hteim_faculty_teachers_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return DEFAULT_FACULTY_TEACHERS;
   });
   const [zoomExceptionNote, setZoomExceptionNote] = useState<string>(() => {
     return localStorage.getItem('hteim_zoom_exception_note') || '';
@@ -1477,6 +1487,7 @@ export default function App() {
           if (cloudState.userCredentials !== undefined) setUserCredentials(cloudState.userCredentials);
           if (cloudState.activeZoomSession !== undefined) setActiveZoomSession(cloudState.activeZoomSession);
           if (Array.isArray(cloudState.facultyTeachers) && cloudState.facultyTeachers.length > 0) {
+            setFacultyTeachers(cloudState.facultyTeachers);
             try {
               localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(cloudState.facultyTeachers));
             } catch (e) {
@@ -1557,17 +1568,55 @@ export default function App() {
     };
   }, [user, appUser]);
 
+  const handleSaveFacultyTeachers = async (newList: any[]) => {
+    setFacultyTeachers(newList);
+    try {
+      localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(newList));
+    } catch (e) {}
+
+    // Ensure images are uploaded to Supabase Storage bucket ('classroom_media')
+    const syncedList = await syncFacultyImagesToSupabase(newList);
+    setFacultyTeachers(syncedList);
+    try {
+      localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
+    } catch (e) {}
+
+    // Save directly to Supabase cloud database
+    const activeEmail = appUser?.email || user?.email;
+    const stateToSave = {
+      records,
+      classDays,
+      studentNotes,
+      excusedAbsences,
+      rubricScores,
+      deletedStudentNames,
+      studentPhotos,
+      studentLevels,
+      customAssignments,
+      submissions,
+      notifications,
+      sheetUrl,
+      courses,
+      schedules,
+      libraryResources,
+      classroomMedia,
+      facultyTeachers: syncedList,
+      payments,
+      messages,
+      zoomExceptionNote,
+      hasZoomException,
+      userCredentials,
+      activeZoomSession
+    };
+    await saveToSupabase(activeEmail, stateToSave);
+  };
+
   const handlePushToCloud = async () => {
     setIsCloudSyncing(true);
     setCloudSyncError(null);
     setSupabaseTableMissing(false);
     const activeEmail = appUser?.email || user?.email;
     try {
-      let facultyList: any[] = [];
-      try {
-        facultyList = JSON.parse(localStorage.getItem('hteim_faculty_teachers_v1') || '[]');
-      } catch (e) {}
-
       const stateToSave = {
         records,
         classDays,
@@ -1585,7 +1634,7 @@ export default function App() {
         schedules,
         libraryResources,
         classroomMedia,
-        facultyTeachers: facultyList,
+        facultyTeachers,
         payments,
         messages,
         zoomExceptionNote,
@@ -3432,6 +3481,8 @@ create policy "Allow public update" on app_states for update using (true) with c
                     onVerifySetup={handleVerifySupabase}
                     customAssignments={customAssignments}
                     submissions={submissions}
+                    facultyTeachers={facultyTeachers}
+                    onSaveFacultyTeachers={handleSaveFacultyTeachers}
                     onTakeQuiz={(quiz) => {
                       setActiveErpTab('exams');
                     }}
