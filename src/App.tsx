@@ -372,9 +372,7 @@ export default function App() {
     localStorage.setItem('hteim_user_credentials', JSON.stringify(userCredentials));
   }, [userCredentials]);
 
-  const [showIntro, setShowIntro] = useState<boolean>(() => {
-    return sessionStorage.getItem('hteim_intro_shown') !== 'true';
-  });
+  const [showIntro, setShowIntro] = useState<boolean>(false);
 
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
@@ -1478,6 +1476,13 @@ export default function App() {
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
           if (cloudState.userCredentials !== undefined) setUserCredentials(cloudState.userCredentials);
           if (cloudState.activeZoomSession !== undefined) setActiveZoomSession(cloudState.activeZoomSession);
+          if (Array.isArray(cloudState.facultyTeachers) && cloudState.facultyTeachers.length > 0) {
+            try {
+              localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(cloudState.facultyTeachers));
+            } catch (e) {
+              console.error("Failed writing facultyTeachers from cloud to localStorage:", e);
+            }
+          }
           
           if (cloudState.updatedAt) {
             const timeStr = new Date(cloudState.updatedAt).toLocaleTimeString('en-US', { 
@@ -1491,6 +1496,11 @@ export default function App() {
           setTimeout(() => setSyncedBannerMessage(null), 4500);
         } else if (cloudState === null && active) {
           // If no cloud data is present, immediately upload the existing local storage database to Supabase
+          let facultyList: any[] = [];
+          try {
+            facultyList = JSON.parse(localStorage.getItem('hteim_faculty_teachers_v1') || '[]');
+          } catch (e) {}
+
           const stateToSave = {
             records,
             classDays,
@@ -1508,6 +1518,7 @@ export default function App() {
             schedules,
             libraryResources,
             classroomMedia,
+            facultyTeachers: facultyList,
             payments,
             messages,
             zoomExceptionNote,
@@ -1552,6 +1563,11 @@ export default function App() {
     setSupabaseTableMissing(false);
     const activeEmail = appUser?.email || user?.email;
     try {
+      let facultyList: any[] = [];
+      try {
+        facultyList = JSON.parse(localStorage.getItem('hteim_faculty_teachers_v1') || '[]');
+      } catch (e) {}
+
       const stateToSave = {
         records,
         classDays,
@@ -1569,6 +1585,7 @@ export default function App() {
         schedules,
         libraryResources,
         classroomMedia,
+        facultyTeachers: facultyList,
         payments,
         messages,
         zoomExceptionNote,

@@ -66,6 +66,7 @@ export interface SyncedAppState {
   schedules?: any[];
   libraryResources?: any[];
   classroomMedia?: any[];
+  facultyTeachers?: any[];
   payments?: any[];
   zoomExceptionNote?: string;
   hasZoomException?: boolean;

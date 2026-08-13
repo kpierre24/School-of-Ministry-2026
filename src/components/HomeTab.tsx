@@ -1,6 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import biblicalHeroAsset from '../assets/images/caribbean_bible_school_clean_1786453783620.jpg';
+import gillianSelkridgeAsset from '../assets/images/gillian_selkridge_1786642912894.jpg';
+import samuelSelkridgeAsset from '../assets/images/samuel_selkridge_1786642928268.jpg';
+import galeGrantAsset from '../assets/images/gale_grant_1786642942313.jpg';
+import christyRubenAsset from '../assets/images/christy_ruben_1786642955859.jpg';
+import garodAndrewsAsset from '../assets/images/garod_andrews_1786642969381.jpg';
 import { LogoImage } from './LogoImage';
 import { 
   BookOpen, 
@@ -20,9 +26,11 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   ChevronUp,
   Play,
+  Pause,
   Sliders,
   PenSquare,
   DollarSign,
@@ -53,9 +61,13 @@ import {
   FileText,
   Layers,
   Video,
-  UserCheck
+  UserCheck,
+  Edit3,
+  Settings
 } from 'lucide-react';
-import { TabType, StudentSummary, ClassDay, PaymentRecord, CustomAssignment, AssignmentSubmission, QuizAssignment } from '../types';
+import { TabType, StudentSummary, ClassDay, PaymentRecord, CustomAssignment, AssignmentSubmission, QuizAssignment, FacultyTeacher } from '../types';
+import { FacultyManagerModal } from './FacultyManagerModal';
+import { syncFacultyImagesToSupabase } from '../lib/supabaseClient';
 import { AppUser } from '../lib/userAuth';
 import { 
   ResponsiveContainer, 
@@ -103,6 +115,59 @@ interface HomeTabProps {
   onTakeQuiz?: (quiz: QuizAssignment) => void;
 }
 
+export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
+  {
+    id: 'gillian-selkridge',
+    name: 'Apostle Gillian Selkridge',
+    title: 'Senior Apostle & School Director',
+    role: 'Apostolic Oversight & Ministerial Governance',
+    bio: 'Visionary founder of Heaven Touching Earth International Ministries. Overseeing apostolic alignment, ministerial ethics, and five-fold leadership equipping across the 6 core modules.',
+    module: 'Module 1 & 6: Apostolic Governance',
+    image: gillianSelkridgeAsset,
+    badgeColor: 'bg-purple-100 text-purple-900 dark:bg-purple-900/90 dark:text-purple-100 border-purple-300 dark:border-purple-700'
+  },
+  {
+    id: 'samuel-selkridge',
+    name: 'Pastor Samuel Selkridge',
+    title: 'Senior Pastor & Faculty Dean',
+    role: 'Exegetical Theology & Pastoral Care',
+    bio: 'Senior Pastor and Dean of Faculty with decades of pastoral devotion. Teaching deep scriptural hermeneutics, flock care, and foundational Christian doctrine.',
+    module: 'Module 2: Exegetical Theology & Doctrine',
+    image: samuelSelkridgeAsset,
+    badgeColor: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900/90 dark:text-indigo-100 border-indigo-300 dark:border-indigo-700'
+  },
+  {
+    id: 'gale-grant',
+    name: 'Pastor Gale Grant',
+    title: 'Senior Instructor & Curriculum Chair',
+    role: 'Systematic Theology & Church Ethics',
+    bio: 'Leading curriculum development and systematic theology. Specialized in biblical worldview, ministerial integrity, and structured church administration.',
+    module: 'Module 3: Systematic Theology & Ethics',
+    image: galeGrantAsset,
+    badgeColor: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/90 dark:text-emerald-100 border-emerald-300 dark:border-emerald-700'
+  },
+  {
+    id: 'christy-ruben',
+    name: 'Pastor Christy Ruben',
+    title: 'Lead Instructor & Student Mentor',
+    role: 'Homiletics & Practical Preaching',
+    bio: 'Dedicated to empowering ministers in the art of sermon preparation, spirit-led homiletics, pulpit decorum, and transformative community outreach.',
+    module: 'Module 4: Homiletics & Practical Preaching',
+    image: christyRubenAsset,
+    badgeColor: 'bg-amber-100 text-amber-950 dark:bg-amber-900/90 dark:text-amber-100 border-amber-300 dark:border-amber-700'
+  },
+  {
+    id: 'garod-andrews',
+    name: 'Prophet Garod Andrews',
+    title: 'Lead Instructor & Prophetic Department Head',
+    role: 'Prophetic Ministry & Spiritual Protocol',
+    bio: 'Equipping saints in spiritual discernment, prophetic protocol, intercessory prayer warfare, and operating with spiritual authority.',
+    module: 'Module 5: Prophetic Ministry & Intercession',
+    image: garodAndrewsAsset,
+    badgeColor: 'bg-sky-100 text-sky-900 dark:bg-sky-900/90 dark:text-sky-100 border-sky-300 dark:border-sky-700'
+  }
+];
+
 export const HomeTab: React.FC<HomeTabProps> = ({
   onNavigate,
   appUser,
@@ -142,6 +207,112 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const activeQuizzes = useMemo(() => {
     return customAssignments.filter(a => a.type === 'quiz' && a.quizData && a.quizData.isPublished !== false);
   }, [customAssignments]);
+
+  // Faculty Teachers State (Persisted in localStorage)
+  const [facultyTeachers, setFacultyTeachers] = useState<FacultyTeacher[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_faculty_teachers_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.error("Failed loading faculty teachers state:", err);
+    }
+    return DEFAULT_FACULTY_TEACHERS;
+  });
+
+  const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
+
+  // Automatically sync faculty images to Supabase Storage bucket ('classroom_media')
+  useEffect(() => {
+    let isMounted = true;
+    syncFacultyImagesToSupabase(facultyTeachers).then(syncedList => {
+      if (!isMounted) return;
+      const hasChanges = syncedList.some((item, idx) => item.image !== facultyTeachers[idx]?.image);
+      if (hasChanges) {
+        setFacultyTeachers(syncedList);
+        try {
+          localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
+        } catch (e) {
+          console.error("Failed saving synced faculty list:", e);
+        }
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleSaveFacultyList = (newList: FacultyTeacher[]) => {
+    setFacultyTeachers(newList);
+    try {
+      localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(newList));
+    } catch (err) {
+      console.error("Failed saving faculty teachers:", err);
+    }
+
+    // Ensure all images in newList are saved to Supabase Storage bucket
+    syncFacultyImagesToSupabase(newList).then(syncedList => {
+      setFacultyTeachers(syncedList);
+      try {
+        localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
+      } catch (err) {
+        console.error("Failed saving updated faculty list:", err);
+      }
+    });
+  };
+
+  const handleResetFacultyList = () => {
+    setFacultyTeachers(DEFAULT_FACULTY_TEACHERS);
+    try {
+      localStorage.removeItem('hteim_faculty_teachers_v1');
+    } catch (err) {
+      console.error("Failed resetting faculty teachers:", err);
+    }
+    syncFacultyImagesToSupabase(DEFAULT_FACULTY_TEACHERS).then(syncedList => {
+      setFacultyTeachers(syncedList);
+      try {
+        localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
+      } catch (err) {
+        console.error("Failed saving reset faculty list:", err);
+      }
+    });
+  };
+
+  // Showcase & Faculty Revolving Carousel State (Slide 0 = Opening Intro, Slide 1..N = Faculty Members)
+  const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
+  const [isTeacherAutoplay, setIsTeacherAutoplay] = useState(true);
+
+  const totalSlides = 1 + facultyTeachers.length;
+
+  // Bounds safety check if slide count changes
+  useEffect(() => {
+    if (currentSlideIdx >= totalSlides) {
+      setCurrentSlideIdx(0);
+    }
+  }, [totalSlides, currentSlideIdx]);
+
+  useEffect(() => {
+    if (!isTeacherAutoplay || totalSlides <= 0) return;
+    const timer = setInterval(() => {
+      setCurrentSlideIdx((prev) => (prev + 1) % totalSlides);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isTeacherAutoplay, totalSlides]);
+
+  const activeTeacherIdx = currentSlideIdx > 0 ? currentSlideIdx - 1 : 0;
+  const activeTeacher = facultyTeachers[activeTeacherIdx] || facultyTeachers[0] || DEFAULT_FACULTY_TEACHERS[0];
+
+  const handleNextSlide = () => {
+    if (totalSlides <= 0) return;
+    setCurrentSlideIdx((prev) => (prev + 1) % totalSlides);
+  };
+
+  const handlePrevSlide = () => {
+    if (totalSlides <= 0) return;
+    setCurrentSlideIdx((prev) => (prev - 1 + totalSlides) % totalSlides);
+  };
 
   // Section visibility states
   const [activeVerseIndex, setActiveVerseIndex] = useState(0);
@@ -310,109 +481,350 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
       
-      {/* Hero Banner */}
-      <section className={`relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-300 ${
-        isBannerCollapsed ? 'min-h-[60px] sm:min-h-[72px]' : 'min-h-[300px] sm:min-h-[360px] flex flex-col justify-between'
-      }`}>
-        {/* Background Artwork */}
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={biblicalHeroAsset} 
-            alt="HTEIM School of Ministry" 
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-950/40 dark:from-slate-950 dark:via-slate-950/80 dark:to-slate-950/50" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-70" />
-        </div>
-
-        {/* Banner Header */}
-        <div className="relative z-10 p-4 sm:p-5 flex items-center justify-between gap-3 w-full">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white text-[10px] sm:text-[11px] font-semibold tracking-wide rounded-full border border-white/10">
-            <Flame className="w-3.5 h-3.5 text-amber-400" />
-            <span>HTEIM School of Ministry</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={toggleBannerCollapse}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-          >
-            {isBannerCollapsed ? (
-              <>
-                <span>Expand</span>
-                <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
-              </>
-            ) : (
-              <>
-                <span>Collapse</span>
-                <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
-              </>
-            )}
-          </button>
-        </div>
-
-        {!isBannerCollapsed ? (
-          <div className="relative z-10 px-3.5 sm:px-10 pb-6 pt-1 sm:pb-10 md:px-12 md:pb-12 w-full max-w-4xl space-y-3.5 animate-fadeIn">
-            <div className="space-y-1.5">
-              <span className="text-[10px] sm:text-[11px] font-extrabold font-mono uppercase tracking-wider text-amber-400/90 break-words block">
-                Heaven Touching Earth International Ministries
-              </span>
-              <h1 className="text-xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-white font-syne">
-                Anointed Biblical Instruction & <br className="hidden sm:inline" />
-                <span className="inline-block my-1 px-2.5 py-0.5 bg-amber-400 text-slate-950 font-black rounded-lg text-sm xs:text-base sm:text-3xl md:text-4xl max-w-full truncate">
-                  Ministerial Governance
+      {/* Course Faculty & Opening Intro Revolving Showcase Banner */}
+      <section 
+        className="bg-slate-950 text-white rounded-3xl border border-slate-800 shadow-2xl overflow-hidden my-2 transition-all"
+        onMouseEnter={() => setIsTeacherAutoplay(false)}
+        onMouseLeave={() => setIsTeacherAutoplay(true)}
+      >
+        {/* Banner Top Header Controls */}
+        <div className="bg-slate-900/90 backdrop-blur-md text-white px-4 sm:px-6 py-3.5 flex items-center justify-between flex-wrap gap-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 font-black flex items-center justify-center text-xs shadow-sm shrink-0">
+              {currentSlideIdx === 0 ? <Sparkles className="w-4 h-4 text-slate-950" /> : <Users className="w-4 h-4 text-slate-950" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xs sm:text-sm font-extrabold text-white tracking-tight">
+                  {currentSlideIdx === 0 ? 'HTEIM School of Ministry — Opening Vision' : 'Course Faculty & Anointed Instructors'}
+                </h2>
+                <span className="px-2.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                  <Flame className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                  {currentSlideIdx === 0 ? 'Opening Intro' : `Instructor 0${currentSlideIdx} of 0${facultyTeachers.length}`}
                 </span>
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap pt-1">
-              <span className="px-3 py-1 bg-white/10 text-white border border-white/10 rounded-full text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-                6 Core Curriculum Modules
-              </span>
-              <span className="px-3 py-1 bg-white/10 text-white border border-white/10 rounded-full text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                75% Attendance Standard
-              </span>
-              <span className="px-3 py-1 bg-white/10 text-white border border-white/10 rounded-full text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-amber-400" />
-                Live Hybrid Classes
-              </span>
-            </div>
-
-            <p className="text-xs sm:text-sm md:text-base text-slate-200/90 leading-relaxed max-w-2xl font-medium">
-              "Bringing Heaven to Earth, Taking People to Heaven." Equipping saints through deep exegesis, high ministerial ethics, prophetic discernment, and five-fold apostolic oversight.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-2 flex-wrap">
-              <button
-                onClick={() => onNavigate('courses')}
-                className="w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
-              >
-                <BookOpen className="w-4 h-4 text-amber-300" /> 6 Core Modules
-              </button>
-
-              <button
-                onClick={() => onNavigate('schedule')}
-                className="w-full sm:w-auto px-4 py-3 bg-slate-900/80 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700/80 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Calendar className="w-4 h-4 text-emerald-400" /> Class Schedule
-              </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {currentSlideIdx === 0 
+                  ? 'Anointed biblical instruction, exegesis, and ministerial governance' 
+                  : `Equipping saints with five-fold wisdom and ministerial excellence (${activeTeacher.name})`}
+              </p>
             </div>
           </div>
-        ) : (
-          <div className="relative z-10 px-6 pb-4 pt-1 w-full flex items-center justify-between gap-4 animate-fadeIn">
-            <p className="text-xs sm:text-sm font-extrabold text-white truncate">
-              HTEIM School of Ministry — "Bringing Heaven to Earth, Taking People to Heaven"
-            </p>
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
+
+          {/* Navigation, Autoplay & Admin Edit Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsFacultyModalOpen(true)}
+              className="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95 border border-amber-300"
+              title="Manage Faculty Roster & Photos"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-slate-950" />
+              <span>Edit Faculty</span>
+            </button>
+
+            <button
+              onClick={() => setIsTeacherAutoplay(!isTeacherAutoplay)}
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-700"
+              title={isTeacherAutoplay ? "Pause auto-rotation" : "Resume auto-rotation"}
+            >
+              {isTeacherAutoplay ? (
+                <>
+                  <Pause className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span className="hidden xs:inline text-[10px] font-bold">Autoplay</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span className="hidden xs:inline text-[10px] font-bold">Paused</span>
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700">
               <button
-                onClick={() => onNavigate('courses')}
-                className="px-3 py-1.5 bg-indigo-600 text-white font-black text-[11px] rounded-lg shadow-xs cursor-pointer"
+                onClick={handlePrevSlide}
+                className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors cursor-pointer"
+                aria-label="Previous Slide"
               >
-                Explore Modules
+                <ChevronLeft className="w-4 h-4" />
               </button>
+              <span className="text-[10px] font-mono font-extrabold text-amber-400 px-1.5">
+                0{currentSlideIdx + 1}/0{totalSlides}
+              </span>
+              <button
+                onClick={handleNextSlide}
+                className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors cursor-pointer"
+                aria-label="Next Slide"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleBannerCollapse}
+              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
+              title={isBannerCollapsed ? "Expand Banner" : "Collapse Banner"}
+            >
+              {isBannerCollapsed ? <ChevronDown className="w-4 h-4 text-amber-400" /> : <ChevronUp className="w-4 h-4 text-amber-400" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Main Banner Slide Content Area with AnimatePresence Smooth Fade */}
+        {!isBannerCollapsed && (
+          <div className="p-4 sm:p-6 md:p-8 relative">
+            <AnimatePresence mode="wait">
+              {currentSlideIdx === 0 ? (
+                /* Slide 0: Opening Intro Hero Card */
+                <motion.div
+                  key="opening-intro-slide"
+                  initial={{ opacity: 0, y: 8, filter: 'blur(6px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
+                  transition={{ duration: 0.55, ease: 'easeInOut' }}
+                  className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-10 min-h-[340px] flex flex-col justify-between shadow-2xl"
+                >
+                  <div className="absolute inset-0 z-0">
+                    <img 
+                      src={biblicalHeroAsset} 
+                      alt="HTEIM School of Ministry" 
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/50" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                  </div>
+
+                  <div className="relative z-10 w-full max-w-4xl space-y-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 text-[10px] sm:text-[11px] font-bold tracking-wide rounded-full border border-amber-400/30">
+                      <Flame className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Heaven Touching Earth International Ministries</span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-white font-syne">
+                        Anointed Biblical Instruction & <br className="hidden sm:inline" />
+                        <span className="inline-block my-1 px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-xl text-base sm:text-3xl md:text-4xl shadow-lg">
+                          Ministerial Governance
+                        </span>
+                      </h1>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      <span className="px-3 py-1 bg-white/10 text-white border border-white/15 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
+                        <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
+                        6 Core Curriculum Modules
+                      </span>
+                      <span className="px-3 py-1 bg-white/10 text-white border border-white/15 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        75% Attendance Standard
+                      </span>
+                      <span className="px-3 py-1 bg-white/10 text-white border border-white/15 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
+                        <Radio className="w-3.5 h-3.5 text-amber-400" />
+                        Live Hybrid Classes
+                      </span>
+                    </div>
+
+                    <p className="text-xs sm:text-sm md:text-base text-slate-200/95 leading-relaxed max-w-2xl font-medium">
+                      "Bringing Heaven to Earth, Taking People to Heaven." Equipping saints through deep exegesis, high ministerial ethics, prophetic discernment, and five-fold apostolic oversight.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 flex-wrap">
+                      <button
+                        onClick={() => onNavigate('courses')}
+                        className="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
+                      >
+                        <BookOpen className="w-4 h-4 text-amber-300" /> 6 Core Modules
+                      </button>
+
+                      <button
+                        onClick={() => onNavigate('schedule')}
+                        className="w-full sm:w-auto px-5 py-3 bg-slate-900/90 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700 cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                      >
+                        <Calendar className="w-4 h-4 text-emerald-400" /> Class Schedule
+                      </button>
+
+                      <button
+                        onClick={handleNextSlide}
+                        className="w-full sm:w-auto px-4 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                      >
+                        <span>View Faculty Banner</span>
+                        <ArrowRight className="w-4 h-4 text-slate-950" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                /* Slide 1..N: Faculty Instructor Cards */
+                <motion.div
+                  key={`faculty-slide-${activeTeacher.id}`}
+                  initial={{ opacity: 0, y: 8, filter: 'blur(6px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
+                  transition={{ duration: 0.55, ease: 'easeInOut' }}
+                  className="p-5 sm:p-7 relative overflow-hidden bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-2xl"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    {/* Instructor Portrait Photo */}
+                    <div className="md:col-span-5 lg:col-span-4 flex flex-col items-center justify-center">
+                      <div className="relative group w-full max-w-[250px] sm:max-w-[270px]">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-purple-600 to-indigo-600 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition duration-500" />
+                        
+                        <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 shadow-2xl aspect-[3/4] w-full">
+                          <img
+                            src={activeTeacher.image}
+                            alt={activeTeacher.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+                          
+                          <div className="absolute bottom-3 left-3 right-3">
+                            <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border shadow-md ${activeTeacher.badgeColor}`}>
+                              {activeTeacher.module}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Instructor Details & Bio */}
+                    <div className="md:col-span-7 lg:col-span-8 space-y-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-3 py-1 bg-purple-950/80 text-purple-200 border border-purple-800 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                            <UserCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                            HTEIM Course Faculty
+                          </span>
+                          <span className="text-xs text-slate-400 font-bold">
+                            • Instructor {currentSlideIdx} of {facultyTeachers.length}
+                          </span>
+                        </div>
+
+                        <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-snug font-syne">
+                          {activeTeacher.name}
+                        </h3>
+                        
+                        <p className="text-xs sm:text-sm font-extrabold text-amber-400 uppercase tracking-wide">
+                          {activeTeacher.role} — {activeTeacher.title}
+                        </p>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium bg-slate-800/80 p-4 rounded-2xl border border-slate-700/80 shadow-xs italic">
+                        "{activeTeacher.bio}"
+                      </p>
+
+                      <div className="pt-1 flex flex-wrap items-center gap-3">
+                        <button
+                          onClick={() => onNavigate('courses')}
+                          className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                        >
+                          <BookOpen className="w-4 h-4 shrink-0" />
+                          <span>Explore Course Curriculum</span>
+                          <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                        </button>
+
+                        <button
+                          onClick={() => onNavigate('schedule')}
+                          className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>View Class Schedule</span>
+                        </button>
+
+                        <button
+                          onClick={() => setIsFacultyModalOpen(true)}
+                          className="px-4 py-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/40 transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <Edit3 className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>Edit Faculty Info</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Revolving Slide Selectors (Intro + 5 Faculty Members) */}
+            <div className="mt-6 pt-5 border-t border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  Showcase Slides (Opening Vision + {facultyTeachers.length} Course Faculty)
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: totalSlides }).map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlideIdx(idx)}
+                      className={`h-2 rounded-full transition-all cursor-pointer ${
+                        idx === currentSlideIdx 
+                          ? 'w-6 bg-amber-400 shadow-xs' 
+                          : 'w-2 bg-slate-700 hover:bg-slate-600'
+                      }`}
+                      aria-label={`Go to slide ${idx}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Slide Thumbnail Buttons */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                {/* Slide 0 Thumbnail: Opening Intro */}
+                <button
+                  onClick={() => setCurrentSlideIdx(0)}
+                  className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${
+                    currentSlideIdx === 0
+                      ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950 flex items-center justify-center">
+                    <img
+                      src={biblicalHeroAsset}
+                      alt="Opening Intro"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-extrabold truncate text-white">Opening Intro</p>
+                    <p className="text-[9px] text-amber-400 truncate font-mono">HTEIM Vision</p>
+                  </div>
+                </button>
+
+                {/* Slides 1..N Thumbnails: Faculty Instructors */}
+                {facultyTeachers.map((teacher, idx) => {
+                  const slideNum = idx + 1;
+                  const isActive = slideNum === currentSlideIdx;
+                  return (
+                    <button
+                      key={teacher.id}
+                      onClick={() => setCurrentSlideIdx(slideNum)}
+                      className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${
+                        isActive
+                          ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950">
+                        <img
+                          src={teacher.image}
+                          alt={teacher.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover object-top"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-extrabold truncate text-white">{teacher.name}</p>
+                        <p className="text-[9px] text-amber-400 truncate font-mono">Faculty {slideNum}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -1240,6 +1652,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         )}
       </section>
       )}
+
+      {/* Admin Faculty & Instructors Manager Modal */}
+      <FacultyManagerModal
+        isOpen={isFacultyModalOpen}
+        onClose={() => setIsFacultyModalOpen(false)}
+        facultyList={facultyTeachers}
+        onSaveFacultyList={handleSaveFacultyList}
+        onResetToDefault={handleResetFacultyList}
+      />
 
     </div>
   );

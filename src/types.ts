@@ -1,5 +1,16 @@
 export type TabType = 'home' | 'attendance' | 'zoom-copilot' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
 
+export interface FacultyTeacher {
+  id: string;
+  name: string;
+  title: string;
+  role: string;
+  bio: string;
+  module: string;
+  image: string;
+  badgeColor: string;
+}
+
 export type AcademicLevel = {
   id: string;
   code: string;

@@ -82,6 +82,78 @@ export async function uploadToSupabaseStorage(
   }
 }
 
+/**
+ * Ensures an image URL or File/data string is stored in a Supabase Storage bucket
+ * and returns the public Supabase Storage URL.
+ */
+export async function ensureSupabaseStorageUrl(
+  bucket: string,
+  fileName: string,
+  imageUrl: string
+): Promise<string> {
+  if (!imageUrl) return imageUrl;
+
+  // If already a Supabase Storage public URL, return as is
+  if (imageUrl.includes('.supabase.co/storage/v1/object/public/')) {
+    return imageUrl;
+  }
+
+  // If it's a data URL, upload directly
+  if (imageUrl.startsWith('data:')) {
+    return await uploadToSupabaseStorage(bucket, fileName, imageUrl);
+  }
+
+  // If it's a local relative path, asset import, or blob URL, fetch and upload to Supabase Storage
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) return imageUrl;
+    const blob = await res.blob();
+    const contentType = blob.type || 'image/jpeg';
+    const ext = contentType.split('/')[1] || 'jpg';
+    const cleanFileName = fileName.endsWith(`.${ext}`) ? fileName : `${fileName}.${ext}`;
+    const file = new File([blob], cleanFileName, { type: contentType });
+    return await uploadToSupabaseStorage(bucket, cleanFileName, file);
+  } catch (err) {
+    logger.warn(`Could not upload image '${fileName}' to Supabase Storage:`, err);
+    return imageUrl;
+  }
+}
+
+/**
+ * Iterates through a list of FacultyTeacher objects and ensures all teacher portrait images
+ * are uploaded and stored in the Supabase 'classroom_media' bucket. Returns updated faculty list.
+ */
+export async function syncFacultyImagesToSupabase(facultyTeachers: any[]): Promise<any[]> {
+  if (!Array.isArray(facultyTeachers) || facultyTeachers.length === 0) {
+    return facultyTeachers;
+  }
+
+  const updatedFaculty = [...facultyTeachers];
+
+  for (let i = 0; i < updatedFaculty.length; i++) {
+    const teacher = updatedFaculty[i];
+    if (!teacher || !teacher.image) continue;
+
+    // Check if the image needs to be saved to Supabase storage
+    if (!teacher.image.includes('.supabase.co/storage/v1/object/public/')) {
+      const cleanSlug = (teacher.name || teacher.id || `faculty_${i}`)
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_');
+      const fileName = `faculty_portrait_${cleanSlug}.jpg`;
+
+      const supabaseUrl = await ensureSupabaseStorageUrl('classroom_media', fileName, teacher.image);
+      if (supabaseUrl && supabaseUrl !== teacher.image) {
+        updatedFaculty[i] = {
+          ...teacher,
+          image: supabaseUrl,
+        };
+      }
+    }
+  }
+
+  return updatedFaculty;
+}
+
 export interface StorageObjectInfo {
   name: string;
   id?: string;
