@@ -15,6 +15,7 @@ import {
   Search,
   Download,
   ArrowUpDown,
+  ArrowRight,
   CheckCircle2,
   XCircle,
   X,

@@ -230,7 +230,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           id: `NOTIF-QUIZ-${Date.now()}`,
           title: `📝 New Active Quiz Published: ${quizData.title}`,
           message: `A new class day quiz "${quizData.title}" (${quizData.totalPoints} pts${quizData.timeLimitMinutes ? `, ${quizData.timeLimitMinutes} min limit` : ''}) is now active. Access it on your Home screen or Exams tab!`,
-          type: 'assignment',
+          type: 'due_date',
           targetRole: 'student',
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
