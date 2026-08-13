@@ -54,7 +54,7 @@ import {
   Video,
   UserCheck
 } from 'lucide-react';
-import { TabType, StudentSummary, ClassDay, PaymentRecord } from '../types';
+import { TabType, StudentSummary, ClassDay, PaymentRecord, CustomAssignment, AssignmentSubmission, QuizAssignment } from '../types';
 import { AppUser } from '../lib/userAuth';
 import { 
   ResponsiveContainer, 
@@ -69,11 +69,6 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { 
-  DashboardCustomizerModal, 
-  DEFAULT_WIDGET_ORDER, 
-  DEFAULT_ENABLED_WIDGETS 
-} from './DashboardCustomizerModal';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
 
@@ -102,6 +97,9 @@ interface HomeTabProps {
   supabaseTableMissing?: boolean;
   onVerifySetup?: () => Promise<void>;
   atRiskThreshold?: number;
+  customAssignments?: CustomAssignment[];
+  submissions?: AssignmentSubmission[];
+  onTakeQuiz?: (quiz: QuizAssignment) => void;
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({
@@ -128,28 +126,27 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   userEmail = null,
   supabaseTableMissing = false,
   onVerifySetup,
-  atRiskThreshold = 75
+  atRiskThreshold = 75,
+  customAssignments = [],
+  submissions = [],
+  onTakeQuiz
 }) => {
   const isStudent = appUser?.role === 'student';
   const isAdminOrTeacher = appUser?.role === 'admin' || appUser?.role === 'teacher';
 
+  // Active Quiz Link Copy Toast State
+  const [copiedQuizLink, setCopiedQuizLink] = useState<string | null>(null);
+
+  // Active Published Quizzes computation
+  const activeQuizzes = useMemo(() => {
+    return customAssignments.filter(a => a.type === 'quiz' && a.quizData && a.quizData.isPublished !== false);
+  }, [customAssignments]);
+
   // Section visibility states
-  const [activePillarTab, setActivePillarTab] = useState(0);
   const [activeVerseIndex, setActiveVerseIndex] = useState(0);
   const [copiedVerse, setCopiedVerse] = useState(false);
   const [adminTab, setAdminTab] = useState<'at_risk' | 'trends' | 'sync'>('at_risk');
   const [isAdminPanelExpanded, setIsAdminPanelExpanded] = useState(false);
-
-  // Prospective Student Admission Inquiry Modal State
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
-  const [inquirySubmitted, setInquirySubmitted] = useState(false);
-  const [inquiryForm, setInquiryForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    preferredTrack: 'Module 1: Foundational Hermeneutics & Word',
-    notes: ''
-  });
 
   // At-Risk Notification Card State
   const [atRiskFilter, setAtRiskFilter] = useState<'all' | 'critical' | 'moderate'>('all');
@@ -283,44 +280,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     localStorage.setItem('hteim_home_banner_collapsed', String(isBannerCollapsed));
   }, [isBannerCollapsed]);
 
-  // Widget customizer local state
-  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => {
-    const saved = localStorage.getItem('hteim_home_widget_order');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return DEFAULT_WIDGET_ORDER; }
-    }
-    return DEFAULT_WIDGET_ORDER;
-  });
-
-  const [enabledWidgets, setEnabledWidgets] = useState<string[]>(() => {
-    const saved = localStorage.getItem('hteim_home_widget_enabled');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return DEFAULT_ENABLED_WIDGETS; }
-    }
-    return DEFAULT_ENABLED_WIDGETS;
-  });
-
-  const [showCustomizerModal, setShowCustomizerModal] = useState(false);
-
   const handleCopyScripture = () => {
     const text = `"${currentScripture.verse}" — ${currentScripture.reference} (HTEIM School of Ministry)`;
     navigator.clipboard.writeText(text);
     setCopiedVerse(true);
     setTimeout(() => setCopiedVerse(false), 2000);
-  };
-
-  const handleSaveWidgetLayout = (newOrder: string[], newEnabled: string[]) => {
-    setWidgetOrder(newOrder);
-    setEnabledWidgets(newEnabled);
-    localStorage.setItem('hteim_home_widget_order', JSON.stringify(newOrder));
-    localStorage.setItem('hteim_home_widget_enabled', JSON.stringify(newEnabled));
-  };
-
-  const handleResetWidgetLayout = () => {
-    setWidgetOrder(DEFAULT_WIDGET_ORDER);
-    setEnabledWidgets(DEFAULT_ENABLED_WIDGETS);
-    localStorage.removeItem('hteim_home_widget_order');
-    localStorage.removeItem('hteim_home_widget_enabled');
   };
 
   // Metrics
@@ -341,100 +305,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     const nameToMatch = (appUser.studentName || appUser.name || '').toLowerCase().trim();
     return payments.find(p => p.studentName.toLowerCase().trim() === nameToMatch) || null;
   }, [isStudent, appUser, payments]);
-
-  const ministryPillars = [
-    {
-      id: 'pillar_1',
-      title: 'Word & Biblical Exegesis',
-      subtitle: 'Hermeneutics & Doctrine',
-      description: 'Rigorous study of Scripture, original textual context, hermeneutical principles, and sound theological interpretation.',
-      scripture: '2 Timothy 2:15 — "Study to show thyself approved unto God..."',
-      icon: <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
-      badge: 'Core Curriculum',
-      color: 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/80 text-indigo-950 dark:text-indigo-200'
-    },
-    {
-      id: 'pillar_2',
-      title: 'Ministerial Character & Ethics',
-      subtitle: 'Moral Integrity & Stewardship',
-      description: 'Cultivating Christ-like integrity, financial faithfulness, conflict resolution, and blameless administrative oversight.',
-      scripture: '1 Timothy 3:2 — "A bishop then must be blameless..."',
-      icon: <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
-      badge: 'Leadership Standard',
-      color: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/80 text-amber-950 dark:text-amber-200'
-    },
-    {
-      id: 'pillar_3',
-      title: 'Spiritual Discernment & Power',
-      subtitle: 'Prophetic & Spiritual Disciplines',
-      description: 'Deepening communion with the Holy Spirit, hearing God’s voice, prayer, fasting, and testing spiritual gifts scripturally.',
-      scripture: '1 Corinthians 14:1 — "Follow after charity, and desire spiritual gifts..."',
-      icon: <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
-      badge: 'Spiritual Formation',
-      color: 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-200'
-    },
-    {
-      id: 'pillar_4',
-      title: 'Apostolic Governance & Shepherding',
-      subtitle: 'Five-Fold Ministry & Pastoring',
-      description: 'Equipping leaders for institutional expansion, church plant management, and pastoral counseling of the local flock.',
-      scripture: 'Ephesians 4:11-12 — "And he gave some, apostles; and some, prophets..."',
-      icon: <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
-      badge: 'Advanced Oversight',
-      color: 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/80 text-purple-950 dark:text-purple-200'
-    }
-  ];
-
-  const coreModules = [
-    {
-      code: 'SOM-MOD-1',
-      title: 'Module 1: Introduction',
-      desc: 'Foundational orientation into the School of Ministry, covenant alignment, spiritual disciplines, and academic integrity.',
-      instructor: 'HTEIM Academic Directorate',
-      credits: 5,
-      status: 'Active Track'
-    },
-    {
-      code: 'SOM-MOD-2',
-      title: 'Module 2: Evangelism',
-      desc: 'Soul-winning strategies, personal witnessing, street outreach, the Great Commission mandate, and follow-up discipleship.',
-      instructor: 'Evangelism Ministry Lead',
-      credits: 5,
-      status: 'Active Track'
-    },
-    {
-      code: 'SOM-MOD-3',
-      title: 'Module 3: Ministerial Ethics',
-      desc: 'Standards of high character, financial stewardship, church accountability, conflict resolution, and biblical servant leadership.',
-      instructor: 'Pastor Senior Advisor',
-      credits: 5,
-      status: 'Core Requirement'
-    },
-    {
-      code: 'SOM-MOD-4',
-      title: 'Module 4: Apostolic Ministry',
-      desc: 'Apostolic mandates, five-fold governance, spiritual authority (Ephesians 2:20), and distinguishing true vs false ministries.',
-      instructor: 'Dr. Faculty Director',
-      credits: 5,
-      status: 'Advanced Track'
-    },
-    {
-      code: 'SOM-MOD-5',
-      title: 'Module 5: Prophetic Ministry',
-      desc: 'Prophetic discernment, hearing the voice of God, testing prophecy against Scripture, and maintaining order in the local church.',
-      instructor: 'Prophetic Faculty Director',
-      credits: 5,
-      status: 'Advanced Track'
-    },
-    {
-      code: 'SOM-MOD-6',
-      title: 'Module 6: School of the Pastors & Teachers',
-      desc: 'Shepherding the flock, pastoral counseling, expository sermon preparation, hermeneutics, and teaching sound biblical doctrine.',
-      instructor: 'Rev. Academic Dean',
-      credits: 5,
-      status: 'Practicum'
-    }
-  ];
 
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
@@ -516,23 +386,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-2 flex-wrap">
               <button
-                onClick={() => setShowInquiryModal(true)}
-                className="w-full sm:w-auto px-5 py-3 bg-white text-slate-900 font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Apply / Prospective Student Inquiry</span>
-              </button>
-
-              {onOpenPresentationDemo && (
-                <button
-                  onClick={onOpenPresentationDemo}
-                  className="w-full sm:w-auto px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer border border-white/10"
-                >
-                  <Play className="w-4 h-4 text-amber-400" /> 30s Student Presentation
-                </button>
-              )}
-
-              <button
                 onClick={() => onNavigate('courses')}
                 className="w-full sm:w-auto px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
               >
@@ -554,12 +407,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </p>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               <button
-                onClick={() => setShowInquiryModal(true)}
-                className="px-3 py-1.5 bg-amber-400 text-slate-950 font-black text-[11px] rounded-lg shadow-xs cursor-pointer"
-              >
-                Apply Now
-              </button>
-              <button
                 onClick={() => onNavigate('courses')}
                 className="px-3 py-1.5 bg-indigo-600 text-white font-black text-[11px] rounded-lg shadow-xs cursor-pointer"
               >
@@ -569,6 +416,126 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         )}
       </section>
+
+      {/* Active Class Quiz Announcement Banner */}
+      {activeQuizzes.length > 0 && (
+        <section className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 rounded-2xl border-2 border-purple-500/40 p-4 sm:p-6 text-white shadow-xl relative overflow-hidden animate-fadeIn my-2">
+          <div className="absolute top-0 right-0 -mr-10 -mt-10 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-500/30 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                  <Sparkles className="w-3 h-3" /> Active Class Quiz Available
+                </span>
+                <span className="text-xs text-purple-200 font-medium hidden sm:inline">
+                  ({activeQuizzes.length} published quiz{activeQuizzes.length > 1 ? 'zes' : ''} active)
+                </span>
+              </div>
+
+              <span className="text-[11px] font-mono font-bold text-purple-200 bg-purple-800/60 px-2.5 py-1 rounded-lg border border-purple-400/30">
+                Auto-Compiled to Total Grade Score
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {activeQuizzes.map((asg) => {
+                const quiz = asg.quizData!;
+                const currentStudentName = appUser?.studentName || appUser?.name || userEmail || '';
+                const targetName = currentStudentName.toLowerCase().trim();
+                const hasSubmitted = submissions?.some(
+                  s => s.assignmentId === asg.id && (s.studentName || '').toLowerCase().trim() === targetName
+                );
+
+                return (
+                  <div key={asg.id} className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/15 hover:border-purple-300/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 bg-purple-500/30 text-purple-100 font-mono font-bold text-[10px] rounded border border-purple-300/30">
+                          {asg.courseCode || 'MIN-101'}
+                        </span>
+                        <span className="text-xs font-semibold text-purple-200">
+                          {asg.moduleTrack || 'Module 1'}
+                        </span>
+                        {hasSubmitted && (
+                          <span className="px-2 py-0.5 bg-emerald-500/30 text-emerald-200 font-extrabold text-[10px] rounded-full border border-emerald-400/40 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-300" /> Completed
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                        {quiz.title}
+                      </h3>
+
+                      <p className="text-xs text-purple-100/80 line-clamp-2 leading-relaxed">
+                        {quiz.description || 'Complete this weighted class day quiz to compile your academic score.'}
+                      </p>
+
+                      {/* Metrics row */}
+                      <div className="flex items-center gap-3 pt-1 text-xs text-purple-200 font-mono font-bold flex-wrap">
+                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
+                          <Award className="w-3.5 h-3.5 text-amber-300" />
+                          <span>{quiz.totalPoints || asg.maxPoints} Points Max</span>
+                        </span>
+
+                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
+                          <Clock className="w-3.5 h-3.5 text-indigo-300" />
+                          <span>{quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} Mins Limit` : 'No Time Limit'}</span>
+                        </span>
+
+                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
+                          <Calendar className="w-3.5 h-3.5 text-purple-300" />
+                          <span>Due: {quiz.dueDate || asg.dueDate}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-500/30">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${quiz.shareCode || quiz.id}`;
+                          navigator.clipboard.writeText(shareUrl);
+                          setCopiedQuizLink(quiz.id);
+                          setTimeout(() => setCopiedQuizLink(null), 2500);
+                        }}
+                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Copy shareable link for this quiz"
+                      >
+                        {copiedQuizLink === quiz.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-purple-200" />}
+                        <span>{copiedQuizLink === quiz.id ? 'Copied!' : 'Copy Link'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onTakeQuiz) {
+                            onTakeQuiz(quiz);
+                          } else {
+                            onNavigate('exams');
+                          }
+                        }}
+                        className={`px-4 py-2.5 ${
+                          hasSubmitted 
+                            ? 'bg-purple-800 hover:bg-purple-700 text-white font-bold' 
+                            : 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-lg hover:shadow-amber-400/20 active:scale-95'
+                        } text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5`}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>{hasSubmitted ? 'Retake / Review' : 'Take Quiz Now'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Welcome & Pathway Selector (Only shown for guest/prospective mode) */}
       {!appUser && (
@@ -589,43 +556,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 self-start sm:self-auto">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span className="text-slate-600 dark:text-slate-300">
-                {appUser ? `Logged in as ${(appUser as AppUser).role.toUpperCase()}` : 'Guest / Prospective Student Mode'}
+                {appUser ? `Logged in as ${(appUser as AppUser).role.toUpperCase()}` : 'Guest Mode'}
               </span>
             </div>
           </div>
 
-          {/* 3 Pathway Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Card 1: Prospective Students / Guests */}
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
-              <div className="space-y-1.5">
-                <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  New Applicants & Guests
-                </span>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white">Explore & Apply for Admission</h3>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Review our 6 Core Modules, tuition information, and submit a 1-click prospective student inquiry.
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center gap-2">
-                <button
-                  onClick={() => setShowInquiryModal(true)}
-                  className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
-                >
-                  <span>Inquire / Apply</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onNavigate('courses')}
-                  className="py-2 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-                >
-                  Syllabus
-                </button>
-              </div>
-            </div>
-
-            {/* Card 2: Enrolled Students */}
+          {/* 2 Pathway Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Card 1: Enrolled Students */}
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
               <div className="space-y-1.5">
                 <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -654,7 +592,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </div>
             </div>
 
-            {/* Card 3: Faculty & Staff */}
+            {/* Card 2: Faculty & Staff */}
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
               <div className="space-y-1.5">
                 <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -858,474 +796,89 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-      {/* Key Metrics Dashboard */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-              Academic Overview
-            </h2>
-            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-[9px] font-mono font-bold border border-slate-200 dark:border-slate-700">
-              {widgetOrder.filter(id => enabledWidgets.includes(id)).length} Metrics
-            </span>
-          </div>
-
-          <button
-            onClick={() => setShowCustomizerModal(true)}
-            className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[10px] sm:text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <Sliders className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500" />
-            <span>Customize</span>
-          </button>
-        </div>
-
-        {/* Metric Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-          {widgetOrder
-            .filter(id => enabledWidgets.includes(id))
-            .map(widgetId => {
-              switch (widgetId) {
-                case 'total_enrolled':
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate(isStudent ? 'attendance' : 'students')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">
-                          {isStudent ? 'My Classmates' : 'Enrolled Students'}
-                        </p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
-                          {isStudent ? `${activeStudents} Cohort` : `${activeStudents} Enrollees`}
-                        </p>
-                      </div>
-                    </div>
-                  );
-
-                case 'active_curriculum':
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('courses')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">Core Modules</p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">{coursesCount} Modules</p>
-                      </div>
-                    </div>
-                  );
-
-                case 'scheduled_lessons':
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('schedule')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">Class Sessions</p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">{scheduledClasses} Class Days</p>
-                      </div>
-                    </div>
-                  );
-
-                case 'avg_attendance': {
-                  const studentRate = loggedInStudentData ? Math.round(loggedInStudentData.rate) : null;
-                  const isAtRisk = studentRate !== null && studentRate < atRiskThreshold;
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('attendance')}
-                      className={`bg-white dark:bg-slate-900 border rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer ${
-                        isStudent && isAtRisk
-                          ? 'border-rose-300 dark:border-rose-800 hover:border-rose-400'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center shrink-0 ${
-                        isStudent && isAtRisk
-                          ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900/50'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                      }`}>
-                        <TrendingUp className={`w-4 h-4 sm:w-5 sm:h-5 ${isStudent && isAtRisk ? 'text-rose-500' : 'text-slate-600 dark:text-slate-300'}`} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">
-                          {isStudent ? 'My Attendance' : 'Avg Attendance'}
-                        </p>
-                        <p className={`text-xs sm:text-base md:text-lg font-bold leading-tight truncate ${
-                          isStudent && isAtRisk ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
-                        }`}>
-                          {isStudent
-                            ? (studentRate !== null ? `${studentRate}% Rate` : 'No Record')
-                            : `${attendanceRate}% Rate`}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
-
-                case 'pending_assignments':
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('exams')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <PenSquare className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">
-                          {isStudent ? 'My Pending Tasks' : 'Pending Quizzes'}
-                        </p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">{pendingAssignmentsCount} Tasks</p>
-                      </div>
-                    </div>
-                  );
-
-                case 'uncollected_tuition': {
-                  const balanceDue = loggedInStudentPayment
-                    ? Math.max(0, loggedInStudentPayment.totalTuition - loggedInStudentPayment.amountPaid)
-                    : 0;
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('payments')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">
-                          {isStudent ? 'My Tuition Due' : 'Unpaid Tuition'}
-                        </p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
-                          {isStudent
-                            ? `$${balanceDue.toLocaleString()}`
-                            : `$${uncollectedTuitionAmount.toLocaleString()} Due`}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
-
-                case 'library_resources':
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('library')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">Library Resources</p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">{libraryResourcesCount} Handouts</p>
-                      </div>
-                    </div>
-                  );
-
-                case 'upcoming_class':
-                  return (
-                    <div
-                      key={widgetId}
-                      onClick={() => onNavigate('schedule')}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-4 transition-colors flex items-center gap-2 sm:gap-3 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight truncate">Next Class</p>
-                        <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">{nextClassTitle}</p>
-                      </div>
-                    </div>
-                  );
-
-                default:
-                  return null;
-              }
-            })}
-        </div>
-
-        {/* Quick Launch Portal Action Bar (Desktop only) */}
-        <div className="pt-2 hidden md:flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0">Quick Launch:</span>
-          <button
-            onClick={() => onNavigate('attendance')}
-            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-900 dark:text-indigo-200 font-bold text-xs rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
-          >
-            <UserX className="w-3.5 h-3.5 text-indigo-600" /> Take Attendance
-          </button>
-          <button
-            onClick={() => onNavigate('library')}
-            className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/80 hover:bg-amber-100 text-amber-900 dark:text-amber-200 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-600" /> Download Handouts
-          </button>
-          <button
-            onClick={() => onNavigate('exams')}
-            className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 text-emerald-900 dark:text-emerald-200 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
-          >
-            <PenSquare className="w-3.5 h-3.5 text-emerald-600" /> Evaluation Grades
-          </button>
-          <button
-            onClick={() => onNavigate('payments')}
-            className="px-3 py-1.5 bg-purple-50 dark:bg-purple-950/80 hover:bg-purple-100 text-purple-900 dark:text-purple-200 font-bold text-xs rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
-          >
-            <DollarSign className="w-3.5 h-3.5 text-purple-600" /> Tuition Portal
-          </button>
-        </div>
-      </section>
-
-      {/* 4. MAIN STRUCTURAL LAYOUT: Core Curriculum & Ministry Formation Pathways */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* 4. MAIN STRUCTURAL LAYOUT: Portal Access, Broadcast & Covenant Mandate */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Left 2 Columns: Core Curriculum & Five-Fold Pillars */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Core Learning Path - 6 Modules Overview */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-amber-500" />
-                  6-Module Core Curriculum Roadmap
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Structured progression spanning Hermeneutics, Evangelism, Ethics, Apostolic Oversight, and Pastoral Care.
+        {/* Portal Access Card */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4 flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Academic Portal Account</h3>
+            </div>
+
+            {appUser ? (
+              <div className="space-y-4">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
+                    {appUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white">{appUser.name}</p>
+                    <p className="text-[9px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">{appUser.role} Account</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Signed in to HTEIM Academic Portal. Check attendance, take scripture quizzes, download handouts, and view tuition balances.
                 </p>
-              </div>
 
-              <button
-                onClick={() => onNavigate('courses')}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
-              >
-                <span>View Full Syllabus</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={() => onNavigate('attendance')}
+                    className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Attendance Portal</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {coreModules.map((mod) => (
-                <div 
-                  key={mod.code}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-3xs hover:border-amber-300 dark:hover:border-amber-500/50 hover:shadow-md transition-all flex flex-col justify-between space-y-3 group"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {mod.code}
-                      </span>
-                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5" /> {mod.credits} Credits
-                      </span>
-                    </div>
-
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                      {mod.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal line-clamp-3">
-                      {mod.desc}
-                    </p>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Faculty: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{mod.instructor}</strong></span>
-                    <button 
-                      onClick={() => onNavigate('courses')}
-                      className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold text-[10px] flex items-center gap-0.5"
+                  {isStudent ? (
+                    <button
+                      onClick={() => onNavigate('payments')}
+                      className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                     >
-                      <span>Syllabus</span>
-                      <ChevronRight className="w-3 h-3" />
+                      Tuition Statement
                     </button>
-                  </div>
+                  ) : (
+                    <button
+                      onClick={() => onNavigate('students')}
+                      className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Student Roster Directory
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* School of Ministry Core Pillars */}
-          <section className="space-y-4">
-            <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <BookMarked className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                Four Pillars of Kingdom Formation
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Rooted in Ephesians 2:20 and 2 Timothy 2:15 to develop sound leaders.
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 sm:p-6 space-y-6">
-              {/* Interactive Pillar Selector Tabs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {ministryPillars.map((pillar, idx) => {
-                  const isActive = activePillarTab === idx;
-                  return (
-                    <button
-                      key={pillar.id}
-                      onClick={() => setActivePillarTab(idx)}
-                      className={`p-3.5 rounded-lg border text-left transition-colors cursor-pointer flex flex-col justify-between gap-2 ${
-                        isActive
-                          ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
-                          {pillar.icon}
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-slate-400">0{idx+1}</span>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-1">{pillar.title}</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">{pillar.subtitle}</p>
-                      </div>
-                    </button>
-                  );
-                })}
               </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Sign in to access your student records, submit assignments, view tuition statements, and track academic attendance.
+                </p>
 
-              {/* Active Pillar Display Card */}
-              {(() => {
-                const active = ministryPillars[activePillarTab];
-                return (
-                  <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 transition-all duration-300 animate-fadeIn">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800">
-                          {active.icon}
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{active.title}</h3>
-                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{active.subtitle}</p>
-                        </div>
-                      </div>
-                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 self-start sm:self-auto">
-                        {active.badge}
-                      </span>
-                    </div>
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={onOpenLogin}
+                    className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Log in to Student Portal</span>
+                  </button>
 
-                    <div className="space-y-3">
-                      <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                        {active.description}
-                      </p>
-
-                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                        <span className="font-serif italic font-semibold text-slate-700 dark:text-slate-200">{active.scripture}</span>
-                        <button
-                          onClick={() => onNavigate('courses')}
-                          className="px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-center gap-1 shrink-0"
-                        >
-                          Explore Modules <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </section>
-
-        </div>
-
-        {/* Right 1 Column: Portal Access, Broadcast Live & FAQs */}
-        <div className="space-y-6">
-          
-          {/* Portal Access Card */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Academic Portal Account</h3>
+                  <button
+                    onClick={onOpenLogin}
+                    className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    Faculty Sign In
+                  </button>
+                </div>
               </div>
+            )}
+          </div>
+        </section>
 
-              {appUser ? (
-                <div className="space-y-4">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
-                      {appUser.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{appUser.name}</p>
-                      <p className="text-[9px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">{appUser.role} Account</p>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Signed in to HTEIM Academic Portal. Check attendance, take scripture quizzes, download handouts, and view tuition balances.
-                  </p>
-
-                  <div className="space-y-2 pt-1">
-                    <button
-                      onClick={() => onNavigate('attendance')}
-                      className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span>Attendance Portal</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-
-                    {isStudent ? (
-                      <button
-                        onClick={() => onNavigate('payments')}
-                        className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                      >
-                        Tuition Statement
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onNavigate('students')}
-                        className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                      >
-                        Student Roster Directory
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Sign in to access your student records, submit assignments, view tuition statements, and track academic attendance.
-                  </p>
-
-                  <div className="space-y-2 pt-1">
-                    <button
-                      onClick={onOpenLogin}
-                      className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Log in to Student Portal</span>
-                    </button>
-
-                    <button
-                      onClick={onOpenLogin}
-                      className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      Faculty Sign In
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Live Broadcast & Upcoming Class Day */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5">
+        {/* Live Broadcast & Upcoming Class Day */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5 flex flex-col justify-between">
+          <div className="space-y-3.5">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <Radio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> Live Class Schedule
@@ -1335,29 +888,29 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </span>
             </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-900 dark:text-white">
-                  <span>Tuesday & Thursday Session</span>
-                  <span className="text-slate-600 dark:text-slate-300 font-mono">7:00 PM EST</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Live online broadcast & in-person lecture hall check-in.
-                </p>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-900 dark:text-white">
+                <span>Tuesday & Thursday Session</span>
+                <span className="text-slate-600 dark:text-slate-300 font-mono">7:00 PM EST</span>
               </div>
-
-              <button
-                onClick={() => onNavigate('schedule')}
-                className="w-full py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-300 text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                <span>View All Class Sessions</span>
-              </button>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Live online broadcast & in-person lecture hall check-in.
+              </p>
             </div>
-          </section>
+          </div>
 
-          {/* Core Vision & Covenant Mandate */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5">
+          <button
+            onClick={() => onNavigate('schedule')}
+            className="w-full py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-300 text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-auto"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>View All Class Sessions</span>
+          </button>
+        </section>
+
+        {/* Core Vision & Covenant Mandate */}
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5 flex flex-col justify-between">
+          <div className="space-y-3.5">
             <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">HTEIM Covenant Mandate</h3>
             
             <div className="space-y-3 text-xs">
@@ -1375,9 +928,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </p>
               </div>
             </div>
-          </section>
-
-        </div>
+          </div>
+        </section>
 
       </div>
 
@@ -1686,168 +1238,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         )}
       </section>
-      )}
-
-      {/* Dashboard Widgets Customizer Modal */}
-      {showCustomizerModal && (
-        <DashboardCustomizerModal
-          isOpen={showCustomizerModal}
-          onClose={() => setShowCustomizerModal(false)}
-          widgetOrder={widgetOrder}
-          enabledWidgets={enabledWidgets}
-          onSave={handleSaveWidgetLayout}
-          onReset={handleResetWidgetLayout}
-        />
-      )}
-
-      {/* Prospective Student Admission Inquiry & Application Modal */}
-      {showInquiryModal && (
-        <Modal
-          isOpen={showInquiryModal}
-          onClose={() => {
-            setShowInquiryModal(false);
-            setInquirySubmitted(false);
-          }}
-          title="Apply / Inquire for Enrolment"
-          subtitle="Join our upcoming cohort in anointed biblical exegesis, ministerial ethics, and five-fold leadership equipping."
-          icon={<Sparkles className="w-5 h-5 text-amber-500 shrink-0" />}
-          size="xl"
-        >
-
-            {inquirySubmitted ? (
-              <div className="p-6 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-center space-y-3 animate-fadeIn">
-                <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-black text-emerald-950 dark:text-emerald-200">
-                  Application Received!
-                </h3>
-                <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
-                  Thank you, <strong>{inquiryForm.fullName}</strong>. An HTEIM Academic Dean will contact you shortly at <strong>{inquiryForm.email}</strong> with class orientation details and onboarding steps.
-                </p>
-                <div className="pt-2">
-                  <button
-                    onClick={() => {
-                      setShowInquiryModal(false);
-                      setInquirySubmitted(false);
-                    }}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
-                  >
-                    Done & Return to Portal
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!inquiryForm.fullName || !inquiryForm.email) return;
-                  setInquirySubmitted(true);
-                }}
-                className="space-y-4 text-xs"
-              >
-                {/* Form Inputs */}
-                <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700 dark:text-slate-300">
-                    Full Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Min. Sarah Johnson"
-                    value={inquiryForm.fullName}
-                    onChange={(e) => setInquiryForm({ ...inquiryForm, fullName: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="font-extrabold text-slate-700 dark:text-slate-300">
-                      Email Address <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="name@example.com"
-                      value={inquiryForm.email}
-                      onChange={(e) => setInquiryForm({ ...inquiryForm, email: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-extrabold text-slate-700 dark:text-slate-300">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="(868) 555-0199"
-                      value={inquiryForm.phone}
-                      onChange={(e) => setInquiryForm({ ...inquiryForm, phone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700 dark:text-slate-300">
-                    Preferred Core Module Track
-                  </label>
-                  <select
-                    value={inquiryForm.preferredTrack}
-                    onChange={(e) => setInquiryForm({ ...inquiryForm, preferredTrack: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white font-medium"
-                  >
-                    <option value="Module 1: Foundational Hermeneutics & Word">Module 1: Foundational Hermeneutics & Word</option>
-                    <option value="Module 2: Soul Winning & Evangelism">Module 2: Soul Winning & Evangelism</option>
-                    <option value="Module 3: Ministerial Ethics & Integrity">Module 3: Ministerial Ethics & Integrity</option>
-                    <option value="Module 4: Apostolic Governance & Five-Fold">Module 4: Apostolic Governance & Five-Fold</option>
-                    <option value="Module 5: Prophetic Ministry & Discernment">Module 5: Prophetic Ministry & Discernment</option>
-                    <option value="Module 6: School of Pastors & Teachers">Module 6: School of Pastors & Teachers</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-extrabold text-slate-700 dark:text-slate-300">
-                    Questions or Ministry Background (Optional)
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Tell us about your home church, ministry goals, or any questions..."
-                    value={inquiryForm.notes}
-                    onChange={(e) => setInquiryForm({ ...inquiryForm, notes: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-400 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                {/* Admission Highlights Banner */}
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between text-[11px] text-amber-900 dark:text-amber-200">
-                  <span className="font-bold">✨ Classes meet Tuesdays & Thursdays @ 7:00 PM EST</span>
-                  <span className="font-extrabold uppercase text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded">
-                    75% Attendance Standard
-                  </span>
-                </div>
-
-                <div className="pt-2 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowInquiryModal(false)}
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Submit Inquiry</span>
-                  </button>
-                </div>
-              </form>
-            )}
-        </Modal>
       )}
 
     </div>

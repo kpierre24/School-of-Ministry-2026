@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 
 import { githubRouter } from "./src/server/routes/github";
 import { aiRouter } from "./src/server/routes/ai";
+import { driveProxyRouter } from "./src/server/routes/driveProxy";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
 
@@ -33,6 +34,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/github", githubRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/drive-proxy", driveProxyRouter);
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -47,7 +49,6 @@ async function startServer() {
       express.static(distPath, {
         setHeaders: (res) => {
           res.setHeader("X-Content-Type-Options", "nosniff");
-          res.setHeader("X-Frame-Options", "SAMEORIGIN");
           res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
           res.setHeader("X-XSS-Protection", "1; mode=block");
         },

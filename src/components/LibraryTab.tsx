@@ -1450,13 +1450,27 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 ) : (parseVideoMediaUrl(previewResource.downloadUrl || '').isDrive || previewResource.format === 'VIDEO') ? (
                   <div className="space-y-3">
                     {parseVideoMediaUrl(previewResource.downloadUrl || '').isDrive ? (
-                      <iframe
-                        src={parseVideoMediaUrl(previewResource.downloadUrl || '').embedUrl || ''}
-                        title={previewResource.title}
-                        className="w-full h-72 sm:h-80 border-0 rounded-2xl shadow-xl bg-slate-950"
-                        allow="autoplay; encrypted-media; picture-in-picture"
-                        allowFullScreen
-                      />
+                      <div className="space-y-2">
+                        <iframe
+                          src={parseVideoMediaUrl(previewResource.downloadUrl || '').embedUrl}
+                          title={previewResource.title}
+                          className="w-full h-72 sm:h-80 border-0 rounded-2xl shadow-xl bg-slate-950"
+                          allow="autoplay; encrypted-media; picture-in-picture"
+                          allowFullScreen
+                        />
+                        <div className="flex items-center justify-between text-xs px-1">
+                          <span className="text-slate-400 font-medium">Google Drive Video Player</span>
+                          <a
+                            href={previewResource.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-all"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Open in Google Drive</span>
+                          </a>
+                        </div>
+                      </div>
                     ) : (
                       <video
                         controls
@@ -1720,15 +1734,33 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             <div className="space-y-4">
               {/* Video Player Frame */}
               <div className="p-4 bg-black flex flex-col justify-center items-center overflow-hidden rounded-2xl">
-                {parsed.isDrive && parsed.embedUrl ? (
-                  <iframe
-                    src={parsed.embedUrl}
-                    title={playingVideoModalResource.title}
-                    className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-2xl shadow-2xl bg-slate-950"
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : parsed.isYouTube && parsed.embedUrl ? (
+                {parsed.isDrive ? (
+                  <div className="w-full space-y-3">
+                    <video
+                      controls
+                      autoPlay
+                      src={parsed.proxyStreamUrl || `/api/drive-proxy/stream/${parsed.fileId}`}
+                      className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-2xl bg-slate-950 object-contain shadow-2xl"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs px-1 gap-2 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-blue-400" />
+                        Google Drive Video Streamed via Server Proxy
+                      </span>
+                      <a
+                        href={playingVideoModalResource.downloadUrl || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber-400 hover:text-amber-300 font-extrabold flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-all self-end sm:self-auto"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Open in Google Drive</span>
+                      </a>
+                    </div>
+                  </div>
+                ) : (parsed.isYouTube || parsed.isVimeo || parsed.isLoom) && parsed.embedUrl ? (
                   <iframe
                     src={parsed.embedUrl}
                     title={playingVideoModalResource.title}

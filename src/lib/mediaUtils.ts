@@ -1,6 +1,6 @@
 /**
  * Utility functions for parsing, formatting, and embedding media sources,
- * including Google Drive shared video links, YouTube embeds, and direct streams.
+ * including Google Drive shared video links, YouTube embeds, Vimeo, Loom, and direct streams.
  */
 
 export function extractGoogleDriveFileId(url: string): string | null {
@@ -29,7 +29,7 @@ export function getGoogleDriveEmbedUrl(fileId: string): string {
 }
 
 export function getGoogleDriveDirectStreamUrl(fileId: string): string {
-  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+  return `/api/drive-proxy/stream/${fileId}`;
 }
 
 export function getGoogleDriveViewUrl(fileId: string): string {
@@ -46,15 +46,38 @@ export function getYouTubeEmbedUrl(videoId: string): string {
   return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
 }
 
-export type VideoSourceType = 'gdrive' | 'youtube' | 'direct';
+export function extractVimeoVideoId(url: string): string | null {
+  if (!url) return null;
+  const match = url.trim().match(/(?:vimeo\.com\/)(\d+)/i);
+  return match && match[1] ? match[1] : null;
+}
+
+export function getVimeoEmbedUrl(videoId: string): string {
+  return `https://player.vimeo.com/video/${videoId}?autoplay=1`;
+}
+
+export function extractLoomVideoId(url: string): string | null {
+  if (!url) return null;
+  const match = url.trim().match(/(?:loom\.com\/(?:share|embed)\/)([a-zA-Z0-9_-]+)/i);
+  return match && match[1] ? match[1] : null;
+}
+
+export function getLoomEmbedUrl(videoId: string): string {
+  return `https://www.loom.com/embed/${videoId}`;
+}
+
+export type VideoSourceType = 'gdrive' | 'youtube' | 'vimeo' | 'loom' | 'direct';
 
 export interface ParsedVideoMedia {
   type: VideoSourceType;
   fileId?: string;
   embedUrl: string;
+  proxyStreamUrl?: string;
   originalUrl: string;
   isDrive: boolean;
   isYouTube: boolean;
+  isVimeo: boolean;
+  isLoom: boolean;
 }
 
 export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
@@ -64,7 +87,9 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
       embedUrl: '',
       originalUrl: '',
       isDrive: false,
-      isYouTube: false
+      isYouTube: false,
+      isVimeo: false,
+      isLoom: false,
     };
   }
 
@@ -74,9 +99,12 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
       type: 'gdrive',
       fileId: gdriveId,
       embedUrl: getGoogleDriveEmbedUrl(gdriveId),
+      proxyStreamUrl: getGoogleDriveDirectStreamUrl(gdriveId),
       originalUrl: url,
       isDrive: true,
-      isYouTube: false
+      isYouTube: false,
+      isVimeo: false,
+      isLoom: false,
     };
   }
 
@@ -88,7 +116,37 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
       embedUrl: getYouTubeEmbedUrl(youtubeId),
       originalUrl: url,
       isDrive: false,
-      isYouTube: true
+      isYouTube: true,
+      isVimeo: false,
+      isLoom: false,
+    };
+  }
+
+  const vimeoId = extractVimeoVideoId(url);
+  if (vimeoId) {
+    return {
+      type: 'vimeo',
+      fileId: vimeoId,
+      embedUrl: getVimeoEmbedUrl(vimeoId),
+      originalUrl: url,
+      isDrive: false,
+      isYouTube: false,
+      isVimeo: true,
+      isLoom: false,
+    };
+  }
+
+  const loomId = extractLoomVideoId(url);
+  if (loomId) {
+    return {
+      type: 'loom',
+      fileId: loomId,
+      embedUrl: getLoomEmbedUrl(loomId),
+      originalUrl: url,
+      isDrive: false,
+      isYouTube: false,
+      isVimeo: false,
+      isLoom: true,
     };
   }
 
@@ -97,6 +155,9 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     embedUrl: url,
     originalUrl: url,
     isDrive: false,
-    isYouTube: false
+    isYouTube: false,
+    isVimeo: false,
+    isLoom: false,
   };
 }
+

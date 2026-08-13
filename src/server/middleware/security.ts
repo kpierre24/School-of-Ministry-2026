@@ -71,6 +71,8 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https: wss: ws:",
+    "frame-src 'self' https://drive.google.com https://docs.google.com https://*.google.com https://www.youtube.com https://youtube.com https://*.youtube.com",
+    "media-src 'self' blob: data: https:",
     "frame-ancestors 'self' https://*.run.app https://*.google.com https://ai.studio",
     "object-src 'none'",
     "base-uri 'self'",
@@ -79,7 +81,6 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
 
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-XSS-Protection", "1; mode=block");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Content-Security-Policy", cspDirectives);
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");

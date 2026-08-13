@@ -344,19 +344,45 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Time Limit (Minutes, optional)
+                  Time Limit (Minutes)
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="1"
-                    max="180"
-                    value={timeLimitMinutes || ''}
-                    onChange={(e) => setTimeLimitMinutes(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="No time limit"
-                    className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-purple-500 outline-none"
-                  />
-                  <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <div className="space-y-1.5">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="180"
+                      value={timeLimitMinutes || ''}
+                      onChange={(e) => setTimeLimitMinutes(e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="No time limit"
+                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                    <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  </div>
+                  {/* Preset Buttons */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {[
+                      { label: 'None', val: undefined },
+                      { label: '10m', val: 10 },
+                      { label: '15m', val: 15 },
+                      { label: '30m', val: 30 },
+                      { label: '45m', val: 45 },
+                      { label: '60m', val: 60 }
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setTimeLimitMinutes(preset.val)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-colors cursor-pointer ${
+                          timeLimitMinutes === preset.val 
+                            ? 'bg-purple-600 text-white' 
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

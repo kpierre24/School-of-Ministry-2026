@@ -177,6 +177,28 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   // Stored Quiz Submissions List
   const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>([]);
 
+  // Listen for direct quiz link in URL query or hash
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizParam = urlParams.get('quiz') || urlParams.get('quizId');
+    const hash = window.location.hash;
+    let codeFromHash = '';
+    if (hash.includes('#quiz/')) {
+      codeFromHash = hash.split('#quiz/')[1];
+    }
+
+    const targetCode = quizParam || codeFromHash;
+    if (targetCode && customAssignments.length > 0) {
+      const matched = customAssignments.find(
+        a => a.type === 'quiz' && a.quizData && (a.quizData.shareCode === targetCode || a.quizData.id === targetCode || a.id === targetCode)
+      );
+      if (matched && matched.quizData) {
+        setActiveQuizTaker(matched.quizData);
+        setSubTab('quizzes');
+      }
+    }
+  }, [customAssignments]);
+
   // Quiz Management Handlers
   const handleSaveQuiz = (quizData: QuizAssignment) => {
     const existingIndex = customAssignments.findIndex(
@@ -202,6 +224,20 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       setCustomAssignments(updated);
     } else {
       setCustomAssignments([asgObj, ...customAssignments]);
+
+      if (onNotificationCreated) {
+        onNotificationCreated({
+          id: `NOTIF-QUIZ-${Date.now()}`,
+          title: `📝 New Active Quiz Published: ${quizData.title}`,
+          message: `A new class day quiz "${quizData.title}" (${quizData.totalPoints} pts${quizData.timeLimitMinutes ? `, ${quizData.timeLimitMinutes} min limit` : ''}) is now active. Access it on your Home screen or Exams tab!`,
+          type: 'assignment',
+          targetRole: 'student',
+          createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          read: false,
+          priority: 'high',
+          actionTab: 'exams'
+        });
+      }
     }
 
     logActivity({

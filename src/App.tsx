@@ -3382,31 +3382,36 @@ create policy "Allow public update" on app_states for update using (true) with c
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Home Tab">
                   <LazyHomeTab
-                onNavigate={(tab) => setActiveErpTab(tab)}
-                appUser={appUser}
-                onOpenLogin={() => setShowLoginModal(true)}
-                onOpenPresentationDemo={() => setShowPresentationModal(true)}
-                studentsCount={uniqueStudents.length}
-                students={uniqueStudents}
-                payments={payments}
-                classDays={classDays}
-                records={records}
-                coursesCount={courses.length || 6}
-                classDaysCount={classDays.length}
-                avgAttendanceRate={avgAttendance}
-                pendingAssignmentsCount={pendingAssignmentsCount}
-                uncollectedTuitionAmount={uncollectedTuitionAmount}
-                libraryResourcesCount={libraryResources.length}
-                nextClassTitle={classDays.length > 0 ? classDays[classDays.length - 1].name : 'Session 1'}
-                isCloudSyncing={isCloudSyncing}
-                cloudSyncError={cloudSyncError}
-                lastSyncedTime={lastSyncedTime}
-                onPushToCloud={handlePushToCloud}
-                userEmail={user?.email}
-                supabaseTableMissing={supabaseTableMissing}
-                  onVerifySetup={handleVerifySupabase}
-                />
-              </ErrorBoundary>
+                    onNavigate={(tab) => setActiveErpTab(tab)}
+                    appUser={appUser}
+                    onOpenLogin={() => setShowLoginModal(true)}
+                    onOpenPresentationDemo={() => setShowPresentationModal(true)}
+                    studentsCount={uniqueStudents.length}
+                    students={uniqueStudents}
+                    payments={payments}
+                    classDays={classDays}
+                    records={records}
+                    coursesCount={courses.length || 6}
+                    classDaysCount={classDays.length}
+                    avgAttendanceRate={avgAttendance}
+                    pendingAssignmentsCount={pendingAssignmentsCount}
+                    uncollectedTuitionAmount={uncollectedTuitionAmount}
+                    libraryResourcesCount={libraryResources.length}
+                    nextClassTitle={classDays.length > 0 ? classDays[classDays.length - 1].name : 'Session 1'}
+                    isCloudSyncing={isCloudSyncing}
+                    cloudSyncError={cloudSyncError}
+                    lastSyncedTime={lastSyncedTime}
+                    onPushToCloud={handlePushToCloud}
+                    userEmail={user?.email}
+                    supabaseTableMissing={supabaseTableMissing}
+                    onVerifySetup={handleVerifySupabase}
+                    customAssignments={customAssignments}
+                    submissions={submissions}
+                    onTakeQuiz={(quiz) => {
+                      setActiveErpTab('exams');
+                    }}
+                  />
+                </ErrorBoundary>
             </Suspense>
             </motion.div>
           )}

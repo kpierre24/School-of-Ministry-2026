@@ -58,6 +58,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [useDirectStream, setUseDirectStream] = useState(true);
 
   // Modal for adding new audio/video resource
   const [showAddModal, setShowAddModal] = useState(false);
@@ -198,80 +199,156 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
         const parsedMedia = parseVideoMediaUrl(currentTrack.url || '');
         const isDriveVideo = parsedMedia.isDrive;
         const isYouTubeVideo = parsedMedia.isYouTube;
-        const isEmbeddedPlayer = isDriveVideo || isYouTubeVideo;
+        const isIframeVideo = isYouTubeVideo || (isDriveVideo && !useDirectStream);
 
         return (
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3.5">
             {/* Active Media Container */}
             <div className="flex flex-col space-y-3">
-              {/* If Embedded Google Drive or YouTube Video, show responsive Video Player Container */}
-              {isEmbeddedPlayer ? (
+              {/* If it's a Video track, render the high-impact large screen */}
+              {currentTrack.type === 'video' && (
                 <div className="w-full flex flex-col space-y-2">
                   <div className="w-full h-72 md:h-[380px] bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
-                    <iframe
-                      src={parsedMedia.embedUrl}
-                      className="w-full h-full border-0 rounded-xl"
-                      allow="autoplay; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                      title={currentTrack.title}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-xs px-1 pt-1">
-                    <span className="text-blue-400 font-extrabold flex items-center gap-1.5 bg-blue-950/70 border border-blue-800/80 px-2.5 py-1 rounded-lg">
-                      <Globe className="w-3.5 h-3.5 text-blue-400" />
-                      {isDriveVideo ? 'Google Drive Embedded Video Player' : 'YouTube Embedded Video Player'}
-                    </span>
-                    <a
-                      href={currentTrack.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-300 hover:text-white font-bold flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-all"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      {isDriveVideo ? 'Open in Google Drive' : 'Watch on YouTube'}
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col md:flex-row items-center gap-4">
-                  {/* Visual Screen / Vinyl Icon */}
-                  {currentTrack.type === 'video' ? (
-                    <div className="w-full md:w-56 h-32 bg-black rounded-lg overflow-hidden border border-slate-800 relative flex-shrink-0">
+                    {parsedMedia.isYouTube || parsedMedia.isVimeo || parsedMedia.isLoom ? (
+                      <iframe
+                        src={parsedMedia.embedUrl}
+                        className="w-full h-full border-0 rounded-xl"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={currentTrack.title}
+                      />
+                    ) : (isDriveVideo && !useDirectStream) ? (
+                      <iframe
+                        src={parsedMedia.embedUrl}
+                        className="w-full h-full border-0 rounded-xl"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                        title={currentTrack.title}
+                      />
+                    ) : (
                       <video
                         ref={videoRef}
-                        src={currentTrack.url}
-                        className="w-full h-full object-cover"
+                        src={isDriveVideo ? (parsedMedia.proxyStreamUrl || `/api/drive-proxy/stream/${parsedMedia.fileId}`) : currentTrack.url}
+                        className="w-full h-full rounded-xl bg-black object-contain"
                         controls
                         onTimeUpdate={handleTimeUpdate}
                         onEnded={() => setIsPlaying(false)}
                       />
-                    </div>
-                  ) : (
-                    <div className="w-full md:w-44 h-32 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 rounded-2xl border border-indigo-500/40 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 relative overflow-hidden group shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-                      <audio
-                        ref={audioRef}
-                        src={currentTrack.url}
-                        onTimeUpdate={handleTimeUpdate}
-                        onEnded={() => setIsPlaying(false)}
-                      />
-                      <div className="flex items-center justify-center gap-1.5 mb-2">
-                        <Disc className={`w-8 h-8 text-amber-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
-                        {/* Futuristic Audio Spectrum Bars */}
-                        <div className="flex items-end gap-0.5 h-6">
-                          <span className={`w-1 bg-amber-400 rounded-full transition-all ${isPlaying ? 'h-5 animate-pulse' : 'h-1.5'}`} />
-                          <span className={`w-1 bg-indigo-400 rounded-full transition-all ${isPlaying ? 'h-3 animate-pulse delay-75' : 'h-2'}`} />
-                          <span className={`w-1 bg-cyan-400 rounded-full transition-all ${isPlaying ? 'h-6 animate-pulse delay-150' : 'h-1'}`} />
-                          <span className={`w-1 bg-emerald-400 rounded-full transition-all ${isPlaying ? 'h-4 animate-pulse' : 'h-2'}`} />
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono font-black text-indigo-300 uppercase tracking-widest bg-indigo-900/60 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                        {isPlaying ? 'LIVE STREAM' : 'AUDIO RECORDING'}
+                    )}
+                  </div>
+
+                  {/* Mode Selector and Status Row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs px-1 gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-blue-400 font-extrabold flex items-center gap-1.5 bg-blue-950/70 border border-blue-800/80 px-2.5 py-1 rounded-lg">
+                        <Globe className="w-3.5 h-3.5 text-blue-400" />
+                        {isDriveVideo 
+                          ? (useDirectStream ? 'Proxy Video Stream (Recommended)' : 'Google Drive Embedded Player') 
+                          : parsedMedia.isYouTube ? 'YouTube Player'
+                          : parsedMedia.isVimeo ? 'Vimeo Player'
+                          : parsedMedia.isLoom ? 'Loom Player'
+                          : 'Direct HTML5 Stream'}
                       </span>
+                      
+                      {isDriveVideo && (
+                        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setUseDirectStream(true)}
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                              useDirectStream ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            Proxy Stream
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUseDirectStream(false)}
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                              !useDirectStream ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            Drive Iframe
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <a
+                      href={currentTrack.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-300 hover:text-white font-bold flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-all self-end"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      {isDriveVideo ? 'Open in Drive' : 'Open Link'}
+                    </a>
+                  </div>
+
+                  {/* Informational Guidance for Google Drive links */}
+                  {isDriveVideo && (
+                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] text-amber-200/90 leading-relaxed flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Google Drive Video Note:</strong> If Google displays a "Content blocked" warning or error, keep <strong>Proxy Stream</strong> selected or ensure the Google Drive sharing setting is set to <em>"Anyone with the link can view"</em>. Alternatively, you can use YouTube, Vimeo, or Loom links for iframe-friendly streaming.
+                      </div>
                     </div>
                   )}
+                </div>
+              )}
 
-                  {/* Track Info & Controls */}
-                  <div className="flex-1 w-full space-y-2">
+              {/* If it's an Audio track, show the beautiful visual spectrum split block */}
+              {currentTrack.type === 'audio' && (
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <div className="w-full md:w-44 h-32 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 rounded-2xl border border-indigo-500/40 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 relative overflow-hidden group shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                    <audio
+                      ref={audioRef}
+                      src={currentTrack.url}
+                      onTimeUpdate={handleTimeUpdate}
+                      onEnded={() => setIsPlaying(false)}
+                    />
+                    <div className="flex items-center justify-center gap-1.5 mb-2">
+                      <Disc className={`w-8 h-8 text-amber-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+                      {/* Futuristic Audio Spectrum Bars */}
+                      <div className="flex items-end gap-0.5 h-6">
+                        <span className={`w-1 bg-amber-400 rounded-full transition-all ${isPlaying ? 'h-5 animate-pulse' : 'h-1.5'}`} />
+                        <span className={`w-1 bg-indigo-400 rounded-full transition-all ${isPlaying ? 'h-3 animate-pulse delay-75' : 'h-2'}`} />
+                        <span className={`w-1 bg-cyan-400 rounded-full transition-all ${isPlaying ? 'h-6 animate-pulse delay-150' : 'h-1'}`} />
+                        <span className={`w-1 bg-emerald-400 rounded-full transition-all ${isPlaying ? 'h-4 animate-pulse' : 'h-2'}`} />
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono font-black text-indigo-300 uppercase tracking-widest bg-indigo-900/60 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                      {isPlaying ? 'LIVE STREAM' : 'AUDIO RECORDING'}
+                    </span>
+                  </div>
+
+                  {/* Track Info (for audio we show it inside this layout box) */}
+                  <div className="flex-1 w-full space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-slate-800 text-amber-300 text-[10px] font-extrabold uppercase rounded border border-slate-700">
+                        audio
+                      </span>
+                      <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1">
+                        <User className="w-3 h-3" /> {currentTrack.speaker}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-extrabold text-white leading-snug">
+                      {currentTrack.title}
+                    </h4>
+                    {currentTrack.description && (
+                      <p className="text-xs text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
+                        {currentTrack.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Controls and metadata for non-iframe streams */}
+              {!isIframeVideo && (
+                <div className="pt-2 border-t border-slate-900 space-y-3">
+                  {/* Metadata header block (video only) */}
+                  {currentTrack.type === 'video' && (
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
@@ -297,77 +374,81 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                         download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
-                        title="Download MP3/MP4 File"
+                        className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer flex-shrink-0 animate-fadeIn"
+                        title="Download File"
                       >
                         <Download className="w-4 h-4" />
                       </a>
                     </div>
+                  )}
 
-                    {/* Progress Slider */}
-                    <div className="space-y-1">
+                  {/* Progress Slider */}
+                  <div className="space-y-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration || 100}
+                      value={currentTime}
+                      onChange={handleSeek}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                    />
+                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                      <span>{formatSecs(currentTime)}</span>
+                      <span>{currentTrack.duration || formatSecs(duration)}</span>
+                    </div>
+                  </div>
+
+                  {/* Controls Row */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={togglePlay}
+                        className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 animate-fadeIn"
+                      >
+                        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={changeSpeed}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono font-bold text-xs rounded-lg border border-slate-700 cursor-pointer transition-all"
+                        title="Change Playback Speed"
+                      >
+                        {playbackSpeed}x
+                      </button>
+                    </div>
+
+                    {/* Volume Slider */}
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={toggleMute} className="text-slate-400 hover:text-white cursor-pointer">
+                        {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+                      </button>
                       <input
                         type="range"
                         min="0"
-                        max={duration || 100}
-                        value={currentTime}
-                        onChange={handleSeek}
-                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                        max="1"
+                        step="0.05"
+                        value={isMuted ? 0 : volume}
+                        onChange={handleVolumeChange}
+                        className="w-20 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
                       />
-                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                        <span>{formatSecs(currentTime)}</span>
-                        <span>{currentTrack.duration || formatSecs(duration)}</span>
-                      </div>
-                    </div>
-
-                    {/* Control Buttons Row */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={togglePlay}
-                          className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95"
-                        >
-                          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-                        </button>
-
-                        <button
-                          onClick={changeSpeed}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono font-bold text-xs rounded-lg border border-slate-700 cursor-pointer"
-                          title="Change Playback Speed"
-                        >
-                          {playbackSpeed}x
-                        </button>
-                      </div>
-
-                      {/* Volume Slider */}
-                      <div className="flex items-center gap-2">
-                        <button onClick={toggleMute} className="text-slate-400 hover:text-white cursor-pointer">
-                          {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
-                        </button>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          value={isMuted ? 0 : volume}
-                          onChange={handleVolumeChange}
-                          className="w-20 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
-                        />
-                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Header info if embedded player */}
-              {isEmbeddedPlayer && (
-                <div className="pt-2 border-t border-slate-900 flex items-center justify-between">
+              {/* Header info if embedded player is active */}
+              {isIframeVideo && (
+                <div className="pt-2 border-t border-slate-900 flex items-center justify-between animate-fadeIn">
                   <div>
                     <h4 className="text-sm font-extrabold text-white leading-snug">
                       {currentTrack.title}
                     </h4>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                      <span className="text-indigo-300 font-bold flex items-center gap-1"><User className="w-3 h-3" /> {currentTrack.speaker}</span>
+                      <span className="text-indigo-300 font-bold flex items-center gap-1">
+                        <User className="w-3 h-3" /> {currentTrack.speaker}
+                      </span>
                       <span>•</span>
                       <span>{currentTrack.duration}</span>
                     </p>
@@ -544,6 +625,26 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                     <div>
                       <p className="text-white font-extrabold">YouTube Video Link Detected!</p>
                       <p className="text-[10px] text-rose-300">Video ID: {parsedUrl.fileId}. Will play in the embedded YouTube player.</p>
+                    </div>
+                  </div>
+                )}
+
+                {parsedUrl.isVimeo && (
+                  <div className="p-2.5 bg-teal-950/80 border border-teal-600/80 rounded-xl text-teal-200 text-[11px] font-bold flex items-center gap-2 animate-fadeIn">
+                    <VideoIcon className="w-4 h-4 text-teal-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-white font-extrabold">Vimeo Video Link Detected!</p>
+                      <p className="text-[10px] text-teal-300">Video ID: {parsedUrl.fileId}. Will play in the embedded Vimeo player.</p>
+                    </div>
+                  </div>
+                )}
+
+                {parsedUrl.isLoom && (
+                  <div className="p-2.5 bg-indigo-950/80 border border-indigo-600/80 rounded-xl text-indigo-200 text-[11px] font-bold flex items-center gap-2 animate-fadeIn">
+                    <VideoIcon className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-white font-extrabold">Loom Video Link Detected!</p>
+                      <p className="text-[10px] text-indigo-300">Video ID: {parsedUrl.fileId}. Will play in the embedded Loom player.</p>
                     </div>
                   </div>
                 )}
