@@ -520,12 +520,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         }}
                         className={`px-4 py-2.5 ${
                           hasSubmitted 
-                            ? 'bg-purple-800 hover:bg-purple-700 text-white font-bold' 
+                            ? 'bg-purple-800/90 hover:bg-purple-800 text-white font-bold border border-purple-400/40' 
                             : 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-lg hover:shadow-amber-400/20 active:scale-95'
                         } text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5`}
                       >
-                        <BookOpen className="w-4 h-4" />
-                        <span>{hasSubmitted ? 'Retake / Review' : 'Take Quiz Now'}</span>
+                        {hasSubmitted ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <BookOpen className="w-4 h-4" />}
+                        <span>{hasSubmitted ? 'Completed (View Score)' : 'Take Quiz Now'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>

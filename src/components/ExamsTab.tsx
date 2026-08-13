@@ -1091,7 +1091,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         </div>
 
         {/* Sub Navigation Switcher */}
-        <div className="grid grid-cols-3 md:flex md:items-center gap-1 sm:gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-full shrink-0">
+        <div className={`grid ${isStudent ? 'grid-cols-2' : 'grid-cols-3'} md:flex md:items-center gap-1 sm:gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-full shrink-0`}>
           <button
             onClick={() => setSubTab('assignments')}
             className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
@@ -1124,20 +1124,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             </span>
           </button>
 
-          <button
-            onClick={() => setSubTab('admin_dashboard')}
-            className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
-              subTab === 'admin_dashboard'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span>
-              <span className="hidden sm:inline">Admin Quizzes Dashboard</span>
-              <span className="sm:hidden">Quizzes</span>
-            </span>
-          </button>
+          {!isStudent && (
+            <button
+              onClick={() => setSubTab('admin_dashboard')}
+              className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
+                subTab === 'admin_dashboard'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                <span className="hidden sm:inline">Admin Quizzes Dashboard</span>
+                <span className="sm:hidden">Quizzes</span>
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -2217,7 +2219,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       )}
 
       {/* SUB TAB 3: ADMIN QUIZZES DASHBOARD */}
-      {subTab === 'admin_dashboard' && (
+      {!isStudent && subTab === 'admin_dashboard' && (
         <AdminQuizzesDashboard
           userRole={userRole}
           quizzes={customAssignments.filter(a => a.type === 'quiz' || a.quizData).map(a => a.quizData || {
@@ -2983,6 +2985,33 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           currentStudentName={activeStudentName}
           onClose={() => setActiveQuizTaker(null)}
           onSubmitQuiz={handleQuizSubmissionComplete}
+          previousSubmission={
+            quizSubmissionsList.find(s => 
+              (s.quizId === activeQuizTaker.id || s.quizId === activeQuizTaker.shareCode) && 
+              s.studentName.toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
+            ) ||
+            (() => {
+              const sub = submissions.find(s => 
+                s.assignmentId === activeQuizTaker.id && 
+                s.studentName.toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
+              );
+              if (!sub || sub.score === undefined) return null;
+              return {
+                id: sub.id,
+                quizId: activeQuizTaker.id,
+                quizTitle: activeQuizTaker.title,
+                studentName: sub.studentName,
+                submittedAt: sub.submittedAt,
+                responses: [],
+                totalScore: sub.score,
+                maxPoints: activeQuizTaker.totalPoints || 100,
+                scorePercentage: Math.round((sub.score / (activeQuizTaker.totalPoints || 100)) * 100),
+                score: sub.score,
+                totalPossible: activeQuizTaker.totalPoints || 100,
+                percentage: Math.round((sub.score / (activeQuizTaker.totalPoints || 100)) * 100)
+              } as QuizSubmission;
+            })()
+          }
         />
       )}
 

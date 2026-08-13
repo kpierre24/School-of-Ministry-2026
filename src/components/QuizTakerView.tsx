@@ -25,6 +25,7 @@ interface QuizTakerViewProps {
   studentRoster?: { name: string }[];
   currentStudentName?: string;
   studentName?: string;
+  previousSubmission?: QuizSubmission | null;
   onSubmitQuiz?: (submission: QuizSubmission) => void;
   onComplete?: (submission: QuizSubmission) => void;
   onClose: () => void;
@@ -35,19 +36,35 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   studentRoster = [],
   currentStudentName,
   studentName,
+  previousSubmission,
   onSubmitQuiz,
   onComplete,
   onClose
 }) => {
-  const initialStudentName = studentName || currentStudentName || (studentRoster[0]?.name || '');
+  const loggedInStudentName = studentName || currentStudentName || '';
+  const initialStudentName = loggedInStudentName || (studentRoster[0]?.name || '');
   const [selectedStudentName, setSelectedStudentName] = useState(initialStudentName);
-  const [customStudentName, setCustomStudentName] = useState('');
-  const [isCustomName, setIsCustomName] = useState(!currentStudentName && studentRoster.length === 0);
+  const [customStudentName, setCustomStudentName] = useState(loggedInStudentName);
+  const [isCustomName, setIsCustomName] = useState(!loggedInStudentName && studentRoster.length === 0);
 
   // Selected answers state: questionId -> optionId
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<QuizSubmission | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(!!previousSubmission);
+  const [submissionResult, setSubmissionResult] = useState<QuizSubmission | null>(previousSubmission || null);
+
+  useEffect(() => {
+    if (previousSubmission) {
+      setIsSubmitted(true);
+      setSubmissionResult(previousSubmission);
+    }
+  }, [previousSubmission]);
+
+  useEffect(() => {
+    if (loggedInStudentName) {
+      setSelectedStudentName(loggedInStudentName);
+      setCustomStudentName(loggedInStudentName);
+    }
+  }, [loggedInStudentName]);
 
   // Auto-save & draft restoration state
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
@@ -162,6 +179,30 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     }
   };
 
+  // Roster match helper
+  const findMatchingRosterName = (inputName: string): string | null => {
+    if (!inputName || !inputName.trim()) return null;
+    const cleanInput = inputName.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!studentRoster || studentRoster.length === 0) return inputName.trim();
+
+    for (const student of studentRoster) {
+      const cleanRosterName = student.name.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (cleanInput === cleanRosterName) return student.name;
+
+      const inputParts = cleanInput.split(' ').filter(Boolean);
+      const rosterParts = cleanRosterName.split(' ').filter(Boolean);
+
+      if (inputParts.length >= 2 && rosterParts.length >= 2) {
+        if (inputParts[0] === rosterParts[0] && inputParts[inputParts.length - 1] === rosterParts[rosterParts.length - 1]) {
+          return student.name;
+        }
+      }
+    }
+    return null;
+  };
+
+  const matchedRosterName = isCustomName ? findMatchingRosterName(customStudentName) : selectedStudentName;
+
   const handleSelectOption = (qId: string, optId: string) => {
     if (isSubmitted) return;
     setAnswers(prev => ({ ...prev, [qId]: optId }));
@@ -174,6 +215,16 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
       setSubmitError('Please select or enter your name before submitting the quiz.');
       return;
     }
+
+    // Verify student is registered in roster if not logged in
+    if (studentRoster.length > 0 && !loggedInStudentName) {
+      const matched = findMatchingRosterName(activeStudentName);
+      if (!matched) {
+        setSubmitError(`Student name "${activeStudentName}" is not registered in the student roster. Please spell your First and Last Name correctly as registered.`);
+        return;
+      }
+    }
+
     setSubmitError(null);
 
     // Check if all questions answered
@@ -238,16 +289,17 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-      <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-6 animate-fadeIn">
+      <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col overflow-hidden relative z-[100000]">
         
         {/* Google Forms Purple Header Accent */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-900 text-white p-6 sm:p-8 relative flex-shrink-0 shadow-lg">
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-           aria-label="Close">
-            <X className="w-5 h-5" />
+            className="absolute top-4 right-4 px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black transition-all flex items-center gap-1.5 border border-white/25 shadow-md cursor-pointer active:scale-95 z-20"
+            aria-label="Exit Quiz">
+            <X className="w-4 h-4" />
+            <span>Exit Quiz</span>
           </button>
 
           <div className="space-y-2">
@@ -302,6 +354,16 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
           {/* RESULT CARD IF SUBMITTED */}
           {isSubmitted && submissionResult ? (
             <div className="space-y-6 animate-fadeIn">
+              {previousSubmission && (
+                <div className="bg-amber-50 dark:bg-amber-950/80 border-2 border-amber-300 dark:border-amber-700 rounded-2xl p-4 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs font-bold shadow-2xs">
+                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <div>
+                    <p className="font-extrabold text-xs">🔒 Quiz Retake Restricted</p>
+                    <p className="text-[11px] font-medium opacity-90">You have already submitted an attempt for this quiz on {submissionResult.submittedAt || 'an earlier date'}. Scores are compiled into the academic matrix and multiple attempts are restricted.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Score Header */}
               <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border-2 border-purple-200 dark:border-purple-900/60 shadow-xl text-center space-y-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 shadow-inner">
@@ -472,7 +534,26 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                   <span>Student Identification <span className="text-rose-500">*</span></span>
                 </label>
 
-                {studentRoster.length > 0 && !isCustomName ? (
+                {loggedInStudentName ? (
+                  <div className="bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm shrink-0">
+                        {loggedInStudentName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> Logged In Student Profile
+                        </span>
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight">
+                          {loggedInStudentName}
+                        </h4>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1 bg-purple-200/80 dark:bg-purple-900/80 text-purple-950 dark:text-purple-100 text-[11px] font-mono font-black rounded-lg border border-purple-300 dark:border-purple-700 shrink-0">
+                      Auto-Embedded
+                    </span>
+                  </div>
+                ) : studentRoster.length > 0 && !isCustomName ? (
                   <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       value={selectedStudentName}
@@ -495,24 +576,43 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={customStudentName}
-                      onChange={(e) => setCustomStudentName(e.target.value)}
-                      placeholder="Enter full student name (e.g. Samuel K. Johnson)"
-                      required
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
+                  <div className="space-y-1.5">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={customStudentName}
+                        onChange={(e) => setCustomStudentName(e.target.value)}
+                        placeholder="Enter full student name (e.g. Samuel K. Johnson)"
+                        required
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
 
-                    {studentRoster.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setIsCustomName(false)}
-                        className="px-3.5 py-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex-shrink-0"
-                      >
-                        Choose From Roster
-                      </button>
+                      {studentRoster.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomName(false)}
+                          className="px-3.5 py-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex-shrink-0 cursor-pointer"
+                        >
+                          Choose From Roster
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Live Roster Name Matching Helper */}
+                    {customStudentName.trim() && (
+                      <div className="text-xs font-bold px-1 pt-1">
+                        {matchedRosterName ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            Verified Student Roster Match: <strong className="font-extrabold">{matchedRosterName}</strong>
+                          </span>
+                        ) : (
+                          <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            Name not found in registered student roster. Please enter registered First and Last Name.
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -677,13 +777,25 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     </button>
                   </div>
                 )}
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-sm rounded-2xl shadow-xl shadow-purple-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 mx-auto"
-                >
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>Submit Quiz Answers for Tallying</span>
-                </button>
+                
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2.5 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    <span>Submit Quiz Answers for Tallying</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full sm:w-auto px-6 py-3.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs rounded-2xl border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <X className="w-4 h-4 shrink-0" />
+                    <span>Exit Quiz & Save Draft</span>
+                  </button>
+                </div>
               </div>
             </form>
           )}
