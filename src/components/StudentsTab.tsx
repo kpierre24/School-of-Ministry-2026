@@ -180,7 +180,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 300;
+        const maxDim = 480;
         let width = img.width;
         let height = img.height;
         if (width > height) {
@@ -199,7 +199,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
           if (onUpdateStudentPhoto) {
             onUpdateStudentPhoto(selectedStudentForPhotoUpload, resizedDataUrl);
           }

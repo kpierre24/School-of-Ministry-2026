@@ -34,7 +34,7 @@ export async function uploadToSupabaseStorage(
       try {
         const arr = fileOrDataUrl.split(',');
         const mimeMatch = arr[0].match(/:(.*?);/);
-        contentType = mimeMatch ? mimeMatch[1] : undefined;
+        contentType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
         const bstr = atob(arr[1]);
         let n = bstr.length;
         const u8arr = new Uint8Array(n);
@@ -47,45 +47,52 @@ export async function uploadToSupabaseStorage(
         return fileOrDataUrl;
       }
     } else {
-      // Return plain URL or text
+      // Return plain URL if already remote
       return fileOrDataUrl;
     }
   } else {
     body = fileOrDataUrl;
-    contentType = fileOrDataUrl.type;
+    contentType = fileOrDataUrl.type || 'image/jpeg';
   }
 
   // Generate a clean and uniquely prefixed path to prevent name collision or cache issues
   const cleanFileName = sanitizeFileName(fileName);
   const uniquePath = `${Date.now()}_${cleanFileName}`;
 
-  try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(uniquePath, body, {
-        upsert: true,
-        contentType: contentType,
-        cacheControl: '3600',
-      });
+  // Candidate buckets to attempt in priority order
+  const targetBuckets = [bucket, 'classroom_media', 'profile-pictures', 'library', 'assignments'].filter(
+    (b, idx, arr) => arr.indexOf(b) === idx && !!b
+  );
 
-    if (error) {
-      logger.warn(`Supabase Storage upload returned error for bucket '${bucket}':`, error);
-      // Fallback: Return original string if string, or convert File to base64 data URL
-      if (typeof fileOrDataUrl === 'string') {
-        return fileOrDataUrl;
+  for (const currentBucket of targetBuckets) {
+    try {
+      const { error } = await supabase.storage
+        .from(currentBucket)
+        .upload(uniquePath, body, {
+          upsert: true,
+          contentType: contentType,
+          cacheControl: '3600',
+        });
+
+      if (!error) {
+        const { data: urlData } = supabase.storage.from(currentBucket).getPublicUrl(uniquePath);
+        if (urlData?.publicUrl) {
+          logger.info(`Successfully stored object in Supabase bucket '${currentBucket}': ${uniquePath}`);
+          return urlData.publicUrl;
+        }
+      } else {
+        logger.warn(`Upload to Supabase bucket '${currentBucket}' returned error (${error.message}), trying alternative...`);
       }
-      return await fileToBase64(fileOrDataUrl);
+    } catch (bucketErr) {
+      logger.warn(`Storage exception for bucket '${currentBucket}':`, bucketErr);
     }
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(uniquePath);
-    return urlData?.publicUrl || (typeof fileOrDataUrl === 'string' ? fileOrDataUrl : await fileToBase64(fileOrDataUrl));
-  } catch (err) {
-    logger.error(`Supabase Storage exception for bucket '${bucket}':`, err);
-    if (typeof fileOrDataUrl === 'string') {
-      return fileOrDataUrl;
-    }
-    return await fileToBase64(fileOrDataUrl);
   }
+
+  // Fallback: Return original string if string, or convert File to base64 data URL
+  if (typeof fileOrDataUrl === 'string') {
+    return fileOrDataUrl;
+  }
+  return await fileToBase64(fileOrDataUrl);
 }
 
 /**
@@ -160,6 +167,44 @@ export async function syncFacultyImagesToSupabase(facultyTeachers: any[]): Promi
   return updatedFaculty;
 }
 
+/**
+ * Iterates through a dictionary of student photos (studentNameKey -> photoUrl/dataUrl)
+ * and ensures that all student profile pictures are saved in Supabase Storage ('classroom_media')
+ * and returns the updated studentPhotos dictionary with public Supabase URLs.
+ */
+export async function syncStudentPhotosToSupabase(
+  studentPhotos: Record<string, string>
+): Promise<Record<string, string>> {
+  if (!studentPhotos || typeof studentPhotos !== 'object') {
+    return studentPhotos || {};
+  }
+
+  const updated: Record<string, string> = { ...studentPhotos };
+
+  for (const [key, photoUrl] of Object.entries(studentPhotos)) {
+    if (!photoUrl) continue;
+
+    // If already stored in Supabase public storage, keep it
+    if (photoUrl.includes('.supabase.co/storage/v1/object/public/')) {
+      continue;
+    }
+
+    const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const fileName = `student_portrait_${cleanKey}.jpg`;
+
+    try {
+      const supabaseUrl = await ensureSupabaseStorageUrl('classroom_media', fileName, photoUrl);
+      if (supabaseUrl && supabaseUrl !== photoUrl) {
+        updated[key] = supabaseUrl;
+      }
+    } catch (err) {
+      logger.warn(`Could not sync student photo for '${key}' to Supabase storage:`, err);
+    }
+  }
+
+  return updated;
+}
+
 export interface StorageObjectInfo {
   name: string;
   id?: string;
@@ -184,9 +229,275 @@ export interface SupabaseDiagnosticReport {
   libraryBucketWriteError?: string;
   assignmentsBucketWriteOk: boolean;
   assignmentsBucketWriteError?: string;
+  classroomMediaBucketWriteOk?: boolean;
+  classroomMediaBucketWriteError?: string;
   libraryFiles: StorageObjectInfo[];
   assignmentsFiles: StorageObjectInfo[];
+  classroomMediaFiles: StorageObjectInfo[];
   diagnosis: string[];
+}
+
+export interface PhotoMigrationResult {
+  studentPhotosProcessed: number;
+  studentPhotosUploaded: number;
+  facultyProcessed: number;
+  facultyUploaded: number;
+  totalUploaded: number;
+  dbSaved: boolean;
+  success: boolean;
+  updatedStudentPhotos: Record<string, string>;
+  updatedFacultyTeachers: any[];
+  errors: string[];
+}
+
+/**
+ * Returns statistics of profile pictures stored in localStorage (student photos & faculty portraits)
+ * including how many are stored as local data URLs vs already hosted in Supabase Storage.
+ */
+export function getLocalProfilePicturesStats(
+  studentPhotosParam?: Record<string, string>,
+  facultyTeachersParam?: any[]
+): {
+  totalStudentPhotos: number;
+  studentPhotosInSupabase: number;
+  studentPhotosLocalOnly: number;
+  totalFaculty: number;
+  facultyInSupabase: number;
+  facultyLocalOnly: number;
+} {
+  let studentPhotos = studentPhotosParam;
+  if (!studentPhotos) {
+    try {
+      studentPhotos = JSON.parse(localStorage.getItem('hteim_student_photos') || '{}');
+    } catch {
+      studentPhotos = {};
+    }
+  }
+
+  let facultyTeachers = facultyTeachersParam;
+  if (!facultyTeachers) {
+    try {
+      facultyTeachers = JSON.parse(localStorage.getItem('hteim_faculty_teachers_v1') || '[]');
+    } catch {
+      facultyTeachers = [];
+    }
+  }
+
+  let studentPhotosInSupabase = 0;
+  let studentPhotosLocalOnly = 0;
+  if (studentPhotos && typeof studentPhotos === 'object') {
+    for (const url of Object.values(studentPhotos)) {
+      if (!url) continue;
+      if (url.includes('.supabase.co/storage/v1/object/public/')) {
+        studentPhotosInSupabase++;
+      } else {
+        studentPhotosLocalOnly++;
+      }
+    }
+  }
+
+  let facultyInSupabase = 0;
+  let facultyLocalOnly = 0;
+  if (Array.isArray(facultyTeachers)) {
+    for (const teacher of facultyTeachers) {
+      if (!teacher?.image) continue;
+      if (teacher.image.includes('.supabase.co/storage/v1/object/public/')) {
+        facultyInSupabase++;
+      } else {
+        facultyLocalOnly++;
+      }
+    }
+  }
+
+  return {
+    totalStudentPhotos: Object.keys(studentPhotos || {}).length,
+    studentPhotosInSupabase,
+    studentPhotosLocalOnly,
+    totalFaculty: Array.isArray(facultyTeachers) ? facultyTeachers.length : 0,
+    facultyInSupabase,
+    facultyLocalOnly,
+  };
+}
+
+/**
+ * Scans all student profile pictures and faculty portraits currently stored in local storage
+ * (or provided states), uploads any base64 data URLs / local images to Supabase Storage ('classroom_media'),
+ * updates localStorage with public Supabase URLs, and saves the updated state to the Supabase database.
+ */
+export async function migrateLocalStorageProfilePicturesToSupabase(
+  activeEmail?: string | null,
+  currentStudentPhotos?: Record<string, string>,
+  currentFacultyTeachers?: any[]
+): Promise<PhotoMigrationResult> {
+  const result: PhotoMigrationResult = {
+    studentPhotosProcessed: 0,
+    studentPhotosUploaded: 0,
+    facultyProcessed: 0,
+    facultyUploaded: 0,
+    totalUploaded: 0,
+    dbSaved: false,
+    success: true,
+    updatedStudentPhotos: {},
+    updatedFacultyTeachers: [],
+    errors: [],
+  };
+
+  // 1. Gather all student photos from parameter, localStorage, and attendance records
+  let rawStudentPhotos: Record<string, string> = {};
+  try {
+    const saved = localStorage.getItem('hteim_student_photos');
+    if (saved) rawStudentPhotos = JSON.parse(saved);
+  } catch (e) {
+    logger.warn("Error reading hteim_student_photos from localStorage:", e);
+  }
+  if (currentStudentPhotos && typeof currentStudentPhotos === 'object') {
+    rawStudentPhotos = { ...rawStudentPhotos, ...currentStudentPhotos };
+  }
+
+  // Also check attendance records for any student photo URLs
+  try {
+    const savedAtt = localStorage.getItem('attendanceRecords');
+    if (savedAtt) {
+      const records = JSON.parse(savedAtt);
+      if (Array.isArray(records)) {
+        for (const r of records) {
+          if (r?.student?.name && r?.student?.photoUrl) {
+            const key = r.student.name.toLowerCase().trim();
+            if (!rawStudentPhotos[key]) {
+              rawStudentPhotos[key] = r.student.photoUrl;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Gather faculty teachers
+  let rawFaculty: any[] = [];
+  try {
+    const saved = localStorage.getItem('hteim_faculty_teachers_v1');
+    if (saved) rawFaculty = JSON.parse(saved);
+  } catch (e) {
+    logger.warn("Error reading hteim_faculty_teachers_v1 from localStorage:", e);
+  }
+  if (Array.isArray(currentFacultyTeachers) && currentFacultyTeachers.length > 0) {
+    rawFaculty = currentFacultyTeachers;
+  }
+
+  // 3. Process and upload student photos to Supabase Storage
+  result.studentPhotosProcessed = Object.keys(rawStudentPhotos).length;
+  const updatedStudentPhotos: Record<string, string> = { ...rawStudentPhotos };
+
+  for (const [key, photoUrl] of Object.entries(rawStudentPhotos)) {
+    if (!photoUrl) continue;
+    if (photoUrl.includes('.supabase.co/storage/v1/object/public/')) {
+      continue; // Already hosted in Supabase storage
+    }
+
+    const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const fileName = `student_portrait_${cleanKey}.jpg`;
+
+    try {
+      const supabaseUrl = await ensureSupabaseStorageUrl('classroom_media', fileName, photoUrl);
+      if (supabaseUrl && supabaseUrl !== photoUrl) {
+        updatedStudentPhotos[key] = supabaseUrl;
+        result.studentPhotosUploaded++;
+      }
+    } catch (err: any) {
+      const msg = `Student photo upload failed for '${key}': ${err.message || String(err)}`;
+      logger.warn(msg);
+      result.errors.push(msg);
+    }
+  }
+  result.updatedStudentPhotos = updatedStudentPhotos;
+
+  // 4. Process and upload faculty teacher portraits to Supabase Storage
+  result.facultyProcessed = rawFaculty.length;
+  const updatedFaculty: any[] = [...rawFaculty];
+
+  for (let i = 0; i < updatedFaculty.length; i++) {
+    const teacher = updatedFaculty[i];
+    if (!teacher || !teacher.image) continue;
+    if (teacher.image.includes('.supabase.co/storage/v1/object/public/')) {
+      continue; // Already hosted in Supabase storage
+    }
+
+    const cleanSlug = (teacher.name || teacher.id || `faculty_${i}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_');
+    const fileName = `faculty_portrait_${cleanSlug}.jpg`;
+
+    try {
+      const supabaseUrl = await ensureSupabaseStorageUrl('classroom_media', fileName, teacher.image);
+      if (supabaseUrl && supabaseUrl !== teacher.image) {
+        updatedFaculty[i] = {
+          ...teacher,
+          image: supabaseUrl,
+        };
+        result.facultyUploaded++;
+      }
+    } catch (err: any) {
+      const msg = `Faculty photo upload failed for '${teacher.name || i}': ${err.message || String(err)}`;
+      logger.warn(msg);
+      result.errors.push(msg);
+    }
+  }
+  result.updatedFacultyTeachers = updatedFaculty;
+  result.totalUploaded = result.studentPhotosUploaded + result.facultyUploaded;
+
+  // 5. Update local storage with public Supabase URLs
+  try {
+    localStorage.setItem('hteim_student_photos', JSON.stringify(updatedStudentPhotos));
+    localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(updatedFaculty));
+  } catch (e) {
+    logger.warn("Could not write updated photo URLs to localStorage:", e);
+  }
+
+  // 6. Save updated full state to Supabase database table 'app_states'
+  try {
+    const email = activeEmail || 'admin@hteim.org';
+    const stateDocId = email ? `user_${email.replace(/[^a-zA-Z0-9]/g, '_')}` : 'shared_default_state';
+    
+    // Fetch current state from DB or build state
+    let currentState: any = {};
+    const { data: dbData } = await supabase.from('app_states').select('state').eq('id', stateDocId).single();
+    if (dbData?.state) {
+      currentState = dbData.state;
+    }
+
+    const mergedState = {
+      ...currentState,
+      studentPhotos: updatedStudentPhotos,
+      facultyTeachers: updatedFaculty,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const { error: upsertErr } = await supabase.from('app_states').upsert([
+      {
+        id: stateDocId,
+        state: mergedState,
+        updated_at: new Date().toISOString(),
+        updated_by: email,
+      },
+      {
+        id: 'shared_default_state',
+        state: mergedState,
+        updated_at: new Date().toISOString(),
+        updated_by: email,
+      }
+    ]);
+
+    if (!upsertErr) {
+      result.dbSaved = true;
+    } else {
+      result.errors.push(`Database state update failed: ${upsertErr.message}`);
+    }
+  } catch (err: any) {
+    result.errors.push(`Database upsert exception: ${err.message || String(err)}`);
+  }
+
+  result.success = result.errors.length === 0;
+  return result;
 }
 
 /**
@@ -203,8 +514,10 @@ export async function runSupabaseDiagnostics(userEmail?: string): Promise<Supaba
     bucketErrors: {},
     libraryBucketWriteOk: false,
     assignmentsBucketWriteOk: false,
+    classroomMediaBucketWriteOk: false,
     libraryFiles: [],
     assignmentsFiles: [],
+    classroomMediaFiles: [],
     diagnosis: [],
   };
 
@@ -250,8 +563,8 @@ export async function runSupabaseDiagnostics(userEmail?: string): Promise<Supaba
     report.bucketErrors['listBuckets'] = err.message || String(err);
   }
 
-  // 3. Test Library Bucket Write & List
-  const testBuckets = ['library', 'assignments'];
+  // 3. Test Library, Assignments & Classroom Media Buckets Write & List
+  const testBuckets = ['library', 'assignments', 'classroom_media'];
 
   for (const bucketName of testBuckets) {
     try {
@@ -278,6 +591,7 @@ export async function runSupabaseDiagnostics(userEmail?: string): Promise<Supaba
 
         if (bucketName === 'library') report.libraryFiles = fileInfos;
         if (bucketName === 'assignments') report.assignmentsFiles = fileInfos;
+        if (bucketName === 'classroom_media') report.classroomMediaFiles = fileInfos;
       }
     } catch (err: any) {
       report.bucketErrors[bucketName] = err.message || String(err);
@@ -295,10 +609,12 @@ export async function runSupabaseDiagnostics(userEmail?: string): Promise<Supaba
         const errorMsg = `${upError.message} (${(upError as any).error || 'Upload failed'})`;
         if (bucketName === 'library') report.libraryBucketWriteError = errorMsg;
         if (bucketName === 'assignments') report.assignmentsBucketWriteError = errorMsg;
+        if (bucketName === 'classroom_media') report.classroomMediaBucketWriteError = errorMsg;
         report.diagnosis.push(`Write permission failed on bucket '${bucketName}': ${errorMsg}. Ensure Row Level Security (RLS) policies allow INSERT/public uploads for anon role.`);
       } else {
         if (bucketName === 'library') report.libraryBucketWriteOk = true;
         if (bucketName === 'assignments') report.assignmentsBucketWriteOk = true;
+        if (bucketName === 'classroom_media') report.classroomMediaBucketWriteOk = true;
         // Clean up test file
         await supabase.storage.from(bucketName).remove([testPath]);
       }
@@ -306,6 +622,7 @@ export async function runSupabaseDiagnostics(userEmail?: string): Promise<Supaba
       const errorMsg = err.message || String(err);
       if (bucketName === 'library') report.libraryBucketWriteError = errorMsg;
       if (bucketName === 'assignments') report.assignmentsBucketWriteError = errorMsg;
+      if (bucketName === 'classroom_media') report.classroomMediaBucketWriteError = errorMsg;
     }
   }
 

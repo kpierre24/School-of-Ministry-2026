@@ -81,7 +81,7 @@ import {
   Users
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
-import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase } from './lib/supabaseClient';
+import { supabase, uploadToSupabaseStorage, ensureSupabaseStorageUrl, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase, syncStudentPhotosToSupabase } from './lib/supabaseClient';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
@@ -782,17 +782,54 @@ export default function App() {
 
   const handleUpdateStudentPhoto = async (studentName: string, photoDataUrl: string) => {
     const key = (studentName || '').toLowerCase().trim();
+    const cleanKey = key.replace(/[^a-z0-9]/g, '_');
+    const fileName = `student_portrait_${cleanKey}.jpg`;
+
     let finalUrl = photoDataUrl;
     try {
-      finalUrl = await uploadToSupabaseStorage('profile-pictures', `${key}.jpg`, photoDataUrl);
+      finalUrl = await ensureSupabaseStorageUrl('classroom_media', fileName, photoDataUrl);
     } catch (err) {
-      console.error("Failed to upload profile photo to Supabase storage:", err);
+      console.error("Failed to upload student photo to Supabase storage:", err);
     }
-    setStudentPhotos(prev => {
-      const updated = { ...prev, [key]: finalUrl };
-      localStorage.setItem('hteim_student_photos', JSON.stringify(updated));
-      return updated;
-    });
+
+    const updatedPhotos = { ...studentPhotos, [key]: finalUrl };
+    setStudentPhotos(updatedPhotos);
+    try {
+      localStorage.setItem('hteim_student_photos', JSON.stringify(updatedPhotos));
+    } catch (e) {}
+
+    // Persist updated photo dictionary to Supabase cloud database immediately
+    const activeEmail = appUser?.email || user?.email;
+    const stateToSave = {
+      records,
+      classDays,
+      studentNotes,
+      excusedAbsences,
+      rubricScores,
+      deletedStudentNames,
+      studentPhotos: updatedPhotos,
+      studentLevels,
+      customAssignments,
+      submissions,
+      notifications,
+      sheetUrl,
+      courses,
+      schedules,
+      libraryResources,
+      classroomMedia,
+      facultyTeachers,
+      payments,
+      messages,
+      zoomExceptionNote,
+      hasZoomException,
+      userCredentials,
+      updatedAt: new Date().toISOString()
+    };
+    try {
+      await saveToSupabase(activeEmail, stateToSave);
+    } catch (saveErr) {
+      console.warn("Notice saving updated student photo to Supabase database:", saveErr);
+    }
   };
 
   // Student Academic Levels State
@@ -1658,12 +1695,17 @@ export default function App() {
       localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(newList));
     } catch (e) {}
 
-    // Ensure images are uploaded to Supabase Storage bucket ('classroom_media')
-    const syncedList = await syncFacultyImagesToSupabase(newList);
-    setFacultyTeachers(syncedList);
+    let syncedList = newList;
     try {
-      localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
-    } catch (e) {}
+      // Ensure images are uploaded to Supabase Storage bucket ('classroom_media') if reachable
+      syncedList = await syncFacultyImagesToSupabase(newList);
+      setFacultyTeachers(syncedList);
+      try {
+        localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedList));
+      } catch (e) {}
+    } catch (err) {
+      console.warn("Notice syncing faculty portraits to Supabase storage:", err);
+    }
 
     // Save directly to Supabase cloud database
     const activeEmail = appUser?.email || user?.email;
@@ -1700,6 +1742,29 @@ export default function App() {
     setSupabaseTableMissing(false);
     const activeEmail = appUser?.email || user?.email;
     try {
+      let syncedStudentPhotos = studentPhotos;
+      let syncedFaculty = facultyTeachers;
+
+      try {
+        syncedStudentPhotos = await syncStudentPhotosToSupabase(studentPhotos);
+        setStudentPhotos(syncedStudentPhotos);
+        try {
+          localStorage.setItem('hteim_student_photos', JSON.stringify(syncedStudentPhotos));
+        } catch (e) {}
+      } catch (err) {
+        console.warn("Notice syncing student photos to Supabase storage:", err);
+      }
+
+      try {
+        syncedFaculty = await syncFacultyImagesToSupabase(facultyTeachers);
+        setFacultyTeachers(syncedFaculty);
+        try {
+          localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedFaculty));
+        } catch (e) {}
+      } catch (err) {
+        console.warn("Notice syncing faculty portraits to Supabase storage:", err);
+      }
+
       const stateToSave = {
         records,
         classDays,
@@ -1707,7 +1772,7 @@ export default function App() {
         excusedAbsences,
         rubricScores,
         deletedStudentNames,
-        studentPhotos,
+        studentPhotos: syncedStudentPhotos,
         studentLevels,
         customAssignments,
         submissions,
@@ -1717,7 +1782,7 @@ export default function App() {
         schedules,
         libraryResources,
         classroomMedia,
-        facultyTeachers,
+        facultyTeachers: syncedFaculty,
         payments,
         messages,
         zoomExceptionNote,
@@ -5563,6 +5628,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           setShowSettingsModal(false);
           setShowAdminAuditModal(true);
         }}
+        onPhotosMigrated={handlePushToCloud}
       />
 
       {/* Admin Audit Trail & Data Tools Modal */}

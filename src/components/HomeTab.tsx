@@ -625,9 +625,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         
                         <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 shadow-2xl aspect-[3/4] w-full">
                           <img
-                            src={activeTeacher.image}
+                            src={activeTeacher.image || gillianSelkridgeAsset}
                             alt={activeTeacher.name}
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = gillianSelkridgeAsset;
+                            }}
                             className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
@@ -765,9 +768,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     >
                       <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950">
                         <img
-                          src={teacher.image}
+                          src={teacher.image || gillianSelkridgeAsset}
                           alt={teacher.name}
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = gillianSelkridgeAsset;
+                          }}
                           className="w-full h-full object-cover object-top"
                         />
                       </div>

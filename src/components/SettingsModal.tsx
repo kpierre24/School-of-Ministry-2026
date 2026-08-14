@@ -31,8 +31,10 @@ import {
   Lock,
   ShieldAlert,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  UploadCloud
 } from 'lucide-react';
+import { migrateLocalStorageProfilePicturesToSupabase } from '../lib/supabaseClient';
 
 export type ThemeMode = 'light' | 'dark' | 'system' | 'high-contrast';
 
@@ -58,6 +60,7 @@ interface SettingsModalProps {
   onOpenGuide?: () => void;
   onOpenMobileDownloadCenter?: () => void;
   onOpenAdminTools?: () => void;
+  onPhotosMigrated?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -81,13 +84,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onImportBackup,
   onOpenGuide,
   onOpenMobileDownloadCenter,
-  onOpenAdminTools
+  onOpenAdminTools,
+  onPhotosMigrated
 }) => {
   const dialogRef = useAccessibleModal(isOpen, onClose);
   const [activeTab, setActiveTab] = useState<'appearance' | 'academic' | 'sync' | 'about'>('appearance');
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importErrorMessage, setImportErrorMessage] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isMigratingPhotos, setIsMigratingPhotos] = useState(false);
+  const [photoMigrationStatus, setPhotoMigrationStatus] = useState<string | null>(null);
 
   const [instAddressError, setInstAddressError] = useState<string | null>(null);
   const [instPhoneError, setInstPhoneError] = useState<string | null>(null);
@@ -858,6 +864,63 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       {importStatus === 'error' && (
                         <p className="text-rose-700 font-bold text-[11px] bg-rose-50 border border-rose-200 p-2 rounded-lg">
                           ⚠️ {importErrorMessage}
+                        </p>
+                      )}
+
+                      <hr className="border-slate-200" />
+
+                      {/* Migrate Profile Pictures to Supabase Storage */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-purple-50 rounded-xl border border-purple-200">
+                        <div>
+                          <h4 className="font-bold text-purple-950 text-xs flex items-center gap-1.5">
+                            <UploadCloud className="w-3.5 h-3.5 text-purple-600" />
+                            Save Local Profile Pictures to Supabase
+                          </h4>
+                          <p className="text-[10px] text-purple-700 mt-0.5">
+                            Upload all student profile photos and faculty portraits stored in browser cache to Supabase Storage.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setIsMigratingPhotos(true);
+                            setPhotoMigrationStatus(null);
+                            try {
+                              const res = await migrateLocalStorageProfilePicturesToSupabase();
+                              if (res.success) {
+                                setPhotoMigrationStatus(`✓ Saved ${res.totalUploaded} profile photo(s) to Supabase Storage!`);
+                                if (onPhotosMigrated) onPhotosMigrated();
+                              } else {
+                                setPhotoMigrationStatus(`Notice: ${res.errors.join(', ')}`);
+                              }
+                            } catch (e: any) {
+                              setPhotoMigrationStatus(`Error: ${e.message || String(e)}`);
+                            } finally {
+                              setIsMigratingPhotos(false);
+                            }
+                          }}
+                          disabled={isMigratingPhotos}
+                          className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+                        >
+                          {isMigratingPhotos ? (
+                            <>
+                              <RotateCcw className="w-3.5 h-3.5 animate-spin" /> Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Save to Cloud
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {photoMigrationStatus && (
+                        <p className={`font-bold text-[11px] p-2 rounded-lg ${
+                          photoMigrationStatus.startsWith('✓') 
+                            ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' 
+                            : 'text-purple-700 bg-purple-50 border border-purple-200'
+                        }`}>
+                          {photoMigrationStatus}
                         </p>
                       )}
 
