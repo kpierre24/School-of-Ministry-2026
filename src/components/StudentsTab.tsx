@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { generateStudentUsername } from '../lib/userAuth';
 import { EmptyState } from './UXPrimitives';
+import { getAttendanceLockInfo } from '../lib/attendanceLock';
 
 export type StudentSummaryData = {
   name: string;
@@ -215,7 +216,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const filteredAndSortedStudents = useMemo(() => {
     const filtered = students.filter((s) => {
       if (!s || !s.name) return false;
-      const matchesSearch = s.name.toLowerCase().includes((searchQuery || '').toLowerCase());
+      const matchesSearch = (s?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
       if (!matchesSearch) return false;
 
       if (statusFilter === 'perfect' && s.rate < 100) return false;
@@ -501,7 +502,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span className="font-semibold text-slate-500 dark:text-slate-400 text-[11px]">Marking Session:</span>
                   <select
-                    value={activeGalleryDayId}
+                    value={activeGalleryDayId ?? ''}
                     onChange={(e) => setSelectedGalleryDayId(e.target.value)}
                     className="bg-transparent font-semibold text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer w-full sm:w-auto pr-2"
                   >
@@ -575,6 +576,9 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 const dayRecord = s.attendanceByDay?.[activeGalleryDayId];
                 const isPresent = !isExcused && dayRecord?.present === true;
                 const isAbsent = !isExcused && (!dayRecord || dayRecord.present === false);
+                const activeDayObj = classDays?.find(d => d.id === activeGalleryDayId);
+                const cardLockInfo = getAttendanceLockInfo(dayRecord, activeDayObj);
+                const isCardLocked = cardLockInfo.isLocked;
 
                 return (
                   <motion.div
@@ -635,7 +639,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       </div>
 
                       {/* Top Right Active Session Status Badge */}
-                      <div className="absolute top-2 right-2 z-10">
+                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+                        {isCardLocked && (
+                          <span className="p-1 rounded-lg bg-slate-900/80 text-slate-300 backdrop-blur-xs shadow-md border border-slate-700" title="Locked (>24h since capture)">
+                            <Lock className="w-3 h-3 text-slate-300" />
+                          </span>
+                        )}
                         {isExcused ? (
                           <span className="px-1.5 py-0.5 rounded-lg text-[9px] font-black bg-amber-500 text-slate-950 shadow-md border border-amber-300 flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" /> Excused
@@ -677,11 +686,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                             isPresent
                               ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400'
                               : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                          }`}
-                          title={`Mark ${s.name} as Present`}
+                          } ${isCardLocked ? 'opacity-85' : ''}`}
+                          title={isCardLocked ? '🔒 Record Locked (>24h since capture)' : `Mark ${s.name} as Present`}
                         >
                           <CheckCircle2 className="w-3 h-3" />
                           <span className="hidden xs:inline">Present</span>
+                          {isCardLocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
                         </button>
 
                         <button
@@ -690,11 +700,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                             isAbsent
                               ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-400'
                               : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                          }`}
-                          title={`Mark ${s.name} as Absent`}
+                          } ${isCardLocked ? 'opacity-85' : ''}`}
+                          title={isCardLocked ? '🔒 Record Locked (>24h since capture)' : `Mark ${s.name} as Absent`}
                         >
                           <XCircle className="w-3 h-3" />
                           <span className="hidden xs:inline">Absent</span>
+                          {isCardLocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
                         </button>
 
                         <button
@@ -703,11 +714,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                             isExcused
                               ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300'
                               : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-                          }`}
-                          title={`Mark ${s.name} as Excused`}
+                          } ${isCardLocked ? 'opacity-85' : ''}`}
+                          title={isCardLocked ? '🔒 Record Locked (>24h since capture)' : `Mark ${s.name} as Excused`}
                         >
                           <AlertCircle className="w-3 h-3" />
                           <span className="hidden xs:inline">Excused</span>
+                          {isCardLocked && <Lock className="w-2.5 h-2.5 text-slate-400" />}
                         </button>
                       </div>
                     ) : (
@@ -936,7 +948,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       <div className="space-y-1.5">
                         <textarea
                           rows={2}
-                          value={tempNoteText}
+                          value={tempNoteText ?? ''}
                           onChange={(e) => setTempNoteText(e.target.value)}
                           placeholder="Add faculty note or advisory comment..."
                           className="w-full p-2 bg-slate-50 border border-indigo-200 rounded-lg text-xs text-slate-800 focus:outline-none"

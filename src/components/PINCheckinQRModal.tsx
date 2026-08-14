@@ -111,7 +111,7 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
           <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
             <span>PIN Expiration Window</span>
             <select
-              value={expirationMinutes}
+              value={expirationMinutes ?? 15}
               onChange={(e) => setExpirationMinutes(Number(e.target.value))}
               className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold"
             >

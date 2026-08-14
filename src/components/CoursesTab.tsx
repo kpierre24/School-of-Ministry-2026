@@ -174,9 +174,9 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
 
   const filteredCourses = courses.filter(c => {
     const matchesSearch = 
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.instructor.toLowerCase().includes(searchQuery.toLowerCase());
+      (c.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.instructor || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const isExpired = c.expiryDate ? new Date(c.expiryDate) < new Date() : false;
 

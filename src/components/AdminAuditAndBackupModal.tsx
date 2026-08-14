@@ -1010,7 +1010,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                       {userCredentials
                         .filter(c => {
                           const query = searchQuery.toLowerCase();
-                          const matchesSearch = c.name.toLowerCase().includes(query) || c.username.toLowerCase().includes(query);
+                          const matchesSearch = (c?.name || '').toLowerCase().includes(query) || (c.username || '').toLowerCase().includes(query);
                           const matchesRole = selectedRole === 'all' || c.role === selectedRole;
                           return matchesSearch && matchesRole;
                         })

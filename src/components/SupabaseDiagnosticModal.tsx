@@ -196,7 +196,7 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
 
   const filterFiles = (files: any[]) => {
     if (!searchTerm) return files;
-    return files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return files.filter(f => (f?.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
   };
 
   return (

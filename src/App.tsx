@@ -78,16 +78,16 @@ import {
   MessageSquare,
   LogOut,
   MoreHorizontal,
-  Video
+  Users
 } from 'lucide-react';
 import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
 import { supabase, uploadToSupabaseStorage, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase } from './lib/supabaseClient';
-import { ZoomCoPilotTab, ActiveZoomSession } from './components/ZoomCoPilotTab';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
 import { SheetMergeConflictModal } from './components/SheetMergeConflictModal';
+import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from './lib/attendanceLock';
 import { usePWAInstall } from './lib/pwa';
 import {
   ResponsiveContainer,
@@ -103,9 +103,11 @@ import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fe
 import { getDemoAttendance } from './data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword } from './lib/userAuth';
+import { supabaseLogout } from './lib/supabaseAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
 import { LoginModal } from './components/LoginModal';
+import { UserManagementModal } from './components/UserManagementModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
 import { HomeTab, DEFAULT_FACULTY_TEACHERS } from './components/HomeTab';
@@ -148,7 +150,7 @@ const EXCLUDED_STUDENTS = [
   'sam selk',
 ];
 
-const VALID_TABS: TabType[] = ['home', 'attendance', 'zoom-copilot', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages'];
+const VALID_TABS: TabType[] = ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages'];
 
 const getTabFromLocation = (): TabType => {
   if (typeof window === 'undefined') return 'home';
@@ -158,7 +160,7 @@ const getTabFromLocation = (): TabType => {
 
 const isExcludedStudent = (name?: string) => {
   if (!name || typeof name !== 'string') return false;
-  const lower = name.toLowerCase().trim();
+  const lower = (name || '').toLowerCase().trim();
   return EXCLUDED_STUDENTS.some(excluded => lower.includes(excluded));
 };
 
@@ -190,7 +192,7 @@ const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
   rawNames.forEach((rawName: string) => {
     if (!rawName) return;
     let foundGroup = false;
-    const lowerRaw = rawName.toLowerCase().trim();
+    const lowerRaw = (rawName || '').toLowerCase().trim();
     const explicitCanonical = MANUAL_ALIASES[lowerRaw];
     const normalizedRaw = lowerRaw.replace(/[^a-z0-9 ]/g, ' ').trim();
     
@@ -348,29 +350,21 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const lastFetchTimeRef = useRef<number>(0);
 
-  // App User & Role State (Admin, Teacher, Student)
-  const [appUser, setAppUser] = useState<AppUser | null>(() => {
-    const saved = localStorage.getItem('hteim_app_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null; // Truly fully authenticated app: start logged out!
-  });
+  // App User & Role State (Admin, Teacher, Student) - In-memory only via Supabase Verification
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
 
-  // Dynamic User Credentials State
-  const [userCredentials, setUserCredentials] = useState<UserCredential[]>(() => {
-    const saved = localStorage.getItem('hteim_user_credentials');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Dynamic User Credentials State - In-memory state synchronized with Supabase
+  const [userCredentials, setUserCredentials] = useState<UserCredential[]>([]);
 
-  // Local storage persistence for credentials
+  // Clear any legacy auth traces on initial load
   useEffect(() => {
-    localStorage.setItem('hteim_user_credentials', JSON.stringify(userCredentials));
-  }, [userCredentials]);
+    try {
+      localStorage.removeItem('hteim_app_user');
+      localStorage.removeItem('hteim_user_credentials');
+      sessionStorage.removeItem('hteim_app_user');
+      sessionStorage.removeItem('hteim_user_credentials');
+    } catch (e) {}
+  }, []);
 
   const [showIntro, setShowIntro] = useState<boolean>(false);
 
@@ -378,6 +372,7 @@ export default function App() {
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
   const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
+  const [showUserManagementModal, setShowUserManagementModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
   const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
@@ -434,16 +429,15 @@ export default function App() {
       }
 
       newUser = {
-        id: `u-student-${chosenName.toLowerCase().replace(/\s+/g, '-')}`,
+        id: `u-student-${(chosenName || '').toLowerCase().replace(/\s+/g, '-')}`,
         username: generateStudentUsername(chosenName),
         name: chosenName,
         role: 'student',
         studentName: chosenName,
-        email: `${generateStudentUsername(chosenName).toLowerCase()}@hteim.edu`
+        email: `${(generateStudentUsername(chosenName) || '').toLowerCase()}@hteim.edu`
       };
     }
     setAppUser(newUser);
-    localStorage.setItem('hteim_app_user', JSON.stringify(newUser));
     setShowRoleMenu(false);
     setSyncedBannerMessage(`🎭 Role Switch: Previewing portal as ${role.toUpperCase()} (${newUser.name})`);
     setTimeout(() => {
@@ -455,7 +449,6 @@ export default function App() {
 
   useEffect(() => {
     if (appUser) {
-      localStorage.setItem('hteim_app_user', JSON.stringify(appUser));
       if (appUser.role === 'student') {
         const sName = appUser.studentName || appUser.name;
         const summary = getStudentPaymentDetails(sName);
@@ -470,7 +463,6 @@ export default function App() {
         setStudentPaymentSummary(null);
       }
     } else {
-      localStorage.removeItem('hteim_app_user');
       setShowOutstandingPaymentBanner(false);
       setStudentPaymentSummary(null);
     }
@@ -492,16 +484,42 @@ export default function App() {
     }
   };
 
-  const handleAppLogout = () => {
+  const handleAppLogout = async () => {
+    const prevUser = appUser;
+    try {
+      await supabaseLogout();
+    } catch (e) {
+      console.warn("Supabase sign out notice:", e);
+    }
+    try {
+      await logout();
+    } catch (e) {}
     setAppUser(null);
-    localStorage.removeItem('hteim_app_user');
     setShowLoginModal(true);
+    if (prevUser) {
+      logActivity({
+        actor: prevUser.name || 'User',
+        role: prevUser.role || 'student',
+        actionCategory: 'System Settings',
+        actionTitle: 'User Logged Out',
+        details: `Signed out of portal: ${prevUser.name}`
+      });
+    }
+    setSyncedBannerMessage('🔒 Logged out of HTEIM Portal.');
+    setTimeout(() => setSyncedBannerMessage(null), 3500);
   };
 
-  const handleChangeUserPassword = (username: string, newPin: string) => {
+  const handleChangeUserPassword = async (usernameOrEmail: string | undefined | null, newPin: string) => {
+    if (!usernameOrEmail) return;
+    let updatedCreds: UserCredential[] = [];
     setUserCredentials(prev => {
       const updated = prev.map(c => {
-        if (c.username.toLowerCase() === username.toLowerCase()) {
+        const matchInput = (usernameOrEmail || '').trim().toLowerCase();
+        if (
+          (c.username && (c.username || '').toLowerCase() === matchInput) ||
+          (c.email && (c.email || '').toLowerCase() === matchInput) ||
+          (c.name && (c?.name || '').toLowerCase() === matchInput)
+        ) {
           return {
             ...c,
             passwordHash: newPin,
@@ -510,28 +528,101 @@ export default function App() {
         }
         return c;
       });
-      localStorage.setItem('hteim_user_credentials', JSON.stringify(updated));
+      updatedCreds = updated;
       return updated;
     });
+
+    // Synchronously write the updated credentials registry to Supabase immediately for real-time security
+    try {
+      const activeEmail = appUser?.email || user?.email;
+      const stateToSave = {
+        records,
+        classDays,
+        studentNotes,
+        excusedAbsences,
+        rubricScores,
+        deletedStudentNames,
+        studentPhotos,
+        studentLevels,
+        customAssignments,
+        submissions,
+        notifications,
+        sheetUrl,
+        courses,
+        schedules,
+        libraryResources,
+        classroomMedia,
+        facultyTeachers,
+        payments,
+        messages,
+        zoomExceptionNote,
+        hasZoomException,
+        userCredentials: updatedCreds
+      };
+      await saveToSupabase(activeEmail, stateToSave);
+    } catch (err) {
+      console.error("Supabase password change sync failure:", err);
+    }
   };
 
-  const handleResetStudentPassword = (studentName: string) => {
+  const handleResetStudentPassword = async (studentName: string | undefined | null) => {
+    if (!studentName) return;
     const username = generateStudentUsername(studentName);
     if (!username) return;
+    let updatedCreds: UserCredential[] = [];
+    
     setUserCredentials(prev => {
       const updated = prev.map(c => {
-        if (c.username.toLowerCase() === username.toLowerCase()) {
+        if (
+          c.username?.toLowerCase() === (username || '').toLowerCase() ||
+          c.studentName?.toLowerCase().trim() === (studentName || '').toLowerCase().trim() ||
+          c.name?.toLowerCase().trim() === (studentName || '').toLowerCase().trim()
+        ) {
           return {
             ...c,
-            passwordHash: '1234',
+            passwordHash: 'password1', // Standardized with DEFAULT_USER_PASSWORD
             mustChangePassword: true
           };
         }
         return c;
       });
-      localStorage.setItem('hteim_user_credentials', JSON.stringify(updated));
+      updatedCreds = updated;
       return updated;
     });
+
+    // Direct push to Supabase central registry
+    try {
+      const activeEmail = appUser?.email || user?.email;
+      const stateToSave = {
+        records,
+        classDays,
+        studentNotes,
+        excusedAbsences,
+        rubricScores,
+        deletedStudentNames,
+        studentPhotos,
+        studentLevels,
+        customAssignments,
+        submissions,
+        notifications,
+        sheetUrl,
+        courses,
+        schedules,
+        libraryResources,
+        classroomMedia,
+        facultyTeachers,
+        payments,
+        messages,
+        zoomExceptionNote,
+        hasZoomException,
+        userCredentials: updatedCreds
+      };
+      await saveToSupabase(activeEmail, stateToSave);
+      setSyncedBannerMessage(`⚡ School Registry: Successfully reset password for ${studentName} to "password1" and synchronized across all servers.`);
+      setTimeout(() => setSyncedBannerMessage(null), 5000);
+    } catch (err) {
+      console.error("Supabase password reset sync failure:", err);
+    }
   };
   
   const [sheetUrl, setSheetUrl] = useState(() => {
@@ -600,22 +691,6 @@ export default function App() {
     return localStorage.getItem('hteim_has_zoom_exception') === 'true';
   });
   
-  const [activeZoomSession, setActiveZoomSession] = useState<ActiveZoomSession>(() => {
-    const saved = localStorage.getItem('hteim_active_zoom_session');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return {
-      isSessionLive: false,
-      meetingId: '815 0537 7396',
-      passcode: '163738',
-    };
-  });
-
-  useEffect(() => {
-    localStorage.setItem('hteim_active_zoom_session', JSON.stringify(activeZoomSession));
-  }, [activeZoomSession]);
-  
   const [records, setRecords] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('attendanceRecords');
     const savedDeleted = localStorage.getItem('deletedStudentNames');
@@ -629,7 +704,7 @@ export default function App() {
         // Purge excluded students completely from records
         return loaded.filter(r => {
           if (!r || !r.name) return false;
-          const nameLower = r.name.toLowerCase().trim();
+          const nameLower = (r?.name || '').toLowerCase().trim();
           if (isExcludedStudent(r.name)) return false;
           if (deletedList.some(d => (d || '').toLowerCase().trim() === nameLower)) return false;
           return true;
@@ -651,6 +726,17 @@ export default function App() {
     }
     return [];
   });
+  const [deletedClassDayIds, setDeletedClassDayIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('deletedClassDayIds');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('deletedClassDayIds', JSON.stringify(deletedClassDayIds));
+  }, [deletedClassDayIds]);
   const [dataSource, setDataSource] = useState<'demo' | 'sheets' | null>(() => {
     return (localStorage.getItem('dataSource') as any) || null;
   });
@@ -695,7 +781,7 @@ export default function App() {
   });
 
   const handleUpdateStudentPhoto = async (studentName: string, photoDataUrl: string) => {
-    const key = studentName.toLowerCase().trim();
+    const key = (studentName || '').toLowerCase().trim();
     let finalUrl = photoDataUrl;
     try {
       finalUrl = await uploadToSupabaseStorage('profile-pictures', `${key}.jpg`, photoDataUrl);
@@ -716,7 +802,7 @@ export default function App() {
   });
 
   const handleUpdateStudentLevel = (studentName: string, levelId: string) => {
-    const key = studentName.toLowerCase().trim();
+    const key = (studentName || '').toLowerCase().trim();
     setStudentLevels(prev => {
       const updated = { ...prev, [key]: levelId };
       localStorage.setItem('hteim_student_levels', JSON.stringify(updated));
@@ -895,7 +981,7 @@ export default function App() {
       } else if (userRole === 'teacher') {
         return (m.recipientType === 'teacher' || m.recipientType === 'all_staff') && !m.isReadByRecipient;
       } else {
-        const isFromStudent = m.senderName.toLowerCase().includes(userName) || m.senderEmail === appUser?.email;
+        const isFromStudent = (m.senderName || '').toLowerCase().includes(userName) || m.senderEmail === appUser?.email;
         if (isFromStudent) {
           return m.status === 'in_progress' || m.status === 'open';
         }
@@ -1118,7 +1204,7 @@ export default function App() {
   }, []);
 
   const handleUpdateRubric = (studentName: string, key: 'participation' | 'scripture' | 'assignment', val: number) => {
-    const studentKey = studentName.toLowerCase().trim();
+    const studentKey = (studentName || '').toLowerCase().trim();
     setRubricScores(prev => {
       const existing = prev[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
       return {
@@ -1485,7 +1571,6 @@ export default function App() {
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
           if (cloudState.userCredentials !== undefined) setUserCredentials(cloudState.userCredentials);
-          if (cloudState.activeZoomSession !== undefined) setActiveZoomSession(cloudState.activeZoomSession);
           if (Array.isArray(cloudState.facultyTeachers) && cloudState.facultyTeachers.length > 0) {
             setFacultyTeachers(cloudState.facultyTeachers);
             try {
@@ -1534,8 +1619,7 @@ export default function App() {
             messages,
             zoomExceptionNote,
             hasZoomException,
-            userCredentials,
-            activeZoomSession
+            userCredentials
           };
           const success = await saveToSupabase(activeEmail, stateToSave);
           if (success) {
@@ -1605,8 +1689,7 @@ export default function App() {
       messages,
       zoomExceptionNote,
       hasZoomException,
-      userCredentials,
-      activeZoomSession
+      userCredentials
     };
     await saveToSupabase(activeEmail, stateToSave);
   };
@@ -1639,8 +1722,7 @@ export default function App() {
         messages,
         zoomExceptionNote,
         hasZoomException,
-        userCredentials,
-        activeZoomSession
+        userCredentials
       };
       const success = await saveToSupabase(activeEmail, stateToSave);
       if (success) {
@@ -1698,7 +1780,6 @@ export default function App() {
           if (cloudState.payments !== undefined) setPayments(cloudState.payments);
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
-          if (cloudState.activeZoomSession !== undefined) setActiveZoomSession(cloudState.activeZoomSession);
           
           setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
             hour: '2-digit', 
@@ -1750,8 +1831,7 @@ export default function App() {
           messages,
           zoomExceptionNote,
           hasZoomException,
-          userCredentials,
-          activeZoomSession
+          userCredentials
         };
         await saveToSupabase(activeEmail, stateToSave);
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
@@ -1790,7 +1870,6 @@ export default function App() {
     zoomExceptionNote,
     hasZoomException,
     userCredentials,
-    activeZoomSession,
     user
   ]);
 
@@ -1870,12 +1949,12 @@ export default function App() {
   };
 
   const handleSaveStudentNote = (studentName: string, note: string) => {
-    const key = studentName.toLowerCase().trim();
+    const key = (studentName || '').toLowerCase().trim();
     setStudentNotes(prev => ({ ...prev, [key]: note }));
   };
 
   const handleToggleExcusedAbsence = (studentName: string, classDayId: string) => {
-    const key = studentName.toLowerCase().trim();
+    const key = (studentName || '').toLowerCase().trim();
     setExcusedAbsences(prev => {
       const studentMap = prev[key] || {};
       const current = !!studentMap[classDayId];
@@ -1891,11 +1970,11 @@ export default function App() {
 
   const handleDeleteStudent = (studentName: string) => {
     if (!studentName || !studentName.trim()) return;
-    const targetLower = studentName.toLowerCase().trim();
+    const targetLower = (studentName || '').toLowerCase().trim();
 
     // 1. Add to deletedStudentNames registry
     setDeletedStudentNames(prev => {
-      if (prev.some(n => n.toLowerCase().trim() === targetLower)) {
+      if (prev.some(n => (n || '').toLowerCase().trim() === targetLower)) {
         return prev;
       }
       return [...prev, studentName];
@@ -1934,7 +2013,7 @@ export default function App() {
     });
 
     // 5. Deselect from detail modal if currently open
-    if (selectedStudent && selectedStudent.name.toLowerCase().trim() === targetLower) {
+    if (selectedStudent && (selectedStudent.name || '').toLowerCase().trim() === targetLower) {
       setSelectedStudent(null);
     }
 
@@ -1949,8 +2028,8 @@ export default function App() {
   };
 
   const handleRestoreStudent = (studentName: string) => {
-    const lower = studentName.toLowerCase().trim();
-    setDeletedStudentNames(prev => prev.filter(n => n.toLowerCase().trim() !== lower));
+    const lower = (studentName || '').toLowerCase().trim();
+    setDeletedStudentNames(prev => prev.filter(n => (n || '').toLowerCase().trim() !== lower));
   };
 
   const handleRestoreAllStudents = () => {
@@ -2024,12 +2103,12 @@ export default function App() {
       const classDayName = 'Lesson 2 Assignment';
       setClassDays([{ id: classDayName, name: `${classDayName} (05/05/2026)` }]);
 
-      let nameIndex = headers.findIndex(h => h.toLowerCase().includes('first and last name'));
-      if (nameIndex === -1) nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'));
+      let nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('first and last name'));
+      if (nameIndex === -1) nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('name'));
       if (nameIndex === -1) nameIndex = 2;
 
-      let timestampIndex = headers.findIndex(h => h.toLowerCase().includes('timestamp'));
-      let scoreIndex = headers.findIndex(h => h.toLowerCase().includes('score'));
+      let timestampIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('timestamp'));
+      let scoreIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('score'));
       if (timestampIndex === -1) timestampIndex = 0;
       if (scoreIndex === -1) scoreIndex = 1;
 
@@ -2147,12 +2226,12 @@ export default function App() {
           const headers = rangeData.values[0] as string[];
           const rows = rangeData.values.slice(1) as string[][];
           
-          let nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('first and last name'));
-          if (nameIndex === -1) nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('name'));
+          let nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('first and last name'));
+          if (nameIndex === -1) nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('name'));
           if (nameIndex === -1) nameIndex = 2; // fallback
           
-          let timestampIndex = headers.findIndex(h => h && h.toLowerCase().includes('timestamp'));
-          let scoreIndex = headers.findIndex(h => h && h.toLowerCase().includes('score'));
+          let timestampIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('timestamp'));
+          let scoreIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('score'));
           if (timestampIndex === -1) timestampIndex = 0;
           if (scoreIndex === -1) scoreIndex = 1;
           
@@ -2163,7 +2242,7 @@ export default function App() {
               const datePart = firstTimestamp.split(' ')[0];
               if (datePart && datePart.trim() !== '') {
                 const trimmedDate = datePart.trim();
-                if (sheetTitle.toLowerCase().includes(trimmedDate.toLowerCase())) {
+                if ((sheetTitle || '').toLowerCase().includes((trimmedDate || '').toLowerCase())) {
                   displayDate = sheetTitle;
                 } else {
                   displayDate = `${sheetTitle} (${trimmedDate})`;
@@ -2186,7 +2265,7 @@ export default function App() {
             const rowScore = row[scoreIndex] || '';
             const rowTimestamp = row[timestampIndex] || '';
 
-            studentsCompleted.set(name.toLowerCase().trim(), {
+            studentsCompleted.set((name || '').toLowerCase().trim(), {
               score: rowScore,
               timestamp: rowTimestamp
             });
@@ -2207,6 +2286,11 @@ export default function App() {
       const conflictsList: MergeConflict[] = [];
 
       parsedSheetDataByClassDay.forEach((data, sheetTitle) => {
+        // Skip explicitly deleted class sessions
+        if (deletedClassDayIds.some(del => del && del.toLowerCase().trim() === (sheetTitle || '').toLowerCase().trim())) {
+          return;
+        }
+
         if (!updatedClassDays.some(d => d.id === sheetTitle)) {
           const existingDay = classDays.find(d => d.id === sheetTitle);
           updatedClassDays.push({ id: sheetTitle, name: existingDay ? existingDay.name : data.displayDate });
@@ -2217,17 +2301,17 @@ export default function App() {
         allCanonicalStudentNames.forEach(studentName => {
           let completionRow: { score: string; timestamp: string } | null = null;
           for (const [rawLower, rowData] of Array.from(studentsCompleted.entries())) {
-            const matchedRawName = Array.from(allRawNames).find(n => n.toLowerCase().trim() === rawLower);
+            const matchedRawName = Array.from(allRawNames).find(n => (n || '').toLowerCase().trim() === rawLower);
             if (matchedRawName) {
               const mappedCanonical = canonicalNamesMap.get(matchedRawName) || matchedRawName;
-              if (mappedCanonical.toLowerCase().trim() === studentName.toLowerCase().trim()) {
+              if ((mappedCanonical || '').toLowerCase().trim() === (studentName || '').toLowerCase().trim()) {
                 completionRow = rowData;
                 break;
               }
             }
           }
 
-          const existingRecord = records.find(r => r && (r.name || r.studentName || '').toLowerCase().trim() === studentName.toLowerCase().trim() && r.classDay === sheetTitle);
+          const existingRecord = records.find(r => r && (r.name || r.studentName || '').toLowerCase().trim() === (studentName || '').toLowerCase().trim() && r.classDay === sheetTitle);
           const hasManualOverride = existingRecord && existingRecord.manualOverride === true;
           const sheetsPresent = !!completionRow;
           const localPresent = existingRecord ? existingRecord.present : false;
@@ -2295,7 +2379,7 @@ export default function App() {
       if (resolutions[key] === 'local') {
         const localRecord = records.find(oldRec => 
           oldRec && 
-          (oldRec.name || oldRec.studentName || '').toLowerCase().trim() === r.name.toLowerCase().trim() && 
+          (oldRec.name || oldRec.studentName || '').toLowerCase().trim() === (r.name || r.studentName || '').toLowerCase().trim() && 
           oldRec.classDay === r.classDay
         );
         if (localRecord) {
@@ -2370,7 +2454,7 @@ export default function App() {
       const recName = (r.name || r.studentName || '').toString().trim();
       if (!recName) return;
       const canonicalName = canonicalNames.get(recName) || recName;
-      const key = canonicalName.toLowerCase().trim();
+      const key = (canonicalName || '').toLowerCase().trim();
       
       // Skip deleted students
       if (deletedStudentNames.some(d => (d || '').toLowerCase().trim() === key)) {
@@ -2429,8 +2513,8 @@ if (!studentMap.has(key)) {
       // Include graded course assignments and exams
       const studentSubs = submissions.filter(sub => {
         if (!sub || !sub.studentName || !student.name) return false;
-        const subName = sub.studentName.toLowerCase().trim();
-        const stName = student.name.toLowerCase().trim();
+        const subName = (sub?.studentName || '').toLowerCase().trim();
+        const stName = (student?.name || '').toLowerCase().trim();
         return (subName === stName || stName.includes(subName) || subName.includes(stName)) &&
           (sub.status === 'Graded' || sub.status === 'Correction Returned') &&
           sub.score !== undefined;
@@ -2452,10 +2536,10 @@ if (!studentMap.has(key)) {
         studentsWithScoresCount++;
       }
 
-      const key = student.name.toLowerCase().trim();
+      const key = (student?.name || '').toLowerCase().trim();
       const note = studentNotes[key] || '';
       const photoUrl = studentPhotos[key] || '';
-      const levelId = studentLevels[key] || getDefaultLevelForStudent(student.name, idx);
+      const levelId = studentLevels[key] || getDefaultLevelForStudent(student?.name || '', idx);
 
       return { ...student, rate, attended, avgScore, note, photoUrl, levelId };
     });
@@ -2481,21 +2565,19 @@ if (!studentMap.has(key)) {
 
   // Synchronize credentials database when student directory is loaded/updated
   useEffect(() => {
-    if (uniqueStudents && uniqueStudents.length > 0) {
-      const studentNames = uniqueStudents.map(s => s.name);
-      const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames);
-      if (changed) {
-        setUserCredentials(updatedCredentials);
-      }
+    const studentNames = uniqueStudents ? uniqueStudents.map(s => s.name) : [];
+    const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames, facultyTeachers);
+    if (changed) {
+      setUserCredentials(updatedCredentials);
     }
-  }, [uniqueStudents, userCredentials]);
+  }, [uniqueStudents, facultyTeachers, userCredentials]);
 
   // Find current student stats if a student is logged in
   const loggedInStudentData = useMemo(() => {
     if (appUser && appUser.role === 'student') {
       const rawName = appUser.studentName || appUser.name || '';
-      const studentNameLower = rawName.toLowerCase().trim();
-      return uniqueStudents.find(st => st && st.name && st.name.toLowerCase().trim() === studentNameLower);
+      const studentNameLower = (rawName || '').toLowerCase().trim();
+      return uniqueStudents.find(st => st && st.name && (st?.name || '').toLowerCase().trim() === studentNameLower);
     }
     return null;
   }, [appUser, uniqueStudents]);
@@ -2511,7 +2593,7 @@ if (!studentMap.has(key)) {
         avgScore: loggedInStudentData.avgScore,
         attendanceByDay: loggedInStudentData.attendanceByDay,
         note: loggedInStudentData.note,
-        photoUrl: studentPhotos[sName.toLowerCase().trim()] || loggedInStudentData.photoUrl
+        photoUrl: studentPhotos[(sName || '').toLowerCase().trim()] || loggedInStudentData.photoUrl
       };
     }
     return {
@@ -2521,7 +2603,7 @@ if (!studentMap.has(key)) {
       totalDays: classDays.length || 1,
       avgScore: 95,
       attendanceByDay: {},
-      photoUrl: studentPhotos[sName.toLowerCase().trim()] || ''
+      photoUrl: studentPhotos[(sName || '').toLowerCase().trim()] || ''
     };
   }, [appUser, loggedInStudentData, studentPhotos, classDays.length]);
 
@@ -2534,7 +2616,7 @@ if (!studentMap.has(key)) {
       const studentNameLower = (appUser.studentName || appUser.name || '').toLowerCase().trim();
       const submittedIds = new Set(
         submissions
-          .filter(s => s.studentName && s.studentName.toLowerCase().trim() === studentNameLower)
+          .filter(s => s.studentName && (s?.studentName || '').toLowerCase().trim() === studentNameLower)
           .map(s => s.assignmentId)
       );
       return customAssignments.filter(a => !submittedIds.has(a.id)).length;
@@ -2557,7 +2639,30 @@ if (!studentMap.has(key)) {
 
   const handleToggleStudentAttendance = (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused' | 'unmarked') => {
     if (!studentName || !classDayId) return;
-    const studentKey = studentName.toLowerCase().trim();
+    const studentKey = (studentName || '').toLowerCase().trim();
+    const day = classDays.find(d => d.id === classDayId || d.name === classDayId);
+    const dayName = day ? day.name : classDayId;
+
+    // Check 24-hour fraud-prevention lock
+    const existingRecord = records.find(r => r && (r.studentName || r.name) && (r?.studentName || r?.name || '').toLowerCase().trim() === studentKey && r.classDay === classDayId);
+    const lockInfo = getAttendanceLockInfo(existingRecord, day || classDayId);
+
+    if (lockInfo.isLocked) {
+      const lockMsg = `🔒 Attendance Locked: Attendance for "${studentName}" in "${dayName}" was captured on ${lockInfo.capturedDate ? lockInfo.capturedDate.toLocaleString() : 'a previous session'} (>24 hours ago) and is permanently locked to prevent fraud. Changes are only permitted within 24 hours of capture.`;
+      setError(lockMsg);
+      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+      logActivity({
+        actor: appUser?.name || 'User',
+        role: appUser?.role === 'student' ? 'student' : 'admin',
+        actionCategory: 'Attendance Override',
+        actionTitle: 'Locked Record Edit Blocked',
+        details: `Prevented modification of 24h locked attendance for ${studentName} (${dayName}).`
+      });
+      return;
+    }
+
+    // Clear error
+    setError(null);
 
     // 1. Update excused absences
     setExcusedAbsences(prev => {
@@ -2573,9 +2678,10 @@ if (!studentMap.has(key)) {
     });
 
     // 2. Update or delete attendance records
+    const nowIso = new Date().toISOString();
     setRecords(prev => {
       const updated = [...prev];
-      const existingIdx = updated.findIndex(r => r && (r.studentName || r.name) && (r.studentName || r.name).toLowerCase().trim() === studentKey && r.classDay === classDayId);
+      const existingIdx = updated.findIndex(r => r && (r.studentName || r.name) && (r?.studentName || r?.name || '').toLowerCase().trim() === studentKey && r.classDay === classDayId);
 
       if (newStatus === 'unmarked') {
         if (existingIdx >= 0) {
@@ -2583,8 +2689,13 @@ if (!studentMap.has(key)) {
         }
       } else if (newStatus === 'present') {
         if (existingIdx >= 0) {
-          updated[existingIdx].present = true;
-          updated[existingIdx].manualOverride = true;
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            present: true,
+            manualOverride: true,
+            timestamp: nowIso,
+            capturedAt: updated[existingIdx].capturedAt || nowIso
+          };
         } else {
           updated.push({
             studentName: studentName,
@@ -2592,15 +2703,21 @@ if (!studentMap.has(key)) {
             classDay: classDayId,
             present: true,
             score: '',
-            timestamp: new Date().toLocaleDateString(),
+            timestamp: nowIso,
+            capturedAt: nowIso,
             manualOverride: true
           });
         }
       } else {
         // absent or excused
         if (existingIdx >= 0) {
-          updated[existingIdx].present = false;
-          updated[existingIdx].manualOverride = true;
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            present: false,
+            manualOverride: true,
+            timestamp: nowIso,
+            capturedAt: updated[existingIdx].capturedAt || nowIso
+          };
         } else {
           updated.push({
             studentName: studentName,
@@ -2608,7 +2725,8 @@ if (!studentMap.has(key)) {
             classDay: classDayId,
             present: false,
             score: '',
-            timestamp: new Date().toLocaleDateString(),
+            timestamp: nowIso,
+            capturedAt: nowIso,
             manualOverride: true
           });
         }
@@ -2637,31 +2755,46 @@ if (!studentMap.has(key)) {
   };
 
   const handleRecordBatchAttendance = (newRecords: AttendanceRecord[]) => {
+    const nowIso = new Date().toISOString();
+    let lockedCount = 0;
     setRecords(prev => {
       let updated = [...prev];
       newRecords.forEach(newRec => {
-        const studentKey = newRec.name.toLowerCase().trim();
+        const studentKey = (newRec.name || newRec.studentName || '').toLowerCase().trim();
         const existingIdx = updated.findIndex(r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === newRec.classDay);
         if (existingIdx >= 0) {
+          if (isAttendanceLocked(updated[existingIdx], newRec.classDay)) {
+            lockedCount++;
+            return;
+          }
           updated[existingIdx] = {
             ...updated[existingIdx],
             present: newRec.present,
             manualOverride: true,
-            timestamp: newRec.timestamp
+            timestamp: newRec.timestamp || nowIso,
+            capturedAt: updated[existingIdx].capturedAt || nowIso
           };
         } else {
-          updated.push(newRec);
+          updated.push({
+            ...newRec,
+            capturedAt: newRec.capturedAt || nowIso,
+            timestamp: newRec.timestamp || nowIso
+          });
         }
       });
       return updated;
     });
     
+    if (lockedCount > 0) {
+      setError(`Notice: ${lockedCount} student record(s) are locked (>24h old) and were preserved.`);
+    }
+
     logActivity({
       actor: appUser?.name || 'Admin',
       role: appUser?.role === 'student' ? 'student' : 'admin',
       actionCategory: 'Attendance Override',
       actionTitle: 'Batch Zoom Attendance Registered',
-      details: `Registered Zoom attendance for ${newRecords.length} students`
+      details: `Registered Zoom attendance for ${newRecords.length} students (${lockedCount} locked records preserved)`
     });
   };
 
@@ -2683,8 +2816,8 @@ if (!studentMap.has(key)) {
     const targetKey = dayId.trim();
     const day = classDays.find(d => 
       d.id === targetKey || 
-      d.id.toLowerCase().trim() === targetKey.toLowerCase() ||
-      d.name.toLowerCase().trim() === targetKey.toLowerCase()
+      (d?.id || '').toLowerCase().trim() === (targetKey || '').toLowerCase() ||
+      (d?.name || '').toLowerCase().trim() === (targetKey || '').toLowerCase()
     );
     const dayName = day ? day.name : targetKey;
     const dayActualId = day ? day.id : targetKey;
@@ -2692,7 +2825,11 @@ if (!studentMap.has(key)) {
     let confirmed = skipConfirm;
     if (!confirmed) {
       try {
-        confirmed = window.confirm(`Are you sure you want to delete class session "${dayName}"?\n\nThis will also permanently delete all student attendance records associated with this session.`);
+        if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+          confirmed = window.confirm(`Are you sure you want to delete class session "${dayName}"?\n\nThis will also permanently delete all student attendance records associated with this session.`);
+        } else {
+          confirmed = true;
+        }
       } catch (e) {
         confirmed = true;
       }
@@ -2701,17 +2838,29 @@ if (!studentMap.has(key)) {
     if (confirmed) {
       const updatedDays = classDays.filter(d => 
         d.id !== dayActualId && 
-        d.id.toLowerCase().trim() !== targetKey.toLowerCase() &&
-        d.name.toLowerCase().trim() !== targetKey.toLowerCase()
+        (d?.id || '').toLowerCase().trim() !== (targetKey || '').toLowerCase() &&
+        (d?.name || '').toLowerCase().trim() !== (targetKey || '').toLowerCase()
       );
       setClassDays(updatedDays);
+      localStorage.setItem('classDays', JSON.stringify(updatedDays));
+
+      // Track deleted day ID so auto sync won't recreate it
+      setDeletedClassDayIds(prev => {
+        const next = Array.from(new Set([...prev, dayActualId, targetKey, dayName]));
+        localStorage.setItem('deletedClassDayIds', JSON.stringify(next));
+        return next;
+      });
       
       // Remove all attendance records for this deleted day
-      setRecords(prev => prev.filter(r => 
-        r.classDay !== dayActualId && 
-        r.classDay !== targetKey &&
-        (r.classDay || '').toLowerCase().trim() !== targetKey.toLowerCase()
-      ));
+      setRecords(prev => {
+        const filtered = prev.filter(r => 
+          r.classDay !== dayActualId && 
+          r.classDay !== targetKey &&
+          (r.classDay || '').toLowerCase().trim() !== (targetKey || '').toLowerCase()
+        );
+        localStorage.setItem('attendanceRecords', JSON.stringify(filtered));
+        return filtered;
+      });
       
       // Clean up excused absences map for this day
       setExcusedAbsences(prev => {
@@ -2744,27 +2893,47 @@ if (!studentMap.has(key)) {
     const targetKey = dayId.trim();
     const day = classDays.find(d => 
       d.id === targetKey || 
-      d.id.toLowerCase().trim() === targetKey.toLowerCase() ||
-      d.name.toLowerCase().trim() === targetKey.toLowerCase()
+      (d?.id || '').toLowerCase().trim() === (targetKey || '').toLowerCase() ||
+      (d?.name || '').toLowerCase().trim() === (targetKey || '').toLowerCase()
     );
     const dayName = day ? day.name : targetKey;
     const dayActualId = day ? day.id : targetKey;
 
+    // Check if records for this day are locked (> 24 hours)
+    const dayRecords = records.filter(r => 
+      r.classDay === dayActualId || 
+      r.classDay === targetKey ||
+      (r.classDay || '').toLowerCase().trim() === (targetKey || '').toLowerCase()
+    );
+    const lockedRecords = dayRecords.filter(r => isAttendanceLocked(r, day || dayActualId));
+
+    if (dayRecords.length > 0 && lockedRecords.length === dayRecords.length) {
+      setError(`🔒 Class Session Locked: All ${dayRecords.length} attendance records for "${dayName}" were captured over 24 hours ago and are permanently locked against clearing to prevent fraud.`);
+      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+      return;
+    }
+
     let confirmed = skipConfirm;
     if (!confirmed) {
       try {
-        confirmed = window.confirm(`Are you sure you want to clear ALL attendance records for "${dayName}"?\n\nThe class session will remain active, but all present/absent logs for this day will be reset.`);
+        const warning = lockedRecords.length > 0 
+          ? `Clear active (unlocked) attendance records for "${dayName}"?\n\nNote: ${lockedRecords.length} locked record(s) captured > 24hrs ago will be protected and preserved to prevent fraud.`
+          : `Are you sure you want to clear ALL attendance records for "${dayName}"?\n\nThe class session will remain active, but all present/absent logs for this day will be reset.`;
+        confirmed = window.confirm(warning);
       } catch (e) {
         confirmed = true;
       }
     }
 
     if (confirmed) {
-      setRecords(prev => prev.filter(r => 
-        r.classDay !== dayActualId && 
-        r.classDay !== targetKey &&
-        (r.classDay || '').toLowerCase().trim() !== targetKey.toLowerCase()
-      ));
+      setRecords(prev => prev.filter(r => {
+        const isThisDay = r.classDay === dayActualId || 
+          r.classDay === targetKey ||
+          (r.classDay || '').toLowerCase().trim() === (targetKey || '').toLowerCase();
+        if (!isThisDay) return true;
+        // Keep locked records!
+        return isAttendanceLocked(r, day || dayActualId);
+      }));
       setExcusedAbsences(prev => {
         const copy = { ...prev };
         Object.keys(copy).forEach(k => {
@@ -2780,26 +2949,41 @@ if (!studentMap.has(key)) {
         role: appUser?.role === 'student' ? 'student' : 'admin',
         actionCategory: 'Attendance Override',
         actionTitle: 'Class Records Cleared',
-        details: `Cleared all attendance records for class session "${dayName}".`
+        details: `Cleared active attendance records for class session "${dayName}" (${lockedRecords.length} locked records preserved).`
       });
     }
   };
 
   const handleClearStudentAttendanceRecords = (studentName: string, skipConfirm = false) => {
     if (!studentName) return;
-    const studentKey = studentName.toLowerCase().trim();
+    const studentKey = (studentName || '').toLowerCase().trim();
+
+    const studentRecords = records.filter(r => (r.studentName || r.name || '').toLowerCase().trim() === studentKey);
+    const lockedRecords = studentRecords.filter(r => isAttendanceLocked(r, classDays.find(d => d.id === r.classDay)));
+
+    if (studentRecords.length > 0 && lockedRecords.length === studentRecords.length) {
+      setError(`🔒 Student Records Locked: All attendance records for "${studentName}" were captured over 24 hours ago and are permanently locked to prevent fraud.`);
+      return;
+    }
 
     let confirmed = skipConfirm;
     if (!confirmed) {
       try {
-        confirmed = window.confirm(`Are you sure you want to delete all attendance records for "${studentName}"?`);
+        const warning = lockedRecords.length > 0 
+          ? `Delete active attendance records for "${studentName}"?\n\nNote: ${lockedRecords.length} locked record(s) captured > 24hrs ago will be protected and preserved.`
+          : `Are you sure you want to delete all attendance records for "${studentName}"?`;
+        confirmed = window.confirm(warning);
       } catch (e) {
         confirmed = true;
       }
     }
 
     if (confirmed) {
-      setRecords(prev => prev.filter(r => (r.studentName || r.name || '').toLowerCase().trim() !== studentKey));
+      setRecords(prev => prev.filter(r => {
+        const isThisStudent = (r.studentName || r.name || '').toLowerCase().trim() === studentKey;
+        if (!isThisStudent) return true;
+        return isAttendanceLocked(r, classDays.find(d => d.id === r.classDay));
+      }));
       setExcusedAbsences(prev => {
         const copy = { ...prev };
         delete copy[studentKey];
@@ -2810,7 +2994,7 @@ if (!studentMap.has(key)) {
         role: appUser?.role === 'student' ? 'student' : 'admin',
         actionCategory: 'Attendance Override',
         actionTitle: 'Student Attendance Cleared',
-        details: `Deleted all attendance records for student "${studentName}".`
+        details: `Cleared active attendance records for student "${studentName}" (${lockedRecords.length} locked records preserved).`
       });
     }
   };
@@ -2937,7 +3121,7 @@ if (!studentMap.has(key)) {
     return uniqueStudents
       .filter(student => {
         if (searchQuery.trim() !== '') {
-          if (!student.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+          if (!(student?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())) {
             return false;
           }
         }
@@ -3161,7 +3345,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="relative bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-30 max-w-full overflow-hidden transition-all rounded-2xl">
+      <header className="relative bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-40 max-w-full overflow-visible transition-all rounded-2xl">
         {/* Subtle Brand Accent Line */}
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/40 via-amber-500/40 to-indigo-500/0 pointer-events-none" />
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
@@ -3184,17 +3368,6 @@ create policy "Allow public update" on app_states for update using (true) with c
 
           {/* MD3 AppBar Actions */}
           <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
-            {/* Quick Command Trigger */}
-            <button
-              onClick={() => setShowCommandPalette(true)}
-              className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer font-medium"
-              title="Search Portal (⌘K)"
-            >
-              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="hidden md:inline text-xs">Search...</span>
-              <kbd className="hidden md:inline-block text-[9px] font-mono opacity-70 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1 py-0.2 rounded shadow-2xs">⌘K</kbd>
-            </button>
-
             {/* Live Check-In */}
             {(appUser?.role as string) !== 'student' && (
               <button
@@ -3306,6 +3479,13 @@ create policy "Allow public update" on app_states for update using (true) with c
                         <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
                         <span>Audit Log</span>
                       </button>
+                      <button
+                        onClick={() => { setShowMoreMenu(false); setShowUserManagementModal(true); }}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Manage Users</span>
+                      </button>
                     </div>
                   )}
 
@@ -3336,11 +3516,8 @@ create policy "Allow public update" on app_states for update using (true) with c
                     </button>
                     <button
                       onClick={() => {
-                        const prevUser = appUser;
                         setShowMoreMenu(false);
-                        setAppUser(null);
-                        localStorage.removeItem('hteim_app_user');
-                        logActivity({ actor: prevUser?.name || 'Guest', role: prevUser?.role || 'student', actionCategory: 'System Settings', actionTitle: 'User Logged Out', details: `Signed out: ${prevUser?.name}` });
+                        handleAppLogout();
                       }}
                       className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
                     >
@@ -3385,12 +3562,11 @@ create policy "Allow public update" on app_states for update using (true) with c
       </header>
 
       {/* Desktop Navigation */}
-      <nav aria-label="Primary portal navigation" className="hidden md:block relative z-40 mb-4">
-        <div className="flex items-center gap-0.5 p-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl w-fit">
+      <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
+        <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-slate-700/60">
           {[
             { tab: 'home', label: 'Home', Icon: Sparkles },
             { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
-            { tab: 'zoom-copilot', label: 'Zoom Co-Pilot', Icon: Video, adminOrTeacherOnly: true },
             { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
             { tab: 'courses', label: 'Courses', Icon: BookOpen },
             { tab: 'exams', label: 'Exams', Icon: Award },
@@ -3459,6 +3635,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     onNavigate={(tab) => setActiveErpTab(tab)}
                     appUser={appUser}
                     onOpenLogin={() => setShowLoginModal(true)}
+                    onLogout={handleAppLogout}
                     onOpenPresentationDemo={() => setShowPresentationModal(true)}
                     studentsCount={uniqueStudents.length}
                     students={uniqueStudents}
@@ -3548,7 +3725,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 studentNotes={studentNotes}
                 onUpdateNote={(name, note) => {
                   setStudentNotes(prev => {
-                    const updated = { ...prev, [name.toLowerCase().trim()]: note };
+                    const updated = { ...prev, [(name || '').toLowerCase().trim()]: note };
                     localStorage.setItem('studentNotes', JSON.stringify(updated));
                     return updated;
                   });
@@ -3614,7 +3791,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <ErrorBoundary label="Exams Tab">
                   <LazyExamsTab
                 students={uniqueStudents.map(s => {
-                  const rawRec = records.find(r => r.name.toLowerCase().trim() === s.name.toLowerCase().trim() && r.score);
+                  const rawRec = records.find(r => r && (r.name || r.studentName || '').toLowerCase().trim() === (s.name || '').toLowerCase().trim() && r.score);
                   return {
                     name: s.name,
                     scoreStr: rawRec?.score || '',
@@ -3740,30 +3917,6 @@ create policy "Allow public update" on app_states for update using (true) with c
             </motion.div>
           )}
 
-          {activeErpTab === 'zoom-copilot' && (
-            <motion.div
-              key="zoom-copilot"
-              variants={pageFadeVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={pageFadeTransition}
-              className="flex-1 w-full"
-            >
-              <ErrorBoundary label="Zoom Co-Pilot Tab">
-                <ZoomCoPilotTab
-                  students={uniqueStudents}
-                  libraryResources={libraryResources}
-                  classDays={classDays}
-                  onAddClassDay={handleAddClassDay}
-                  onRecordBatchAttendance={handleRecordBatchAttendance}
-                  activeZoomSession={activeZoomSession}
-                  onChangeActiveZoomSession={setActiveZoomSession}
-                />
-              </ErrorBoundary>
-            </motion.div>
-          )}
-
           {activeErpTab === 'messages' && (
             <motion.div
               key="messages"
@@ -3784,8 +3937,8 @@ create policy "Allow public update" on app_states for update using (true) with c
                 onUpdateStatus={handleUpdateMessageStatus}
                 onDeleteMessage={handleDeleteMessage}
                   availableStudents={uniqueStudents.map(s => {
-                    const name = typeof s === 'string' ? s : s.name;
-                    return { name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
+                    const name = (typeof s === 'string' ? s : s?.name) || '';
+                    return { name, email: `${(name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu` };
                   })}
                 />
               </ErrorBoundary>
@@ -3811,8 +3964,6 @@ create policy "Allow public update" on app_states for update using (true) with c
                 classDays={classDays}
                 rubricScores={rubricScores}
                 onUpdateStudentPhoto={handleUpdateStudentPhoto}
-                activeZoomSession={activeZoomSession}
-                onChangeActiveZoomSession={setActiveZoomSession}
 onRequestTranscript={(s) => {
                     setSelectedStudent({
                       name: s.name,
@@ -4069,7 +4220,7 @@ onRequestTranscript={(s) => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       <AnimatePresence mode="popLayout">
                         {filteredAndSortedStudents.map((student) => {
-                          const studentKey = student.name.toLowerCase().trim();
+                          const studentKey = (student?.name || '').toLowerCase().trim();
                           const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
                           const note = studentNotes[studentKey] || student.note;
                           const studentBadges = getStudentBadges(student);
@@ -4286,7 +4437,7 @@ onRequestTranscript={(s) => {
                         /* Rapid Roll Call Mode: Super Compact 1-Line Row per Student */
                         <div className="space-y-2">
                           {filteredAndSortedStudents.map((student) => {
-                            const studentKey = student.name.toLowerCase().trim();
+                            const studentKey = (student?.name || '').toLowerCase().trim();
                             const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
                             const activeDayId = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
                             const att = student.attendanceByDay[activeDayId];
@@ -4479,7 +4630,7 @@ onRequestTranscript={(s) => {
                       <tbody className="divide-y divide-slate-100">
                         {filteredAndSortedStudents.length > 0 ? (
                           filteredAndSortedStudents.map((student, idx) => {
-                            const studentKey = student.name.toLowerCase().trim();
+                            const studentKey = (student?.name || '').toLowerCase().trim();
                             const isExcusedMap = excusedAbsences[studentKey] || {};
                             const studentBadges = getStudentBadges(student);
 
@@ -4626,7 +4777,7 @@ onRequestTranscript={(s) => {
                       onClick={() => {
                         if (window.confirm(`Clear all attendance records for the ${selectedStudentNames.length} selected student(s)?`)) {
                           selectedStudentNames.forEach(name => {
-                            const key = name.toLowerCase().trim();
+                            const key = (name || '').toLowerCase().trim();
                             setRecords(prev => prev.filter(r => (r.studentName || r.name || '').toLowerCase().trim() !== key));
                             setExcusedAbsences(prev => {
                               const copy = { ...prev };
@@ -4690,103 +4841,12 @@ onRequestTranscript={(s) => {
         </motion.div>
       )}
 
-        {/* Sidebar Controls */}
-        {activeErpTab === 'attendance' && appUser?.role !== 'student' && (
-          <aside className="hidden lg:flex w-80 flex-col gap-4 overflow-y-auto pb-4 flex-shrink-0">
-            {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 shadow-sm animate-fadeIn">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs font-medium text-rose-800 break-words w-full">{error}</div>
-              </div>
-            )}
-
-          {/* Data Source Switcher */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> Data Source Connection
-            </h3>
-            
-            <div className="space-y-3">
-              <button 
-                onClick={handleLoadDemo} 
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-lg transition-all uppercase disabled:opacity-50 shadow-sm cursor-pointer"
-              >
-                {isLoading && dataSource === 'demo' ? <Loader2 className="w-4 h-4 animate-spin text-slate-600" /> : <Upload className="w-4 h-4 text-slate-600" />}
-                Load Uploaded CSV
-              </button>
-            </div>
+        {/* Error notification if any */}
+        {activeErpTab === 'attendance' && appUser?.role !== 'student' && error && (
+          <div className="fixed bottom-4 right-4 z-50 max-w-sm p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 shadow-lg animate-fadeIn">
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs font-medium text-rose-800 break-words w-full">{error}</div>
           </div>
-
-          {/* Loaded Class Sheets / Class Sessions List */}
-          {classDays.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex-1 flex flex-col min-h-0">
-              <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-500" /> Class Sessions ({classDays.length})
-                </h3>
-                {(appUser?.role as string) !== 'student' && (
-                  <button
-                    onClick={() => handleAddClassDay()}
-                    className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Add class session on the fly"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>+ Day</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1 flex-1">
-                {classDays.map((day, i) => {
-                  const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
-                  return (
-                    <div key={day.id} className="p-2 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between text-xs group">
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                        <span className="w-5 h-5 rounded bg-white border border-slate-200 text-slate-500 text-[10px] font-mono font-bold flex items-center justify-center flex-shrink-0">
-                          {i + 1}
-                        </span>
-                        <span className="font-semibold text-slate-700 truncate" title={day.name}>{day.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                          {stats.count} ({Math.round(stats.percentage)}%)
-                        </span>
-                        {(appUser?.role as string) !== 'student' && (
-                          <div className="flex items-center gap-1 ml-1.5 border-l border-slate-200 pl-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newName = prompt('Rename Class Day Title:', day.name);
-                                if (newName && newName.trim() !== '') {
-                                  handleEditClassDayTitle(day.id, newName.trim());
-                                }
-                              }}
-                              className="p-1 hover:bg-indigo-50 text-slate-400 hover:text-indigo-700 rounded transition-colors cursor-pointer"
-                              title="Rename Title"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteClassDay(day.id)}
-                              className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
-                              title="Delete Class Day"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-
-          </aside>
         )}
         </AnimatePresence>
       </main>
@@ -5030,7 +5090,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                             <span className="text-xs font-mono font-bold text-slate-800">{studentRubric.participation}%</span>
                           </div>
                           <input 
-                            type="range" min="0" max="100" value={studentRubric.participation}
+                            type="range" min="0" max="100" value={studentRubric?.participation ?? 90}
                             onChange={(e) => handleUpdateRubric('participation', parseInt(e.target.value, 10))}
                             className="w-full accent-emerald-600 cursor-pointer h-1.5"
                           />
@@ -5045,7 +5105,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                             <span className="text-xs font-mono font-bold text-slate-800">{studentRubric.assignment}%</span>
                           </div>
                           <input 
-                            type="range" min="0" max="100" value={studentRubric.assignment}
+                            type="range" min="0" max="100" value={studentRubric?.assignment ?? 85}
                             onChange={(e) => handleUpdateRubric('assignment', parseInt(e.target.value, 10))}
                             className="w-full accent-indigo-600 cursor-pointer h-1.5"
                           />
@@ -5144,7 +5204,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   <textarea
                     rows={2}
                     placeholder="Enter custom remarks or flags for this student..."
-                    value={currentNote}
+                    value={currentNote ?? ''}
                     onChange={(e) => handleSaveStudentNote(selectedStudent.name, e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400"
                   />
@@ -6141,7 +6201,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                 <label className="text-xs font-bold text-slate-600 whitespace-nowrap">Class Day:</label>
                 <select
-                  value={liveCheckinDayId}
+                  value={liveCheckinDayId ?? ''}
                   onChange={(e) => setLiveCheckinDayId(e.target.value)}
                   className="flex-1 p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
                 >
@@ -6208,7 +6268,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 {/* Select All Checkbox */}
                 {(() => {
                   const searchLower = (liveCheckinSearch || '').toLowerCase();
-                  const filteredCheckinStudents = uniqueStudents.filter(s => s && s.name && s.name.toLowerCase().includes(searchLower));
+                  const filteredCheckinStudents = uniqueStudents.filter(s => s && s.name && (s?.name || '').toLowerCase().includes(searchLower));
                   const allFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.every(s => selectedCheckinStudents.includes(s.name));
                   const someFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.some(s => selectedCheckinStudents.includes(s.name));
                   return (
@@ -6251,7 +6311,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   <input 
                     type="text" 
                     placeholder="Filter student for check-in..."
-                    value={liveCheckinSearch}
+                    value={liveCheckinSearch ?? ''}
                     onChange={(e) => setLiveCheckinSearch(e.target.value)}
                     className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
                   />
@@ -6265,8 +6325,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   const updatedRecords = [...records];
                   uniqueStudents.forEach(s => {
                     if (!s || !s.name) return;
-                    const sNameLower = s.name.toLowerCase().trim();
-                    const existingIdx = updatedRecords.findIndex(r => r && r.studentName && r.studentName.toLowerCase().trim() === sNameLower && r.classDay === liveCheckinDayId);
+                    const sNameLower = (s?.name || '').toLowerCase().trim();
+                    const existingIdx = updatedRecords.findIndex(r => r && r.studentName && (r?.studentName || '').toLowerCase().trim() === sNameLower && r.classDay === liveCheckinDayId);
                     if (existingIdx >= 0) {
                       updatedRecords[existingIdx].present = true;
                     } else {
@@ -6298,7 +6358,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   const updatedExcused = { ...prev };
                   selectedCheckinStudents.forEach(name => {
                     if (!name) return;
-                    const studentKey = name.toLowerCase().trim();
+                    const studentKey = (name || '').toLowerCase().trim();
                     updatedExcused[studentKey] = {
                       ...(updatedExcused[studentKey] || {}),
                       [liveCheckinDayId]: status === 'excused'
@@ -6312,9 +6372,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   const updated = [...prev];
                   selectedCheckinStudents.forEach(name => {
                     if (!name) return;
-                    const studentKey = name.toLowerCase().trim();
+                    const studentKey = (name || '').toLowerCase().trim();
                     const existingIdx = updated.findIndex(
-                      r => r && r.studentName && r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId
+                      r => r && r.studentName && (r?.studentName || '').toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId
                     );
 
                     if (status === 'present') {
@@ -6396,7 +6456,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             {/* Live Student Card List */}
             <div className="p-3 overflow-y-auto custom-scrollbar flex-1 space-y-2 bg-slate-50 dark:bg-slate-950">
               {uniqueStudents
-                .filter(s => s && s.name && s.name.toLowerCase().includes((liveCheckinSearch || '').toLowerCase()))
+                .filter(s => s && s.name && (s?.name || '').toLowerCase().includes((liveCheckinSearch || '').toLowerCase()))
                 .map(s => {
                   const att = s.attendanceByDay[liveCheckinDayId];
                   const isPresent = att?.present;
@@ -6434,7 +6494,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     }
 
                     const updated = [...records];
-                    const existingIdx = updated.findIndex(r => r && r.studentName && r.studentName.toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId);
+                    const existingIdx = updated.findIndex(r => r && r.studentName && (r?.studentName || '').toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId);
                     
                     if (status === 'present') {
                       if (existingIdx >= 0) {
@@ -6555,7 +6615,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           onClose={() => setShowBatchBroadcastModal(false)}
           availableStudents={uniqueStudents.map(s => ({
             name: s.name,
-            email: `${s.name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
+            email: `${(s.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
             phone: '+1 (868) 555-0199',
             track: 'Active Ministry Module'
           }))}
@@ -6639,11 +6699,15 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           isOpen={showLoginModal || !appUser}
           currentUser={appUser}
           onLoginSuccess={handleAppLoginSuccess}
+          onLogout={handleAppLogout}
           onClose={() => {
             if (appUser) setShowLoginModal(false);
           }}
           userCredentials={userCredentials}
           onChangePassword={handleChangeUserPassword}
+          onSyncCredentials={(syncedCreds) => {
+            setUserCredentials(syncedCreds);
+          }}
         />
       )}
 
@@ -6872,6 +6936,54 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         onRefreshData={handlePushToCloud}
       />
 
+      {/* Dynamic User Credentials Management Modal */}
+      {showUserManagementModal && (
+        <UserManagementModal
+          isOpen={showUserManagementModal}
+          onClose={() => setShowUserManagementModal(false)}
+          userCredentials={userCredentials}
+          onUpdateCredentials={async (updatedCreds) => {
+            setUserCredentials(updatedCreds);
+            
+            // Instantly sync the new account configuration to Supabase
+            try {
+              const activeEmail = appUser?.email || user?.email;
+              const stateToSave = {
+                records,
+                classDays,
+                studentNotes,
+                excusedAbsences,
+                rubricScores,
+                deletedStudentNames,
+                studentPhotos,
+                studentLevels,
+                customAssignments,
+                submissions,
+                notifications,
+                sheetUrl,
+                courses,
+                schedules,
+                libraryResources,
+                classroomMedia,
+                facultyTeachers,
+                payments,
+                messages,
+                zoomExceptionNote,
+                hasZoomException,
+                userCredentials: updatedCreds
+              };
+              await saveToSupabase(activeEmail, stateToSave);
+            } catch (err) {
+              console.error("Failed syncing manual credentials update to Supabase:", err);
+            }
+          }}
+          uniqueStudents={uniqueStudents}
+          facultyTeachers={facultyTeachers}
+          currentAdminEmail="kpierre24@gmail.com"
+          onTriggerCloudSync={handlePushToCloud}
+        />
+      )}
+
       {/* 30-Second Student Presentation Demo Video Modal */}
       <AppPresentationModal
         isOpen={showPresentationModal}
@@ -6921,8 +7033,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
 
 
-      {/* Floating Active Quiz Banner */}
-      {activeQuizzesList.length > 0 && showFloatingQuizBanner && (
+      {/* Floating Active Quiz Banner (Students Only) */}
+      {appUser?.role === 'student' && activeQuizzesList.length > 0 && showFloatingQuizBanner && (
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{

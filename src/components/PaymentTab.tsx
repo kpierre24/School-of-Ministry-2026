@@ -883,7 +883,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         });
 
         // Deduplicate "Catherine Vidale" if multiple copies exist in stored state
-        const cvRecords = parsed.filter((p: any) => p.studentName && p.studentName.toLowerCase().trim() === 'catherine vidale');
+        const cvRecords = parsed.filter((p: any) => p.studentName && (p?.studentName || '').toLowerCase().trim() === 'catherine vidale');
         if (cvRecords.length > 1) {
           modified = true;
           // Find the best master record (preferring predefined pay-sheet-41 or the one with studentId)
@@ -897,7 +897,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           };
 
           // Filter out all "Catherine Vidale" records and push the merged one back in
-          parsed = parsed.filter((p: any) => !p.studentName || p.studentName.toLowerCase().trim() !== 'catherine vidale');
+          parsed = parsed.filter((p: any) => !p.studentName || (p?.studentName || '').toLowerCase().trim() !== 'catherine vidale');
           parsed.push(mergedRecord);
         } else if (cvRecords.length === 1) {
           // If only one record exists but has wrong payment amount/status, force correct it
@@ -905,7 +905,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           if (cv.amountPaid !== 700 || cv.status !== 'Partial') {
             modified = true;
             parsed = parsed.map((p: any) => {
-              if (p.studentName && p.studentName.toLowerCase().trim() === 'catherine vidale') {
+              if (p.studentName && (p?.studentName || '').toLowerCase().trim() === 'catherine vidale') {
                 return {
                   ...p,
                   amountPaid: 700,
@@ -1124,11 +1124,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
         availableStudents.forEach((st, idx) => {
           if (!st || !st.name) return;
-          const nameLower = st.name.toLowerCase().trim();
+          const nameLower = (st.name || '').toLowerCase().trim();
 
           // Check if student was explicitly removed/archived by admin
           const isArchived = removedStudentRecords.some(r => {
-            const rName = r.record.studentName.toLowerCase().trim();
+            const rName = (r.record?.studentName || '').toLowerCase().trim();
             if (rName === nameLower) return true;
             const n1 = nameLower.replace(/[^a-z]/g, '');
             const n2 = rName.replace(/[^a-z]/g, '');
@@ -1139,7 +1139,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           // Check if there is any fuzzy match in existing ledger
           const alreadyExists = prev.some(p => {
             if (!p || !p.studentName) return false;
-            const pName = p.studentName.toLowerCase().trim();
+            const pName = (p?.studentName || '').toLowerCase().trim();
             if (pName === nameLower) return true;
             // Fuzzy match checks
             const n1 = nameLower.replace(/[^a-z]/g, '');
@@ -1153,7 +1153,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               id: `pay-auto-${Date.now()}-${idx}`,
               studentName: st.name,
               studentId: `HTEIM-2026-${Math.abs(st.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}`,
-              email: st.email || `${st.name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
+              email: st.email || `${(st.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
               moduleTrack: 'Active Ministry Module',
               totalTuition: 1200,
               amountPaid: 0,
@@ -1211,7 +1211,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
     const normalizeName = (name: string) => {
       if (!name) return '';
-      return name.toLowerCase()
+      return (name || '').toLowerCase()
         .replace(/[^a-z0-9]/g, '')
         .replace(/\s+/g, '')
         .trim();
@@ -1399,7 +1399,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       id: `pay-${Date.now()}`,
       studentName: nameClean,
       studentId: `HTEIM-2026-${Math.abs(nameClean.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}`,
-      email: `${nameClean.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
+      email: `${(nameClean || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
       moduleTrack: newTrack,
       totalTuition: newTotalTuition,
       amountPaid: newInitialPayment,
@@ -1445,9 +1445,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   // Find current student payment record
   const studentPayment = useMemo(() => {
     if (!currentStudentName) return null;
-    const nameLower = currentStudentName.toLowerCase().trim();
+    const nameLower = (currentStudentName || '').toLowerCase().trim();
     return payments.find(p => {
-      const pName = p.studentName.toLowerCase().trim();
+      if (!p || !p.studentName) return false;
+      const pName = (p?.studentName || '').toLowerCase().trim();
       if (pName === nameLower) return true;
       const n1 = nameLower.replace(/[^a-z]/g, '');
       const n2 = pName.replace(/[^a-z]/g, '');
@@ -2245,7 +2246,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   min={1}
                   max={selectedPaymentForModal.totalTuition - selectedPaymentForModal.amountPaid}
                   required
-                  value={paymentAmountInput}
+                  value={paymentAmountInput ?? ''}
                   onChange={(e) => setPaymentAmountInput(Number(e.target.value))}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-sm font-extrabold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
@@ -2256,7 +2257,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   Payment Method
                 </label>
                 <select
-                  value={paymentMethodInput}
+                  value={paymentMethodInput ?? ''}
                   onChange={(e) => setPaymentMethodInput(e.target.value as any)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                 >
@@ -2276,7 +2277,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 <input
                   type="text"
                   placeholder="e.g. Check #4012, Transaction Ref ID..."
-                  value={paymentNotesInput}
+                  value={paymentNotesInput ?? ''}
                   onChange={(e) => setPaymentNotesInput(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
                 />
@@ -2547,7 +2548,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   type="text"
                   required
                   placeholder="e.g. Bro. Michael Brown"
-                  value={newStudentName}
+                  value={newStudentName ?? ''}
                   onChange={(e) => setNewStudentName(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-xs"
                 />
@@ -2558,7 +2559,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   Ministry Module Track
                 </label>
                 <select
-                  value={newTrack}
+                  value={newTrack ?? ''}
                   onChange={(e) => setNewTrack(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                 >
@@ -2578,7 +2579,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   <input
                     type="number"
                     required
-                    value={newTotalTuition}
+                    value={newTotalTuition ?? ''}
                     onChange={(e) => setNewTotalTuition(Number(e.target.value))}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs font-bold"
                   />
@@ -2589,7 +2590,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   </label>
                   <input
                     type="number"
-                    value={newInitialPayment}
+                    value={newInitialPayment ?? ''}
                     onChange={(e) => setNewInitialPayment(Number(e.target.value))}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs font-bold"
                   />
@@ -2683,7 +2684,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   Reason for Student Removal
                 </label>
                 <select
-                  value={removalReason}
+                  value={removalReason ?? ''}
                   onChange={(e) => setRemovalReason(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-xs focus:ring-2 focus:ring-rose-500/20"
                 >
@@ -2699,7 +2700,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   <input
                     type="text"
                     placeholder="Enter custom removal reason..."
-                    value={customRemovalReason}
+                    value={customRemovalReason ?? ''}
                     onChange={(e) => setCustomRemovalReason(e.target.value)}
                     className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium mt-1 focus:ring-2 focus:ring-rose-500/20"
                   />
@@ -2718,7 +2719,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   type="text"
                   required
                   placeholder="Type REMOVE or student name..."
-                  value={removeVerificationInput}
+                  value={removeVerificationInput ?? ''}
                   onChange={(e) => setRemoveVerificationInput(e.target.value)}
                   className="w-full p-2.5 bg-rose-50/50 border border-rose-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
@@ -2740,11 +2741,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   type="submit"
                   disabled={
                     removeVerificationInput.trim().toUpperCase() !== 'REMOVE' &&
-                    removeVerificationInput.trim().toLowerCase() !== studentToRemove.studentName.toLowerCase().trim()
+                    removeVerificationInput.trim().toLowerCase() !== (studentToRemove?.studentName || '').toLowerCase().trim()
                   }
                   className={`px-4 py-2.5 font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer ${
                     removeVerificationInput.trim().toUpperCase() === 'REMOVE' ||
-                    removeVerificationInput.trim().toLowerCase() === studentToRemove.studentName.toLowerCase().trim()
+                    removeVerificationInput.trim().toLowerCase() === (studentToRemove?.studentName || '').toLowerCase().trim()
                       ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
                       : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
                   }`}

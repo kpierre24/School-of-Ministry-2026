@@ -469,7 +469,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
                           type="number"
                           min="1"
                           max="100"
-                          value={q.weight}
+                          value={q.weight ?? 1}
                           onChange={(e) => handleUpdateQuestion(qIndex, { ...q, weight: Number(e.target.value) || 0 })}
                           className="w-14 px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-center font-mono font-black text-xs text-amber-900 dark:text-amber-200 outline-none"
                         />
@@ -515,7 +515,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={q.questionText}
+                      value={q.questionText ?? ''}
                       onChange={(e) => handleUpdateQuestion(qIndex, { ...q, questionText: e.target.value })}
                       placeholder="e.g. Which chapter in Romans deals with life in the Holy Spirit and divine adoption?"
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-purple-500 outline-none"
@@ -570,7 +570,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
 
                             <input
                               type="text"
-                              value={opt.text}
+                              value={opt.text ?? ''}
                               onChange={(e) => handleUpdateOption(qIndex, optIdx, e.target.value)}
                               placeholder={`Option ${optionLetter} text...`}
                               className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none"

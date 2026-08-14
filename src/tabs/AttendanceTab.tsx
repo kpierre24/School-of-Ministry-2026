@@ -24,6 +24,9 @@ import {
   DollarSign,
   Edit3,
   Plus,
+  Lock,
+  Clock,
+  ShieldCheck,
 } from 'lucide-react';
 
 import { StudentAttendancePortal } from '../components/StudentAttendancePortal';
@@ -32,6 +35,7 @@ import { ManageClassDaysModal } from '../components/ManageClassDaysModal';
 import { EmptyState } from '../components/UXPrimitives';
 import { logActivity } from '../lib/auditLogger';
 import { getStudentPaymentDetails } from '../lib/paymentUtils';
+import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from '../lib/attendanceLock';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -349,95 +353,108 @@ export function AttendanceTab({
               </div>
             </div>
 
-            {/* Mobile & Desktop Quick Scrollable Filter Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 text-xs font-bold max-w-full whitespace-nowrap touch-pan-x">
-              <button
-                onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  statusFilter === 'all'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs font-extrabold'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                <span>All</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                  {uniqueStudents.length}
-                </span>
-              </button>
+            {/* Mobile & Desktop Quick Scrollable Filter Chips + Fraud Protection Indicator */}
+            <div className="flex flex-wrap items-center justify-between gap-2 py-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar text-xs font-bold max-w-full whitespace-nowrap touch-pan-x">
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    statusFilter === 'all'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs font-extrabold'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>All</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                    {uniqueStudents.length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setStatusFilter('at_risk')}
-                className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  statusFilter === 'at_risk'
-                    ? 'bg-rose-600 text-white shadow-2xs font-extrabold'
-                    : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100'
-                }`}
-              >
-                <AlertCircle className="w-3 h-3 text-rose-500" />
-                <span>At-Risk (&lt;{atRiskThreshold}%)</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
-                  {uniqueStudents.filter(s => s.rate < atRiskThreshold).length}
-                </span>
-              </button>
+                <button
+                  onClick={() => setStatusFilter('at_risk')}
+                  className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    statusFilter === 'at_risk'
+                      ? 'bg-rose-600 text-white shadow-2xs font-extrabold'
+                      : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100'
+                  }`}
+                >
+                  <AlertCircle className="w-3 h-3 text-rose-500" />
+                  <span>At-Risk (&lt;{atRiskThreshold}%)</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
+                    {uniqueStudents.filter(s => s.rate < atRiskThreshold).length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setStatusFilter('perfect')}
-                className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  statusFilter === 'perfect'
-                    ? 'bg-emerald-600 text-white shadow-2xs font-extrabold'
-                    : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100'
-                }`}
-              >
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                <span>Satisfactory (&ge;{satisfactoryThreshold}%)</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
-                  {uniqueStudents.filter(s => s.rate >= satisfactoryThreshold).length}
-                </span>
-              </button>
+                <button
+                  onClick={() => setStatusFilter('perfect')}
+                  className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    statusFilter === 'perfect'
+                      ? 'bg-emerald-600 text-white shadow-2xs font-extrabold'
+                      : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  <span>Satisfactory (&ge;{satisfactoryThreshold}%)</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
+                    {uniqueStudents.filter(s => s.rate >= satisfactoryThreshold).length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setStatusFilter('unpaid')}
-                className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  statusFilter === 'unpaid'
-                    ? 'bg-amber-500 text-slate-950 shadow-2xs font-extrabold'
-                    : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100'
-                }`}
-              >
-                <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                <span>Unpaid Tuition</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
-                  {uniqueStudents.filter(s => getStudentPaymentDetails(s.name).hasOutstanding).length}
-                </span>
-              </button>
+                <button
+                  onClick={() => setStatusFilter('unpaid')}
+                  className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    statusFilter === 'unpaid'
+                      ? 'bg-amber-500 text-slate-950 shadow-2xs font-extrabold'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100'
+                  }`}
+                >
+                  <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <span>Unpaid Tuition</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+                    {uniqueStudents.filter(s => getStudentPaymentDetails(s.name).hasOutstanding).length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setStatusFilter('honor_roll')}
-                className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  statusFilter === 'honor_roll'
-                    ? 'bg-indigo-600 text-white shadow-2xs font-extrabold'
-                    : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100'
-                }`}
-              >
-                <Trophy className="w-3 h-3 text-amber-400" />
-                <span>100% Honor Roll</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                  {uniqueStudents.filter(s => s.rate >= 100 || (s.avgScore !== null && s.avgScore >= 85)).length}
-                </span>
-              </button>
+                <button
+                  onClick={() => setStatusFilter('honor_roll')}
+                  className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    statusFilter === 'honor_roll'
+                      ? 'bg-indigo-600 text-white shadow-2xs font-extrabold'
+                      : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100'
+                  }`}
+                >
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  <span>100% Honor Roll</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                    {uniqueStudents.filter(s => s.rate >= 100 || (s.avgScore !== null && s.avgScore >= 85)).length}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setStatusFilter('fifty_percent')}
-                className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                  statusFilter === 'fifty_percent'
-                    ? 'bg-purple-700 text-white shadow-2xs font-extrabold'
-                    : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 hover:bg-purple-100'
-                }`}
+                <button
+                  onClick={() => setStatusFilter('fifty_percent')}
+                  className={`px-3 py-1 rounded-xl text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    statusFilter === 'fifty_percent'
+                      ? 'bg-purple-700 text-white shadow-2xs font-extrabold'
+                      : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 hover:bg-purple-100'
+                  }`}
+                >
+                  <span>&le;50% Attendance</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                    {uniqueStudents.filter(s => s.rate <= 50).length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Fraud Prevention Policy Notice Pill */}
+              <div 
+                className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-400 shrink-0"
+                title="To prevent fraud and maintain audit integrity, attendance records can only be modified within 24 hours of initial capture. Afterwards, they become immutable permanent records."
               >
-                <span>&le;50% Attendance</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                  {uniqueStudents.filter(s => s.rate <= 50).length}
-                </span>
-              </button>
+                <Lock className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                <span>24h Lock Active</span>
+                <span className="text-slate-400">&bull;</span>
+                <span className="font-normal text-slate-500">Fraud-Proof Audit Mode</span>
+              </div>
             </div>
           </div>
 
@@ -733,11 +750,15 @@ export function AttendanceTab({
                               const attendance = student.attendanceByDay[day.id];
                               const isPresent = attendance?.present;
                               const isExcused = !isPresent && !!isExcusedMap[day.id];
+                              const lockInfo = getAttendanceLockInfo(attendance, day);
+                              const isLocked = lockInfo.isLocked;
 
                               return (
                                 <td
                                   key={day.id}
-                                  className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px]`}
+                                  className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px] ${
+                                    isLocked ? 'bg-slate-50/40' : ''
+                                  }`}
                                   onClick={(e) => {
                                     if (appUser?.role === 'student') return;
                                     e.stopPropagation();
@@ -747,22 +768,37 @@ export function AttendanceTab({
                                       isPresent ? 'excused' : isExcused ? 'absent' : 'present'
                                     );
                                   }}
-                                  title={appUser?.role !== 'student' ? 'Click to toggle manual attendance (Present -> Excused -> Absent)' : undefined}
+                                  title={
+                                    appUser?.role === 'student'
+                                      ? undefined
+                                      : isLocked
+                                      ? `🔒 Record Locked: Captured >24 hours ago. Cannot be modified.`
+                                      : `⏱ Editable (${lockInfo.hoursRemaining}h left in 24h window). Click to toggle attendance.`
+                                  }
                                 >
                                   {isPresent ? (
-                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer`}>
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold ${
+                                      isLocked ? 'opacity-90 cursor-not-allowed' : 'hover:bg-emerald-100 cursor-pointer'
+                                    } transition-colors`}>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                                       <span>Present</span>
+                                      {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
                                     </div>
                                   ) : isExcused ? (
-                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold hover:bg-amber-100 transition-colors cursor-pointer`}>
-                                      <AlertCircle className="w-3 h-3 text-amber-500" />
+                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold ${
+                                      isLocked ? 'opacity-90 cursor-not-allowed' : 'hover:bg-amber-100 cursor-pointer'
+                                    } transition-colors`}>
+                                      <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
                                       <span>Excused</span>
+                                      {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
                                     </div>
                                   ) : (
-                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium hover:bg-rose-100 transition-colors cursor-pointer`}>
-                                      <XCircle className="w-3 h-3 text-rose-300" />
+                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium ${
+                                      isLocked ? 'opacity-90 cursor-not-allowed' : 'hover:bg-rose-100 cursor-pointer'
+                                    } transition-colors`}>
+                                      <XCircle className="w-3 h-3 text-rose-300 shrink-0" />
                                       <span>Absent</span>
+                                      {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
                                     </div>
                                   )}
                                 </td>
@@ -799,13 +835,19 @@ export function AttendanceTab({
 
           {/* Table Footer Legend */}
           <div className="p-2.5 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <span className="font-semibold text-slate-600">Legend:</span>
               <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Present in Form Response
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Present
+              </span>
+              <span className="flex items-center gap-1 text-amber-700 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Excused
               </span>
               <span className="flex items-center gap-1 text-rose-600 font-medium">
-                <XCircle className="w-3.5 h-3.5 text-rose-400" /> No Submission
+                <XCircle className="w-3.5 h-3.5 text-rose-400" /> Absent
+              </span>
+              <span className="flex items-center gap-1 text-slate-600 font-medium">
+                <Lock className="w-3 h-3 text-slate-400" /> Locked Record (&gt;24h)
               </span>
             </div>
             <div className="text-slate-400 font-medium">

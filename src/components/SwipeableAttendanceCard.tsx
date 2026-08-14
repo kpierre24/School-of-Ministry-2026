@@ -6,9 +6,11 @@ import {
   PenSquare, 
   SlidersHorizontal, 
   Check, 
-  RotateCcw
+  RotateCcw,
+  Lock
 } from 'lucide-react';
 import { StudentSummary, ClassDay } from '../types';
+import { getAttendanceLockInfo } from '../lib/attendanceLock';
 
 interface SwipeableAttendanceCardProps {
   student: StudentSummary;
@@ -43,7 +45,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   onToggleSelectStudent,
   appRole
 }) => {
-  const studentKey = student.name.toLowerCase().trim();
+  const studentKey = (student?.name || '').toLowerCase().trim();
   const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
   const note = studentNotes[studentKey] || student.note;
   const isExcusedMap = excusedAbsences[studentKey] || {};
@@ -54,6 +56,8 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   const currentAttendance = targetDayId ? student.attendanceByDay[targetDayId] : undefined;
   const isPresent = currentAttendance?.present;
   const isExcused = !isPresent && !!isExcusedMap[targetDayId];
+  const targetLockInfo = getAttendanceLockInfo(currentAttendance, targetDay);
+  const isTargetLocked = targetLockInfo.isLocked;
 
   // Touch Swipe State
   const [dragOffset, setDragOffset] = useState(0);
@@ -64,6 +68,11 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (appRole === 'student') return;
+    if (isTargetLocked) {
+      setSwipeActionText('🔒 Locked (>24h since capture)');
+      setTimeout(() => setSwipeActionText(null), 1800);
+      return;
+    }
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     isHorizontalSwipe.current = false;
@@ -71,7 +80,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || appRole === 'student') return;
+    if (!isDragging || appRole === 'student' || isTargetLocked) return;
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = touch.clientY - touchStartRef.current.y;
@@ -104,7 +113,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   };
 
   const handleTouchEnd = () => {
-    if (!isDragging || appRole === 'student') return;
+    if (!isDragging || appRole === 'student' || isTargetLocked) return;
     setIsDragging(false);
 
     if (isHorizontalSwipe.current && targetDayId) {
@@ -236,9 +245,19 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
 
         {/* Quick Swipe & 1-Tap Quick Status Buttons for Active Session */}
         {appRole !== 'student' && targetDayId && (
-          <div className="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/70 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+          <div className={`flex items-center justify-between gap-1.5 p-1.5 rounded-xl border ${
+            isTargetLocked
+              ? 'bg-slate-100/90 dark:bg-slate-800/90 border-slate-300 dark:border-slate-700'
+              : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200/80 dark:border-slate-700/80'
+          }`}>
             <div className="flex items-center gap-1 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
+              {isTargetLocked ? (
+                <span title="Record Locked (>24h since capture)" className="inline-flex">
+                  <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                </span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
+              )}
               <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 truncate max-w-[90px] sm:max-w-[120px]" title={targetDay?.name}>
                 {targetDay?.name || 'Active Session'}
               </span>
@@ -256,11 +275,12 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   isPresent 
                     ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' 
                     : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
-                }`}
-                title="Mark Present"
+                } ${isTargetLocked ? 'opacity-85' : ''}`}
+                title={isTargetLocked ? '🔒 Record Locked (>24h since capture)' : 'Mark Present'}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span>Present</span>
+                {isTargetLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
               </button>
 
               <button
@@ -274,11 +294,12 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   isExcused 
                     ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-300' 
                     : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-                }`}
-                title="Mark Excused"
+                } ${isTargetLocked ? 'opacity-85' : ''}`}
+                title={isTargetLocked ? '🔒 Record Locked (>24h since capture)' : 'Mark Excused'}
               >
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Excused</span>
+                {isTargetLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
               </button>
 
               <button
@@ -292,11 +313,12 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   !isPresent && !isExcused && currentAttendance?.present === false
                     ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400' 
                     : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/40'
-                }`}
-                title="Mark Absent"
+                } ${isTargetLocked ? 'opacity-85' : ''}`}
+                title={isTargetLocked ? '🔒 Record Locked (>24h since capture)' : 'Mark Absent'}
               >
                 <XCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Absent</span>
+                {isTargetLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
               </button>
             </div>
           </div>
@@ -331,6 +353,8 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
               const dayPresent = attendance?.present;
               const dayExcused = !dayPresent && !!isExcusedMap[day.id];
               const isCurrentSession = day.id === targetDayId;
+              const dayLockInfo = getAttendanceLockInfo(attendance, day);
+              const isDayLocked = dayLockInfo.isLocked;
 
               return (
                 <div 
@@ -352,31 +376,41 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                       : dayExcused 
                       ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50' 
                       : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60'
-                  } ${appRole !== 'student' ? 'cursor-pointer active:scale-95' : ''}`}
+                  } ${isDayLocked ? 'opacity-90' : ''} ${appRole !== 'student' ? 'cursor-pointer active:scale-95' : ''}`}
+                  title={
+                    isDayLocked
+                      ? `🔒 Record Locked: Captured >24h ago`
+                      : `⏱ Editable (${dayLockInfo.hoursRemaining}h left in 24h window)`
+                  }
                 >
                   <div className="flex items-center justify-center gap-1 w-full">
                     <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[75px] sm:max-w-[85px]" title={day.name}>
                       {day.name}
                     </span>
-                    {isCurrentSession && (
+                    {isDayLocked ? (
+                      <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                    ) : isCurrentSession ? (
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping shrink-0" title="Active Check-in Session" />
-                    )}
+                    ) : null}
                   </div>
 
                   {dayPresent ? (
                     <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] sm:text-[9px] font-black shadow-xs">
-                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
                       <span>Present</span>
+                      {isDayLocked && <Lock className="w-2 h-2 text-emerald-200 shrink-0" />}
                     </div>
                   ) : dayExcused ? (
                     <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[8px] sm:text-[9px] font-black shadow-xs">
-                      <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                      <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
                       <span>Excused</span>
+                      {isDayLocked && <Lock className="w-2 h-2 text-slate-700 shrink-0" />}
                     </div>
                   ) : (
                     <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 text-[8px] sm:text-[9px] font-bold border border-rose-300 dark:border-rose-800">
-                      <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500" />
+                      <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500 shrink-0" />
                       <span>Absent</span>
+                      {isDayLocked && <Lock className="w-2 h-2 text-rose-400 shrink-0" />}
                     </div>
                   )}
                 </div>

@@ -38,7 +38,7 @@ export const OnlinePaymentModal: React.FC<OnlinePaymentModalProps> = ({
         id: `pay-${Date.now()}`,
         studentName: sName,
         studentId: `STU-${Math.floor(100 + Math.random() * 900)}`,
-        email: studentEmail || `${sName.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
+        email: studentEmail || `${(sName || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
         moduleTrack: 'Module 3: Ministerial Ethics & Integrity',
         totalTuition: 1200,
         amountPaid: paymentAmount,

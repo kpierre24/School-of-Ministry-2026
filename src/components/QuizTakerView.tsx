@@ -182,11 +182,11 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   // Roster match helper
   const findMatchingRosterName = (inputName: string): string | null => {
     if (!inputName || !inputName.trim()) return null;
-    const cleanInput = inputName.trim().toLowerCase().replace(/\s+/g, ' ');
+    const cleanInput = (inputName || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (!studentRoster || studentRoster.length === 0) return inputName.trim();
 
     for (const student of studentRoster) {
-      const cleanRosterName = student.name.trim().toLowerCase().replace(/\s+/g, ' ');
+      const cleanRosterName = (student.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
       if (cleanInput === cleanRosterName) return student.name;
 
       const inputParts = cleanInput.split(' ').filter(Boolean);
@@ -556,7 +556,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                 ) : studentRoster.length > 0 && !isCustomName ? (
                   <div className="flex flex-col sm:flex-row gap-2">
                     <select
-                      value={selectedStudentName}
+                      value={selectedStudentName ?? ''}
                       onChange={(e) => setSelectedStudentName(e.target.value)}
                       className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                     >
@@ -580,7 +580,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
-                        value={customStudentName}
+                        value={customStudentName ?? ''}
                         onChange={(e) => setCustomStudentName(e.target.value)}
                         placeholder="Enter full student name (e.g. Samuel K. Johnson)"
                         required

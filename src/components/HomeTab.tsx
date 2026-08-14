@@ -63,6 +63,7 @@ import {
   Video,
   UserCheck,
   Edit3,
+  LogOut,
   Settings
 } from 'lucide-react';
 import { TabType, StudentSummary, ClassDay, PaymentRecord, CustomAssignment, AssignmentSubmission, QuizAssignment, FacultyTeacher } from '../types';
@@ -89,6 +90,7 @@ interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
   appUser: AppUser | null;
   onOpenLogin: () => void;
+  onLogout?: () => void;
   onOpenPresentationDemo?: () => void;
   studentsCount: number;
   students?: StudentSummary[];
@@ -174,6 +176,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onNavigate,
   appUser,
   onOpenLogin,
+  onLogout,
   onOpenPresentationDemo,
   studentsCount,
   students = [],
@@ -203,6 +206,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 }) => {
   const isStudent = appUser?.role === 'student';
   const isAdminOrTeacher = appUser?.role === 'admin' || appUser?.role === 'teacher';
+  const isAdmin = appUser?.role === 'admin';
 
   // Active Quiz Link Copy Toast State
   const [copiedQuizLink, setCopiedQuizLink] = useState<string | null>(null);
@@ -304,8 +308,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   };
 
   // Section visibility states
-  const [activeVerseIndex, setActiveVerseIndex] = useState(0);
-  const [copiedVerse, setCopiedVerse] = useState(false);
   const [adminTab, setAdminTab] = useState<'at_risk' | 'trends' | 'sync'>('at_risk');
   const [isAdminPanelExpanded, setIsAdminPanelExpanded] = useState(false);
 
@@ -316,40 +318,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   // Module-Based Attendance Trends State
   const [trendChartType, setTrendChartType] = useState<'bar' | 'area'>('bar');
-
-  // Daily Scriptures Collection
-  const dailyScriptures = [
-    {
-      reference: '2 Timothy 2:15',
-      verse: 'Study to show thyself approved unto God, a workman that needeth not to be ashamed, rightly dividing the word of truth.',
-      theme: 'Exegesis & Academic Rigor',
-      application: 'Pursue deep biblical diligence. True spiritual authority flows from faithful handling of Holy Scripture.',
-      tag: 'Word & Doctrine'
-    },
-    {
-      reference: 'Ephesians 4:11-12',
-      verse: 'And he gave some, apostles; and some, prophets; and some, evangelists; and some, pastors and teachers; for the perfecting of the saints, for the work of the ministry.',
-      theme: 'Five-Fold Ministry Calling',
-      application: 'Every believer is equipped for kingdom impact. Align your unique spiritual gifts with church governance.',
-      tag: 'Apostolic Mandate'
-    },
-    {
-      reference: 'Joshua 1:8',
-      verse: 'This book of the law shall not depart out of thy mouth; but thou shalt meditate therein day and night, that thou mayest observe to do according to all that is written therein.',
-      theme: 'Spiritual Discipline',
-      application: 'Continuous meditation on God’s Word yields spiritual prosperity, divine wisdom, and unwavering courage.',
-      tag: 'Character & Faith'
-    },
-    {
-      reference: '1 Timothy 3:2',
-      verse: 'A bishop then must be blameless, the husband of one wife, vigilant, sober, of good behaviour, given to hospitality, apt to teach.',
-      theme: 'Ministerial Ethics',
-      application: 'Leadership in the body of Christ requires flawless integrity, emotional sobriety, and teachable stewardship.',
-      tag: 'Ethics & Stewardship'
-    }
-  ];
-
-  const currentScripture = dailyScriptures[activeVerseIndex];
 
   // At-Risk Calculation
   const rawAtRiskStudents = useMemo(() => {
@@ -362,7 +330,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       if (atRiskFilter === 'critical' && s.rate > 50) return false;
       if (atRiskFilter === 'moderate' && (s.rate <= 50 || s.rate >= atRiskThreshold)) return false;
       if (atRiskSearch.trim()) {
-        return s.name.toLowerCase().includes(atRiskSearch.toLowerCase().trim());
+        return (s?.name || '').toLowerCase().includes(atRiskSearch.toLowerCase().trim());
       }
       return true;
     });
@@ -441,13 +409,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     localStorage.setItem('hteim_home_banner_collapsed', String(isBannerCollapsed));
   }, [isBannerCollapsed]);
 
-  const handleCopyScripture = () => {
-    const text = `"${currentScripture.verse}" — ${currentScripture.reference} (HTEIM School of Ministry)`;
-    navigator.clipboard.writeText(text);
-    setCopiedVerse(true);
-    setTimeout(() => setCopiedVerse(false), 2000);
-  };
-
   // Metrics
   const activeStudents = studentsCount;
   const scheduledClasses = classDaysCount;
@@ -457,14 +418,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const loggedInStudentData = useMemo(() => {
     if (!isStudent || !appUser) return null;
     const nameToMatch = (appUser.studentName || appUser.name || '').toLowerCase().trim();
-    return students.find(s => s.name.toLowerCase().trim() === nameToMatch) || null;
+    return students.find(s => (s?.name || '').toLowerCase().trim() === nameToMatch) || null;
   }, [isStudent, appUser, students]);
 
   // Find logged in student tuition statement
   const loggedInStudentPayment = useMemo(() => {
     if (!isStudent || !appUser) return null;
     const nameToMatch = (appUser.studentName || appUser.name || '').toLowerCase().trim();
-    return payments.find(p => p.studentName.toLowerCase().trim() === nameToMatch) || null;
+    return payments.find(p => (p?.studentName || '').toLowerCase().trim() === nameToMatch) || null;
   }, [isStudent, appUser, payments]);
 
   return (
@@ -502,14 +463,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
           {/* Navigation, Autoplay & Admin Edit Controls */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsFacultyModalOpen(true)}
-              className="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95 border border-amber-300"
-              title="Manage Faculty Roster & Photos"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-slate-950" />
-              <span>Edit Faculty</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsFacultyModalOpen(true)}
+                className="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95 border border-amber-300"
+                title="Manage Faculty Roster & Photos"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-slate-950" />
+                <span>Edit Faculty</span>
+              </button>
+            )}
 
             <button
               onClick={() => setIsTeacherAutoplay(!isTeacherAutoplay)}
@@ -722,13 +685,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                           <span>View Class Schedule</span>
                         </button>
 
-                        <button
-                          onClick={() => setIsFacultyModalOpen(true)}
-                          className="px-4 py-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/40 transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          <Edit3 className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>Edit Faculty Info</span>
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setIsFacultyModalOpen(true)}
+                            className="px-4 py-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/40 transition-all cursor-pointer flex items-center gap-2"
+                          >
+                            <Edit3 className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>Edit Faculty Info</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -819,8 +784,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         )}
       </section>
 
-      {/* Active Class Quiz Announcement Banner */}
-      {activeQuizzes.length > 0 && (
+      {/* Active Class Quiz Announcement Banner (Students Only) */}
+      {isStudent && activeQuizzes.length > 0 && (
         <section className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 rounded-2xl border-2 border-purple-500/40 p-4 sm:p-6 text-white shadow-xl relative overflow-hidden animate-fadeIn my-2">
           <div className="absolute top-0 right-0 -mr-10 -mt-10 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
           
@@ -845,7 +810,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               {activeQuizzes.map((asg) => {
                 const quiz = asg.quizData!;
                 const currentStudentName = appUser?.studentName || appUser?.name || userEmail || '';
-                const targetName = currentStudentName.toLowerCase().trim();
+                const targetName = (currentStudentName || '').toLowerCase().trim();
                 const hasSubmitted = submissions?.some(
                   s => s.assignmentId === asg.id && (s.studentName || '').toLowerCase().trim() === targetName
                 );
@@ -1144,60 +1109,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
       )}
 
-      {/* Daily Scripture Spotlight */}
-      <section className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-3 flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-900 dark:bg-white text-white dark:text-slate-900">
-                Scripture Spotlight
-              </span>
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                {currentScripture.tag}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm sm:text-lg font-serif italic text-slate-800 dark:text-slate-100 font-semibold leading-relaxed">
-                "{currentScripture.verse}"
-              </p>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono tracking-wider">
-                — {currentScripture.reference}
-              </p>
-            </div>
-
-            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Ministry Application</span>
-              <p className="text-slate-600 dark:text-slate-300 leading-normal">{currentScripture.application}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-row md:flex-col items-center gap-2 w-full md:w-auto shrink-0 justify-between">
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-              {dailyScriptures.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveVerseIndex(idx)}
-                  className={`w-6 h-6 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                    activeVerseIndex === idx ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  0{idx+1}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={handleCopyScripture}
-              className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              {copiedVerse ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedVerse ? 'Copied' : 'Copy Verse'}</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
       {/* 4. MAIN STRUCTURAL LAYOUT: Portal Access, Broadcast & Covenant Mandate */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
@@ -1211,14 +1122,26 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
             {appUser ? (
               <div className="space-y-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
-                    {appUser.name.charAt(0).toUpperCase()}
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
+                      {appUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{appUser.name}</p>
+                      <p className="text-[9px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">{appUser.role} Account</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-900 dark:text-white">{appUser.name}</p>
-                    <p className="text-[9px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">{appUser.role} Account</p>
-                  </div>
+                  {onLogout && (
+                    <button
+                      onClick={onLogout}
+                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-md text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      <span>Sign Out</span>
+                    </button>
+                  )}
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -1247,6 +1170,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                     >
                       Student Roster Directory
+                    </button>
+                  )}
+
+                  {onLogout && (
+                    <button
+                      onClick={onLogout}
+                      className="w-full py-2 px-3 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Log Out Account</span>
                     </button>
                   )}
                 </div>
@@ -1643,13 +1576,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       )}
 
       {/* Admin Faculty & Instructors Manager Modal */}
-      <FacultyManagerModal
-        isOpen={isFacultyModalOpen}
-        onClose={() => setIsFacultyModalOpen(false)}
-        facultyList={facultyTeachers}
-        onSaveFacultyList={handleSaveFacultyList}
-        onResetToDefault={handleResetFacultyList}
-      />
+      {isAdmin && (
+        <FacultyManagerModal
+          isOpen={isFacultyModalOpen}
+          onClose={() => setIsFacultyModalOpen(false)}
+          facultyList={facultyTeachers}
+          onSaveFacultyList={handleSaveFacultyList}
+          onResetToDefault={handleResetFacultyList}
+        />
+      )}
 
     </div>
   );

@@ -402,7 +402,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                       <div>
                         <input
                           type="url"
-                          value={formData.image}
+                          value={formData.image ?? ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
                           placeholder="https://example.com/photo.jpg"
                           className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-purple-500"
@@ -420,7 +420,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={formData.name}
+                      value={formData.name ?? ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                       placeholder="e.g. Apostle Gillian Selkridge"
                       required
@@ -435,7 +435,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData.title}
+                        value={formData.title ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                         placeholder="e.g. Senior Apostle & School Director"
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium text-xs outline-none focus:ring-2 focus:ring-purple-500"
@@ -448,7 +448,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData.role}
+                        value={formData.role ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
                         placeholder="e.g. Apostolic Oversight & Governance"
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium text-xs outline-none focus:ring-2 focus:ring-purple-500"
@@ -463,7 +463,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData.module}
+                        value={formData.module ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, module: e.target.value }))}
                         placeholder="e.g. Module 1: Apostolic Governance"
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium text-xs outline-none focus:ring-2 focus:ring-purple-500"
@@ -475,7 +475,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                         Badge Theme Color
                       </label>
                       <select
-                        value={formData.badgeColor}
+                        value={formData.badgeColor ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, badgeColor: e.target.value }))}
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium text-xs outline-none focus:ring-2 focus:ring-purple-500"
                       >
@@ -492,7 +492,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                     </label>
                     <textarea
                       rows={4}
-                      value={formData.bio}
+                      value={formData.bio ?? ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                       placeholder="Enter instructor overview, qualifications, or ministerial quote..."
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium text-xs outline-none focus:ring-2 focus:ring-purple-500 leading-relaxed"

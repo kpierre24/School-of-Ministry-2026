@@ -30,7 +30,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
 
   const calculatedAtRisk = safeStudents.filter(s => {
     if (!s || !s.name) return false;
-    const p = safePayments.find(pay => pay && pay.studentName && pay.studentName.toLowerCase().trim() === s.name.toLowerCase().trim());
+    const p = safePayments.find(pay => pay && pay.studentName && (pay?.studentName || '').toLowerCase().trim() === (s?.name || '').toLowerCase().trim());
     const hasPastDue = p?.status === 'Past Due';
     const isAttRisk = (s.rate ?? 100) < 75;
     const isGradeRisk = (s.avgScore ?? 82) < 75;
@@ -137,7 +137,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
                 Select At-Risk Student ({displayList.length} Flagged)
               </label>
               <select
-                value={selectedStudentName}
+                value={selectedStudentName ?? ''}
                 onChange={(e) => setSelectedStudentName(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500"
               >

@@ -327,7 +327,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     };
 
     setSubmissions(prev => {
-      const filtered = prev.filter(s => !(s.assignmentId === newAssignmentSub.assignmentId && s.studentName.toLowerCase().trim() === submission.studentName.toLowerCase().trim()));
+      const filtered = prev.filter(s => !(s.assignmentId === newAssignmentSub.assignmentId && (s?.studentName || '').toLowerCase().trim() === (submission?.studentName || '').toLowerCase().trim()));
       return [newAssignmentSub, ...filtered];
     });
 
@@ -497,7 +497,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     let list = isStudent && studentRecord ? [studentRecord] : students;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      list = list.filter(s => s && s.name && s.name.toLowerCase().includes(q));
+      list = list.filter(s => s && s.name && (s?.name || '').toLowerCase().includes(q));
     }
     if (gradeFilter === 'passed') {
       list = list.filter(s => (s.percentage || 0) >= 70 && (s.percentage || 0) < 100);
@@ -797,7 +797,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
   // 4. Teacher Grade & Attach Corrected File
   const handleOpenCorrection = (asg: CustomAssignment, studentName: string) => {
-    const sub = submissions.find(s => s.assignmentId === asg.id && s.studentName.toLowerCase().trim() === studentName.toLowerCase().trim());
+    const sub = submissions.find(s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (studentName || '').toLowerCase().trim());
     
     setActiveSubmissionForCorrection({
       submission: sub,
@@ -903,7 +903,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     setTargetAssignmentId(selectedAsg);
 
     const existing = submissions.find(
-      s => s.assignmentId === selectedAsg && s.studentName.toLowerCase().trim() === selectedStudent.toLowerCase().trim()
+      s => s.assignmentId === selectedAsg && (s?.studentName || '').toLowerCase().trim() === (selectedStudent || '').toLowerCase().trim()
     );
 
     if (existing) {
@@ -927,7 +927,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
     const existingIndex = submissions.findIndex(
-      s => s.assignmentId === targetAssignmentId && s.studentName.toLowerCase().trim() === targetStudentName.toLowerCase().trim()
+      s => s.assignmentId === targetAssignmentId && (s?.studentName || '').toLowerCase().trim() === (targetStudentName || '').toLowerCase().trim()
     );
 
     const firstFile = directStudentFiles[0];
@@ -977,7 +977,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     csv += 'Overall Average %,Grade Letter,Participation Score,Assignment Score,Composite Final Average\n';
 
     targets.forEach(s => {
-      const studentKey = s.name.toLowerCase().trim();
+      const studentKey = (s?.name || '').toLowerCase().trim();
       const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
       const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
       const composite = Math.round((qPct + rub.participation + rub.assignment) / 3);
@@ -989,8 +989,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       customAssignments.forEach(asg => {
         const sub = submissions.find(subItem => 
           subItem.assignmentId === asg.id && 
-          (subItem.studentName.toLowerCase().trim() === studentKey || 
-           studentKey.includes(subItem.studentName.toLowerCase().trim()))
+          ((subItem?.studentName || '').toLowerCase().trim() === studentKey || 
+           studentKey.includes((subItem?.studentName || '').toLowerCase().trim()))
         );
         const scoreVal = sub && sub.score !== undefined ? `${sub.score}/${asg.maxPoints}` : 'N/A';
         csv += `"${scoreVal}",`;
@@ -1014,7 +1014,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   // Filter Submissions for Table / Cards
   const filteredSubmissions = submissions.filter(sub => {
     if (selectedAssignmentId !== 'all' && sub.assignmentId !== selectedAssignmentId) return false;
-    if (searchQuery.trim() && !sub.studentName.toLowerCase().includes(searchQuery.toLowerCase().trim())) return false;
+    if (searchQuery.trim() && !(sub?.studentName || '').toLowerCase().includes(searchQuery.toLowerCase().trim())) return false;
     return true;
   });
 
@@ -1155,7 +1155,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   <Filter className="w-4 h-4 text-indigo-600 shrink-0" /> Filter Assignment:
                 </span>
                 <select
-                  value={selectedAssignmentId}
+                  value={selectedAssignmentId ?? ''}
                   onChange={(e) => setSelectedAssignmentId(e.target.value)}
                   className="min-h-11 p-2.5 sm:p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-auto"
                 >
@@ -1220,7 +1220,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   <div className="bg-slate-50 dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider">Assignments Completed</p>
                     <p className="text-base font-mono font-bold text-slate-900 dark:text-white">
-                      {submissions.filter(s => s.studentName.toLowerCase().trim() === activeStudentName.toLowerCase().trim() && s.score !== undefined).length} / {customAssignments.length}
+                      {submissions.filter(s => (s?.studentName || '').toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim() && s.score !== undefined).length} / {customAssignments.length}
                     </p>
                   </div>
                 </div>
@@ -1314,7 +1314,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {customAssignments.map(asg => {
                 const sub = submissions.find(
-                  s => s.assignmentId === asg.id && s.studentName.toLowerCase().trim() === activeStudentName.toLowerCase().trim()
+                  s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
                 );
 
                 const todayStr = new Date().toISOString().split('T')[0];
@@ -1599,9 +1599,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
 
                       return targetAsgs.map(asg => {
-                        const sub = submissions.find(s => s.assignmentId === asg.id && s.studentName.toLowerCase().trim() === std.name.toLowerCase().trim());
+                        const sub = submissions.find(s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (std?.name || '').toLowerCase().trim());
                         
-                        if (searchQuery.trim() && !std.name.toLowerCase().includes(searchQuery.toLowerCase().trim())) {
+                        if (searchQuery.trim() && !(std?.name || '').toLowerCase().includes(searchQuery.toLowerCase().trim())) {
                           return null;
                         }
 
@@ -2138,7 +2138,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </thead>
                 <tbody>
                   {displayedStudents.map((s) => {
-                    const studentKey = s.name.toLowerCase().trim();
+                    const studentKey = (s?.name || '').toLowerCase().trim();
                     const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
                     const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
                     const composite = Math.round((qPct + rub.participation + rub.assignment) / 3);
@@ -2163,8 +2163,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         {customAssignments.map(asg => {
                           const sub = submissions.find(subItem => 
                             subItem.assignmentId === asg.id && 
-                            (subItem.studentName.toLowerCase().trim() === studentKey || 
-                             studentKey.includes(subItem.studentName.toLowerCase().trim()))
+                            ((subItem?.studentName || '').toLowerCase().trim() === studentKey || 
+                             studentKey.includes((subItem?.studentName || '').toLowerCase().trim()))
                           );
                           const scoreDisplay = sub && sub.score !== undefined ? `${sub.score}/${asg.maxPoints}` : (sub?.status === 'Submitted' ? 'Submitted' : '—');
                           const badgeColor = sub && sub.score !== undefined ? 'text-indigo-700 font-bold bg-indigo-50/40 animate-grade-pulse' : 'text-slate-400';
@@ -2187,7 +2187,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                             type="number" 
                             min="0" 
                             max="100"
-                            value={rub.participation}
+                            value={rub?.participation ?? 0}
                             disabled={isStudent}
                             onChange={(e) => onUpdateRubric(studentKey, 'participation', parseInt(e.target.value, 10) || 0)}
                             className="w-14 p-1 text-center bg-slate-50 border border-slate-200 rounded font-bold text-xs"
@@ -2198,7 +2198,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                             type="number" 
                             min="0" 
                             max="100"
-                            value={rub.assignment}
+                            value={rub?.assignment ?? 0}
                             disabled={isStudent}
                             onChange={(e) => onUpdateRubric(studentKey, 'assignment', parseInt(e.target.value, 10) || 0)}
                             className="w-14 p-1 text-center bg-slate-50 border border-slate-200 rounded font-bold text-xs"
@@ -2262,7 +2262,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 type="text"
                 required
                 placeholder="e.g., Exegesis Paper: Hermeneutical Principles"
-                value={newAsgTitle}
+                value={newAsgTitle ?? ''}
                 onChange={(e) => setNewAsgTitle(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -2273,7 +2273,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <label className="font-bold text-slate-700">Module / Track</label>
                 <input
                   type="text"
-                  value={newAsgModule}
+                  value={newAsgModule ?? ''}
                   onChange={(e) => setNewAsgModule(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 />
@@ -2285,7 +2285,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </label>
                 <input
                   type="date"
-                  value={newAsgStartDate}
+                  value={newAsgStartDate ?? ''}
                   onChange={(e) => setNewAsgStartDate(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 />
@@ -2298,7 +2298,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <input
                   type="date"
                   required
-                  value={newAsgDueDate}
+                  value={newAsgDueDate ?? ''}
                   onChange={(e) => setNewAsgDueDate(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 />
@@ -2310,7 +2310,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               <textarea
                 rows={3}
                 placeholder="Enter explicit assignment instructions, word count, or grading expectations..."
-                value={newAsgDescription}
+                value={newAsgDescription ?? ''}
                 onChange={(e) => setNewAsgDescription(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -2389,7 +2389,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <textarea
                   rows={5}
                   placeholder="Type or paste your assignment essay, theological reflections, or exam answers directly here..."
-                  value={uploadTypedResponse}
+                  value={uploadTypedResponse ?? ''}
                   onChange={(e) => setUploadTypedResponse(e.target.value)}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-sans text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -2575,7 +2575,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <textarea
                   rows={2}
                   placeholder="Add any comments for the instructor regarding your submission..."
-                  value={uploadNotes}
+                  value={uploadNotes ?? ''}
                   onChange={(e) => setUploadNotes(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -2684,7 +2684,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   type="number"
                   min="0"
                   max={activeSubmissionForCorrection.assignment.maxPoints}
-                  value={correctionScore}
+                  value={correctionScore ?? ''}
                   onChange={(e) => setCorrectionScore(parseInt(e.target.value, 10) || 0)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold font-mono text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required
@@ -2696,7 +2696,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <textarea
                   rows={2}
                   placeholder="Provide constructive feedback, commendations, or theological guidance..."
-                  value={correctionFeedback}
+                  value={correctionFeedback ?? ''}
                   onChange={(e) => setCorrectionFeedback(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -2759,7 +2759,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Select Target Student</label>
                   <select
-                    value={targetStudentName}
+                    value={targetStudentName ?? ''}
                     onChange={(e) => setTargetStudentName(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 cursor-pointer"
                   >
@@ -2772,7 +2772,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Select Assignment</label>
                   <select
-                    value={targetAssignmentId}
+                    value={targetAssignmentId ?? ''}
                     onChange={(e) => setTargetAssignmentId(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 cursor-pointer"
                   >
@@ -2855,7 +2855,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <textarea
                   rows={2}
                   placeholder="Notes accompanying this student upload..."
-                  value={directStudentNotes}
+                  value={directStudentNotes ?? ''}
                   onChange={(e) => setDirectStudentNotes(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                 />
@@ -2988,12 +2988,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           previousSubmission={
             quizSubmissionsList.find(s => 
               (s.quizId === activeQuizTaker.id || s.quizId === activeQuizTaker.shareCode) && 
-              s.studentName.toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
+              (s?.studentName || '').toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
             ) ||
             (() => {
               const sub = submissions.find(s => 
                 s.assignmentId === activeQuizTaker.id && 
-                s.studentName.toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
+                (s?.studentName || '').toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
               );
               if (!sub || sub.score === undefined) return null;
               return {

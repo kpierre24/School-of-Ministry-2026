@@ -129,7 +129,7 @@ export const AdminQuizzesDashboard: React.FC<AdminQuizzesDashboardProps> = ({
 
   const filteredQuizzes = quizzes.filter(quiz => {
     const matchesSearch = 
-      quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (quiz.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (quiz.courseCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (quiz.moduleTrack || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (quiz.shareCode || '').toLowerCase().includes(searchQuery.toLowerCase());

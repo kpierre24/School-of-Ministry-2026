@@ -348,9 +348,9 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     : allItems.filter(item => {
         const q = query.toLowerCase();
         return (
-          item.title.toLowerCase().includes(q) ||
+          (item.title || '').toLowerCase().includes(q) ||
           (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
-          item.category.toLowerCase().includes(q)
+          (item.category || '').toLowerCase().includes(q)
         );
       });
 

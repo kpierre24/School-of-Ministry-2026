@@ -205,7 +205,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           setFormInstructor(found.instructor);
           setFormRoom(found.room || 'Main Sanctuary Hall A');
           setFormStatus(found.status);
-          setFormDeliveryMode(found.room?.toLowerCase().includes('zoom') ? 'virtual' : 'hybrid');
+          setFormDeliveryMode((found.room || '').toLowerCase().includes('zoom') ? 'virtual' : 'hybrid');
           setFormZoomUrl('https://zoom.us/j/hteim-school-of-ministry');
         }
       }
@@ -300,7 +300,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
     setFormInstructor(item.instructor);
     setFormRoom(item.room);
     setFormStatus(item.status);
-    setFormDeliveryMode(item.room.toLowerCase().includes('zoom') ? 'virtual' : 'hybrid');
+    setFormDeliveryMode((item.room || '').toLowerCase().includes('zoom') ? 'virtual' : 'hybrid');
     setFormZoomUrl('https://zoom.us/j/hteim-school-of-ministry');
     setFormSyncAttendance(true);
     setFormRepeatWeeks(1);
@@ -1128,7 +1128,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                       // Match scheduled classes corresponding to this period/day
                       const cellClasses = filteredSchedules.filter(s => {
                         if (!s || !s.period || !p || !p.label) return false;
-                        return s.period.toLowerCase().includes(p.label.toLowerCase().slice(0, 3));
+                        return (s.period || '').toLowerCase().includes((p.label || '').toLowerCase().slice(0, 3));
                       });
 
                       const classInSlot = cellClasses[0]; // If mapped
@@ -1841,7 +1841,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 <textarea
                   rows={3}
                   placeholder="Ex: Note: Class on Tuesday, August 4 will start at 7:30 PM EST via Zoom due to faculty convocation."
-                  value={zoomExceptionNote}
+                  value={zoomExceptionNote ?? ''}
                   onChange={(e) => setZoomExceptionNote(e.target.value)}
                   className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
                 />

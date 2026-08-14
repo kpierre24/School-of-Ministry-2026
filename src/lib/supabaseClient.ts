@@ -9,7 +9,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing required Supabase env vars: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  }
+});
 
 /**
  * Uploads a File or Base64 Data URL to a Supabase Storage bucket and returns the public URL.

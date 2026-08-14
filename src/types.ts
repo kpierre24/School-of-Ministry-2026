@@ -1,4 +1,4 @@
-export type TabType = 'home' | 'attendance' | 'zoom-copilot' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
+export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
 
 export interface FacultyTeacher {
   id: string;
@@ -302,10 +302,12 @@ export type AttendanceRecord = {
   name: string;
   studentName?: string;
   timestamp: string;
+  capturedAt?: string;
   score: string;
   classDay: string;
   present: boolean;
   manualOverride?: boolean;
+  locked?: boolean;
 };
 
 export type ClassDay = {

@@ -73,7 +73,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "connect-src 'self' https: wss: ws:",
     "frame-src 'self' https://drive.google.com https://docs.google.com https://*.google.com https://www.youtube.com https://youtube.com https://*.youtube.com",
     "media-src 'self' blob: data: https:",
-    "frame-ancestors 'self' https://*.run.app https://*.google.com https://ai.studio",
+    "frame-ancestors 'self' https://*.run.app https://*.google.com https://*.googleusercontent.com https://ai.studio https://*.aistudio.google.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -84,7 +84,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader("Content-Security-Policy", cspDirectives);
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(self)");
   next();
 }
 

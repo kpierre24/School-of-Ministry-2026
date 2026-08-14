@@ -68,13 +68,13 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
   const safeAssignments = assignments || [];
   const studentNameLower = (student?.name || '').toLowerCase().trim();
 
-  const studentPayments = safePayments.filter(p => p && p.studentName && p.studentName.toLowerCase().trim() === studentNameLower);
+  const studentPayments = safePayments.filter(p => p && p.studentName && (p?.studentName || '').toLowerCase().trim() === studentNameLower);
   const totalTuition = studentPayments.reduce((acc, p) => acc + (p.totalTuition || 0), 1200);
   const totalPaid = studentPayments.reduce((acc, p) => acc + (p.amountPaid || 0), 0);
   const balance = Math.max(0, totalTuition - totalPaid);
 
   // Student specific submissions
-  const studentSubmissions = safeSubmissions.filter(s => s && s.studentName && s.studentName.toLowerCase().trim() === studentNameLower);
+  const studentSubmissions = safeSubmissions.filter(s => s && s.studentName && (s?.studentName || '').toLowerCase().trim() === studentNameLower);
 
   // Academic level
   const currentLevel = ACADEMIC_LEVELS.find(l => l.id === student?.levelId) || ACADEMIC_LEVELS[0];
@@ -229,7 +229,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                 <div className="flex items-center gap-4 text-xs text-slate-300 flex-wrap">
                   <span className="flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-amber-400" />
-                    {student.email || `${student.name.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`}
+                    {student.email || `${(student.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`}
                   </span>
                   <span className="flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-indigo-400" />
@@ -587,7 +587,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                   rows={2}
                   required
                   placeholder="Record observations regarding attendance, homework progress, or spiritual growth..."
-                  value={newNoteText}
+                  value={newNoteText ?? ''}
                   onChange={(e) => setNewNoteText(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400"
                 />

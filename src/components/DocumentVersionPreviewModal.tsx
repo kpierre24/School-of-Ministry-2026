@@ -95,7 +95,7 @@ export const DocumentVersionPreviewModal: React.FC<DocumentVersionPreviewModalPr
               <span className="flex items-center gap-1.5">
                 <Eye className="w-4 h-4 text-amber-400" /> Embedded Interactive Document Preview
               </span>
-              <span>{resource.title}.{resource.format.toLowerCase()}</span>
+              <span>{resource.title}.{(resource.format || '').toLowerCase()}</span>
             </div>
 
             <div className="p-4 bg-slate-900/80 rounded-xl leading-relaxed text-slate-300 max-h-48 overflow-y-auto">

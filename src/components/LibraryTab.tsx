@@ -70,7 +70,7 @@ const isBinaryZipContent = (text?: string): boolean => {
 
 // Helper to extract clean text from file using Mammoth for DOCX
 const extractCleanTextFromFile = async (file: File): Promise<string> => {
-  const fileNameLower = file.name.toLowerCase();
+  const fileNameLower = (file.name || '').toLowerCase();
   const isDocx = fileNameLower.endsWith('.docx') || fileNameLower.endsWith('.doc') || file.type.includes('wordprocessingml') || file.type.includes('msword');
 
   if (isDocx) {
@@ -383,10 +383,10 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
   // Filter logic
   const filteredResources = resources.filter(r => {
-    const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.summary.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (r.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (r.author || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (r.courseCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (r.summary || '').toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
 
     if (categoryFilter !== 'all' && r.category !== categoryFilter) return false;
@@ -402,7 +402,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
       // Direct file data url download
       const link = document.createElement('a');
       link.href = resource.fileDataUrl;
-      link.download = resource.fileName || `${resource.title.replace(/\s+/g, '_')}.${resource.format.toLowerCase()}`;
+      link.download = resource.fileName || `${resource.title.replace(/\s+/g, '_')}.${(resource.format || '').toLowerCase()}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1502,7 +1502,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl text-slate-800 space-y-3">
                     <div className="flex items-center gap-2.5 font-black text-indigo-950 text-sm">
                       <FileText className="w-5 h-5 text-indigo-600" />
-                      <span>{previewResource.format} Document Attached ({previewResource.fileName || `${previewResource.title}.${previewResource.format.toLowerCase()}`})</span>
+                      <span>{previewResource.format} Document Attached ({previewResource.fileName || `${previewResource.title}.${(previewResource.format || '').toLowerCase()}`})</span>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed">
                       This lesson is stored in native <strong>{previewResource.format}</strong> document format ({previewResource.size}). Gemini AI has evaluated the lesson structure and generated the full executive summary and key takeaways above.
@@ -1574,7 +1574,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     type="text"
                     required
                     placeholder="Dr. Faculty Director"
-                    value={editAuthor}
+                    value={editAuthor ?? ''}
                     onChange={(e) => setEditAuthor(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
                   />
@@ -1585,7 +1585,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     type="text"
                     required
                     placeholder="SOM-101"
-                    value={editCourseCode}
+                    value={editCourseCode ?? ''}
                     onChange={(e) => setEditCourseCode(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-indigo-500 focus:bg-white"
                   />
@@ -1596,7 +1596,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Category</label>
                   <select
-                    value={editCategory}
+                    value={editCategory ?? ''}
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-indigo-500 focus:bg-white"
                   >
@@ -1623,7 +1623,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   required
                   type="text"
                   placeholder="Expository Hermeneutics"
-                  value={editTitle}
+                  value={editTitle ?? ''}
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-indigo-500 focus:bg-white"
                 />
@@ -1635,7 +1635,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   required
                   rows={3}
                   placeholder="Summarize this library resource..."
-                  value={editSummary}
+                  value={editSummary ?? ''}
                   onChange={(e) => setEditSummary(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500 focus:bg-white font-medium"
                 />
@@ -1646,7 +1646,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 <textarea
                   rows={3}
                   placeholder="Add key learning points, each on a new line..."
-                  value={editKeyTakeaways}
+                  value={editKeyTakeaways ?? ''}
                   onChange={(e) => setEditKeyTakeaways(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500 focus:bg-white font-medium"
                 />
@@ -1657,7 +1657,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 <textarea
                   rows={6}
                   placeholder="Complete reference text or lesson transcripts..."
-                  value={editFullContent}
+                  value={editFullContent ?? ''}
                   onChange={(e) => setEditFullContent(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500 focus:bg-white font-mono text-[11px]"
                 />

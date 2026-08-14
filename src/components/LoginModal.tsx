@@ -19,17 +19,22 @@ import {
   Quote,
   RefreshCw,
   Landmark,
-  Award
+  Award,
+  Mail,
+  LogOut
 } from 'lucide-react';
-import { AppUser, UserRole, authenticateUser, UserCredential } from '../lib/userAuth';
+import { AppUser, UserRole, UserCredential } from '../lib/userAuth';
+import { authenticateWithSupabase, updatePasswordInSupabase } from '../lib/supabaseAuth';
 
 interface LoginModalProps {
   isOpen?: boolean;
   onClose?: () => void;
   onLoginSuccess: (user: AppUser) => void;
-  userCredentials: UserCredential[];
-  onChangePassword: (username: string, newPin: string) => void;
+  onLogout?: () => void;
+  userCredentials?: UserCredential[];
+  onChangePassword?: (emailOrUsername: string, newPassword: string) => void;
   currentUser?: AppUser | null;
+  onSyncCredentials?: (creds: UserCredential[]) => void;
 }
 
 // Welcoming Scripture Verse Database
@@ -70,19 +75,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen = true,
   onClose,
   onLoginSuccess,
+  onLogout,
   userCredentials = [],
   onChangePassword,
-  currentUser = null
+  currentUser = null,
+  onSyncCredentials
 }) => {
   const [activeTab, setActiveTab] = useState<UserRole>('student');
-  const [usernameInput, setUsernameInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scriptureIndex, setScriptureIndex] = useState(0);
-  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // First-time login change PIN/password states
+  // First-time login change password states
   const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
   const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -91,11 +99,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
 
-  const validateUsername = (value: string): string | null => {
-    if (!value.trim()) return 'Username is required';
-    if (value.trim().length < 2) return 'Username must be at least 2 characters';
-    if (activeTab === 'student' && !/^[A-Z][a-z]+[A-Z][a-z]+$/i.test(value.trim())) {
-      return 'Student format: First Initial + Last Name (e.g. ABurke)';
+  const validateEmailOrUser = (value: string): string | null => {
+    if (!value.trim()) return 'Email address is required';
+    if (value.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+      return 'Please enter a valid email address';
     }
     return null;
   };
@@ -107,13 +114,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const isLoginFormValid = () => {
-    return validateUsername(usernameInput) === null && validatePassword(passwordInput) === null;
+    return validateEmailOrUser(emailInput) === null && validatePassword(passwordInput) === null;
   };
 
   React.useEffect(() => {
-    setUsernameInput('');
+    // Populate suggested email or keep clean
+    setEmailInput('');
     setPasswordInput('');
-    setUsernameError(null);
+    setEmailError(null);
     setPasswordError(null);
   }, [activeTab]);
 
@@ -126,35 +134,61 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleSelectTab = (tab: UserRole) => {
     setActiveTab(tab);
     setErrorMessage(null);
-    setUsernameInput('');
+    setEmailInput('');
     setPasswordInput('');
     setShowPasswordChangeForm(false);
     setPendingUser(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Quick autofill demo account
+  const handleAutofillDemo = (role: UserRole) => {
+    setActiveTab(role);
     setErrorMessage(null);
-
-    const result = authenticateUser(usernameInput, passwordInput, userCredentials);
-    if (result.success && result.user) {
-      if (result.mustChangePassword) {
-        // Enforce change pin/password on first try
-        setPendingUser(result.user);
-        setShowPasswordChangeForm(true);
-        setNewPassword('');
-        setConfirmPassword('');
-        setChangeError(null);
-      } else {
-        onLoginSuccess(result.user);
-        if (onClose) onClose();
-      }
+    if (role === 'admin') {
+      setEmailInput('kpierre24@gmail.com');
+      setPasswordInput('password1');
+    } else if (role === 'teacher') {
+      const teacher = userCredentials.find(c => c.role === 'teacher');
+      setEmailInput(teacher?.email || 'gillian.selkridge@hteim.edu');
+      setPasswordInput('password1');
     } else {
-      setErrorMessage(result.error || 'Authentication failed');
+      const student = userCredentials.find(c => c.role === 'student');
+      setEmailInput(student?.email || 'aburke@student.hteim.edu');
+      setPasswordInput('password1');
     }
   };
 
-  const handleChangePasswordSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsVerifying(true);
+
+    try {
+      const result = await authenticateWithSupabase(emailInput, passwordInput, userCredentials);
+      setIsVerifying(false);
+
+      if (result.success && result.user) {
+        if (result.mustChangePassword) {
+          // Enforce change password on first login
+          setPendingUser(result.user);
+          setShowPasswordChangeForm(true);
+          setNewPassword('');
+          setConfirmPassword('');
+          setChangeError(null);
+        } else {
+          onLoginSuccess(result.user);
+          if (onClose) onClose();
+        }
+      } else {
+        setErrorMessage(result.error || 'Supabase authentication failed. Please verify your credentials.');
+      }
+    } catch (err: any) {
+      setIsVerifying(false);
+      setErrorMessage(err.message || 'Authentication error during Supabase verification.');
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setChangeError(null);
 
@@ -162,28 +196,40 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     const confPass = confirmPassword.trim();
 
     if (!newPass) {
-      setChangeError('Please enter a new password/PIN.');
+      setChangeError('Please enter a new password.');
       return;
     }
 
-    if (newPass.length < 4) {
-      setChangeError('Password/PIN must be at least 4 characters long.');
+    if (newPass.length < 6) {
+      setChangeError('New password must be at least 6 characters long.');
       return;
     }
 
-    if (newPass === '1234' || newPass === '12345') {
-      setChangeError('You cannot use default 1234 or 12345 passwords. Please select a unique, custom password/PIN.');
+    if (newPass.toLowerCase() === 'password1' || newPass.toLowerCase() === 'password' || newPass === '1234' || newPass === '12345') {
+      setChangeError('You cannot use the default "password1" or simple passwords. Please create a unique, secure password.');
       return;
     }
 
     if (newPass !== confPass) {
-      setChangeError('Passwords do not match.');
+      setChangeError('Passwords do not match. Please re-type to confirm.');
       return;
     }
 
     if (pendingUser) {
-      onChangePassword(pendingUser.username, newPass);
-      onLoginSuccess(pendingUser);
+      const identifier = pendingUser.email || pendingUser.username || pendingUser.name;
+      if (onChangePassword) {
+        onChangePassword(identifier, newPass);
+      }
+      try {
+        await updatePasswordInSupabase(identifier, newPass, userCredentials);
+      } catch (err) {
+        console.warn('Password cloud update notice:', err);
+      }
+      const userWithoutMustChange: AppUser = {
+        ...pendingUser,
+        mustChangePassword: false
+      };
+      onLoginSuccess(userWithoutMustChange);
       setShowPasswordChangeForm(false);
       setPendingUser(null);
       if (onClose) onClose();
@@ -217,9 +263,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] bg-slate-200/70 border border-slate-300/40 px-3 py-1 rounded-full text-slate-600 font-extrabold uppercase tracking-widest font-mono">
-              Academic Year 2026
-            </span>
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full text-indigo-900 font-bold">
+                  Signed in: <strong>{currentUser.name}</strong> ({currentUser.role})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onLogout) onLogout();
+                  }}
+                  className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            ) : (
+              <span className="text-[10px] bg-slate-200/70 border border-slate-300/40 px-3 py-1 rounded-full text-slate-600 font-extrabold uppercase tracking-widest font-mono">
+                Academic Year 2026
+              </span>
+            )}
           </div>
         </div>
 
@@ -351,6 +415,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </p>
             </div>
 
+            {/* Current Authenticated User Banner */}
+            {currentUser && (
+              <div className="p-3.5 bg-amber-50/90 border-b border-amber-200 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 font-black text-xs flex items-center justify-center shrink-0">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
+                    <p className="text-[10px] text-amber-800 font-mono font-medium capitalize">{currentUser.role} Account • {currentUser.email}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onLogout) onLogout();
+                  }}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            )}
+
             {/* Custom Tab Selectors (only visible when not in password change mode) */}
             {!showPasswordChangeForm && (
               <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1">
@@ -401,10 +490,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] font-bold flex items-start gap-2">
                   <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-extrabold">First-Time PIN Change Required</p>
+                    <p className="font-extrabold">First-Time Password Change Required</p>
                     <p className="font-medium mt-0.5 text-slate-700">
                       Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! 
-                      For security, you must set a new confidential password/PIN before proceeding.
+                      For security, you must set a new confidential password before proceeding.
                     </p>
                   </div>
                 </div>
@@ -419,7 +508,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                      New Password/PIN
+                      New Password (Minimum 6 characters)
                     </label>
                     <div className="relative">
                       <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -428,14 +517,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         value={newPassword}
                         onChange={(e) => {
                           setNewPassword(e.target.value);
-                          const err = validatePassword(e.target.value) || (e.target.value === '1234' || e.target.value === '12345' ? 'Cannot use default 1234 or 12345' : null);
+                          const val = e.target.value;
+                          let err = null;
+                          if (!val) err = 'Password is required';
+                          else if (val.length < 6) err = 'Password must be at least 6 characters';
+                          else if (val.toLowerCase() === 'password1' || val.toLowerCase() === 'password' || val === '1234' || val === '12345') err = 'Cannot use default or weak password';
                           setNewPasswordError(err);
                         }}
-                        onBlur={() => {
-                          const err = validatePassword(newPassword) || (newPassword === '1234' || newPassword === '12345' ? 'Cannot use default 1234 or 12345' : null);
-                          setNewPasswordError(err);
-                        }}
-                        placeholder="Choose custom password"
+                        placeholder="Create strong confidential password"
                         className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${newPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                         autoFocus
@@ -450,7 +539,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                      Confirm New Password/PIN
+                      Confirm New Password
                     </label>
                     <div className="relative">
                       <Lock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -462,11 +551,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           const err = e.target.value !== newPassword ? 'Passwords do not match' : null;
                           setConfirmPasswordError(err);
                         }}
-                        onBlur={() => {
-                          const err = confirmPassword !== newPassword ? 'Passwords do not match' : null;
-                          setConfirmPasswordError(err);
-                        }}
-                        placeholder="Verify chosen PIN"
+                        placeholder="Re-type new password"
                         className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${confirmPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                       />
@@ -497,7 +582,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     disabled={!!newPasswordError || !!confirmPasswordError || !newPassword || !confirmPassword}
                     className="flex-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Set PIN & Enter Portal
+                    Set Password & Enter Portal
                   </button>
                 </div>
               </form>
@@ -513,38 +598,41 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="space-y-3 pt-1">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                      <span>Username</span>
-                      {activeTab === 'student' && (
-                        <span className="text-[8px] text-slate-400 font-mono italic normal-case">
-                          Format: First Initial + Last Name (e.g. ABurke)
+                      <span>User Email Address</span>
+                      {activeTab === 'admin' && (
+                        <span className="text-[9px] text-purple-700 font-mono font-bold">
+                          Admin: kpierre24@gmail.com
                         </span>
                       )}
                     </label>
                     <div className="relative">
-                      <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Mail className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
-                        value={usernameInput}
+                        value={emailInput}
                         onChange={(e) => {
-                          setUsernameInput(e.target.value);
-                          setUsernameError(validateUsername(e.target.value));
+                          setEmailInput(e.target.value);
+                          setEmailError(validateEmailOrUser(e.target.value));
                         }}
-                        onBlur={() => setUsernameError(validateUsername(usernameInput))}
-                        placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${usernameError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                        onBlur={() => setEmailError(validateEmailOrUser(emailInput))}
+                        placeholder={activeTab === 'admin' ? 'kpierre24@gmail.com' : activeTab === 'teacher' ? 'e.g. gillian.selkridge@hteim.edu' : 'e.g. aburke@student.hteim.edu'}
+                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${emailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                       />
                     </div>
-                    {usernameError && (
+                    {emailError && (
                       <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {usernameError}
+                        <AlertCircle className="w-3 h-3" /> {emailError}
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                      <span>Password / PIN</span>
+                      <span>Password</span>
+                      <span className="text-[9px] text-slate-400 font-mono">
+                        Default: password1
+                      </span>
                     </label>
                     <div className="relative">
                       <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -556,7 +644,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           setPasswordError(validatePassword(e.target.value));
                         }}
                         onBlur={() => setPasswordError(validatePassword(passwordInput))}
-                        placeholder="••••••"
+                        placeholder="••••••••"
                         className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${passwordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                         required
                       />
@@ -569,13 +657,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
                 </div>
 
+                {/* Quick Auto-Fill Demo Helper */}
+                <div className="pt-1 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-400 font-medium">Quick sign in:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleAutofillDemo(activeTab)}
+                    className="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
+                  >
+                    Auto-fill default {activeTab} login
+                  </button>
+                </div>
+
                 <button
                   type="submit"
-                  disabled={!isLoginFormValid()}
+                  disabled={!isLoginFormValid() || isVerifying}
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>Enter {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isVerifying ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <span>Verifying Central Registry...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Enter {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </form>
             )}
@@ -698,10 +807,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-xs font-bold flex items-start gap-2.5">
               <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-extrabold">First-Time PIN Change Required</p>
+                <p className="font-extrabold">First-Time Password Change Required</p>
                 <p className="font-medium mt-0.5 text-slate-700">
                   Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! 
-                  For security, you must set a new confidential password/PIN before proceeding.
+                  For security, you must set a new confidential password before proceeding.
                 </p>
               </div>
             </div>
@@ -716,37 +825,59 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-black uppercase text-slate-600 tracking-wider">
-                  New Password/PIN
+                  New Password (Minimum 6 characters)
                 </label>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Choose custom password"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      const val = e.target.value;
+                      let err = null;
+                      if (!val) err = 'Password is required';
+                      else if (val.length < 6) err = 'Password must be at least 6 characters';
+                      else if (val.toLowerCase() === 'password1' || val.toLowerCase() === 'password' || val === '1234' || val === '12345') err = 'Cannot use default or weak password';
+                      setNewPasswordError(err);
+                    }}
+                    placeholder="Create strong confidential password"
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${newPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                     required
                     autoFocus
                   />
                 </div>
+                {newPasswordError && (
+                  <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {newPasswordError}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-black uppercase text-slate-600 tracking-wider">
-                  Confirm New Password/PIN
+                  Confirm New Password
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Verify chosen PIN"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      const err = e.target.value !== newPassword ? 'Passwords do not match' : null;
+                      setConfirmPasswordError(err);
+                    }}
+                    placeholder="Verify chosen password"
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${confirmPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                     required
                   />
                 </div>
+                {confirmPasswordError && (
+                  <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {confirmPasswordError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -756,6 +887,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 onClick={() => {
                   setShowPasswordChangeForm(false);
                   setPendingUser(null);
+                  setNewPasswordError(null);
+                  setConfirmPasswordError(null);
                 }}
                 className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer"
               >
@@ -763,9 +896,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="flex-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all cursor-pointer text-center"
+                disabled={!!newPasswordError || !!confirmPasswordError || !newPassword || !confirmPassword}
+                className="flex-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Set PIN & Enter Portal
+                Set Password & Enter Portal
               </button>
             </div>
           </form>
@@ -778,62 +912,125 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             )}
 
-            {/* Username Input */}
+            {/* Email Input */}
             <div className="space-y-1.5">
               <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
-                <span>Username</span>
-                {activeTab === 'student' && (
-                  <span className="text-[10px] text-slate-400 font-mono normal-case">
-                    Format: First Initial + Last Name (e.g. ABurke)
+                <span>User Email Address</span>
+                {activeTab === 'admin' && (
+                  <span className="text-[10px] text-purple-700 font-mono font-bold">
+                    Admin: kpierre24@gmail.com
                   </span>
                 )}
               </label>
               <div className="relative">
-                <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder={activeTab === 'admin' ? 'Enter admin username' : activeTab === 'teacher' ? 'Enter teacher username' : 'e.g. ABurke'}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                  value={emailInput}
+                  onChange={(e) => {
+                    setEmailInput(e.target.value);
+                    setEmailError(validateEmailOrUser(e.target.value));
+                  }}
+                  onBlur={() => setEmailError(validateEmailOrUser(emailInput))}
+                  placeholder={activeTab === 'admin' ? 'kpierre24@gmail.com' : activeTab === 'teacher' ? 'e.g. gillian.selkridge@hteim.edu' : 'e.g. aburke@student.hteim.edu'}
+                  className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${emailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                   required
                 />
               </div>
+              {emailError && (
+                <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {emailError}
+                </p>
+              )}
             </div>
 
             {/* Password Input */}
             <div className="space-y-1.5">
               <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
-                <span>Password / PIN</span>
+                <span>Password</span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Default: password1
+                </span>
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
                   value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="••••••"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPasswordError(validatePassword(e.target.value));
+                  }}
+                  onBlur={() => setPasswordError(validatePassword(passwordInput))}
+                  placeholder="••••••••"
+                  className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${passwordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                   required
                 />
               </div>
+              {passwordError && (
+                <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {passwordError}
+                </p>
+              )}
             </div>
 
-            {/* Current Logged In Banner */}
+            {/* Quick Auto-Fill Demo Helper */}
+            <div className="flex items-center justify-between text-[11px] pt-0.5">
+              <span className="text-slate-400">Quick sign in:</span>
+              <button
+                type="button"
+                onClick={() => handleAutofillDemo(activeTab)}
+                className="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
+              >
+                Auto-fill default {activeTab} login
+              </button>
+            </div>
+
+            {/* Current Logged In Banner with Logout */}
             {currentUser && (
-              <div className="p-3 bg-slate-100 rounded-xl text-xs flex items-center justify-between text-slate-700">
-                <span className="font-medium">Currently logged in as: <strong>{currentUser.name}</strong> ({currentUser.role})</span>
-                <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">Active</span>
+              <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs flex items-center justify-between text-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-900 font-bold text-xs flex items-center justify-center shrink-0">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-700">Currently in as: </span>
+                    <strong className="text-slate-900">{currentUser.name}</strong> 
+                    <span className="ml-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-200 text-amber-900">
+                      {currentUser.role}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onLogout) onLogout();
+                  }}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
               </div>
             )}
 
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={!isLoginFormValid() || isVerifying}
+              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {isVerifying ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  <span>Verifying Central Registry...</span>
+                </>
+              ) : (
+                <>
+                  <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
         )}

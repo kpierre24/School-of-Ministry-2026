@@ -87,15 +87,15 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
 
   const currentUserRole = appUser?.role || 'student';
   const currentUserName = appUser?.studentName || appUser?.name || 'Student';
-  const currentUserEmail = appUser?.email || `${currentUserName.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`;
+  const currentUserEmail = appUser?.email || `${(currentUserName || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`;
 
   // Filtered Messages
   const filteredMessages = useMemo(() => {
     return messages.filter(msg => {
       // Role filter visibility
       if (currentUserRole === 'student') {
-        const isSender = msg.senderName.toLowerCase() === currentUserName.toLowerCase() || msg.senderEmail === currentUserEmail;
-        const isRecipient = msg.recipientName?.toLowerCase().includes(currentUserName.toLowerCase()) || msg.recipientType === 'all_staff';
+        const isSender = (msg.senderName || '').toLowerCase() === (currentUserName || '').toLowerCase() || msg.senderEmail === currentUserEmail;
+        const isRecipient = (msg.recipientName || '').toLowerCase().includes((currentUserName || '').toLowerCase()) || msg.recipientType === 'all_staff';
         if (!isSender && !isRecipient) return false;
       }
 
@@ -112,7 +112,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
       if (activeFilter === 'open' && msg.status !== 'open') return false;
       if (activeFilter === 'in_progress' && msg.status !== 'in_progress') return false;
       if (activeFilter === 'resolved' && msg.status !== 'resolved') return false;
-      if (activeFilter === 'sent_by_me' && msg.senderName.toLowerCase() !== currentUserName.toLowerCase()) return false;
+      if (activeFilter === 'sent_by_me' && (msg.senderName || '').toLowerCase() !== (currentUserName || '').toLowerCase()) return false;
 
       // Category
       if (selectedCategory !== 'all' && msg.category !== selectedCategory) return false;
@@ -120,9 +120,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
       // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchSub = msg.subject.toLowerCase().includes(q);
-        const matchSender = msg.senderName.toLowerCase().includes(q);
-        const matchBody = msg.content.toLowerCase().includes(q);
+        const matchSub = (msg.subject || '').toLowerCase().includes(q);
+        const matchSender = (msg.senderName || '').toLowerCase().includes(q);
+        const matchBody = (msg.content || '').toLowerCase().includes(q);
         const matchRecipient = (msg.recipientName || '').toLowerCase().includes(q);
         if (!matchSub && !matchSender && !matchBody && !matchRecipient) return false;
       }
@@ -567,7 +567,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 {/* Status Toggle & Supabase Archive Actions */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
                   <select
-                    value={activeMessage.status}
+                    value={activeMessage?.status ?? 'unread'}
                     onChange={(e) => onUpdateStatus(activeMessage.id, e.target.value as AppMessage['status'])}
                     className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
                   >
@@ -895,7 +895,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   {availableStudents.length > 0 && (
                     <optgroup label="Enrolled Classmates & Students">
                       {availableStudents
-                        .filter(st => st.name.toLowerCase() !== currentUserName.toLowerCase())
+                        .filter(st => (st.name || '').toLowerCase() !== (currentUserName || '').toLowerCase())
                         .map(st => {
                           const val = st.name.startsWith('Student:') ? st.name : `Student: ${st.name}`;
                           return (
