@@ -142,6 +142,16 @@ describe('userAuth', () => {
       const result = authenticateUser('KPIERRE24@GMAIL.COM', 'password1', credentials);
       expect(result.success).toBe(true);
     });
+
+    it('should not require password change if user has set a custom password', () => {
+      const customCreds: UserCredential[] = [
+        { id: 'u-1', email: 'kpierre24@gmail.com', username: 'admin', name: 'Kendell Pierre', role: 'admin', passwordHash: 'MySecret2026!', mustChangePassword: false, status: 'active', createdAt: '2026-01-01' }
+      ];
+      const result = authenticateUser('kpierre24@gmail.com', 'MySecret2026!', customCreds);
+      expect(result.success).toBe(true);
+      expect(result.mustChangePassword).toBe(false);
+      expect(result.user?.mustChangePassword).toBe(false);
+    });
   });
 
   describe('ensureUserCredentials', () => {

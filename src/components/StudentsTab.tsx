@@ -95,7 +95,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'perfect' | 'satisfactory' | 'at_risk' | 'fifty_percent'>('all');
-  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc'>('name_asc');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc' | 'score_asc'>('name_asc');
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState('');
   const [confirmingDeleteFor, setConfirmingDeleteFor] = useState<string | null>(null);
@@ -233,6 +233,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       if (sortBy === 'rate_desc') return b.rate - a.rate;
       if (sortBy === 'rate_asc') return a.rate - b.rate;
       if (sortBy === 'score_desc') return (b.avgScore || 0) - (a.avgScore || 0);
+      if (sortBy === 'score_asc') return (a.avgScore || 0) - (b.avgScore || 0);
       return 0;
     });
   }, [students, searchQuery, statusFilter, satisfactoryThreshold, atRiskThreshold, sortBy]);
@@ -378,6 +379,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 <option value="rate_desc">Attendance (High &rarr; Low)</option>
                 <option value="rate_asc">Attendance (Low &rarr; High)</option>
                 <option value="score_desc">Avg Score (High &rarr; Low)</option>
+                <option value="score_asc">Avg Score (Low &rarr; High)</option>
               </select>
             </div>
           </div>

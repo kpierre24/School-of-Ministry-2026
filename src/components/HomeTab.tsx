@@ -1119,16 +1119,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Portal Access Card */}
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 space-y-4 flex flex-col justify-between">
+        <section className="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Academic Portal Account</h3>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Academic Portal Account</h3>
             </div>
 
             {appUser ? (
               <div className="space-y-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-between gap-3">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-150 dark:border-slate-700/85 rounded-xl flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
                       {appUser.name.charAt(0).toUpperCase()}
@@ -1150,7 +1150,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   )}
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-prose">
                   Signed in to HTEIM Academic Portal. Check attendance, take scripture quizzes, download handouts, and view tuition balances.
                 </p>
 
@@ -1192,7 +1192,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-prose">
                   Sign in to access your student records, submit assignments, view tuition statements, and track academic attendance.
                 </p>
 
@@ -1218,19 +1218,19 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
 
         {/* Live Broadcast & Upcoming Class Day */}
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5 flex flex-col justify-between">
-          <div className="space-y-3.5">
+        <section className="md:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
+          <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> Live Class Schedule
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 animate-pulse text-indigo-600" /> Live Class Schedule
               </span>
               <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                 Next: {nextClassTitle}
               </span>
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-900 dark:text-white">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/45 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-900 dark:text-white">
                 <span>Tuesday & Thursday Session</span>
                 <span className="text-slate-600 dark:text-slate-300 font-mono">7:00 PM EST</span>
               </div>
@@ -1250,25 +1250,21 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
 
         {/* Core Vision & Covenant Mandate */}
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3.5 flex flex-col justify-between">
-          <div className="space-y-3.5">
-            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">HTEIM Covenant Mandate</h3>
-            
-            <div className="space-y-3 text-xs">
-              <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
-                <span className="font-semibold text-[10px] uppercase text-slate-600 dark:text-slate-300 block">Vision</span>
-                <p className="text-slate-800 dark:text-slate-200 font-bold italic font-serif">
-                  "Bringing Heaven to Earth, Taking People to Heaven"
-                </p>
-              </div>
-
-              <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
-                <span className="font-semibold text-[10px] uppercase text-slate-600 dark:text-slate-300 block">Ephesians 2:20 Grounded</span>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Built on the foundation of the apostles and prophets, Christ Jesus Himself being the chief cornerstone.
-                </p>
-              </div>
+        <section className="md:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 md:items-center md:justify-between">
+          <div className="space-y-2 max-w-xl">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">HTEIM Covenant Mandate</h3>
+            <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
+              <span className="font-semibold text-[10px] uppercase text-slate-600 dark:text-slate-300 block">Ephesians 2:20 Grounded</span>
+              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed max-w-prose">
+                Built on the foundation of the apostles and prophets, Christ Jesus Himself being the chief cornerstone.
+              </p>
             </div>
+          </div>
+          <div className="border-l-2 border-indigo-500 pl-4 py-2 shrink-0">
+            <span className="font-bold text-[10px] uppercase text-indigo-600 dark:text-indigo-400 block tracking-wider">Vision Statement</span>
+            <p className="text-slate-800 dark:text-slate-200 font-extrabold italic text-sm font-serif">
+              "Bringing Heaven to Earth, Taking People to Heaven"
+            </p>
           </div>
         </section>
 

@@ -74,6 +74,103 @@ export const getFacultyEmailFromName = (fullName: string, customEmail?: string):
   return `${slug || 'teacher'}@hteim.edu`;
 };
 
+/**
+ * Universal matcher for user credentials against strings (email, username, name, ID) or AppUser objects.
+ */
+export const isMatchingCredential = (cred: UserCredential, query: string | AppUser | undefined | null): boolean => {
+  if (!cred || !query) return false;
+
+  if (typeof query === 'object') {
+    const q = query as AppUser;
+    if (cred.id && q.id && cred.id === q.id) return true;
+
+    const credEmail = (cred.email || '').toLowerCase().trim();
+    const qEmail = (q.email || '').toLowerCase().trim();
+    if (credEmail && qEmail && credEmail === qEmail) return true;
+
+    const credUser = (cred.username || '').toLowerCase().trim();
+    const qUser = (q.username || '').toLowerCase().trim();
+    if (credUser && qUser && credUser === qUser) return true;
+
+    const credName = (cred.name || cred.studentName || '').toLowerCase().trim();
+    const qName = (q.name || q.studentName || '').toLowerCase().trim();
+    if (credName && qName && credName === qName) return true;
+
+    return false;
+  }
+
+  const cleanInput = String(query).toLowerCase().trim();
+  if (!cleanInput) return false;
+
+  if (cred.id && cred.id.toLowerCase() === cleanInput) return true;
+  if (cred.email && cred.email.toLowerCase().trim() === cleanInput) return true;
+  if (cred.username && cred.username.toLowerCase().trim() === cleanInput) return true;
+  if (cred.name && cred.name.toLowerCase().trim() === cleanInput) return true;
+  if (cred.studentName && cred.studentName.toLowerCase().trim() === cleanInput) return true;
+
+  const displayName = cred.name || cred.studentName || '';
+  if (displayName) {
+    const genUser = generateStudentUsername(displayName).toLowerCase();
+    if (genUser && genUser === cleanInput) return true;
+
+    const genEmail = getStudentEmailFromName(displayName, cred.email).toLowerCase();
+    if (genEmail && genEmail === cleanInput) return true;
+
+    const genFacEmail = getFacultyEmailFromName(displayName, cred.email).toLowerCase();
+    if (genFacEmail && genFacEmail === cleanInput) return true;
+  }
+
+  return false;
+};
+
+/**
+ * Safely merges two credentials arrays preserving non-default passwords and mustChangePassword=false flags.
+ */
+export const mergeUserCredentials = (listA: UserCredential[], listB: UserCredential[]): UserCredential[] => {
+  const result: UserCredential[] = [...(listA || [])].filter(Boolean);
+
+  (listB || []).filter(Boolean).forEach(bCred => {
+    const idx = result.findIndex(aCred => isMatchingCredential(aCred, bCred));
+    if (idx === -1) {
+      result.push(bCred);
+    } else {
+      const aCred = result[idx];
+      const aChanged = aCred.mustChangePassword === false || (aCred.passwordHash !== 'password1' && aCred.passwordHash !== '1234' && aCred.passwordHash !== 'password');
+      const bChanged = bCred.mustChangePassword === false || (bCred.passwordHash !== 'password1' && bCred.passwordHash !== '1234' && bCred.passwordHash !== 'password');
+
+      if (aChanged && !bChanged) {
+        result[idx] = {
+          ...bCred,
+          ...aCred,
+          passwordHash: aCred.passwordHash,
+          mustChangePassword: false
+        };
+      } else if (bChanged && !aChanged) {
+        result[idx] = {
+          ...aCred,
+          ...bCred,
+          passwordHash: bCred.passwordHash,
+          mustChangePassword: false
+        };
+      } else if (aChanged && bChanged) {
+        result[idx] = {
+          ...bCred,
+          ...aCred,
+          passwordHash: aCred.passwordHash,
+          mustChangePassword: false
+        };
+      } else {
+        result[idx] = {
+          ...aCred,
+          ...bCred
+        };
+      }
+    }
+  });
+
+  return result;
+};
+
 // Validate user credentials against the dynamic credentials list (Email or Username)
 export const authenticateUser = (
   identifierInput: string, 
@@ -90,12 +187,8 @@ export const authenticateUser = (
     return { success: false, error: 'Please enter your password.' };
   }
 
-  // Find user by Email (case-insensitive) or by username / name
-  const cred = (credentials || []).filter(Boolean).find(c => 
-    (c && c.email && c.email.toLowerCase() === idLower) ||
-    (c && c.username && c.username.toLowerCase() === idLower) ||
-    (c && c.name && c.name.toLowerCase() === idLower)
-  );
+  // Find user by Email, Username, or Name using robust matching
+  const cred = (credentials || []).filter(Boolean).find(c => isMatchingCredential(c, idLower));
 
   if (cred) {
     if (cred.status === 'suspended') {
@@ -105,11 +198,13 @@ export const authenticateUser = (
       };
     }
 
-    // Direct password match (handles 'password1', '1234', custom passwords, and legacy pins)
+    const isDefaultPassword = (hash?: string) => !hash || hash === 'password1' || hash === '1234' || hash === 'password';
+    const mustChange = cred.mustChangePassword === false
+      ? isDefaultPassword(cred.passwordHash)
+      : (cred.mustChangePassword === true || isDefaultPassword(cred.passwordHash));
     const isDefaultInput = (p === 'password1' || p === '1234');
-    const isDefaultHash = (cred.passwordHash === 'password1' || cred.passwordHash === '1234' || cred.passwordHash === 'password' || cred.mustChangePassword);
 
-    if (cred.passwordHash === p || (isDefaultInput && isDefaultHash)) {
+    if (cred.passwordHash === p || (isDefaultInput && mustChange)) {
       const user: AppUser = {
         id: cred.id,
         email: cred.email || (cred.role === 'student' 
@@ -121,16 +216,16 @@ export const authenticateUser = (
         studentName: cred.studentName || (cred.role === 'student' ? cred.name : undefined),
         moduleOrDepartment: cred.moduleOrDepartment,
         status: cred.status,
-        mustChangePassword: cred.mustChangePassword
+        mustChangePassword: mustChange
       };
       
       return {
         success: true,
         user,
-        mustChangePassword: cred.mustChangePassword
+        mustChangePassword: mustChange
       };
     } else {
-      return { success: false, error: 'Incorrect password. Default for first login is "password1".' };
+      return { success: false, error: 'Incorrect password.' };
     }
   }
 
@@ -138,7 +233,11 @@ export const authenticateUser = (
   if (idLower === 'admin' || idLower === 'admin@hteim.edu') {
     const adminUser = (credentials || []).filter(Boolean).find(c => c && c.role === 'admin');
     if (adminUser) {
-      if (adminUser.passwordHash === p || p === DEFAULT_USER_PASSWORD) {
+      const isDefaultPassword = (hash?: string) => !hash || hash === 'password1' || hash === '1234' || hash === 'password';
+      const adminMustChange = adminUser.mustChangePassword === false
+        ? isDefaultPassword(adminUser.passwordHash)
+        : (adminUser.mustChangePassword === true || isDefaultPassword(adminUser.passwordHash));
+      if (adminUser.passwordHash === p || (p === DEFAULT_USER_PASSWORD && adminMustChange)) {
         return {
           success: true,
           user: {
@@ -147,9 +246,9 @@ export const authenticateUser = (
             username: adminUser.username || 'admin',
             name: adminUser.name,
             role: 'admin',
-            mustChangePassword: adminUser.mustChangePassword
+            mustChangePassword: adminMustChange
           },
-          mustChangePassword: adminUser.mustChangePassword
+          mustChangePassword: adminMustChange
         };
       }
     }
@@ -345,17 +444,12 @@ export const createUserCredential = (
 // Reset a user's password back to 'password1' with mustChangePassword = true
 export const resetUserPassword = (
   credentials: UserCredential[],
-  emailOrUsername: string,
+  emailOrUsername: string | AppUser,
   newPassword?: string
 ): UserCredential[] => {
-  const idLower = (emailOrUsername || '').toLowerCase().trim();
   return (credentials || []).map(c => {
     if (!c) return c;
-    if (
-      (c.email && c.email.toLowerCase().trim() === idLower) ||
-      (c.username && c.username.toLowerCase().trim() === idLower) ||
-      (c.name && c.name.toLowerCase().trim() === idLower)
-    ) {
+    if (isMatchingCredential(c, emailOrUsername)) {
       return {
         ...c,
         passwordHash: newPassword || DEFAULT_USER_PASSWORD,

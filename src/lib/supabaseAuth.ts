@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { AppUser, UserRole, UserCredential, generateStudentUsername, getStudentEmailFromName, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME, DEFAULT_USER_PASSWORD } from './userAuth';
+import { AppUser, UserRole, UserCredential, generateStudentUsername, getStudentEmailFromName, isMatchingCredential, mergeUserCredentials, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME, DEFAULT_USER_PASSWORD } from './userAuth';
 import { loadFromSupabase, saveToSupabase } from './supabaseSync';
 import { logger } from './logger';
 
@@ -30,7 +30,18 @@ export async function authenticateWithSupabase(
     return { success: false, error: 'Please enter your password.' };
   }
 
-  let verifiedCredentials: UserCredential[] = memoryCredentials || [];
+  let verifiedCredentials: UserCredential[] = memoryCredentials && memoryCredentials.length > 0 ? memoryCredentials : [];
+
+  // Attempt loading from local storage cache
+  try {
+    const saved = localStorage.getItem('hteim_user_credentials');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        verifiedCredentials = mergeUserCredentials(verifiedCredentials, parsed);
+      }
+    }
+  } catch (e) {}
 
   // 1. First, attempt Supabase Auth direct verification if it's a valid email format
   let supabaseAuthUser: any = null;
@@ -54,20 +65,24 @@ export async function authenticateWithSupabase(
   try {
     const cloudState = await loadFromSupabase(undefined);
     if (cloudState && Array.isArray(cloudState.userCredentials) && cloudState.userCredentials.length > 0) {
-      verifiedCredentials = cloudState.userCredentials;
+      verifiedCredentials = mergeUserCredentials(verifiedCredentials, cloudState.userCredentials);
     }
   } catch (err) {
     logger.warn('Unable to query Supabase cloud state for credentials:', err);
   }
 
+  const isDefaultPassword = (hash?: string) => !hash || hash === 'password1' || hash === '1234' || hash === 'password';
+
   // 3. If Supabase Auth succeeded, locate or build corresponding AppUser
   if (supabaseAuthUser) {
-    const matchedCred = verifiedCredentials.find(c =>
-      c && c.email && c.email.toLowerCase() === cleanId
-    );
+    const matchedCred = verifiedCredentials.find(c => isMatchingCredential(c, cleanId));
 
     const role: UserRole = matchedCred?.role || (cleanId === DEFAULT_ADMIN_EMAIL.toLowerCase() ? 'admin' : 'student');
     const name = matchedCred?.name || supabaseAuthUser.user_metadata?.full_name || supabaseAuthUser.email?.split('@')[0] || 'User';
+
+    const mustChange = matchedCred?.mustChangePassword === false
+      ? isDefaultPassword(matchedCred?.passwordHash)
+      : (matchedCred?.mustChangePassword === true || isDefaultPassword(matchedCred?.passwordHash));
 
     const user: AppUser = {
       id: supabaseAuthUser.id || matchedCred?.id || `u-${Date.now()}`,
@@ -78,23 +93,19 @@ export async function authenticateWithSupabase(
       studentName: matchedCred?.studentName || (role === 'student' ? name : undefined),
       moduleOrDepartment: matchedCred?.moduleOrDepartment,
       status: matchedCred?.status || 'active',
-      mustChangePassword: matchedCred?.mustChangePassword || false
+      mustChangePassword: mustChange
     };
 
     return {
       success: true,
       user,
-      mustChangePassword: user.mustChangePassword,
+      mustChangePassword: mustChange,
       cloudSynced: true
     };
   }
 
   // 4. Verify against Supabase cloud-verified credentials registry
-  const cred = verifiedCredentials.filter(Boolean).find(c =>
-    (c.email && c.email.toLowerCase() === cleanId) ||
-    (c.username && c.username.toLowerCase() === cleanId) ||
-    (c.name && c.name.toLowerCase() === cleanId)
-  );
+  const cred = verifiedCredentials.filter(Boolean).find(c => isMatchingCredential(c, cleanId));
 
   if (cred) {
     if (cred.status === 'suspended') {
@@ -104,10 +115,12 @@ export async function authenticateWithSupabase(
       };
     }
 
+    const mustChange = cred.mustChangePassword === false
+      ? isDefaultPassword(cred.passwordHash)
+      : (cred.mustChangePassword === true || isDefaultPassword(cred.passwordHash));
     const isDefaultInput = (cleanPassword === 'password1' || cleanPassword === '1234');
-    const isDefaultHash = (cred.passwordHash === 'password1' || cred.passwordHash === '1234' || cred.passwordHash === 'password' || cred.mustChangePassword);
 
-    if (cred.passwordHash === cleanPassword || (isDefaultInput && isDefaultHash)) {
+    if (cred.passwordHash === cleanPassword || (isDefaultInput && mustChange)) {
       const user: AppUser = {
         id: cred.id,
         email: cred.email || (cred.role === 'student'
@@ -119,19 +132,19 @@ export async function authenticateWithSupabase(
         studentName: cred.studentName || (cred.role === 'student' ? cred.name : undefined),
         moduleOrDepartment: cred.moduleOrDepartment,
         status: cred.status,
-        mustChangePassword: cred.mustChangePassword
+        mustChangePassword: mustChange
       };
 
       return {
         success: true,
         user,
-        mustChangePassword: cred.mustChangePassword,
+        mustChangePassword: mustChange,
         cloudSynced: true
       };
     } else {
       return {
         success: false,
-        error: 'Incorrect password. Default for first login is "password1".'
+        error: 'Incorrect password.'
       };
     }
   }
@@ -140,7 +153,10 @@ export async function authenticateWithSupabase(
   if (cleanId === 'admin' || cleanId === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
     const adminUser = verifiedCredentials.find(c => c && c.role === 'admin');
     if (adminUser) {
-      if (adminUser.passwordHash === cleanPassword || cleanPassword === DEFAULT_USER_PASSWORD) {
+      const adminMustChange = adminUser.mustChangePassword === false
+        ? isDefaultPassword(adminUser.passwordHash)
+        : (adminUser.mustChangePassword === true || isDefaultPassword(adminUser.passwordHash));
+      if (adminUser.passwordHash === cleanPassword || (cleanPassword === DEFAULT_USER_PASSWORD && adminMustChange)) {
         return {
           success: true,
           user: {
@@ -150,9 +166,9 @@ export async function authenticateWithSupabase(
             name: adminUser.name || DEFAULT_ADMIN_NAME,
             role: 'admin',
             status: 'active',
-            mustChangePassword: adminUser.mustChangePassword
+            mustChangePassword: adminMustChange
           },
-          mustChangePassword: adminUser.mustChangePassword,
+          mustChangePassword: adminMustChange,
           cloudSynced: true
         };
       }
@@ -166,7 +182,7 @@ export async function authenticateWithSupabase(
 }
 
 /**
- * Signs out the current user strictly from Supabase and purges any storage remnants.
+ * Signs out the current user session and purges active user session tokens.
  */
 export async function supabaseLogout(): Promise<void> {
   try {
@@ -175,10 +191,9 @@ export async function supabaseLogout(): Promise<void> {
     logger.warn('Supabase auth signOut error:', err);
   }
 
-  // Ensure absolutely no auth remnants exist in local storage or session storage
+  // Ensure active user session state is cleared without wiping the persistent credentials registry
   try {
     localStorage.removeItem('hteim_app_user');
-    localStorage.removeItem('hteim_user_credentials');
     sessionStorage.removeItem('hteim_app_user');
     sessionStorage.removeItem('hteim_user_credentials');
   } catch (e) {
@@ -190,20 +205,29 @@ export async function supabaseLogout(): Promise<void> {
  * Updates a user's password directly in Supabase registry and Supabase Auth.
  */
 export async function updatePasswordInSupabase(
-  identifier: string,
+  identifier: string | AppUser,
   newPassword: string,
   currentCredentials: UserCredential[]
 ): Promise<{ success: boolean; updatedCredentials: UserCredential[] }> {
-  const cleanId = (identifier || '').trim().toLowerCase();
   const cleanPass = newPassword.trim();
+  if (!cleanPass) {
+    return { success: false, updatedCredentials: currentCredentials || [] };
+  }
 
-  // 1. Update in-memory copy
-  const updatedCredentials = currentCredentials.map(cred => {
-    if (
-      (cred.email && cred.email.toLowerCase() === cleanId) ||
-      (cred.username && cred.username.toLowerCase() === cleanId) ||
-      (cred.name && cred.name.toLowerCase() === cleanId)
-    ) {
+  // 1. Update in-memory & local copy
+  let baseCreds = currentCredentials && currentCredentials.length > 0 ? [...currentCredentials] : [];
+  try {
+    const saved = localStorage.getItem('hteim_user_credentials');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        baseCreds = mergeUserCredentials(baseCreds, parsed);
+      }
+    }
+  } catch (e) {}
+
+  let updatedCredentials = baseCreds.map(cred => {
+    if (isMatchingCredential(cred, identifier)) {
       return {
         ...cred,
         passwordHash: cleanPass,
@@ -214,14 +238,33 @@ export async function updatePasswordInSupabase(
     return cred;
   });
 
+  // Save to localStorage immediately
+  try {
+    localStorage.setItem('hteim_user_credentials', JSON.stringify(updatedCredentials));
+  } catch (e) {}
+
   // 2. Persist updated user credentials directly to Supabase cloud
   try {
     const cloudState = await loadFromSupabase(undefined);
     if (cloudState) {
+      const cloudCreds = Array.isArray(cloudState.userCredentials) ? cloudState.userCredentials : [];
+      const mergedCloud = mergeUserCredentials(cloudCreds, updatedCredentials).map(cred => {
+        if (isMatchingCredential(cred, identifier)) {
+          return {
+            ...cred,
+            passwordHash: cleanPass,
+            mustChangePassword: false,
+            lastLoginAt: new Date().toISOString()
+          };
+        }
+        return cred;
+      });
+
       await saveToSupabase(undefined, {
         ...cloudState,
-        userCredentials: updatedCredentials
+        userCredentials: mergedCloud
       });
+      updatedCredentials = mergedCloud;
     }
   } catch (err) {
     logger.error('Failed to update password in Supabase cloud:', err);

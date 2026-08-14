@@ -12,12 +12,17 @@ describe('useDebounce', () => {
 
   it('should debounce value changes', async () => {
     vi.useFakeTimers();
-    const { result, rerender } = renderHook(() => useDebounce('hello', 500));
+    const { result, rerender } = renderHook(
+      (props: { val: string; delay: number } = { val: 'hello', delay: 500 }) => useDebounce(props.val, props.delay),
+      { initialProps: { val: 'hello', delay: 500 } }
+    );
 
-    rerender('world');
+    rerender({ val: 'world', delay: 500 });
     expect(result.current).toBe('hello');
 
-    await act(() => vi.advanceTimersByTime(500));
+    await act(() => {
+      vi.advanceTimersByTime(500);
+    });
     expect(result.current).toBe('world');
 
     vi.useRealTimers();

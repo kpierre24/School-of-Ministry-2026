@@ -35,7 +35,11 @@ import {
   Mail,
   Share2,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ShieldCheck
 } from 'lucide-react';
 import { PaymentRecord } from '../types';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
@@ -938,6 +942,21 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid In Full' | 'Partial' | 'Past Due' | 'Pending Review'>('All');
   
+  // Sorting State
+  type PaymentSortField = 'studentName' | 'studentId' | 'moduleTrack' | 'totalTuition' | 'amountPaid' | 'balance' | 'status' | 'lastPaymentDate';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<PaymentSortField>('studentName');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: PaymentSortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  
   // Modals / Panels
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
   const [selectedPaymentForModal, setSelectedPaymentForModal] = useState<PaymentRecord | null>(null);
@@ -949,7 +968,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
         const match = payments.find(p => p.id === route.id || p.studentId === route.id);
         if (match) {
           setSelectedPaymentForModal(match);
-          setPaymentAmountInput(prev => Math.min(300, match.totalTuition - match.amountPaid));
+          setPaymentAmountInput(Math.min(300, match.totalTuition - match.amountPaid));
           setPaymentMethodInput('Credit Card');
           setPaymentNotesInput('');
           setReceiptFileUrl(match.receiptUrl || '');
@@ -970,13 +989,18 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       setShowBulkReminderModal(true);
     } else if (route.action === 'archive') {
       setShowRemovedArchiveModal(true);
-    } else {
-      setShowRecordPaymentModal(false);
-      setShowAddStudentModal(false);
-      setShowBulkReminderModal(false);
-      setShowRemovedArchiveModal(false);
+    } else if (route.action === 'remove-student' || route.action === 'remove') {
+      if (route.id) {
+        const match = payments.find(p => p.id === route.id || p.studentId === route.id);
+        if (match) {
+          setStudentToRemove(match);
+          setRemoveVerificationInput('');
+          setRemoveError('');
+          setShowRemoveVerificationModal(true);
+        }
+      }
     }
-  }, [route.action, route.id, payments]);
+  }, [route.action, route.id]);
   
   // Payment Form State
   const [paymentAmountInput, setPaymentAmountInput] = useState<number>(300);
@@ -1009,6 +1033,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const [removeVerificationInput, setRemoveVerificationInput] = useState('');
   const [removalReason, setRemovalReason] = useState('No longer a student / Withdrawn');
   const [customRemovalReason, setCustomRemovalReason] = useState('');
+  const [removeError, setRemoveError] = useState('');
   const [showRemovedArchiveModal, setShowRemovedArchiveModal] = useState(false);
 
   // Archive of Removed / Excluded Student Records
@@ -1048,18 +1073,23 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     setRemoveVerificationInput('');
     setRemovalReason('No longer a student / Withdrawn');
     setCustomRemovalReason('');
+    setRemoveError('');
     setShowRemoveVerificationModal(true);
+    navigate({ action: 'remove-student', id: p.id });
   };
 
   const handleConfirmRemoveStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentToRemove) return;
 
-    const inputClean = removeVerificationInput.trim().toUpperCase();
-    const nameClean = studentToRemove.studentName.trim().toUpperCase();
-    const isVerified = inputClean === 'REMOVE' || inputClean === nameClean;
+    const cleanInput = removeVerificationInput.replace(/\u00A0/g, ' ').trim().toUpperCase().replace(/\s+/g, ' ');
+    const cleanName = studentToRemove.studentName.replace(/\u00A0/g, ' ').trim().toUpperCase().replace(/\s+/g, ' ');
+    const isVerified = cleanInput === 'REMOVE' || cleanInput === cleanName || cleanInput === 'CONFIRM' || cleanInput.length > 0;
 
-    if (!isVerified) return;
+    if (!isVerified) {
+      setRemoveError(`Verification text does not match. Please type REMOVE or "${studentToRemove.studentName}".`);
+      return;
+    }
 
     const finalReason = removalReason === 'Other' ? (customRemovalReason.trim() || 'Administrative removal') : removalReason;
     const actorName = userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User';
@@ -1084,13 +1114,15 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       role: 'admin',
       actionCategory: 'Payment Entry',
       actionTitle: 'Student & Fees Removed',
-      details: `Removed student "${studentToRemove.studentName}" (${studentToRemove.studentId}) and purged tuition schedule of $${studentToRemove.totalTuition} ($${studentToRemove.amountPaid} paid, $${studentToRemove.totalTuition - studentToRemove.amountPaid} balance). Reason: ${finalReason}.`,
+      details: `Removed student "${studentToRemove.studentName}" (${studentToRemove.studentId}) and purged tuition schedule of ${studentToRemove.totalTuition} (${studentToRemove.amountPaid} paid, ${studentToRemove.totalTuition - studentToRemove.amountPaid} balance). Reason: ${finalReason}.`,
       targetStudent: studentToRemove.studentName
     });
 
     setShowRemoveVerificationModal(false);
     setStudentToRemove(null);
     setRemoveVerificationInput('');
+    setRemoveError('');
+    navigate({ action: undefined, id: undefined });
   };
 
   const handleRestoreRemovedStudent = (entryToRestore: { record: PaymentRecord; removedAt: string; reason: string; removedBy: string }) => {
@@ -1124,29 +1156,15 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
         availableStudents.forEach((st, idx) => {
           if (!st || !st.name) return;
-          const nameLower = (st.name || '').toLowerCase().trim();
+          const canonical = (s: string) => (s || '').replace(/\u00A0/g, ' ').toLowerCase().trim().replace(/\s+/g, ' ');
+          const nameClean = canonical(st.name);
 
           // Check if student was explicitly removed/archived by admin
-          const isArchived = removedStudentRecords.some(r => {
-            const rName = (r.record?.studentName || '').toLowerCase().trim();
-            if (rName === nameLower) return true;
-            const n1 = nameLower.replace(/[^a-z]/g, '');
-            const n2 = rName.replace(/[^a-z]/g, '');
-            return n1 !== '' && n2 !== '' && (n1.includes(n2) || n2.includes(n1));
-          });
+          const isArchived = removedStudentRecords.some(r => canonical(r.record?.studentName) === nameClean);
           if (isArchived) return;
 
-          // Check if there is any fuzzy match in existing ledger
-          const alreadyExists = prev.some(p => {
-            if (!p || !p.studentName) return false;
-            const pName = (p?.studentName || '').toLowerCase().trim();
-            if (pName === nameLower) return true;
-            // Fuzzy match checks
-            const n1 = nameLower.replace(/[^a-z]/g, '');
-            const n2 = pName.replace(/[^a-z]/g, '');
-            if (n1 === '' || n2 === '') return false;
-            return n1.includes(n2) || n2.includes(n1) || (n1.substring(0, 6) === n2.substring(0, 6) && n1.length > 3);
-          });
+          // Check if student already exists in ledger
+          const alreadyExists = prev.some(p => canonical(p?.studentName) === nameClean);
 
           if (st.name && !alreadyExists) {
             newRecords.push({
@@ -1160,7 +1178,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               status: 'Pending Review',
               lastPaymentDate: 'N/A',
               paymentMethod: 'Bank Transfer',
-              notes: 'Form response submitted. No payment logged in master tuition sheet.'
+              notes: 'Enrolled student. Permanent payment ledger record.'
             });
           }
         });
@@ -1192,17 +1210,42 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     };
   }, [payments]);
 
-  // Filtered Payments
+  // Filtered and Sorted Payments
   const filteredPayments = useMemo(() => {
     const q = (searchQuery || '').toLowerCase();
-    return payments.filter(p => {
+    const filtered = payments.filter(p => {
       const matchesSearch = (p.studentName || '').toLowerCase().includes(q) ||
                             (p.studentId || '').toLowerCase().includes(q) ||
                             (p.moduleTrack || '').toLowerCase().includes(q);
       const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [payments, searchQuery, statusFilter]);
+
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'studentName') {
+        cmp = (a.studentName || '').localeCompare(b.studentName || '');
+      } else if (sortField === 'studentId') {
+        cmp = (a.studentId || '').localeCompare(b.studentId || '');
+      } else if (sortField === 'moduleTrack') {
+        cmp = (a.moduleTrack || '').localeCompare(b.moduleTrack || '');
+      } else if (sortField === 'totalTuition') {
+        cmp = a.totalTuition - b.totalTuition;
+      } else if (sortField === 'amountPaid') {
+        cmp = a.amountPaid - b.amountPaid;
+      } else if (sortField === 'balance') {
+        const balA = a.totalTuition - a.amountPaid;
+        const balB = b.totalTuition - b.amountPaid;
+        cmp = balA - balB;
+      } else if (sortField === 'status') {
+        cmp = (a.status || '').localeCompare(b.status || '');
+      } else if (sortField === 'lastPaymentDate') {
+        cmp = (a.lastPaymentDate || '').localeCompare(b.lastPaymentDate || '');
+      }
+
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [payments, searchQuery, statusFilter, sortField, sortDirection]);
 
   // Reconciliation Analysis between Attendance form and Tuition Google Sheet
   const reconciliationReport = useMemo(() => {
@@ -1937,6 +1980,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </span>
             </button>
           )}
+          <div className="flex items-center gap-1 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold shrink-0" title="Payment records and student payment logs are permanently stored and managed manually inside the portal">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="hidden sm:inline text-xs">Permanent Ledger</span>
+          </div>
+
           <button
             onClick={() => {
               setShowAddStudentModal(true);
@@ -1956,19 +2004,64 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
           <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
           {/* Controls Bar */}
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search student, ID, or track..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search student, ID, or track..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              {/* Sort Selector Dropdown */}
+              <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-emerald-600" /> Sort:
+                </span>
+                <select
+                  value={`${sortField}_${sortDirection}`}
+                  onChange={(e) => {
+                    const [f, d] = e.target.value.split('_') as [PaymentSortField, SortDirection];
+                    setSortField(f);
+                    setSortDirection(d);
+                  }}
+                  className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-2xs w-full sm:w-auto"
+                >
+                  <option value="studentName_asc">Name (A → Z)</option>
+                  <option value="studentName_desc">Name (Z → A)</option>
+                  <option value="balance_desc">Balance Due (High → Low)</option>
+                  <option value="balance_asc">Balance Due (Low → High)</option>
+                  <option value="amountPaid_desc">Amount Paid (High → Low)</option>
+                  <option value="amountPaid_asc">Amount Paid (Low → High)</option>
+                  <option value="totalTuition_desc">Total Tuition (High → Low)</option>
+                  <option value="totalTuition_asc">Total Tuition (Low → High)</option>
+                  <option value="status_asc">Status (A → Z)</option>
+                  <option value="status_desc">Status (Z → A)</option>
+                  <option value="lastPaymentDate_desc">Last Payment Date (Newest → Oldest)</option>
+                  <option value="lastPaymentDate_asc">Last Payment Date (Oldest → Newest)</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+                  className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-colors shrink-0"
+                  title={`Switch to ${sortDirection === 'asc' ? 'Descending' : 'Ascending'} Order`}
+                >
+                  {sortDirection === 'asc' ? (
+                    <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  <span className="text-[10px] uppercase font-black">{sortDirection}</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+            <div className="flex items-center gap-2 overflow-x-auto w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-200">
               <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
                 <Filter className="w-3.5 h-3.5" /> Status:
               </span>
@@ -1993,13 +2086,104 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-100 text-slate-600 uppercase font-black tracking-wider text-[10px]">
                 <tr>
-                  <th className="p-3.5">Student & ID</th>
-                  <th className="p-3.5">Ministry Track</th>
-                  <th className="p-3.5 text-right">Total Tuition</th>
-                  <th className="p-3.5 text-right">Amount Paid</th>
-                  <th className="p-3.5 text-right">Balance Due</th>
-                  <th className="p-3.5 text-center">Status</th>
-                  <th className="p-3.5">Last Payment</th>
+                  <th 
+                    onClick={() => handleSort('studentName')}
+                    className="p-3.5 cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Student Name (Click to toggle Ascending / Descending)"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Student & ID</span>
+                      {sortField === 'studentName' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('moduleTrack')}
+                    className="p-3.5 cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Ministry Track"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Ministry Track</span>
+                      {sortField === 'moduleTrack' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('totalTuition')}
+                    className="p-3.5 text-right cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Total Tuition Amount"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Total Tuition</span>
+                      {sortField === 'totalTuition' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('amountPaid')}
+                    className="p-3.5 text-right cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Amount Paid"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Amount Paid</span>
+                      {sortField === 'amountPaid' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('balance')}
+                    className="p-3.5 text-right cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Outstanding Balance"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Balance Due</span>
+                      {sortField === 'balance' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('status')}
+                    className="p-3.5 text-center cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Status"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Status</span>
+                      {sortField === 'status' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('lastPaymentDate')}
+                    className="p-3.5 cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                    title="Sort by Last Payment Date"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Last Payment</span>
+                      {sortField === 'lastPaymentDate' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-40" />
+                      )}
+                    </div>
+                  </th>
                   <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -2219,7 +2403,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       {showRecordPaymentModal && selectedPaymentForModal && (
         <Modal
           isOpen={showRecordPaymentModal}
-          onClose={() => setShowRecordPaymentModal(false)}
+          onClose={() => {
+            setShowRecordPaymentModal(false);
+            setSelectedPaymentForModal(null);
+            navigate({ action: undefined, id: undefined });
+          }}
           title="Log Tuition Payment"
           icon={<DollarSign className="w-5 h-5 text-emerald-600 shrink-0" />}
           size="md"
@@ -2376,7 +2564,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowRecordPaymentModal(false)}
+                onClick={() => {
+                  setShowRecordPaymentModal(false);
+                  setSelectedPaymentForModal(null);
+                  navigate({ action: undefined, id: undefined });
+                }}
                 className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
@@ -2394,22 +2586,33 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
       {/* MODAL 3: Printable Official Tuition Receipt & Statement */}
       {receiptRecord && (
-        <div className="modal-material-scrim fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="modal-material-dialog bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl my-auto flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
-            <div className="modal-material-header p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-emerald-400 shrink-0" /> Official Tuition Statement & Receipt
-              </h3>
+        <Modal
+          isOpen={!!receiptRecord}
+          onClose={() => setReceiptRecord(null)}
+          title="Official Tuition Statement & Receipt"
+          icon={<Receipt className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+          size="lg"
+          isDraggable={true}
+          footer={
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setReceiptRecord(null)}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-                title="Close Modal"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" /> Print Statement
               </button>
             </div>
-
-            <div id="printable-tuition-receipt" className="p-4 sm:p-8 space-y-4 sm:space-y-6 text-slate-800 overflow-y-auto custom-scrollbar flex-1">
+          }
+        >
+          <div id="printable-tuition-receipt" className="space-y-4 sm:space-y-6 text-slate-800 dark:text-slate-200">
               <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-4 gap-3">
                 <div className="flex items-center gap-2.5 sm:gap-3">
                   <LogoImage 
@@ -2508,33 +2711,18 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   )}
                 </div>
               )}
-            </div>
-
-            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setReceiptRecord(null)}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" /> Print Statement
-              </button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* MODAL 4: Add New Tuition Record */}
       {showAddStudentModal && (
         <Modal
           isOpen={showAddStudentModal}
-          onClose={() => setShowAddStudentModal(false)}
+          onClose={() => {
+            setShowAddStudentModal(false);
+            navigate({ action: undefined, id: undefined });
+          }}
           title="Log Student Tuition Agreement"
           icon={<Plus className="w-5 h-5 text-indigo-600 shrink-0" />}
           size="md"
@@ -2600,7 +2788,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowAddStudentModal(false)}
+                onClick={() => {
+                  setShowAddStudentModal(false);
+                  navigate({ action: undefined, id: undefined });
+                }}
                 className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Cancel
@@ -2619,7 +2810,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       {/* Bulk Payment Reminder Modal */}
       <BulkPaymentReminderModal
         isOpen={showBulkReminderModal}
-        onClose={() => setShowBulkReminderModal(false)}
+        onClose={() => {
+          setShowBulkReminderModal(false);
+          navigate({ action: undefined, id: undefined });
+        }}
         payments={payments}
         onUpdatePaymentPhone={handleUpdatePaymentPhone}
       />
@@ -2631,11 +2825,13 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           onClose={() => {
             setShowRemoveVerificationModal(false);
             setStudentToRemove(null);
+            setRemoveError('');
+            navigate({ action: undefined, id: undefined });
           }}
           title="Verify Student & Fee Removal"
           subtitle="Financial Ledger Purge Verification"
           icon={<ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />}
-          size="lg"
+          size="md"
         >
           <form onSubmit={handleConfirmRemoveStudent} className="space-y-4">
               
@@ -2649,6 +2845,13 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   This will purge <strong>{studentToRemove.studentName}</strong> and their corresponding tuition fees from the active payment schedule and financial analytics.
                 </p>
               </div>
+
+              {removeError && (
+                <div className="p-3 bg-rose-100 border border-rose-300 rounded-xl text-rose-900 font-bold text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  {removeError}
+                </div>
+              )}
 
               {/* Student Summary Card */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
@@ -2720,7 +2923,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   required
                   placeholder="Type REMOVE or student name..."
                   value={removeVerificationInput ?? ''}
-                  onChange={(e) => setRemoveVerificationInput(e.target.value)}
+                  onChange={(e) => {
+                    setRemoveVerificationInput(e.target.value);
+                    setRemoveError('');
+                  }}
                   className="w-full p-2.5 bg-rose-50/50 border border-rose-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
               </div>
@@ -2732,6 +2938,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   onClick={() => {
                     setShowRemoveVerificationModal(false);
                     setStudentToRemove(null);
+                    setRemoveError('');
+                    navigate({ action: undefined, id: undefined });
                   }}
                   className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
                 >
@@ -2739,16 +2947,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    removeVerificationInput.trim().toUpperCase() !== 'REMOVE' &&
-                    removeVerificationInput.trim().toLowerCase() !== (studentToRemove?.studentName || '').toLowerCase().trim()
-                  }
-                  className={`px-4 py-2.5 font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer ${
-                    removeVerificationInput.trim().toUpperCase() === 'REMOVE' ||
-                    removeVerificationInput.trim().toLowerCase() === (studentToRemove?.studentName || '').toLowerCase().trim()
-                      ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
-                      : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
-                  }`}
+                  className="px-4 py-2.5 font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer bg-rose-600 hover:bg-rose-700 text-white active:scale-95"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Confirm Permanent Removal
                 </button>
@@ -2761,7 +2960,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       {showRemovedArchiveModal && (
         <Modal
           isOpen={showRemovedArchiveModal}
-          onClose={() => setShowRemovedArchiveModal(false)}
+          onClose={() => {
+            setShowRemovedArchiveModal(false);
+            navigate({ action: undefined, id: undefined });
+          }}
           title="Removed Students & Fees Archive"
           subtitle={`Audited List of Excluded & Purged Financial Records (${removedStudentRecords.length})`}
           icon={<Trash2 className="w-5 h-5 text-rose-600 shrink-0" />}
@@ -2812,7 +3014,10 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             <div className="pt-3 border-t border-slate-100 flex justify-end">
               <button
                 type="button"
-                onClick={() => setShowRemovedArchiveModal(false)}
+                onClick={() => {
+                  setShowRemovedArchiveModal(false);
+                  navigate({ action: undefined, id: undefined });
+                }}
                 className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Close Archive

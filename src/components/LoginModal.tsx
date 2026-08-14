@@ -32,7 +32,7 @@ interface LoginModalProps {
   onLoginSuccess: (user: AppUser) => void;
   onLogout?: () => void;
   userCredentials?: UserCredential[];
-  onChangePassword?: (emailOrUsername: string, newPassword: string) => void;
+  onChangePassword?: (emailOrUsername: string | AppUser, newPassword: string) => void;
   currentUser?: AppUser | null;
   onSyncCredentials?: (creds: UserCredential[]) => void;
 }
@@ -216,19 +216,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     if (pendingUser) {
-      const identifier = pendingUser.email || pendingUser.username || pendingUser.name;
-      if (onChangePassword) {
-        onChangePassword(identifier, newPass);
-      }
-      try {
-        await updatePasswordInSupabase(identifier, newPass, userCredentials);
-      } catch (err) {
-        console.warn('Password cloud update notice:', err);
-      }
       const userWithoutMustChange: AppUser = {
         ...pendingUser,
         mustChangePassword: false
       };
+      if (onChangePassword) {
+        onChangePassword(userWithoutMustChange, newPass);
+      }
+      try {
+        await updatePasswordInSupabase(userWithoutMustChange, newPass, userCredentials || []);
+      } catch (err) {
+        console.warn('Password cloud update notice:', err);
+      }
       onLoginSuccess(userWithoutMustChange);
       setShowPasswordChangeForm(false);
       setPendingUser(null);

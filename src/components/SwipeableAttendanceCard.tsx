@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion } from 'motion/react';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -7,7 +8,10 @@ import {
   SlidersHorizontal, 
   Check, 
   RotateCcw,
-  Lock
+  Lock,
+  History,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { StudentSummary, ClassDay } from '../types';
 import { getAttendanceLockInfo } from '../lib/attendanceLock';
@@ -58,6 +62,9 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   const isExcused = !isPresent && !!isExcusedMap[targetDayId];
   const targetLockInfo = getAttendanceLockInfo(currentAttendance, targetDay);
   const isTargetLocked = targetLockInfo.isLocked;
+
+  // Toggle historical session visibility
+  const [showHistory, setShowHistory] = useState(appRole === 'student');
 
   // Touch Swipe State
   const [dragOffset, setDragOffset] = useState(0);
@@ -170,14 +177,13 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
       </div>
 
       {/* Main Foreground Card Content */}
-      <div
-        style={{ transform: `translateX(${dragOffset}px)` }}
+      <motion.div
+        animate={{ x: dragOffset }}
+        transition={isDragging ? { type: "tween", duration: 0 } : { type: "spring", stiffness: 450, damping: 28 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`bg-white dark:bg-slate-900 p-2.5 sm:p-3 relative z-10 space-y-2 sm:space-y-2.5 transition-transform ${
-          isDragging ? 'transition-none' : 'duration-300 ease-out'
-        } select-none`}
+        className="bg-white dark:bg-slate-900 p-2.5 sm:p-3 relative z-10 space-y-2 sm:space-y-2.5 select-none"
       >
         {/* Top Header Row */}
         <div className="flex items-center justify-between gap-1.5 sm:gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
@@ -333,92 +339,112 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
           </div>
         )}
 
-        {/* Horizontal Scrollable Class Days Track */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-400 px-0.5">
-            <span>Sessions ({effectiveClassDays.length})</span>
-            <span className="font-mono text-indigo-500 flex items-center gap-0.5">
-              <span>Tap to toggle</span>
-            </span>
-          </div>
+        {/* Horizontal Scrollable Class Days Track (Collapsible for Admins/Teachers) */}
+        {showHistory && (
+          <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/60 animate-fade-slide-up">
+            <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-400 px-0.5">
+              <span>Sessions ({effectiveClassDays.length})</span>
+              <span className="font-mono text-indigo-500 flex items-center gap-0.5">
+                <span>Tap to toggle</span>
+              </span>
+            </div>
 
-          <div 
-            className="overflow-x-auto custom-scrollbar flex gap-1.5 sm:gap-2 pb-1 pt-0.5 touch-pan-x"
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-          >
-            {effectiveClassDays.map(day => {
-              const attendance = student.attendanceByDay[day.id];
-              const dayPresent = attendance?.present;
-              const dayExcused = !dayPresent && !!isExcusedMap[day.id];
-              const isCurrentSession = day.id === targetDayId;
-              const dayLockInfo = getAttendanceLockInfo(attendance, day);
-              const isDayLocked = dayLockInfo.isLocked;
+            <div 
+              className="overflow-x-auto custom-scrollbar flex gap-1.5 sm:gap-2 pb-1 pt-0.5 touch-pan-x"
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              {effectiveClassDays.map(day => {
+                const attendance = student.attendanceByDay[day.id];
+                const dayPresent = attendance?.present;
+                const dayExcused = !dayPresent && !!isExcusedMap[day.id];
+                const isCurrentSession = day.id === targetDayId;
+                const dayLockInfo = getAttendanceLockInfo(attendance, day);
+                const isDayLocked = dayLockInfo.isLocked;
 
-              return (
-                <div 
-                  key={day.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (appRole === 'student') return;
-                    onToggleAttendance(
-                      student.name, 
-                      day.id, 
-                      dayPresent ? 'excused' : dayExcused ? 'absent' : 'present'
-                    );
-                  }}
-                  className={`shrink-0 min-w-[95px] sm:min-w-[108px] min-h-[48px] p-2 rounded-xl border flex flex-col items-center justify-between gap-1 sm:gap-1.5 transition-all text-center select-none touch-min-44 ${
-                    isCurrentSession ? 'ring-2 ring-indigo-500/80 shadow-xs' : ''
-                  } ${
-                    dayPresent 
-                      ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50' 
-                      : dayExcused 
-                      ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50' 
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60'
-                  } ${isDayLocked ? 'opacity-90' : ''} ${appRole !== 'student' ? 'cursor-pointer active:scale-95' : ''}`}
-                  title={
-                    isDayLocked
-                      ? `🔒 Record Locked: Captured >24h ago`
-                      : `⏱ Editable (${dayLockInfo.hoursRemaining}h left in 24h window)`
-                  }
-                >
-                  <div className="flex items-center justify-center gap-1 w-full">
-                    <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[75px] sm:max-w-[85px]" title={day.name}>
-                      {day.name}
-                    </span>
-                    {isDayLocked ? (
-                      <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                    ) : isCurrentSession ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping shrink-0" title="Active Check-in Session" />
-                    ) : null}
+                return (
+                  <div 
+                    key={day.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (appRole === 'student') return;
+                      onToggleAttendance(
+                        student.name, 
+                        day.id, 
+                        dayPresent ? 'excused' : dayExcused ? 'absent' : 'present'
+                      );
+                    }}
+                    className={`shrink-0 min-w-[95px] sm:min-w-[108px] min-h-[48px] p-2 rounded-xl border flex flex-col items-center justify-between gap-1 sm:gap-1.5 transition-all text-center select-none touch-min-44 ${
+                      isCurrentSession ? 'ring-2 ring-indigo-500/80 shadow-xs' : ''
+                    } ${
+                      dayPresent 
+                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50' 
+                        : dayExcused 
+                        ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50' 
+                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60'
+                    } ${isDayLocked ? 'opacity-90' : ''} ${appRole !== 'student' ? 'cursor-pointer active:scale-95' : ''}`}
+                    title={
+                      isDayLocked
+                        ? `🔒 Record Locked: Captured >24h ago`
+                        : `⏱ Editable (${dayLockInfo.hoursRemaining}h left in 24h window)`
+                    }
+                  >
+                    <div className="flex items-center justify-center gap-1 w-full">
+                      <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-800 dark:text-slate-200 truncate max-w-[75px] sm:max-w-[85px]" title={day.name}>
+                        {day.name}
+                      </span>
+                      {isDayLocked ? (
+                        <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                      ) : isCurrentSession ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping shrink-0" title="Active Check-in Session" />
+                      ) : null}
+                    </div>
+
+                    {dayPresent ? (
+                      <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] sm:text-[9px] font-black shadow-xs">
+                        <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                        <span>Present</span>
+                        {isDayLocked && <Lock className="w-2 h-2 text-emerald-200 shrink-0" />}
+                      </div>
+                    ) : dayExcused ? (
+                      <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[8px] sm:text-[9px] font-black shadow-xs">
+                        <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                        <span>Excused</span>
+                        {isDayLocked && <Lock className="w-2 h-2 text-slate-700 shrink-0" />}
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 text-[8px] sm:text-[9px] font-bold border border-rose-300 dark:border-rose-800">
+                        <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500 shrink-0" />
+                        <span>Absent</span>
+                        {isDayLocked && <Lock className="w-2 h-2 text-rose-400 shrink-0" />}
+                      </div>
+                    )}
                   </div>
-
-                  {dayPresent ? (
-                    <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] sm:text-[9px] font-black shadow-xs">
-                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
-                      <span>Present</span>
-                      {isDayLocked && <Lock className="w-2 h-2 text-emerald-200 shrink-0" />}
-                    </div>
-                  ) : dayExcused ? (
-                    <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[8px] sm:text-[9px] font-black shadow-xs">
-                      <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
-                      <span>Excused</span>
-                      {isDayLocked && <Lock className="w-2 h-2 text-slate-700 shrink-0" />}
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 text-[8px] sm:text-[9px] font-bold border border-rose-300 dark:border-rose-800">
-                      <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-500 shrink-0" />
-                      <span>Absent</span>
-                      {isDayLocked && <Lock className="w-2 h-2 text-rose-400 shrink-0" />}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </div>
+        )}
+
+        {/* Expandable History Toggle Button for Admins/Teachers to keep mobile cards beautifully compact */}
+        {appRole !== 'student' && (
+          <div className="pt-1.5 flex items-center justify-center border-t border-slate-50 dark:border-slate-800/40">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowHistory(!showHistory);
+              }}
+              className="w-full text-[10px] font-bold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 py-1 px-3 bg-slate-50 dark:bg-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 border border-slate-200/60 dark:border-slate-800/60 rounded-xl transition-all cursor-pointer select-none active:scale-95"
+            >
+              <History className="w-3 h-3 text-slate-400 shrink-0" />
+              <span>{showHistory ? 'Hide Previous Sessions' : `Show Previous Sessions (${effectiveClassDays.length})`}</span>
+              {showHistory ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
+            </button>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 };

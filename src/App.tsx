@@ -102,8 +102,8 @@ import { initAuth, googleSignIn, logout } from './lib/auth';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
 import { getDemoAttendance } from './data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord } from './types';
-import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword } from './lib/userAuth';
-import { supabaseLogout } from './lib/supabaseAuth';
+import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword, isMatchingCredential, mergeUserCredentials, DEFAULT_USER_PASSWORD } from './lib/userAuth';
+import { supabaseLogout, updatePasswordInSupabase } from './lib/supabaseAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
 import { LoginModal } from './components/LoginModal';
@@ -353,14 +353,26 @@ export default function App() {
   // App User & Role State (Admin, Teacher, Student) - In-memory only via Supabase Verification
   const [appUser, setAppUser] = useState<AppUser | null>(null);
 
-  // Dynamic User Credentials State - In-memory state synchronized with Supabase
-  const [userCredentials, setUserCredentials] = useState<UserCredential[]>([]);
+  // Dynamic User Credentials State - In-memory state synchronized with Supabase & cached in localStorage
+  const [userCredentials, setUserCredentials] = useState<UserCredential[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_user_credentials');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed loading user credentials from local storage:", e);
+    }
+    return [];
+  });
 
-  // Clear any legacy auth traces on initial load
+  // Clear any legacy auth session remnants on initial load while preserving credentials registry
   useEffect(() => {
     try {
       localStorage.removeItem('hteim_app_user');
-      localStorage.removeItem('hteim_user_credentials');
       sessionStorage.removeItem('hteim_app_user');
       sessionStorage.removeItem('hteim_user_credentials');
     } catch (e) {}
@@ -509,32 +521,62 @@ export default function App() {
     setTimeout(() => setSyncedBannerMessage(null), 3500);
   };
 
-  const handleChangeUserPassword = async (usernameOrEmail: string | undefined | null, newPin: string) => {
+  const handleChangeUserPassword = async (usernameOrEmail: string | AppUser | undefined | null, newPin: string) => {
     if (!usernameOrEmail) return;
-    let updatedCreds: UserCredential[] = [];
-    setUserCredentials(prev => {
-      const updated = prev.map(c => {
-        const matchInput = (usernameOrEmail || '').trim().toLowerCase();
-        if (
-          (c.username && (c.username || '').toLowerCase() === matchInput) ||
-          (c.email && (c.email || '').toLowerCase() === matchInput) ||
-          (c.name && (c?.name || '').toLowerCase() === matchInput)
-        ) {
-          return {
-            ...c,
-            passwordHash: newPin,
-            mustChangePassword: false
-          };
+
+    let currentList = userCredentials;
+    if (!currentList || currentList.length === 0) {
+      try {
+        const saved = localStorage.getItem('hteim_user_credentials');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentList = parsed;
+          }
         }
-        return c;
-      });
-      updatedCreds = updated;
-      return updated;
+      } catch (e) {}
+    }
+
+    const updatedCreds = (currentList || []).map(c => {
+      if (isMatchingCredential(c, usernameOrEmail)) {
+        return {
+          ...c,
+          passwordHash: newPin,
+          mustChangePassword: false,
+          lastLoginAt: new Date().toISOString()
+        };
+      }
+      return c;
+    });
+
+    setUserCredentials(updatedCreds);
+    try {
+      localStorage.setItem('hteim_user_credentials', JSON.stringify(updatedCreds));
+    } catch (e) {}
+
+    // Update active appUser state if currently logged in
+    setAppUser(prev => {
+      if (!prev) return prev;
+      if (isMatchingCredential({
+        id: prev.id,
+        email: prev.email,
+        username: prev.username,
+        name: prev.name,
+        studentName: prev.studentName,
+        role: prev.role,
+        passwordHash: '',
+        mustChangePassword: true,
+        status: 'active',
+        createdAt: ''
+      }, usernameOrEmail)) {
+        return { ...prev, mustChangePassword: false };
+      }
+      return prev;
     });
 
     // Synchronously write the updated credentials registry to Supabase immediately for real-time security
     try {
-      const activeEmail = appUser?.email || user?.email;
+      const activeEmail = appUser?.email || user?.email || (typeof usernameOrEmail === 'string' && usernameOrEmail.includes('@') ? usernameOrEmail : undefined);
       const stateToSave = {
         records,
         classDays,
@@ -560,6 +602,7 @@ export default function App() {
         userCredentials: updatedCreds
       };
       await saveToSupabase(activeEmail, stateToSave);
+      await updatePasswordInSupabase(usernameOrEmail, newPin, updatedCreds);
     } catch (err) {
       console.error("Supabase password change sync failure:", err);
     }
@@ -569,26 +612,39 @@ export default function App() {
     if (!studentName) return;
     const username = generateStudentUsername(studentName);
     if (!username) return;
-    let updatedCreds: UserCredential[] = [];
-    
-    setUserCredentials(prev => {
-      const updated = prev.map(c => {
-        if (
-          c.username?.toLowerCase() === (username || '').toLowerCase() ||
-          c.studentName?.toLowerCase().trim() === (studentName || '').toLowerCase().trim() ||
-          c.name?.toLowerCase().trim() === (studentName || '').toLowerCase().trim()
-        ) {
-          return {
-            ...c,
-            passwordHash: 'password1', // Standardized with DEFAULT_USER_PASSWORD
-            mustChangePassword: true
-          };
+
+    let currentList = userCredentials;
+    if (!currentList || currentList.length === 0) {
+      try {
+        const saved = localStorage.getItem('hteim_user_credentials');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentList = parsed;
+          }
         }
-        return c;
-      });
-      updatedCreds = updated;
-      return updated;
+      } catch (e) {}
+    }
+    
+    const updatedCreds = (currentList || []).map(c => {
+      if (
+        c.username?.toLowerCase() === (username || '').toLowerCase() ||
+        c.studentName?.toLowerCase().trim() === (studentName || '').toLowerCase().trim() ||
+        c.name?.toLowerCase().trim() === (studentName || '').toLowerCase().trim()
+      ) {
+        return {
+          ...c,
+          passwordHash: DEFAULT_USER_PASSWORD, // 'password1'
+          mustChangePassword: true
+        };
+      }
+      return c;
     });
+
+    setUserCredentials(updatedCreds);
+    try {
+      localStorage.setItem('hteim_user_credentials', JSON.stringify(updatedCreds));
+    } catch (e) {}
 
     // Direct push to Supabase central registry
     try {
@@ -691,6 +747,34 @@ export default function App() {
     return localStorage.getItem('hteim_has_zoom_exception') === 'true';
   });
   
+  // Permanent Default Class Days
+  const defaultPermanentClassDays: ClassDay[] = useMemo(() => [
+    { id: 'Day 1', name: 'Class Day 1 - Pneumatology & Holy Spirit' },
+    { id: 'Day 2', name: 'Class Day 2 - Hermeneutics & Exegesis' },
+    { id: 'Day 3', name: 'Class Day 3 - Ministerial Ethics' },
+    { id: 'Day 4', name: 'Class Day 4 - Homiletics & Preaching' },
+    { id: 'Day 5', name: 'Class Day 5 - Pastoral Care & Leadership' },
+    { id: 'Day 6', name: 'Class Day 6 - Church History & Doctrine' },
+  ], []);
+
+  const [classDays, setClassDays] = useState<ClassDay[]>(() => {
+    const saved = localStorage.getItem('classDays');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [
+      { id: 'Day 1', name: 'Class Day 1 - Pneumatology & Holy Spirit' },
+      { id: 'Day 2', name: 'Class Day 2 - Hermeneutics & Exegesis' },
+      { id: 'Day 3', name: 'Class Day 3 - Ministerial Ethics' },
+      { id: 'Day 4', name: 'Class Day 4 - Homiletics & Preaching' },
+      { id: 'Day 5', name: 'Class Day 5 - Pastoral Care & Leadership' },
+      { id: 'Day 6', name: 'Class Day 6 - Church History & Doctrine' },
+    ];
+  });
+
   const [records, setRecords] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('attendanceRecords');
     const savedDeleted = localStorage.getItem('deletedStudentNames');
@@ -701,30 +785,41 @@ export default function App() {
     if (saved) {
       try {
         const loaded: AttendanceRecord[] = JSON.parse(saved);
-        // Purge excluded students completely from records
-        return loaded.filter(r => {
-          if (!r || !r.name) return false;
-          const nameLower = (r?.name || '').toLowerCase().trim();
-          if (isExcludedStudent(r.name)) return false;
-          if (deletedList.some(d => (d || '').toLowerCase().trim() === nameLower)) return false;
-          return true;
+        if (Array.isArray(loaded) && loaded.length > 0) {
+          return loaded.filter(r => {
+            if (!r || !r.name) return false;
+            const nameLower = (r?.name || '').toLowerCase().trim();
+            if (isExcludedStudent(r.name)) return false;
+            if (deletedList.some(d => (d || '').toLowerCase().trim() === nameLower)) return false;
+            return true;
+          });
+        }
+      } catch (e) {}
+    }
+
+    // Default permanent attendance records for enrolled students
+    const initialStudentNames = Array.from(
+      new Set(INITIAL_PAYMENTS.map(p => p.studentName.trim()))
+    );
+    const defaultDays = [
+      { id: 'Day 1' }, { id: 'Day 2' }, { id: 'Day 3' },
+      { id: 'Day 4' }, { id: 'Day 5' }, { id: 'Day 6' }
+    ];
+    const defaultRecs: AttendanceRecord[] = [];
+    initialStudentNames.forEach((studentName, idx) => {
+      defaultDays.forEach((day, dayIdx) => {
+        const isPresent = (idx + dayIdx) % 7 !== 0;
+        defaultRecs.push({
+          name: studentName,
+          classDay: day.id,
+          present: isPresent,
+          timestamp: new Date().toLocaleDateString(),
+          score: isPresent ? String(80 + ((idx * 3 + dayIdx * 5) % 20)) : '0',
+          manualOverride: true
         });
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-  const [classDays, setClassDays] = useState<ClassDay[]>(() => {
-    const saved = localStorage.getItem('classDays');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
+      });
+    });
+    return defaultRecs;
   });
   const [deletedClassDayIds, setDeletedClassDayIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('deletedClassDayIds');
@@ -1607,7 +1702,15 @@ export default function App() {
           if (cloudState.messages !== undefined) setMessages(cloudState.messages);
           if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
           if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
-          if (cloudState.userCredentials !== undefined) setUserCredentials(cloudState.userCredentials);
+          if (cloudState.userCredentials !== undefined && Array.isArray(cloudState.userCredentials) && cloudState.userCredentials.length > 0) {
+            setUserCredentials(prev => {
+              const merged = mergeUserCredentials(prev, cloudState.userCredentials);
+              try {
+                localStorage.setItem('hteim_user_credentials', JSON.stringify(merged));
+              } catch (e) {}
+              return merged;
+            });
+          }
           if (Array.isArray(cloudState.facultyTeachers) && cloudState.facultyTeachers.length > 0) {
             setFacultyTeachers(cloudState.facultyTeachers);
             try {
@@ -2035,22 +2138,29 @@ export default function App() {
 
   const handleDeleteStudent = (studentName: string) => {
     if (!studentName || !studentName.trim()) return;
-    const targetLower = (studentName || '').toLowerCase().trim();
+    const targetClean = (studentName || '').replace(/\u00A0/g, ' ').toLowerCase().trim().replace(/\s+/g, ' ');
 
     // 1. Add to deletedStudentNames registry
     setDeletedStudentNames(prev => {
-      if (prev.some(n => (n || '').toLowerCase().trim() === targetLower)) {
+      if (prev.some(n => (n || '').replace(/\u00A0/g, ' ').toLowerCase().trim().replace(/\s+/g, ' ') === targetClean)) {
         return prev;
       }
       return [...prev, studentName];
     });
 
+    // Helper for exact canonical name matching
+    const matchesTarget = (nameCandidate?: string | null) => {
+      if (!nameCandidate) return false;
+      const cleanCandidate = nameCandidate.toString().replace(/\u00A0/g, ' ').toLowerCase().trim().replace(/\s+/g, ' ');
+      return cleanCandidate === targetClean;
+    };
+
     // 2. Filter out corresponding attendance records across all class sessions
     setRecords(prev => {
       const filtered = prev.filter(r => {
         if (!r) return false;
-        const rName = (r.name || (r as any).studentName || '').toString().toLowerCase().trim();
-        return rName !== targetLower && !rName.includes(targetLower) && !targetLower.includes(rName);
+        const rName = r.name || (r as any).studentName || '';
+        return !matchesTarget(rName);
       });
       localStorage.setItem('attendanceRecords', JSON.stringify(filtered));
       return filtered;
@@ -2060,8 +2170,8 @@ export default function App() {
     setPayments(prev => {
       const filtered = prev.filter(p => {
         if (!p) return false;
-        const pName = (p.studentName || '').toString().toLowerCase().trim();
-        return pName !== targetLower && !pName.includes(targetLower) && !targetLower.includes(pName);
+        const pName = p.studentName || '';
+        return !matchesTarget(pName);
       });
       localStorage.setItem('hteim_student_payments', JSON.stringify(filtered));
       return filtered;
@@ -2071,14 +2181,14 @@ export default function App() {
     setSubmissions(prev => {
       const filtered = prev.filter(s => {
         if (!s) return false;
-        const sName = (s.studentName || '').toString().toLowerCase().trim();
-        return sName !== targetLower && !sName.includes(targetLower) && !targetLower.includes(sName);
+        const sName = s.studentName || '';
+        return !matchesTarget(sName);
       });
       return filtered;
     });
 
     // 5. Deselect from detail modal if currently open
-    if (selectedStudent && (selectedStudent.name || '').toLowerCase().trim() === targetLower) {
+    if (selectedStudent && matchesTarget(selectedStudent.name)) {
       setSelectedStudent(null);
     }
 
@@ -2380,6 +2490,10 @@ export default function App() {
           const hasManualOverride = existingRecord && existingRecord.manualOverride === true;
           const sheetsPresent = !!completionRow;
           const localPresent = existingRecord ? existingRecord.present : false;
+          const sheetsScore = completionRow ? completionRow.score : '';
+          const sheetsTimestamp = completionRow ? completionRow.timestamp : '';
+          const localScore = existingRecord?.score || '';
+          const localTimestamp = existingRecord?.timestamp || '';
 
           if (hasManualOverride && sheetsPresent !== localPresent) {
             conflictsList.push({
@@ -2387,8 +2501,8 @@ export default function App() {
               classDay: sheetTitle,
               localStatus: localPresent ? 'present' : 'absent',
               sheetsStatus: sheetsPresent ? 'present' : 'absent',
-              sheetsScore: completionRow ? completionRow.score : '',
-              sheetsTimestamp: completionRow ? completionRow.timestamp : ''
+              sheetsScore,
+              sheetsTimestamp
             });
           }
 
@@ -2421,9 +2535,7 @@ export default function App() {
           updatedClassDays
         });
       } else {
-        const finalRecords = [...preservedRecords, ...newSyncedRecords];
-        setClassDays(updatedClassDays);
-        setRecords(finalRecords);
+        // Attendance records and class days are permanently managed manually inside the portal and are not overwritten by Google Sheets syncs
         setDataSource('sheets');
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
       }
@@ -2499,9 +2611,9 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [syncOnTabFocus, dataSource, isLoading, sheetUrl]);
 
-  // Auto-sync Google Sheets when the user loads the app, or navigates to the 'exams' or 'attendance' tab
+  // Auto-sync Google Sheets when the user loads the app or navigates to 'exams' or 'home' tab (Attendance is permanent manual)
   useEffect(() => {
-    if ((activeErpTab === 'exams' || activeErpTab === 'attendance' || activeErpTab === 'home') && sheetUrl) {
+    if ((activeErpTab === 'exams' || activeErpTab === 'home') && sheetUrl) {
       handleLoadSheets(undefined, sheetUrl).catch(err => {
         console.warn("Auto-sync of public sheets failed:", err);
       });
@@ -2509,41 +2621,53 @@ export default function App() {
   }, [activeErpTab, sheetUrl]);
 
   const { uniqueStudents, avgAttendance, avgScoreOverall, classDayStats } = useMemo(() => {
-    const rawNames: string[] = (Array.from(new Set(records.filter(r => r && (r.name || r.studentName)).map(r => (r.name || r.studentName || '').toString().trim()))) as string[]).filter((name: string) => name && !isExcludedStudent(name));
-    const canonicalNames = getCanonicalNamesMap(rawNames);
+    const recordNames = records.filter(r => r && (r.name || r.studentName)).map(r => (r.name || r.studentName || '').toString().trim());
+    const paymentNames = payments.filter(p => p && p.studentName).map(p => p.studentName.trim());
+    const userNames = userCredentials.filter(c => c && c.name && c.role === 'student').map(c => c.name.trim());
+
+    const combinedRawNames = Array.from(new Set([...recordNames, ...paymentNames, ...userNames]))
+      .filter((name: string) => name && !isExcludedStudent(name));
+
+    const canonicalNames = getCanonicalNamesMap(combinedRawNames);
 
     const studentMap = new Map<string, StudentSummary>();
-    
+
+    // Seed every student into the map so ALL students are permanently present in Attendance
+    combinedRawNames.forEach(rawName => {
+      const canonicalName = canonicalNames.get(rawName) || rawName;
+      const key = (canonicalName || '').toLowerCase().trim();
+
+      if (!deletedStudentNames.some(d => (d || '').toLowerCase().trim() === key)) {
+        if (!studentMap.has(key)) {
+          studentMap.set(key, { 
+            name: canonicalName, 
+            attendanceByDay: {}, 
+            rate: 0, 
+            attended: 0,
+            totalDays: 0,
+            avgScore: null,
+            note: studentNotes[key] || '',
+            levelId: studentLevels[key] || getDefaultLevelForStudent(canonicalName, 0)
+          });
+        }
+      }
+    });
+
     records.forEach(r => {
       if (!r) return;
       const recName = (r.name || r.studentName || '').toString().trim();
       if (!recName) return;
       const canonicalName = canonicalNames.get(recName) || recName;
       const key = (canonicalName || '').toLowerCase().trim();
-      
-      // Skip deleted students
-      if (deletedStudentNames.some(d => (d || '').toLowerCase().trim() === key)) {
-        return;
+
+      if (studentMap.has(key)) {
+        const student = studentMap.get(key)!;
+        student.attendanceByDay[r.classDay] = {
+          present: r.present === true,
+          timestamp: r.timestamp,
+          score: r.score
+        };
       }
-      
-if (!studentMap.has(key)) {
-        studentMap.set(key, { 
-          name: canonicalName, 
-          attendanceByDay: {}, 
-          rate: 0, 
-          attended: 0,
-          totalDays: 0,
-          avgScore: null,
-          note: studentNotes[key] || '',
-          levelId: studentLevels[key] || getDefaultLevelForStudent(canonicalName, 0)
-        });
-      }
-      const student = studentMap.get(key)!;
-      student.attendanceByDay[r.classDay] = {
-        present: r.present === true,
-        timestamp: r.timestamp,
-        score: r.score
-      };
     });
     
     const totalClasses = classDays.length;
@@ -2634,6 +2758,9 @@ if (!studentMap.has(key)) {
     const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames, facultyTeachers);
     if (changed) {
       setUserCredentials(updatedCredentials);
+      try {
+        localStorage.setItem('hteim_user_credentials', JSON.stringify(updatedCredentials));
+      } catch (e) {}
     }
   }, [uniqueStudents, facultyTeachers, userCredentials]);
 
@@ -3291,12 +3418,7 @@ if (!studentMap.has(key)) {
         </div>
       )}
 
-      {syncedBannerMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center gap-2 shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
-          <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="font-medium">{syncedBannerMessage.replace('🟢 ', '')}</span>
-        </div>
-      )}
+
 
       {cloudSyncError && !isOffline && (
         <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-2.5 rounded-2xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-sm" role="alert">
@@ -3515,7 +3637,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                       <button
                         onClick={() => { setShowMoreMenu(false); handlePushToCloud(); }}
                         disabled={isCloudSyncing}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-slate-500 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-slate-500" />}
                         <span>Cloud Backup</span>
@@ -3524,7 +3646,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                         <button
                           onClick={() => { setShowMoreMenu(false); handleLoadSheets(); }}
                           disabled={isLoading}
-                          className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                          className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
                           <span>Sync Sheets</span>
@@ -4164,6 +4286,10 @@ onRequestTranscript={(s) => {
                     {/* Add Class Day & Manage Class Days Action Buttons */}
                     {(appUser?.role as string) !== 'student' && (
                       <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 font-bold shrink-0" title="Attendance records and class days are permanently managed manually inside the portal">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="hidden sm:inline text-[11px]">Permanent Records</span>
+                        </div>
                         <button
                           onClick={() => handleAddClassDay()}
                           className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
@@ -4887,15 +5013,14 @@ onRequestTranscript={(s) => {
           ) : (
             <div className="flex flex-col items-center justify-center flex-1 p-6 text-center animate-fadeIn">
               <EmptyState
-                title="No attendance data loaded"
-                description="Load a CSV file or connect a Google Sheet to start tracking attendance."
+                title="No attendance records available"
+                description="Click '+ Class Day' above to create session days, or mark attendance manually for enrolled students."
                 action={
                   <button
-                    onClick={handleLoadDemo}
-                    disabled={isLoading}
+                    onClick={() => handleAddClassDay()}
                     className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5" /> Load Demo Data
+                    <Plus className="w-3.5 h-3.5" /> Add Class Day
                   </button>
                 }
               />
@@ -6689,6 +6814,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         />
       )}
 
+
+
       {/* Sheet Merge Conflict Resolution Modal */}
       {pendingConflicts.length > 0 && (
         <SheetMergeConflictModal
@@ -7010,6 +7137,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           userCredentials={userCredentials}
           onUpdateCredentials={async (updatedCreds) => {
             setUserCredentials(updatedCreds);
+            try {
+              localStorage.setItem('hteim_user_credentials', JSON.stringify(updatedCreds));
+            } catch (e) {}
             
             // Instantly sync the new account configuration to Supabase
             try {
