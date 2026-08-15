@@ -428,9 +428,529 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     return payments.find(p => (p?.studentName || '').toLowerCase().trim() === nameToMatch) || null;
   }, [isStudent, appUser, payments]);
 
+  // Scripture Copy Toast state
+  const [copiedScripture, setCopiedScripture] = useState(false);
+  const handleCopyScripture = () => {
+    navigator.clipboard.writeText(`"Study to show yourself approved unto God, a workman that needs not to be ashamed, rightly dividing the word of truth." — 2 Timothy 2:15 (HTEIM School of Ministry)`);
+    setCopiedScripture(true);
+    if (navigator.vibrate) navigator.vibrate(20);
+    setTimeout(() => setCopiedScripture(false), 2500);
+  };
+
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
       
+      {/* Executive Personalized Dashboard Metric Cards (Pillar 5) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {isStudent ? (
+          <>
+            {/* Student Attendance Rate Widget */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">Attendance Rate</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">{loggedInStudentData?.rate ? Math.round(loggedInStudentData.rate) : 92}%</span>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    (loggedInStudentData?.rate || 92) >= 75
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                  }`}>
+                    {(loggedInStudentData?.rate || 92) >= 75 ? 'Satisfactory ✓' : 'At-Risk ⚠'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400">Minimum threshold: 75%</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <UserCheck className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Student Course Progress Widget */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">Enrolled Track</span>
+                <h4 className="text-sm font-black text-slate-900 dark:text-white truncate max-w-[140px]">
+                  6 Core Modules
+                </h4>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Active Ministry Candidate</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <BookOpen className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Student Tuition Standing Widget */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">Tuition Status</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-slate-900 dark:text-white font-mono">
+                    ${loggedInStudentPayment ? (loggedInStudentPayment.totalTuition - loggedInStudentPayment.amountPaid).toLocaleString() : '0'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-bold">due</span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-bold">{loggedInStudentPayment?.status || 'Paid In Full'}</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Student Quick Action Card */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-indigo-900 to-slate-900 text-white">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-indigo-300">Quick Portal Action</span>
+                <p className="text-xs font-bold text-white">View Statement or Pay</p>
+                <button
+                  onClick={() => onNavigate('payments')}
+                  className="mt-1 px-3 py-1 bg-amber-400 text-slate-950 font-black text-[11px] rounded-lg cursor-pointer hover:bg-amber-300 transition-all flex items-center gap-1 active-bounce"
+                >
+                  <span>Open Payments</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Teacher: Total Roster */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">Total Roster</span>
+                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{activeStudents}</div>
+                <p className="text-[10px] text-slate-400 font-medium">Enrolled candidates</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Teacher: Average Attendance Rate */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">Avg Attendance</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">{attendanceRate}%</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                    Satisfactory
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium">{scheduledClasses} completed sessions</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <UserCheck className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Teacher: At-Risk Warnings (<75%) */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">At-Risk Warnings</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{rawAtRiskStudents.length}</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300">
+                    Below 75%
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium">Flagged for follow-up</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Teacher: Roll Call Quick Action */}
+            <div className="glass-card rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-amber-400">Active Classroom</span>
+                <p className="text-xs font-black text-white">Launch Roll Call Session</p>
+                <button
+                  onClick={() => onNavigate('attendance')}
+                  className="mt-1 px-3 py-1 bg-amber-400 text-slate-950 font-black text-[11px] rounded-lg cursor-pointer hover:bg-amber-300 transition-all flex items-center gap-1 active-bounce"
+                >
+                  <span>Mark Attendance</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Live Class Broadcast & Countdown Banner */}
+      <section className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white rounded-3xl border border-indigo-500/40 p-4 sm:p-5 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1.5 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono font-extrabold text-[10px] rounded-full uppercase tracking-wider flex items-center gap-1.5">
+              <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" /> Live Broadcast Ready
+            </span>
+            <span className="text-xs text-indigo-300 font-bold">
+              Sunday & Wednesday Academic Sessions
+            </span>
+          </div>
+
+          <h3 className="text-lg sm:text-xl font-black text-white tracking-tight font-syne">
+            Module 4: Apostolic Governance & Epistles Lecture
+          </h3>
+
+          <p className="text-xs text-slate-300 leading-relaxed max-w-2xl font-medium">
+            Join the interactive live video classroom with Dr. Faculty Director. Live Q&A, chat, and attendance verification enabled.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={() => onNavigate('schedule')}
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg hover:brightness-110 active-bounce flex items-center gap-2 cursor-pointer transition-all"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>Join Live Broadcast Stream</span>
+          </button>
+        </div>
+      </section>
+
+      {/* Admin & Faculty Academic Insights Panel (Elevated Above the Fold for Immediate Action) */}
+      {isAdminOrTeacher && (
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden my-2">
+        <div 
+          onClick={() => setIsAdminPanelExpanded(prev => !prev)}
+          className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
+              <BarChart2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+                  Academic Analytics & At-Risk Monitoring
+                </h3>
+                {rawAtRiskStudents.length > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
+                    {rawAtRiskStudents.length} At-Risk
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Faculty tools for student attendance intervention, module trends, and cloud state synchronization.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
+              {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
+            </span>
+            {isAdminPanelExpanded ? (
+              <ChevronUp className="w-5 h-5 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-slate-500" />
+            )}
+          </div>
+        </div>
+
+        {isAdminPanelExpanded && (
+          <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
+            {/* Sub-Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setAdminTab('at_risk')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  adminTab === 'at_risk'
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>At-Risk Triggers ({rawAtRiskStudents.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAdminTab('trends')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  adminTab === 'trends'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+                <span>Module Attendance Trends</span>
+              </button>
+            </div>
+
+            {/* At-Risk Tab Content */}
+            {adminTab === 'at_risk' && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search student..."
+                      value={atRiskSearch}
+                      onChange={(e) => setAtRiskSearch(e.target.value)}
+                      className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setAtRiskFilter('all')}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
+                    >
+                      All ({rawAtRiskStudents.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAtRiskFilter('critical')}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
+                    >
+                      Critical (≤50%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAtRiskFilter('moderate')}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
+                    >
+                      Warning (51-74%)
+                    </button>
+                  </div>
+                </div>
+
+                {filteredAtRiskStudents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {filteredAtRiskStudents.map((student) => {
+                      const isCritical = student.rate <= 50;
+                      const totalClasses = classDays.length || 6;
+                      const missedClasses = Math.max(0, totalClasses - student.attended);
+
+                      return (
+                        <div 
+                          key={student.name}
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${
+                            isCritical 
+                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' 
+                              : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${
+                                isCritical ? 'bg-rose-600' : 'bg-amber-600'
+                              }`}>
+                                {student.photoUrl ? (
+                                  <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
+                                ) : (
+                                  student.name.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
+                                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                  Missed {missedClasses} of {totalClasses} Sessions
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
+                                isCritical 
+                                  ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200' 
+                                  : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
+                              }`}>
+                                <AlertTriangle className="w-3 h-3" /> {Math.round(student.rate)}%
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              <span>Attendance Rate</span>
+                              <span>{student.attended} / {totalClasses} Attended</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'bg-rose-600' : 'bg-amber-500'}`}
+                                style={{ width: `${Math.max(5, student.rate)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('attendance')}
+                              className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <UserX className="w-3 h-3 text-rose-500" /> Review
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('messages')}
+                              className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <MessageSquare className="w-3 h-3" /> Direct Msg
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSentAlertStudent(student.name);
+                                setTimeout(() => setSentAlertStudent(null), 3000);
+                              }}
+                              className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${
+                                sentAlertStudent === student.name
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                              }`}
+                            >
+                              {sentAlertStudent === student.name ? <CheckCircle className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
+                              {sentAlertStudent === student.name ? 'Alerted' : 'Flag'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="All students meeting expectations"
+                    description="No students are currently falling below the attendance threshold in this filter view."
+                    icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Trends Tab Content */}
+            {adminTab === 'trends' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setTrendChartType('bar')}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                        trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
+                      }`}
+                    >
+                      <BarChart2 className="w-3.5 h-3.5" /> Bar View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendChartType('area')}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                        trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Area Trend
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {trendChartType === 'bar' ? (
+                      <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
+                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
+                                  <p>Absence Rate: <strong className="text-rose-400">{data.absenceRate}%</strong></p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="attendanceRate" radius={[8, 8, 0, 0]} name="Attendance Rate (%)">
+                          {moduleTrendData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.attendanceRate < 75 ? '#F43F5E' : '#4F46E5'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    ) : (
+                      <AreaChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
+                        <defs>
+                          <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
+                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Area type="monotone" dataKey="attendanceRate" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
+                      </AreaChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+      )}
+
+      {/* Daily Ministry Scripture Anchor Card */}
+      <section className="glass-card rounded-3xl p-5 border border-amber-500/30 dark:border-amber-500/20 shadow-md relative overflow-hidden bg-gradient-to-br from-amber-500/5 via-transparent to-indigo-500/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-500 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
+                <Quote className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-widest font-black text-amber-600 dark:text-amber-400">
+                Daily Scripture & Anointing Anchor
+              </span>
+            </div>
+
+            <blockquote className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white italic leading-relaxed pt-1">
+              "Study to show yourself approved unto God, a workman that needs not to be ashamed, rightly dividing the word of truth."
+            </blockquote>
+
+            <p className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">
+              — 2 Timothy 2:15 • Theme: Ministerial Workmanship & Diligence
+            </p>
+          </div>
+
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              onClick={handleCopyScripture}
+              className="px-3 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5 cursor-pointer active-bounce"
+              title="Copy scripture to clipboard"
+            >
+              {copiedScripture ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              <span>{copiedScripture ? 'Copied!' : 'Share Scripture'}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Course Faculty & Opening Intro Revolving Showcase Banner */}
       <section 
         className="bg-slate-950 text-white rounded-3xl border border-slate-800 shadow-2xl overflow-hidden my-2 transition-all"
@@ -789,126 +1309,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         )}
       </section>
-
-      {/* Active Class Quiz Announcement Banner (Students Only) */}
-      {isStudent && activeQuizzes.length > 0 && (
-        <section className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 rounded-2xl border-2 border-purple-500/40 p-4 sm:p-6 text-white shadow-xl relative overflow-hidden animate-fadeIn my-2">
-          <div className="absolute top-0 right-0 -mr-10 -mt-10 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
-          
-          <div className="relative z-10 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-500/30 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                  <Sparkles className="w-3 h-3" /> Active Class Quiz Available
-                </span>
-                <span className="text-xs text-purple-200 font-medium hidden sm:inline">
-                  ({activeQuizzes.length} published quiz{activeQuizzes.length > 1 ? 'zes' : ''} active)
-                </span>
-              </div>
-
-              <span className="text-[11px] font-mono font-bold text-purple-200 bg-purple-800/60 px-2.5 py-1 rounded-lg border border-purple-400/30">
-                Auto-Compiled to Total Grade Score
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {activeQuizzes.map((asg) => {
-                const quiz = asg.quizData!;
-                const currentStudentName = appUser?.studentName || appUser?.name || userEmail || '';
-                const targetName = (currentStudentName || '').toLowerCase().trim();
-                const hasSubmitted = submissions?.some(
-                  s => s.assignmentId === asg.id && (s.studentName || '').toLowerCase().trim() === targetName
-                );
-
-                return (
-                  <div key={asg.id} className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/15 hover:border-purple-300/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 bg-purple-500/30 text-purple-100 font-mono font-bold text-[10px] rounded border border-purple-300/30">
-                          {asg.courseCode || 'MIN-101'}
-                        </span>
-                        <span className="text-xs font-semibold text-purple-200">
-                          {asg.moduleTrack || 'Module 1'}
-                        </span>
-                        {hasSubmitted && (
-                          <span className="px-2 py-0.5 bg-emerald-500/30 text-emerald-200 font-extrabold text-[10px] rounded-full border border-emerald-400/40 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-300" /> Completed
-                          </span>
-                        )}
-                      </div>
-
-                      <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
-                        {quiz.title}
-                      </h3>
-
-                      <p className="text-xs text-purple-100/80 line-clamp-2 leading-relaxed">
-                        {quiz.description || 'Complete this weighted class day quiz to compile your academic score.'}
-                      </p>
-
-                      {/* Metrics row */}
-                      <div className="flex items-center gap-3 pt-1 text-xs text-purple-200 font-mono font-bold flex-wrap">
-                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
-                          <Award className="w-3.5 h-3.5 text-amber-300" />
-                          <span>{quiz.totalPoints || asg.maxPoints} Points Max</span>
-                        </span>
-
-                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
-                          <Clock className="w-3.5 h-3.5 text-indigo-300" />
-                          <span>{quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} Mins Limit` : 'No Time Limit'}</span>
-                        </span>
-
-                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
-                          <Calendar className="w-3.5 h-3.5 text-purple-300" />
-                          <span>Due: {quiz.dueDate || asg.dueDate}</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-500/30">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${quiz.shareCode || quiz.id}`;
-                          navigator.clipboard.writeText(shareUrl);
-                          setCopiedQuizLink(quiz.id);
-                          setTimeout(() => setCopiedQuizLink(null), 2500);
-                        }}
-                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                        title="Copy shareable link for this quiz"
-                      >
-                        {copiedQuizLink === quiz.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-purple-200" />}
-                        <span>{copiedQuizLink === quiz.id ? 'Copied!' : 'Copy Link'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onTakeQuiz) {
-                            onTakeQuiz(quiz);
-                          } else {
-                            onNavigate('exams');
-                          }
-                        }}
-                        className={`px-4 py-2.5 ${
-                          hasSubmitted 
-                            ? 'bg-purple-800/90 hover:bg-purple-800 text-white font-bold border border-purple-400/40' 
-                            : 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-lg hover:shadow-amber-400/20 active:scale-95'
-                        } text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5`}
-                      >
-                        {hasSubmitted ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <BookOpen className="w-4 h-4" />}
-                        <span>{hasSubmitted ? 'Completed (View Score)' : 'Take Quiz Now'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Welcome & Pathway Selector (Only shown for guest/prospective mode) */}
       {!appUser && (
@@ -1269,313 +1669,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
 
       </div>
-
-      {/* Admin & Faculty Academic Insights Panel */}
-      {isAdminOrTeacher && (
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-        <div 
-          onClick={() => setIsAdminPanelExpanded(prev => !prev)}
-          className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
-                  Academic Analytics & At-Risk Monitoring
-                </h3>
-                {rawAtRiskStudents.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
-                    {rawAtRiskStudents.length} At-Risk
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Faculty tools for student attendance intervention, module trends, and cloud state synchronization.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
-              {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
-            </span>
-            {isAdminPanelExpanded ? (
-              <ChevronUp className="w-5 h-5 text-slate-500" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-500" />
-            )}
-          </div>
-        </div>
-
-        {isAdminPanelExpanded && (
-          <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
-            {/* Sub-Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setAdminTab('at_risk')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  adminTab === 'at_risk'
-                    ? 'bg-rose-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>At-Risk Triggers ({rawAtRiskStudents.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAdminTab('trends')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  adminTab === 'trends'
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <BarChart2 className="w-3.5 h-3.5" />
-                <span>Module Attendance Trends</span>
-              </button>
-            </div>
-
-            {/* At-Risk Tab Content */}
-            {adminTab === 'at_risk' && (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search student..."
-                      value={atRiskSearch}
-                      onChange={(e) => setAtRiskSearch(e.target.value)}
-                      className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('all')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
-                    >
-                      All ({rawAtRiskStudents.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('critical')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
-                    >
-                      Critical (≤50%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('moderate')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
-                    >
-                      Warning (51-74%)
-                    </button>
-                  </div>
-                </div>
-
-                {filteredAtRiskStudents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {filteredAtRiskStudents.map((student) => {
-                      const isCritical = student.rate <= 50;
-                      const totalClasses = classDays.length || 6;
-                      const missedClasses = Math.max(0, totalClasses - student.attended);
-
-                      return (
-                        <div 
-                          key={student.name}
-                          className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${
-                            isCritical 
-                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' 
-                              : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${
-                                isCritical ? 'bg-rose-600' : 'bg-amber-600'
-                              }`}>
-                                {student.photoUrl ? (
-                                  <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
-                                ) : (
-                                  student.name.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
-                                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                                  Missed {missedClasses} of {totalClasses} Sessions
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="text-right shrink-0">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
-                                isCritical 
-                                  ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200' 
-                                  : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
-                              }`}>
-                                <AlertTriangle className="w-3 h-3" /> {Math.round(student.rate)}%
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                              <span>Attendance Rate</span>
-                              <span>{student.attended} / {totalClasses} Attended</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'bg-rose-600' : 'bg-amber-500'}`}
-                                style={{ width: `${Math.max(5, student.rate)}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('attendance')}
-                              className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <UserX className="w-3 h-3 text-rose-500" /> Review
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('messages')}
-                              className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <MessageSquare className="w-3 h-3" /> Direct Msg
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSentAlertStudent(student.name);
-                                setTimeout(() => setSentAlertStudent(null), 3000);
-                              }}
-                              className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                sentAlertStudent === student.name
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
-                              }`}
-                            >
-                              {sentAlertStudent === student.name ? <CheckCircle className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
-                              {sentAlertStudent === student.name ? 'Alerted' : 'Flag'}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="All students meeting expectations"
-                    description="No students are currently falling below the attendance threshold in this filter view."
-                    icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Trends Tab Content */}
-            {adminTab === 'trends' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setTrendChartType('bar')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
-                      }`}
-                    >
-                      <BarChart2 className="w-3.5 h-3.5" /> Bar View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrendChartType('area')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
-                      }`}
-                    >
-                      <Activity className="w-3.5 h-3.5" /> Trend Line
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-64 w-full bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {trendChartType === 'bar' ? (
-                      <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
-                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
-                                  <p>Absence Rate: <strong className="text-rose-400">{data.absenceRate}%</strong></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="attendanceRate" radius={[8, 8, 0, 0]} name="Attendance Rate (%)">
-                          {moduleTrendData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.attendanceRate < 75 ? '#F43F5E' : '#4F46E5'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    ) : (
-                      <AreaChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
-                        <defs>
-                          <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
-                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area type="monotone" dataKey="attendanceRate" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
-                      </AreaChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-      )}
 
       {/* Admin Faculty & Instructors Manager Modal */}
       {isAdmin && (

@@ -105,14 +105,16 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
     }
 
     if (isHorizontalSwipe.current) {
-      // Limit drag displacement (-120px to +120px)
-      const clampedX = Math.max(-120, Math.min(120, deltaX));
+      // Limit drag displacement (-140px to +140px)
+      const clampedX = Math.max(-140, Math.min(140, deltaX));
       setDragOffset(clampedX);
 
       if (clampedX > 40) {
         setSwipeActionText('Release to Mark Present ✓');
+        if (Math.abs(clampedX - 40) < 5 && navigator.vibrate) navigator.vibrate(15);
       } else if (clampedX < -40) {
         setSwipeActionText(isPresent ? 'Release to Mark Excused ⚠' : isExcused ? 'Release to Mark Absent ✗' : 'Release to Mark Excused ⚠');
+        if (Math.abs(clampedX + 40) < 5 && navigator.vibrate) navigator.vibrate(15);
       } else {
         setSwipeActionText(null);
       }
@@ -124,15 +126,15 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
     setIsDragging(false);
 
     if (isHorizontalSwipe.current && targetDayId) {
-      if (dragOffset > 50) {
+      if (dragOffset > 45) {
         // Swipe Right -> Mark Present
         onToggleAttendance(student.name, targetDayId, 'present');
-        if (navigator.vibrate) navigator.vibrate(35);
-      } else if (dragOffset < -50) {
+        if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+      } else if (dragOffset < -45) {
         // Swipe Left -> Toggle Excused / Absent
         const nextStatus = isPresent ? 'excused' : isExcused ? 'absent' : 'excused';
         onToggleAttendance(student.name, targetDayId, nextStatus);
-        if (navigator.vibrate) navigator.vibrate(25);
+        if (navigator.vibrate) navigator.vibrate([30, 30]);
       }
     }
 
@@ -142,14 +144,14 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-xs group">
-      {/* Behind Card Background Action Feedback */}
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-md group">
+      {/* Behind Card Background Action Feedback with Directional Gradients */}
       <div 
-        className={`absolute inset-0 flex items-center justify-between px-3 sm:px-5 font-black text-xs text-white transition-colors ${
+        className={`absolute inset-0 flex items-center justify-between px-4 sm:px-6 font-black text-xs text-white transition-all duration-200 ${
           dragOffset > 0 
-            ? 'bg-emerald-600' 
+            ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-700' 
             : dragOffset < 0 
-            ? (isPresent ? 'bg-amber-600' : isExcused ? 'bg-rose-600' : 'bg-amber-600')
+            ? (isPresent ? 'bg-gradient-to-l from-amber-600 via-amber-500 to-amber-700' : isExcused ? 'bg-gradient-to-l from-rose-600 via-rose-500 to-rose-700' : 'bg-gradient-to-l from-amber-600 via-amber-500 to-amber-700')
             : 'bg-slate-800'
         }`}
       >

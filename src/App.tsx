@@ -7299,12 +7299,28 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
       {/* Mobile Bottom Navigation */}
       <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/90 dark:border-slate-800/90 backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
-        {[
-          { tab: 'home', Icon: Sparkles, label: 'Home' },
-          { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-          { tab: 'courses', Icon: BookOpen, label: 'Courses' },
-          { tab: 'exams', Icon: Award, label: 'Exams' },
-        ].map(({ tab, Icon, label }: any) => {
+        {(
+          appUser?.role === 'student'
+            ? [
+                { tab: 'home', Icon: Sparkles, label: 'Home' },
+                { tab: 'courses', Icon: BookOpen, label: 'Courses' },
+                { tab: 'payments', Icon: DollarSign, label: 'Payments' },
+                { tab: 'messages', Icon: MessageSquare, label: 'Messages', badge: unreadMessagesCount },
+              ]
+            : (appUser?.role === 'admin' || appUser?.role === 'teacher')
+              ? [
+                  { tab: 'home', Icon: Sparkles, label: 'Home' },
+                  { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
+                  { tab: 'students', Icon: GraduationCap, label: 'Students' },
+                  { tab: 'exams', Icon: Award, label: 'Exams' },
+                ]
+              : [
+                  { tab: 'home', Icon: Sparkles, label: 'Home' },
+                  { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
+                  { tab: 'courses', Icon: BookOpen, label: 'Courses' },
+                  { tab: 'exams', Icon: Award, label: 'Exams' },
+                ]
+        ).map(({ tab, Icon, label, badge }: any) => {
           const isActive = activeErpTab === tab;
           return (
             <button
@@ -7321,6 +7337,11 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             >
               <div className="relative">
                 <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                {badge > 0 && (
+                  <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
+                    {badge}
+                  </span>
+                )}
               </div>
               <span className={`text-[10px] tracking-tight truncate max-w-full ${
                 isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
@@ -7344,7 +7365,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             <Menu className={`w-5 h-5 transition-transform ${
               showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
             }`} />
-            {unreadMessagesCount > 0 && (
+            {unreadMessagesCount > 0 && appUser?.role !== 'student' && (
               <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
                 {unreadMessagesCount}
               </span>
