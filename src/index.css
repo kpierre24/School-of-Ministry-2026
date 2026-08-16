@@ -215,58 +215,6 @@ main:focus-visible { outline: none; }
     background: transparent;
   }
 
-  /* Scroll-Snap Horizontal Filter Bar with End-Fade Mask */
-  .filter-bar-scroll {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    mask-image: linear-gradient(to right, black 85%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
-  }
-  .filter-bar-scroll::-webkit-scrollbar {
-    display: none;
-  }
-  .filter-bar-item {
-    scroll-snap-align: start;
-    flex-shrink: 0;
-  }
-
-  /* Ambient Glassmorphic Card Style */
-  .glass-card {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-  }
-  .dark .glass-card {
-    background: rgba(15, 23, 42, 0.88);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(30, 41, 59, 0.8);
-  }
-
-  /* Accessible micro-caption high contrast utility (WCAG AA) */
-  .micro-caption {
-    font-size: 0.625rem;
-    line-height: 0.875rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: #475569;
-  }
-  .dark .micro-caption {
-    color: #94a3b8;
-  }
-
-  /* Bouncy Touch Active Micro-Animations */
-  .active-bounce {
-    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .active-bounce:active {
-    transform: scale(0.95);
-  }
-
   /* Glassmorphic & Ambient Radial Gradient Utilities */
   .app-ambient-shell {
     position: relative;

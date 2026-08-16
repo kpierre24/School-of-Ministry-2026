@@ -13,16 +13,11 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
   onClose,
   onSessionCreated
 }) => {
-  const [activeMode, setActiveMode] = useState<'pin' | 'scanner'>('pin');
   const [pinCode, setPinCode] = useState<string>('');
   const [expirationMinutes, setExpirationMinutes] = useState<number>(15);
   const [geoEnabled, setGeoEnabled] = useState<boolean>(true);
   const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(15 * 60);
   const [copied, setCopied] = useState(false);
-
-  // Live scanner state
-  const [isScanning, setIsScanning] = useState(false);
-  const [lastScannedStudent, setLastScannedStudent] = useState<string | null>(null);
 
   // Generate 4-digit PIN code
   const generateNewPIN = () => {
@@ -52,21 +47,9 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSimulateScanPass = () => {
-    setIsScanning(true);
-    if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
-    setTimeout(() => {
-      setIsScanning(false);
-      const mockStudents = ['Afeshia Burke', 'Gale Grant', 'Samuel Selkridge', 'Christy Ruben'];
-      const scannedName = mockStudents[Math.floor(Math.random() * mockStudents.length)];
-      setLastScannedStudent(scannedName);
-      setTimeout(() => setLastScannedStudent(null), 3500);
-    }, 1200);
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-center relative overflow-hidden">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer touch-min-44"
@@ -80,113 +63,48 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
             Live Classroom Attendance Verification
           </span>
           <h2 className="text-xl font-black text-slate-900 dark:text-white font-syne pt-1">
-            {classDayName} Attendance
+            {classDayName} PIN & QR Code
           </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Students enter this PIN or scan QR to check in automatically.
+          </p>
         </div>
 
-        {/* Mode Selector Switcher */}
-        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700">
-          <button
-            onClick={() => setActiveMode('pin')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeMode === 'pin'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            PIN & QR Display
-          </button>
-          <button
-            onClick={() => setActiveMode('scanner')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-              activeMode === 'scanner'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <span>Live Camera Scanner</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          </button>
-        </div>
-
-        {activeMode === 'pin' ? (
-          <>
-            {/* Big PIN Box */}
-            <div className="p-6 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-2xl border border-indigo-500/30 space-y-3 relative shadow-lg">
-              <p className="text-[10px] uppercase tracking-widest text-indigo-300 font-extrabold">
-                TIME-EXPIRING PIN CODE
-              </p>
-              <div className="text-5xl font-black font-mono tracking-widest text-amber-400 flex items-center justify-center gap-2">
-                <span>{pinCode || '8841'}</span>
-                <button
-                  onClick={handleCopy}
-                  title="Copy PIN"
-                  className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer touch-min-44"
-                  aria-label="Copy PIN code"
-                >
-                  {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-300 pt-1">
-                <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-                <span>Expires in: {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
-              </div>
-            </div>
-
-            {/* QR Code Graphic Mockup */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center space-y-2">
-              <div className="w-36 h-36 bg-white p-2 rounded-xl shadow-xs border border-slate-200 flex items-center justify-center">
-                <svg viewBox="0 0 100 100" className="w-full h-full text-slate-950 fill-current">
-                  <path d="M10 10h30v30H10zM15 15v20h20V15zm5 5h10v10H20zM60 10h30v30H60zM65 15v20h20V15zm5 5h10v10H70zM10 60h30v30H10zM15 65v20h20V65zm5 5h10v10H20zM45 10h10v10H45zM45 25h10v10H45zM45 40h10v10H45zM10 45h10v10H10zM25 45h10v10H25zM60 45h10v10H60zM75 45h15v10H75zM45 60h10v10H45zM60 60h15v10H60zM80 60h10v10H80zM45 75h10v15H45zM60 75h10v10H60zM75 75h15v15H75z" />
-                </svg>
-              </div>
-              <p className="text-[11px] text-slate-500 font-bold">
-                Scan with phone camera to auto check-in
-              </p>
-            </div>
-          </>
-        ) : (
-          /* Live Camera Viewfinder Interface */
-          <div className="p-5 bg-slate-950 text-white rounded-2xl border border-slate-800 space-y-4 relative overflow-hidden">
-            <div className="relative aspect-4/3 w-full rounded-xl bg-slate-900 border-2 border-dashed border-indigo-500/50 flex flex-col items-center justify-center overflow-hidden">
-              {/* Scanline Animation */}
-              <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_15px_#f59e0b] animate-scanline" />
-              
-              <div className="w-48 h-48 border-2 border-indigo-400 rounded-2xl relative flex items-center justify-center">
-                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-amber-400" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-amber-400" />
-                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-amber-400" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-l-2 border-amber-400 rotate-90" />
-                
-                <QrCode className="w-16 h-16 text-indigo-400/70 animate-pulse" />
-              </div>
-
-              {isScanning && (
-                <div className="absolute inset-0 bg-indigo-950/80 backdrop-blur-xs flex items-center justify-center gap-2 font-black text-amber-300 text-sm">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Processing Student Pass...</span>
-                </div>
-              )}
-            </div>
-
-            {lastScannedStudent && (
-              <div className="p-3 bg-emerald-950/90 border border-emerald-500/60 rounded-xl text-emerald-300 font-extrabold text-xs flex items-center justify-center gap-2 animate-bounce">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Checked In: {lastScannedStudent} ✓</span>
-              </div>
-            )}
-
+        {/* Big PIN Box */}
+        <div className="p-6 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-2xl border border-indigo-500/30 space-y-3 relative shadow-lg">
+          <p className="text-[10px] uppercase tracking-widest text-indigo-300 font-extrabold">
+            TIME-EXPIRING PIN CODE
+          </p>
+          <div className="text-5xl font-black font-mono tracking-widest text-amber-400 flex items-center justify-center gap-2">
+            <span>{pinCode || '8841'}</span>
             <button
-              onClick={handleSimulateScanPass}
-              disabled={isScanning}
-              className="w-full py-3 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              onClick={handleCopy}
+              title="Copy PIN"
+              className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer touch-min-44"
+              aria-label="Copy PIN code"
             >
-              <QrCode className="w-4 h-4" />
-              <span>Scan Student Pass Now</span>
+              {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
             </button>
           </div>
-        )}
+
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-300 pt-1">
+            <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+            <span>Expires in: {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
+          </div>
+        </div>
+
+        {/* QR Code Graphic Mockup */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center space-y-2">
+          <div className="w-36 h-36 bg-white p-2 rounded-xl shadow-xs border border-slate-200 flex items-center justify-center">
+            {/* SVG QR Code pattern mockup */}
+            <svg viewBox="0 0 100 100" className="w-full h-full text-slate-950 fill-current">
+              <path d="M10 10h30v30H10zM15 15v20h20V15zm5 5h10v10H20zM60 10h30v30H60zM65 15v20h20V15zm5 5h10v10H70zM10 60h30v30H10zM15 65v20h20V65zm5 5h10v10H20zM45 10h10v10H45zM45 25h10v10H45zM45 40h10v10H45zM10 45h10v10H10zM25 45h10v10H25zM60 45h10v10H60zM75 45h15v10H75zM45 60h10v10H45zM60 60h15v10H60zM80 60h10v10H80zM45 75h10v15H45zM60 75h10v10H60zM75 75h15v15H75z" />
+            </svg>
+          </div>
+          <p className="text-[11px] text-slate-500 font-bold">
+            Scan with phone camera to auto check-in
+          </p>
+        </div>
 
         {/* Settings: Expiration & Geolocation */}
         <div className="space-y-3 text-left">

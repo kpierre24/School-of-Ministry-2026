@@ -2081,76 +2081,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             </div>
           </div>
 
-          {/* Mobile Stacked Cards View (<768px) */}
-          <div className="md:hidden space-y-3">
-            {filteredPayments.map(p => {
-              const balance = p.totalTuition - p.amountPaid;
-              const pctPaid = Math.min(100, Math.round((p.amountPaid / (p.totalTuition || 1)) * 100));
-
-              return (
-                <div key={p.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{p.studentName}</h4>
-                      <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">{p.studentId}</span>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      p.status === 'Paid In Full'
-                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300'
-                        : p.status === 'Partial'
-                        ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-300'
-                        : p.status === 'Past Due'
-                        ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300'
-                        : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300'
-                    }`}>
-                      {p.status}
-                    </span>
-                  </div>
-
-                  <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-semibold">
-                      {p.moduleTrack}
-                    </span>
-                  </div>
-
-                  {/* Progress & Balances */}
-                  <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl space-y-2">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-500">Paid: <strong className="text-emerald-600 font-mono">${p.amountPaid.toLocaleString()}</strong></span>
-                      <span className="text-slate-500">Due: <strong className="text-amber-600 font-mono">${balance.toLocaleString()}</strong></span>
-                    </div>
-                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                      <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: `${pctPaid}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-1 flex-wrap">
-                    {balance > 0 && (
-                      <button
-                        onClick={() => handleOpenRecordPayment(p)}
-                        className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all shadow-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Record Payment
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setReceiptRecord(p);
-                        navigate({ action: 'receipt', id: p.id });
-                      }}
-                      className="flex-1 py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all"
-                    >
-                      <Receipt className="w-3.5 h-3.5 text-indigo-500" /> Statement
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Desktop Table View (>=768px) */}
-          <div className="hidden md:block overflow-x-auto">
+          {/* Table */}
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-100 text-slate-600 uppercase font-black tracking-wider text-[10px]">
                 <tr>
