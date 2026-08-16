@@ -507,7 +507,8 @@ export default function App() {
       await logout();
     } catch (e) {}
     setAppUser(null);
-    setShowLoginModal(true);
+    setActiveErpTab('home');
+    setShowLoginModal(false);
     if (prevUser) {
       logActivity({
         actor: prevUser.name || 'User',
@@ -1160,6 +1161,10 @@ export default function App() {
   const [syncedBannerMessage, setSyncedBannerMessage] = useState<string | null>(null);
 
   const handleNavigate = (tab: TabType) => {
+    if (!appUser && tab !== 'home') {
+      setShowLoginModal(true);
+      return;
+    }
     setActiveErpTab(tab);
     setIsNavOpen(false);
     if (typeof window !== 'undefined') {
@@ -1322,6 +1327,13 @@ export default function App() {
   // ERP Classroom System Active Tab State
   const [activeErpTab, setActiveErpTab] = useState<TabType>(getTabFromLocation);
 
+  // Keep guest users strictly on home tab
+  useEffect(() => {
+    if (!appUser && activeErpTab !== 'home') {
+      setActiveErpTab('home');
+    }
+  }, [appUser, activeErpTab]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
@@ -1330,10 +1342,18 @@ export default function App() {
   }, [activeErpTab]);
 
   useEffect(() => {
-    const handlePopState = () => setActiveErpTab(getTabFromLocation());
+    const handlePopState = () => {
+      const targetTab = getTabFromLocation();
+      if (!appUser && targetTab !== 'home') {
+        setActiveErpTab('home');
+        setShowLoginModal(true);
+      } else {
+        setActiveErpTab(targetTab);
+      }
+    };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [appUser]);
 
   const handleUpdateRubric = (studentName: string, key: 'participation' | 'scripture' | 'assignment', val: number) => {
     const studentKey = (studentName || '').toLowerCase().trim();
@@ -3555,22 +3575,6 @@ create policy "Allow public update" on app_states for update using (true) with c
 
           {/* MD3 AppBar Actions */}
           <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
-            {/* Live Check-In */}
-            {(appUser?.role as string) !== 'student' && (
-              <button
-                onClick={() => {
-                  setShowLiveCheckinModal(true);
-                  if (!liveCheckinDayId && classDays.length > 0) {
-                    setLiveCheckinDayId(classDays[classDays.length - 1].id);
-                  }
-                }}
-                className="hidden md:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-              >
-                <Smartphone className="w-3.5 h-3.5 shrink-0" />
-                <span>Check-In</span>
-              </button>
-            )}
-
             {/* Messages */}
             <button
               type="button"
@@ -3716,86 +3720,100 @@ create policy "Allow public update" on app_states for update using (true) with c
               )}
             </div>
 
-            {/* Profile Avatar */}
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="flex items-center gap-2 p-1 pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800/80"
-              aria-label={appUser ? `Account: ${appUser.name}` : 'Log in'}
-              title="Account & Role Settings"
-            >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
-                appUser?.role === 'admin' ? 'bg-purple-900 dark:bg-purple-100 text-white dark:text-purple-900' :
-                appUser?.role === 'teacher' ? 'bg-emerald-800 dark:bg-emerald-100 text-white dark:text-emerald-900' :
-                'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
-              }`}>
-                {appUser ? appUser.name.charAt(0).toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
-              </div>
-              <div className="hidden xl:flex flex-col text-left leading-none pr-0.5">
-                <span className="text-xs font-bold truncate max-w-[100px]">
-                  {appUser ? appUser.name.split(' ')[0] : 'Guest'}
-                </span>
-                <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                  appUser?.role === 'admin' ? 'text-purple-600 dark:text-purple-400' :
-                  appUser?.role === 'teacher' ? 'text-emerald-600 dark:text-emerald-400' :
-                  appUser?.role === 'student' ? 'text-amber-600 dark:text-amber-400' :
-                  'text-slate-400'
+            {/* Profile Avatar / Sign In */}
+            {appUser ? (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-2 p-1 pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800/80"
+                aria-label={`Account: ${appUser.name}`}
+                title="Account & Role Settings"
+              >
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
+                  appUser?.role === 'admin' ? 'bg-purple-900 dark:bg-purple-100 text-white dark:text-purple-900' :
+                  appUser?.role === 'teacher' ? 'bg-emerald-800 dark:bg-emerald-100 text-white dark:text-emerald-900' :
+                  'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
                 }`}>
-                  {appUser ? appUser.role : 'Guest'}
-                </span>
-              </div>
-            </button>
+                  {appUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden xl:flex flex-col text-left leading-none pr-0.5">
+                  <span className="text-xs font-bold truncate max-w-[100px]">
+                    {appUser.name.split(' ')[0]}
+                  </span>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                    appUser?.role === 'admin' ? 'text-purple-600 dark:text-purple-400' :
+                    appUser?.role === 'teacher' ? 'text-emerald-600 dark:text-emerald-400' :
+                    appUser?.role === 'student' ? 'text-amber-600 dark:text-amber-400' :
+                    'text-slate-400'
+                  }`}>
+                    {appUser?.role}
+                  </span>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-bold text-xs shadow-xs"
+                aria-label="Sign In to Portal"
+                title="Sign in to Student or Faculty Portal"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       {/* Desktop Navigation */}
-      <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
-        <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-slate-700/60">
-          {[
-            { tab: 'home', label: 'Home', Icon: Sparkles },
-            { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
-            { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
-            { tab: 'courses', label: 'Courses', Icon: BookOpen },
-            { tab: 'exams', label: 'Exams', Icon: Award },
-            { tab: 'schedule', label: 'Schedule', Icon: Calendar },
-            { tab: 'library', label: 'Library', Icon: Bookmark },
-            { tab: 'payments', label: 'Payments', Icon: DollarSign, paymentOnly: true },
-            { tab: 'messages', label: 'Messages', Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
-          ].filter(item => {
-            if ((item as any).adminOnly && appUser?.role === 'student') return false;
-            if ((item as any).adminOrTeacherOnly && appUser?.role === 'student') return false;
-            if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
-            return true;
-          }).map(({ tab, label, Icon, badgeAlert, badgeCount }: any) => {
-            const isActive = activeErpTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => handleNavigate(tab as TabType)}
-                aria-current={isActive ? 'page' : undefined}
-                className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer active:scale-95 ${
-                  isActive
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                <span className="hidden lg:inline">{label}</span>
-                {badgeAlert && (
-                  <span className={`text-[10px] min-w-4 h-4 px-1 rounded-full font-bold flex items-center justify-center ${
-                    isActive 
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' 
-                      : 'bg-rose-500 text-white animate-pulse'
-                  }`}>
-                    {badgeCount || '•'}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      {appUser && (
+        <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
+          <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-slate-700/60">
+            {[
+              { tab: 'home', label: 'Home', Icon: Sparkles },
+              { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
+              { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
+              { tab: 'courses', label: 'Courses', Icon: BookOpen },
+              { tab: 'exams', label: 'Exams', Icon: Award },
+              { tab: 'schedule', label: 'Schedule', Icon: Calendar },
+              { tab: 'library', label: 'Library', Icon: Bookmark },
+              { tab: 'payments', label: 'Payments', Icon: DollarSign, paymentOnly: true },
+              { tab: 'messages', label: 'Messages', Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
+            ].filter(item => {
+              if ((item as any).adminOnly && appUser?.role === 'student') return false;
+              if ((item as any).adminOrTeacherOnly && appUser?.role === 'student') return false;
+              if ((item as any).paymentOnly && appUser?.role === 'teacher') return false;
+              return true;
+            }).map(({ tab, label, Icon, badgeAlert, badgeCount }: any) => {
+              const isActive = activeErpTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => handleNavigate(tab as TabType)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                    isActive
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <span className="hidden lg:inline">{label}</span>
+                  {badgeAlert && (
+                    <span className={`text-[10px] min-w-4 h-4 px-1 rounded-full font-bold flex items-center justify-center ${
+                      isActive 
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' 
+                        : 'bg-rose-500 text-white animate-pulse'
+                    }`}>
+                      {badgeCount || '•'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {/* Horizontal Gradient Divider Delineating Navigation from Main Workspace */}
       <div 
@@ -3819,7 +3837,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Home Tab">
                   <LazyHomeTab
-                    onNavigate={(tab) => setActiveErpTab(tab)}
+                    onNavigate={handleNavigate}
                     appUser={appUser}
                     onOpenLogin={() => setShowLoginModal(true)}
                     onLogout={handleAppLogout}
@@ -6269,536 +6287,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         );
       })()}
 
-      {/* 3. Live Ministry Check-In Mode Modal (Mobile & Tablet) */}
-      {showLiveCheckinModal && (
-        appUser?.role === 'student' ? (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
-            <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 text-center space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
-                <ShieldAlert className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  Access Restricted
-                </span>
-                <h3 className="text-base font-black text-white mt-1">Attendance Check-In Restricted</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Attendance marking and live check-ins are strictly reserved for Teachers and Administrators. Students cannot self-assign attendance.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowLiveCheckinModal(false)}
-                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
-              >
-                Close Window
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl h-full max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp">
-            {/* Live Checkin Header */}
-            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 flex-shrink-0 border-b border-slate-800">
-              <div className="flex items-center justify-between sm:justify-start gap-2.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
-                    <Smartphone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-black tracking-tight">Live Ministry Check-In</h2>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        Active Session
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400">Single-touch student check-in optimized for mobile & tablet</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowLiveCheckinModal(false)}
-                  className="sm:hidden w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer shrink-0"
-                  title="Close Live Check-In"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Live Session Stopwatch Timer Widget */}
-              <div className="flex items-center justify-between sm:justify-end gap-2.5 bg-slate-950/80 p-1.5 sm:p-2 px-3 rounded-xl border border-indigo-900/50 shadow-inner">
-                <div className="flex items-center gap-2">
-                  <div className={`p-1 rounded-lg ${isCheckinTimerRunning ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'}`}>
-                    <Timer className={`w-3.5 h-3.5 ${isCheckinTimerRunning ? 'animate-pulse text-amber-400' : ''}`} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-none">Session Duration</span>
-                    <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-amber-300 leading-tight">
-                      {formatStopwatch(checkinTimerSeconds)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Timer Control Buttons */}
-                <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setIsCheckinTimerRunning(!isCheckinTimerRunning)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
-                      isCheckinTimerRunning 
-                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40' 
-                        : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
-                    }`}
-                    title={isCheckinTimerRunning ? 'Pause Stopwatch' : 'Resume Stopwatch'}
-                  >
-                    {isCheckinTimerRunning ? (
-                      <>
-                        <Pause className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span>Pause</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span>Start</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCheckinTimerRunning(false);
-                      setCheckinTimerSeconds(0);
-                    }}
-                    className="p-1 sm:px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 border border-slate-700"
-                    title="Reset Session Timer to 00:00"
-                  >
-                    <RotateCcw className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span className="hidden sm:inline">Reset</span>
-                  </button>
-                </div>
-
-                <button 
-                  onClick={() => setShowLiveCheckinModal(false)}
-                  className="hidden sm:flex w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 items-center justify-center cursor-pointer shrink-0 ml-1"
-                  title="Close Live Check-In"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Live Session Toolbar */}
-            <div className="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                <label className="text-xs font-bold text-slate-600 whitespace-nowrap">Class Day:</label>
-                <select
-                  value={liveCheckinDayId ?? ''}
-                  onChange={(e) => setLiveCheckinDayId(e.target.value)}
-                  className="flex-1 p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
-                >
-                  {classDays.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-                {(appUser?.role as string) !== 'student' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const selected = classDays.find(d => d.id === liveCheckinDayId);
-                        if (selected) {
-                          const newName = prompt('Rename Class Day Title:', selected.name);
-                          if (newName && newName.trim() !== '') {
-                            handleEditClassDayTitle(selected.id, newName.trim());
-                          }
-                        }
-                      }}
-                      className="p-1.5 bg-white border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-                      title="Rename active class day title"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddClassDay()}
-                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap shadow-sm"
-                      title="Add a new class day on the fly"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Day</span>
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Headcount Counter */}
-              {(() => {
-                const day = classDays.find(d => d.id === liveCheckinDayId) || classDays[0];
-                let presentCount = 0;
-                if (day) {
-                  uniqueStudents.forEach(s => {
-                    if (s.attendanceByDay[day.id]?.present) presentCount++;
-                  });
-                }
-                const pct = uniqueStudents.length > 0 ? Math.round((presentCount / uniqueStudents.length) * 100) : 0;
-
-                return (
-                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
-                    <UserCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-mono font-bold text-emerald-800">
-                      {presentCount} / {uniqueStudents.length} Present ({pct}%)
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Search Input for Live Check-In */}
-            <div className="p-3 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
-              <div className="flex items-center gap-2 flex-1 w-full min-w-0">
-                {/* Select All Checkbox */}
-                {(() => {
-                  const searchLower = (liveCheckinSearch || '').toLowerCase();
-                  const filteredCheckinStudents = uniqueStudents.filter(s => s && s.name && (s?.name || '').toLowerCase().includes(searchLower));
-                  const allFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.every(s => selectedCheckinStudents.includes(s.name));
-                  const someFilteredSelected = filteredCheckinStudents.length > 0 && filteredCheckinStudents.some(s => selectedCheckinStudents.includes(s.name));
-                  return (
-                    <div className="flex items-center gap-2 flex-shrink-0 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
-                      <input
-                        type="checkbox"
-                        id="select-all-checkin"
-                        checked={allFilteredSelected}
-                        ref={el => {
-                          if (el) {
-                            el.indeterminate = someFilteredSelected && !allFilteredSelected;
-                          }
-                        }}
-                        onChange={() => {
-                          if (allFilteredSelected) {
-                            setSelectedCheckinStudents(prev => prev.filter(name => !filteredCheckinStudents.some(f => f.name === name)));
-                          } else {
-                            setSelectedCheckinStudents(prev => {
-                              const newSelection = [...prev];
-                              filteredCheckinStudents.forEach(f => {
-                                if (!newSelection.includes(f.name)) {
-                                  newSelection.push(f.name);
-                                }
-                              });
-                              return newSelection;
-                            });
-                          }
-                        }}
-                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
-                      />
-                      <label htmlFor="select-all-checkin" className="text-xs font-bold text-slate-500 cursor-pointer select-none">
-                        All
-                      </label>
-                    </div>
-                  );
-                })()}
-
-                <div className="relative flex-1 min-w-0">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Filter student for check-in..."
-                    value={liveCheckinSearch ?? ''}
-                    onChange={(e) => setLiveCheckinSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (!liveCheckinDayId) return;
-                  // Toggle mark all present
-                  const updatedRecords = [...records];
-                  uniqueStudents.forEach(s => {
-                    if (!s || !s.name) return;
-                    const sNameLower = (s?.name || '').toLowerCase().trim();
-                    const existingIdx = updatedRecords.findIndex(r => r && r.studentName && (r?.studentName || '').toLowerCase().trim() === sNameLower && r.classDay === liveCheckinDayId);
-                    if (existingIdx >= 0) {
-                      updatedRecords[existingIdx].present = true;
-                    } else {
-                      updatedRecords.push({
-                        name: s.name,
-                        studentName: s.name,
-                        classDay: liveCheckinDayId,
-                        present: true,
-                        score: null,
-                        timestamp: new Date().toLocaleDateString()
-                      });
-                    }
-                  });
-                  setRecords(updatedRecords);
-                }}
-                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 transition-colors cursor-pointer flex-shrink-0"
-              >
-                Mark All Present
-              </button>
-            </div>
-
-            {/* Selection-Based Bulk Action Bar */}
-            {(() => {
-              const handleBulkSetStatus = (status: 'present' | 'absent' | 'excused') => {
-                if (!liveCheckinDayId || selectedCheckinStudents.length === 0) return;
-
-                // 1. Prepare excusedAbsences updates
-                setExcusedAbsences(prev => {
-                  const updatedExcused = { ...prev };
-                  selectedCheckinStudents.forEach(name => {
-                    if (!name) return;
-                    const studentKey = (name || '').toLowerCase().trim();
-                    updatedExcused[studentKey] = {
-                      ...(updatedExcused[studentKey] || {}),
-                      [liveCheckinDayId]: status === 'excused'
-                    };
-                  });
-                  return updatedExcused;
-                });
-
-                // 2. Prepare records updates
-                setRecords(prev => {
-                  const updated = [...prev];
-                  selectedCheckinStudents.forEach(name => {
-                    if (!name) return;
-                    const studentKey = (name || '').toLowerCase().trim();
-                    const existingIdx = updated.findIndex(
-                      r => r && r.studentName && (r?.studentName || '').toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId
-                    );
-
-                    if (status === 'present') {
-                      if (existingIdx >= 0) {
-                        updated[existingIdx].present = true;
-                      } else {
-                        updated.push({
-                          name: name,
-                          studentName: name,
-                          classDay: liveCheckinDayId,
-                          present: true,
-                          score: null,
-                          timestamp: new Date().toLocaleDateString()
-                        });
-                      }
-                    } else {
-                      // For absent or excused, set present to false
-                      if (existingIdx >= 0) {
-                        updated[existingIdx].present = false;
-                      }
-                    }
-                  });
-                  return updated;
-                });
-
-                // 3. Clear selections after successful action
-                setSelectedCheckinStudents([]);
-              };
-
-              if (selectedCheckinStudents.length === 0) return null;
-
-              return (
-                <div className="px-4 py-3 bg-slate-900 dark:bg-slate-800 border-b border-slate-700 dark:border-slate-700 text-white flex flex-col sm:flex-row items-center justify-between gap-3 animate-slideDown flex-shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <div className="bg-slate-700 text-slate-300 p-1.5 rounded-lg border border-slate-600">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-white">
-                        {selectedCheckinStudents.length} {selectedCheckinStudents.length === 1 ? 'Student' : 'Students'} Selected
-                      </p>
-                      <p className="text-[10px] text-slate-400">Apply status to all selected records</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => handleBulkSetStatus('present')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Present
-                    </button>
-                    <button
-                      onClick={() => handleBulkSetStatus('excused')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      Excused
-                    </button>
-                    <button
-                      onClick={() => handleBulkSetStatus('absent')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Absent
-                    </button>
-                    <button
-                      onClick={() => setSelectedCheckinStudents([])}
-                      className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-medium rounded-lg transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Live Student Card List */}
-            <div className="p-3 overflow-y-auto custom-scrollbar flex-1 space-y-2 bg-slate-50 dark:bg-slate-950">
-              {uniqueStudents
-                .filter(s => s && s.name && (s?.name || '').toLowerCase().includes((liveCheckinSearch || '').toLowerCase()))
-                .map(s => {
-                  const att = s.attendanceByDay[liveCheckinDayId];
-                  const isPresent = att?.present;
-                  const studentKey = (s.name || '').toLowerCase().trim();
-                  const isExcused = !isPresent && !!(excusedAbsences[studentKey] || {})[liveCheckinDayId];
-                  const isChecked = selectedCheckinStudents.includes(s.name);
-
-                  const handleToggleSelect = () => {
-                    setSelectedCheckinStudents(prev => 
-                      prev.includes(s.name) 
-                        ? prev.filter(name => name !== s.name)
-                        : [...prev, s.name]
-                    );
-                  };
-
-                  const handleSetStatus = (status: 'present' | 'absent' | 'excused') => {
-                    if (!liveCheckinDayId) return;
-
-                    if (status === 'excused') {
-                      setExcusedAbsences(prev => ({
-                        ...prev,
-                        [studentKey]: {
-                          ...(prev[studentKey] || {}),
-                          [liveCheckinDayId]: true
-                        }
-                      }));
-                    } else {
-                      setExcusedAbsences(prev => ({
-                        ...prev,
-                        [studentKey]: {
-                          ...(prev[studentKey] || {}),
-                          [liveCheckinDayId]: false
-                        }
-                      }));
-                    }
-
-                    const updated = [...records];
-                    const existingIdx = updated.findIndex(r => r && r.studentName && (r?.studentName || '').toLowerCase().trim() === studentKey && r.classDay === liveCheckinDayId);
-                    
-                    if (status === 'present') {
-                      if (existingIdx >= 0) {
-                        updated[existingIdx].present = true;
-                      } else {
-                        updated.push({
-                          name: s.name,
-                          studentName: s.name,
-                          classDay: liveCheckinDayId,
-                          present: true,
-                          score: null,
-                          timestamp: new Date().toLocaleDateString()
-                        });
-                      }
-                    } else {
-                      if (existingIdx >= 0) {
-                        updated[existingIdx].present = false;
-                      }
-                    }
-                    setRecords(updated);
-                  };
-
-                  return (
-                    <div 
-                      key={s.name} 
-                      className={`p-3 border rounded-xl flex items-center justify-between gap-3 shadow-2xs transition-all duration-200 ${
-                        isChecked 
-                          ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-200 dark:ring-indigo-900' 
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {/* Row Selection Checkbox */}
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={handleToggleSelect}
-                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer flex-shrink-0"
-                        />
-                        <div className="min-w-0 flex-1" onClick={handleToggleSelect}>
-                          <h4 className="text-xs font-extrabold text-slate-900 dark:text-white truncate cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{s.name}</h4>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Overall Rate: {Math.round(s.rate)}%</p>
-                        </div>
-                      </div>
-
-                      {/* Single-Touch 3-Button Toggle */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <motion.button
-                          onClick={() => handleSetStatus('present')}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.90 }}
-                          animate={{ scale: isPresent ? 1.05 : 1 }}
-                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                          className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                            isPresent 
-                              ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30' 
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-400'
-                          }`}
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          Present
-                        </motion.button>
-
-                        <motion.button
-                          onClick={() => handleSetStatus('excused')}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.90 }}
-                          animate={{ scale: isExcused ? 1.05 : 1 }}
-                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                          className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                            isExcused 
-                              ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400/30' 
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-400'
-                          }`}
-                        >
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          Excused
-                        </motion.button>
-
-                        <motion.button
-                          onClick={() => handleSetStatus('absent')}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.90 }}
-                          animate={{ scale: (!isPresent && !isExcused) ? 1.05 : 1 }}
-                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                          className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                            !isPresent && !isExcused 
-                              ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-500/30' 
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-400'
-                          }`}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          Absent
-                        </motion.button>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-
-            <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-              <button 
-                onClick={() => setShowLiveCheckinModal(false)}
-                className="px-5 py-2 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shadow-sm"
-              >
-                Done & Save Live Session
-              </button>
-            </div>
-          </div>
-        </div>
-      )
-    )}
-
       {/* Batch Announcement Broadcast Modal */}
       {showBatchBroadcastModal && (
         <BatchAnnouncementModal
@@ -6862,12 +6350,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           onOpenSettings={() => setShowSettingsModal(true)}
           onOpenAdminTools={() => setShowAdminAuditModal(true)}
           onOpenBatchBroadcast={() => setShowBatchBroadcastModal(true)}
-          onOpenLiveCheckin={() => {
-            setShowLiveCheckinModal(true);
-            if (!liveCheckinDayId && classDays.length > 0) {
-              setLiveCheckinDayId(classDays[classDays.length - 1].id);
-            }
-          }}
           onOpenMobileDownload={() => setShowMobileDownloadModal(true)}
           onOpenLogin={() => setShowLoginModal(true)}
         />
@@ -6887,15 +6369,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Login Portal Modal */}
-      {(showLoginModal || !appUser) && (
+      {showLoginModal && (
         <LoginModal
-          isOpen={showLoginModal || !appUser}
+          isOpen={showLoginModal}
           currentUser={appUser}
           onLoginSuccess={handleAppLoginSuccess}
           onLogout={handleAppLogout}
-          onClose={() => {
-            if (appUser) setShowLoginModal(false);
-          }}
+          onClose={() => setShowLoginModal(false)}
           userCredentials={userCredentials}
           onChangePassword={handleChangeUserPassword}
           onSyncCredentials={(syncedCreds) => {
@@ -6906,7 +6386,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
       {/* Mobile Slide-Up "More" Options Drawer */}
       <AnimatePresence>
-        {showMobileMoreMenu && (
+        {showMobileMoreMenu && appUser && (
           <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -7298,84 +6778,65 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       )}
 
       {/* Mobile Bottom Navigation */}
-      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/90 dark:border-slate-800/90 backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
-        {(
-          appUser?.role === 'student'
-            ? [
-                { tab: 'home', Icon: Sparkles, label: 'Home' },
-                { tab: 'courses', Icon: BookOpen, label: 'Courses' },
-                { tab: 'payments', Icon: DollarSign, label: 'Payments' },
-                { tab: 'messages', Icon: MessageSquare, label: 'Messages', badge: unreadMessagesCount },
-              ]
-            : (appUser?.role === 'admin' || appUser?.role === 'teacher')
-              ? [
-                  { tab: 'home', Icon: Sparkles, label: 'Home' },
-                  { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-                  { tab: 'students', Icon: GraduationCap, label: 'Students' },
-                  { tab: 'exams', Icon: Award, label: 'Exams' },
-                ]
-              : [
-                  { tab: 'home', Icon: Sparkles, label: 'Home' },
-                  { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-                  { tab: 'courses', Icon: BookOpen, label: 'Courses' },
-                  { tab: 'exams', Icon: Award, label: 'Exams' },
-                ]
-        ).map(({ tab, Icon, label, badge }: any) => {
-          const isActive = activeErpTab === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => handleNavigate(tab as TabType)}
-              aria-label={`Open ${label}`}
-              aria-current={isActive ? 'page' : undefined}
-              className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
-                isActive
-                  ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <div className="relative">
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                {badge > 0 && (
-                  <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
-                    {badge}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[10px] tracking-tight truncate max-w-full ${
-                isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
-              }`}>{label}</span>
-            </button>
-          );
-        })}
+      {appUser && (
+        <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/90 dark:border-slate-800/90 backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
+          {[
+            { tab: 'home', Icon: Sparkles, label: 'Home' },
+            { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
+            { tab: 'courses', Icon: BookOpen, label: 'Courses' },
+            { tab: 'exams', Icon: Award, label: 'Exams' },
+          ].map(({ tab, Icon, label }: any) => {
+            const isActive = activeErpTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => handleNavigate(tab as TabType)}
+                aria-label={`Open ${label}`}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+                  isActive
+                    ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <div className="relative">
+                  <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                </div>
+                <span className={`text-[10px] tracking-tight truncate max-w-full ${
+                  isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+                }`}>{label}</span>
+              </button>
+            );
+          })}
 
-        {/* More button */}
-        <button
-          type="button"
-          onClick={() => setShowMobileMoreMenu(true)}
-          aria-label="Open more portal sections"
-          className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
-            showMobileMoreMenu
-              ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <div className="relative">
-            <Menu className={`w-5 h-5 transition-transform ${
-              showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
-            }`} />
-            {unreadMessagesCount > 0 && appUser?.role !== 'student' && (
-              <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
-                {unreadMessagesCount}
-              </span>
-            )}
-          </div>
-          <span className={`text-[10px] tracking-tight ${
-            showMobileMoreMenu ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
-          }`}>More</span>
-        </button>
-      </nav>
+          {/* More button */}
+          <button
+            type="button"
+            onClick={() => setShowMobileMoreMenu(true)}
+            aria-label="Open more portal sections"
+            className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+              showMobileMoreMenu
+                ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <div className="relative">
+              <Menu className={`w-5 h-5 transition-transform ${
+                showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+              }`} />
+              {unreadMessagesCount > 0 && (
+                <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
+                  {unreadMessagesCount}
+                </span>
+              )}
+            </div>
+            <span className={`text-[10px] tracking-tight ${
+              showMobileMoreMenu ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+            }`}>More</span>
+          </button>
+        </nav>
+      )}
     </div>
     </>
   );

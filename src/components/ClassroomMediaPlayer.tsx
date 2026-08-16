@@ -669,30 +669,6 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
           </div>
         );
       })()}
-
-      {/* Floating Mobile Background Audio Player Bar */}
-      {currentTrack && (
-        <div className="fixed bottom-[60px] left-2 right-2 z-40 md:hidden bg-slate-950/95 border border-indigo-500/40 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex items-center justify-between gap-2 text-white">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center shrink-0">
-              <Disc className={`w-4 h-4 text-amber-400 ${isPlaying ? 'animate-spin' : ''}`} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-white truncate">{currentTrack.title}</p>
-              <p className="text-[9px] text-slate-400 truncate">{currentTrack.speaker} • {formatSecs(currentTime)} / {currentTrack.duration}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={togglePlay}
-              className="w-9 h-9 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-bold active:scale-95 transition-transform cursor-pointer"
-            >
-              {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

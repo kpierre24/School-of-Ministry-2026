@@ -1,27 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { LogoImage } from './LogoImage';
-import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import { 
   ShieldCheck, 
   GraduationCap, 
   UserCheck, 
   KeyRound, 
   Lock, 
-  User, 
   Sparkles, 
   AlertCircle, 
   ArrowRight,
   X,
-  Globe,
-  Flame,
-  BookOpenCheck,
-  Quote,
   RefreshCw,
-  Landmark,
-  Award,
   Mail,
-  LogOut
+  LogOut,
+  BookMarked
 } from 'lucide-react';
 import { AppUser, UserRole, UserCredential } from '../lib/userAuth';
 import { authenticateWithSupabase, updatePasswordInSupabase } from '../lib/supabaseAuth';
@@ -118,15 +111,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   React.useEffect(() => {
-    // Populate suggested email or keep clean
     setEmailInput('');
     setPasswordInput('');
     setEmailError(null);
     setPasswordError(null);
   }, [activeTab]);
 
-  const isDashboardLayout = currentUser === null;
-  const dialogRef = useAccessibleModal(!isDashboardLayout && (isOpen ?? true), onClose || (() => {}));
+  const dialogRef = useAccessibleModal(isOpen ?? true, onClose || (() => {}));
 
   if (!isOpen) return null;
 
@@ -241,483 +232,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const currentScripture = MINISTRY_SCRIPTURES[scriptureIndex];
 
-  if (isDashboardLayout) {
-    return (
-      <div className="min-h-screen w-full bg-slate-50 flex flex-col items-center justify-between font-sans relative overflow-x-hidden animate-fadeIn select-none">
-        
-        {/* Subtle Elegant Background Elements */}
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-amber-100/30 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[-25%] right-[-10%] w-[700px] h-[700px] rounded-full bg-indigo-50/40 blur-3xl pointer-events-none" />
-        
-        {/* Top Minimalist Brand Banner */}
-        <div className="w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-between border-b border-slate-200/60 relative z-10 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <LogoImage 
-              alt="HTEIM Logo" 
-              className="w-14 h-14 rounded-xl border-2 border-amber-300 shadow-sm object-contain bg-white p-0.5 flex-shrink-0"
-            />
-            <div>
-              <p className="text-xs font-black text-slate-800 uppercase tracking-wider leading-none">HTEIM</p>
-              <p className="text-[10px] font-bold text-amber-700 font-serif tracking-tight mt-0.5">Heaven Touching Earth International Ministries</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {currentUser ? (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full text-indigo-900 font-bold">
-                  Signed in: <strong>{currentUser.name}</strong> ({currentUser.role})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onLogout) onLogout();
-                  }}
-                  className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
-                >
-                  <LogOut className="w-3 h-3" />
-                  <span>Log Out</span>
-                </button>
-              </div>
-            ) : (
-              <span className="text-[10px] bg-slate-200/70 border border-slate-300/40 px-3 py-1 rounded-full text-slate-600 font-extrabold uppercase tracking-widest font-mono">
-                Academic Year 2026
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Main Dashboard Workspace Grid */}
-        <main className="w-full max-w-7xl mx-auto px-6 py-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          
-          {/* LEFT PANEL: Welcoming Information, Mission, Pillars & Scriptures */}
-          <div className="lg:col-span-7 space-y-6 text-left">
-            
-            {/* Official HTEIM Banner Display */}
-            <div className="rounded-2xl overflow-hidden border border-amber-300/50 shadow-lg bg-white p-1">
-              <img 
-                src={hteimBannerAsset} 
-                alt="HTEIM School of Ministry Banner" 
-                referrerPolicy="no-referrer"
-                className="w-full h-auto max-h-[180px] object-contain bg-white rounded-xl"
-              />
-            </div>
-
-            {/* Main Welcome Hero */}
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-200 rounded-full text-[10px] font-black tracking-wider uppercase shadow-2xs">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> School of Ministry Teaching Portal
-              </div>
-              <h1 className="text-3xl md:text-4xl font-black text-slate-950 tracking-tight leading-none">
-                Equipping Faithful Leaders <br />
-                <span className="text-indigo-600">For the Harvest Fields</span>
-              </h1>
-              <p className="text-slate-600 text-sm leading-relaxed max-w-xl">
-                Welcome to the digital teaching and evaluating platform of the <strong>HTEIM School of Ministry</strong>. 
-                Our curriculum is designed to activate spiritual callings, instill deep theological foundations, 
-                and mentor practical ministerial competence in the light of God's Word. Log in to access your designated records.
-              </p>
-            </div>
-
-            {/* School Pillars Asymmetric Layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
-                  <BookOpenCheck className="w-4.5 h-4.5" />
-                </div>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Biblical Foundations</h3>
-                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                  Deepening scriptural truth, theology, and rigorous hermeneutical studies to dividing the word accurately.
-                </p>
-              </div>
-
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 text-amber-700 flex items-center justify-center mb-3">
-                  <Flame className="w-4.5 h-4.5" />
-                </div>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Active Ministry</h3>
-                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                  Developing active homiletics, pastoral counseling, and servant church leadership for modern ministry.
-                </p>
-              </div>
-
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
-                  <Globe className="w-4.5 h-4.5" />
-                </div>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Global Missions</h3>
-                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                  Fulfilling the great commission with compassion, signs and wonders, and practical field evangelism.
-                </p>
-              </div>
-            </div>
-
-            {/* Interactive Scripture Encouragement Generator */}
-            <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-5 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between border-b border-amber-200/30 pb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                  <Quote className="w-3.5 h-3.5 text-amber-600" /> Daily Ministry Word
-                </span>
-                <span className="text-[9px] font-bold text-amber-700/80 italic font-mono bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg">
-                  {currentScripture.theme}
-                </span>
-              </div>
-              <blockquote className="space-y-2">
-                <p className="text-xs text-slate-700 italic font-medium leading-relaxed font-serif">
-                  "{currentScripture.text}"
-                </p>
-                <cite className="block text-[10px] font-extrabold text-amber-800 text-right not-italic">
-                  — {currentScripture.verse}
-                </cite>
-              </blockquote>
-              <div className="flex justify-end pt-1">
-                <button
-                  onClick={nextScripture}
-                  className="px-3 py-1 bg-white hover:bg-amber-100 text-amber-800 font-bold text-[10px] rounded-lg border border-amber-200 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                >
-                  <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '6s' }} /> Next Reflection
-                </button>
-              </div>
-            </div>
-
-            {/* General School Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-              <div className="p-3.5 bg-white border border-slate-200/60 rounded-xl">
-                <p className="text-xl font-black text-indigo-700">24+</p>
-                <p className="text-[9px] uppercase font-extrabold text-slate-400 mt-0.5">Classes Offered</p>
-              </div>
-              <div className="p-3.5 bg-white border border-slate-200/60 rounded-xl">
-                <p className="text-xl font-black text-indigo-700">200+</p>
-                <p className="text-[9px] uppercase font-extrabold text-slate-400 mt-0.5">Ministers Sent</p>
-              </div>
-              <div className="p-3.5 bg-white border border-slate-200/60 rounded-xl">
-                <p className="text-xl font-black text-indigo-700">15+</p>
-                <p className="text-[9px] uppercase font-extrabold text-slate-400 mt-0.5">Years of Legacy</p>
-              </div>
-              <div className="p-3.5 bg-white border border-slate-200/60 rounded-xl">
-                <p className="text-xl font-black text-indigo-700">100%</p>
-                <p className="text-[9px] uppercase font-extrabold text-slate-400 mt-0.5">Biblical Doctrine</p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* RIGHT PANEL: Embedded Intuitive Login Hub */}
-          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
-            
-            {/* Login Tab Headers */}
-            <div className="bg-slate-900 text-white p-5">
-              <h2 className="text-base font-extrabold flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-amber-400" /> Teaching Portal Sign-In
-              </h2>
-              <p className="text-[11px] text-slate-300 mt-1">
-                {showPasswordChangeForm ? 'Create a secure custom password before proceeding.' : 'Enter your credentials below to access your designated workspace.'}
-              </p>
-            </div>
-
-            {/* Current Authenticated User Banner */}
-            {currentUser && (
-              <div className="p-3.5 bg-amber-50/90 border-b border-amber-200 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 font-black text-xs flex items-center justify-center shrink-0">
-                    {currentUser.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="leading-tight">
-                    <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
-                    <p className="text-[10px] text-amber-800 font-mono font-medium capitalize">{currentUser.role} Account • {currentUser.email}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onLogout) onLogout();
-                  }}
-                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Log Out</span>
-                </button>
-              </div>
-            )}
-
-            {/* Custom Tab Selectors (only visible when not in password change mode) */}
-            {!showPasswordChangeForm && (
-              <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('student')}
-                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                    activeTab === 'student'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                  }`}
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Student</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('teacher')}
-                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                    activeTab === 'teacher'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                  }`}
-                >
-                  <UserCheck className="w-4 h-4" />
-                  <span>Teacher</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('admin')}
-                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                    activeTab === 'admin'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Admin</span>
-                </button>
-              </div>
-            )}
-
-            {/* Form Workspace */}
-            {showPasswordChangeForm ? (
-              <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] font-bold flex items-start gap-2">
-                  <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-extrabold">First-Time Password Change Required</p>
-                    <p className="font-medium mt-0.5 text-slate-700">
-                      Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! 
-                      For security, you must set a new confidential password before proceeding.
-                    </p>
-                  </div>
-                </div>
-
-                {changeError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-bold flex items-start gap-2 animate-shake">
-                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                    <span>{changeError}</span>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                      New Password (Minimum 6 characters)
-                    </label>
-                    <div className="relative">
-                      <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => {
-                          setNewPassword(e.target.value);
-                          const val = e.target.value;
-                          let err = null;
-                          if (!val) err = 'Password is required';
-                          else if (val.length < 6) err = 'Password must be at least 6 characters';
-                          else if (val.toLowerCase() === 'password1' || val.toLowerCase() === 'password' || val === '1234' || val === '12345') err = 'Cannot use default or weak password';
-                          setNewPasswordError(err);
-                        }}
-                        placeholder="Create strong confidential password"
-                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${newPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
-                        required
-                        autoFocus
-                      />
-                    </div>
-                    {newPasswordError && (
-                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {newPasswordError}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => {
-                          setConfirmPassword(e.target.value);
-                          const err = e.target.value !== newPassword ? 'Passwords do not match' : null;
-                          setConfirmPasswordError(err);
-                        }}
-                        placeholder="Re-type new password"
-                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${confirmPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
-                        required
-                      />
-                    </div>
-                    {confirmPasswordError && (
-                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {confirmPasswordError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPasswordChangeForm(false);
-                      setPendingUser(null);
-                      setNewPasswordError(null);
-                      setConfirmPasswordError(null);
-                    }}
-                    className="flex-1 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!!newPasswordError || !!confirmPasswordError || !newPassword || !confirmPassword}
-                    className="flex-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Set Password & Enter Portal
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {errorMessage && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-bold flex items-start gap-2 animate-shake">
-                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-
-                <div className="space-y-3 pt-1">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                      <span>User Email Address</span>
-                      {activeTab === 'admin' && (
-                        <span className="text-[9px] text-purple-700 font-mono font-bold">
-                          Admin: kpierre24@gmail.com
-                        </span>
-                      )}
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="text"
-                        value={emailInput}
-                        onChange={(e) => {
-                          setEmailInput(e.target.value);
-                          setEmailError(validateEmailOrUser(e.target.value));
-                        }}
-                        onBlur={() => setEmailError(validateEmailOrUser(emailInput))}
-                        placeholder={activeTab === 'admin' ? 'kpierre24@gmail.com' : activeTab === 'teacher' ? 'e.g. gillian.selkridge@hteim.edu' : 'e.g. aburke@student.hteim.edu'}
-                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${emailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
-                        required
-                      />
-                    </div>
-                    {emailError && (
-                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {emailError}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                      <span>Password</span>
-                      <span className="text-[9px] text-slate-400 font-mono">
-                        Default: password1
-                      </span>
-                    </label>
-                    <div className="relative">
-                      <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="password"
-                        value={passwordInput}
-                        onChange={(e) => {
-                          setPasswordInput(e.target.value);
-                          setPasswordError(validatePassword(e.target.value));
-                        }}
-                        onBlur={() => setPasswordError(validatePassword(passwordInput))}
-                        placeholder="••••••••"
-                        className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${passwordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
-                        required
-                      />
-                    </div>
-                    {passwordError && (
-                      <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {passwordError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quick Auto-Fill Demo Helper */}
-                <div className="pt-1 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400 font-medium">Quick sign in:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleAutofillDemo(activeTab)}
-                    className="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
-                  >
-                    Auto-fill default {activeTab} login
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!isLoginFormValid() || isVerifying}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isVerifying ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                      <span>Verifying Central Registry...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Enter {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* Portal Announcement Widget */}
-            <div className="border-t border-slate-100 bg-slate-50 p-4 space-y-2">
-              <span className="text-[9px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1">
-                <Award className="w-3.5 h-3.5 text-indigo-600" /> Portal Announcements
-              </span>
-              <div className="text-[10px] space-y-1.5 text-slate-600">
-                <div className="flex items-start gap-1.5">
-                  <span className="text-emerald-600 font-bold">●</span>
-                  <span><strong>Student Payments:</strong> Tuition statement receipts are now available under the My Payments tab.</span>
-                </div>
-                <div className="flex items-start gap-1.5">
-                  <span className="text-indigo-600 font-bold">●</span>
-                  <span><strong>Practical Ministry Practicum:</strong> Keep logs of missionary hours and evaluation records directly inside your dashboard.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        {/* Bottom Minimalist Footer */}
-        <footer className="w-full max-w-7xl mx-auto px-6 py-4 border-t border-slate-200/60 text-center text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 relative z-10 flex-shrink-0">
-          <span>HTEIM School of Ministry © 2026. Heaven Touching Earth International Ministries. All Rights Reserved.</span>
-          <span className="font-mono text-indigo-700 font-bold">Equipping Saints • Perfecting Ministries</span>
-        </footer>
-      </div>
-    );
-  }
-
-  // ELSE WORKFLOW:
-  // Render the original compact Modal overlay (when the user is ALREADY logged in and clicked "Switch User role")
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn modal-material-scrim">
       <div 
@@ -725,7 +239,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label="HTEIM School of Ministry Portal Authentication"
-        className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog"
+        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog"
       >
         
         {/* Header Banner */}
@@ -734,7 +248,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <button
               onClick={onClose}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-             aria-label="Close">
+              aria-label="Close"
+            >
               <X className="w-5 h-5" />
             </button>
           )}
@@ -745,9 +260,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-600 object-contain bg-white p-0.5"
             />
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">HTEIM School of Ministry</h2>
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">HTEIM School of Ministry</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1 mt-0.5">
-                <Sparkles className="w-3.5 h-3.5" /> Portal Authentication & Access Control
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Portal Authentication & Access Control
               </p>
             </div>
           </div>
@@ -758,171 +273,158 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Role Type Tabs (only visible when not in password change mode) */}
         {!showPasswordChangeForm && (
-          <div className="grid grid-cols-3 bg-slate-100 p-1.5 border-b border-slate-200 gap-1.5">
+          <div className="grid grid-cols-3 bg-slate-100 dark:bg-slate-800/60 p-1.5 border-b border-slate-200 dark:border-slate-700 gap-1.5">
             <button
               type="button"
               onClick={() => handleSelectTab('student')}
-              className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === 'student'
                   ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-700'
               }`}
             >
-              <GraduationCap className="w-4 h-4" />
-              <span>Student Portal</span>
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Student</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSelectTab('teacher')}
-              className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === 'teacher'
                   ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-700'
               }`}
             >
-              <UserCheck className="w-4 h-4" />
-              <span>Teacher View</span>
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Teacher</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSelectTab('admin')}
-              className={`py-2.5 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === 'admin'
                   ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-700'
               }`}
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Admin View</span>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin</span>
             </button>
           </div>
         )}
 
         {/* Form Body */}
         {showPasswordChangeForm ? (
-          <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-5">
-            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-xs font-bold flex items-start gap-2.5">
+          <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-bold flex items-start gap-2">
               <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-extrabold">First-Time Password Change Required</p>
-                <p className="font-medium mt-0.5 text-slate-700">
-                  Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! 
-                  For security, you must set a new confidential password before proceeding.
+                <p className="font-medium mt-0.5 text-slate-700 dark:text-slate-300">
+                  Welcome, <span className="text-indigo-600 font-bold">{pendingUser?.name}</span>! Set a secure confidential password to proceed.
                 </p>
               </div>
             </div>
 
             {changeError && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-shake">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{changeError}</span>
               </div>
             )}
 
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase text-slate-600 tracking-wider">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider">
                   New Password (Minimum 6 characters)
                 </label>
                 <div className="relative">
-                  <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <KeyRound className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => {
                       setNewPassword(e.target.value);
-                      const val = e.target.value;
                       let err = null;
-                      if (!val) err = 'Password is required';
-                      else if (val.length < 6) err = 'Password must be at least 6 characters';
-                      else if (val.toLowerCase() === 'password1' || val.toLowerCase() === 'password' || val === '1234' || val === '12345') err = 'Cannot use default or weak password';
+                      if (!e.target.value) err = 'Password is required';
+                      else if (e.target.value.length < 6) err = 'Password must be at least 6 characters';
+                      else if (e.target.value.toLowerCase() === 'password1' || e.target.value.toLowerCase() === 'password' || e.target.value === '1234' || e.target.value === '12345') err = 'Cannot use default or weak password';
                       setNewPasswordError(err);
                     }}
                     placeholder="Create strong confidential password"
-                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${newPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
                     required
                     autoFocus
                   />
                 </div>
-                {newPasswordError && (
-                  <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {newPasswordError}
-                  </p>
-                )}
+                {newPasswordError && <p className="text-[10px] text-rose-600">{newPasswordError}</p>}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase text-slate-600 tracking-wider">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider">
                   Confirm New Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => {
                       setConfirmPassword(e.target.value);
-                      const err = e.target.value !== newPassword ? 'Passwords do not match' : null;
-                      setConfirmPasswordError(err);
+                      setConfirmPasswordError(e.target.value !== newPassword ? 'Passwords do not match' : null);
                     }}
                     placeholder="Verify chosen password"
-                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${confirmPasswordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
                     required
                   />
                 </div>
-                {confirmPasswordError && (
-                  <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {confirmPasswordError}
-                  </p>
-                )}
+                {confirmPasswordError && <p className="text-[10px] text-rose-600">{confirmPasswordError}</p>}
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => {
                   setShowPasswordChangeForm(false);
                   setPendingUser(null);
-                  setNewPasswordError(null);
-                  setConfirmPasswordError(null);
                 }}
-                className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer"
+                className="flex-1 py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={!!newPasswordError || !!confirmPasswordError || !newPassword || !confirmPassword}
-                className="flex-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!newPassword || !confirmPassword || !!newPasswordError || !!confirmPasswordError}
+                className="flex-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 Set Password & Enter Portal
               </button>
             </div>
           </form>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {errorMessage && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-shake">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* Email Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
+            {/* Email Field */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider flex justify-between">
                 <span>User Email Address</span>
                 {activeTab === 'admin' && (
-                  <span className="text-[10px] text-purple-700 font-mono font-bold">
-                    Admin: kpierre24@gmail.com
+                  <span className="text-[10px] text-purple-600 font-mono font-bold">
+                    kpierre24@gmail.com
                   </span>
                 )}
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={emailInput}
@@ -931,28 +433,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setEmailError(validateEmailOrUser(e.target.value));
                   }}
                   onBlur={() => setEmailError(validateEmailOrUser(emailInput))}
-                  placeholder={activeTab === 'admin' ? 'kpierre24@gmail.com' : activeTab === 'teacher' ? 'e.g. gillian.selkridge@hteim.edu' : 'e.g. aburke@student.hteim.edu'}
-                  className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${emailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                  placeholder={activeTab === 'admin' ? 'kpierre24@gmail.com' : activeTab === 'teacher' ? 'gillian.selkridge@hteim.edu' : 'aburke@student.hteim.edu'}
+                  className={`w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 ${emailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
                   required
                 />
               </div>
-              {emailError && (
-                <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {emailError}
-                </p>
-              )}
+              {emailError && <p className="text-[10px] text-rose-600">{emailError}</p>}
             </div>
 
-            {/* Password Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-black uppercase text-slate-600 tracking-wider flex items-center justify-between">
+            {/* Password Field */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider flex justify-between">
                 <span>Password</span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  Default: password1
-                </span>
+                <span className="text-slate-400 font-mono text-[10px]">Default: password1</span>
               </label>
               <div className="relative">
-                <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <KeyRound className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
                   value={passwordInput}
@@ -962,62 +458,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }}
                   onBlur={() => setPasswordError(validatePassword(passwordInput))}
                   placeholder="••••••••"
-                  className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white ${passwordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                  className={`w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 ${passwordError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
                   required
                 />
               </div>
-              {passwordError && (
-                <p className="text-[10px] text-rose-600 font-medium flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {passwordError}
-                </p>
-              )}
+              {passwordError && <p className="text-[10px] text-rose-600">{passwordError}</p>}
             </div>
 
             {/* Quick Auto-Fill Demo Helper */}
-            <div className="flex items-center justify-between text-[11px] pt-0.5">
+            <div className="flex items-center justify-between text-[11px]">
               <span className="text-slate-400">Quick sign in:</span>
               <button
                 type="button"
                 onClick={() => handleAutofillDemo(activeTab)}
-                className="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
+                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 font-bold underline cursor-pointer"
               >
                 Auto-fill default {activeTab} login
               </button>
             </div>
 
-            {/* Current Logged In Banner with Logout */}
-            {currentUser && (
-              <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs flex items-center justify-between text-slate-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-900 font-bold text-xs flex items-center justify-center shrink-0">
-                    {currentUser.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <span className="font-semibold text-slate-700">Currently in as: </span>
-                    <strong className="text-slate-900">{currentUser.name}</strong> 
-                    <span className="ml-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-200 text-amber-900">
-                      {currentUser.role}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onLogout) onLogout();
-                  }}
-                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Log Out</span>
-                </button>
-              </div>
-            )}
-
-            {/* Submit Button */}
+            {/* Submit Action */}
             <button
               type="submit"
               disabled={!isLoginFormValid() || isVerifying}
-              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isVerifying ? (
                 <>
@@ -1026,22 +490,68 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </>
               ) : (
                 <>
-                  <span>Log In to {activeTab === 'admin' ? 'Admin View' : activeTab === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
+                  <span>Log In to {activeTab === 'admin' ? 'Admin Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
+
+            {/* Quick Demo Access Bar */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px]">
+              <span className="text-slate-400">Instant Demo:</span>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  type="button" 
+                  onClick={() => handleAutofillDemo('student')}
+                  className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 font-bold cursor-pointer"
+                >
+                  Student
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => handleAutofillDemo('teacher')}
+                  className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 font-bold cursor-pointer"
+                >
+                  Teacher
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => handleAutofillDemo('admin')}
+                  className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 font-bold cursor-pointer"
+                >
+                  Admin
+                </button>
+              </div>
+            </div>
+
+            {/* Scripture Quote Box */}
+            <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl flex items-start gap-2">
+              <BookMarked className="w-4 h-4 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-[11px] text-amber-950 dark:text-amber-200 font-serif italic leading-snug">
+                  "{currentScripture.text}"
+                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[9px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+                    — {currentScripture.verse} ({currentScripture.theme})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={nextScripture}
+                    className="text-[9px] font-bold text-amber-800 dark:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    Next Quote →
+                  </button>
+                </div>
+              </div>
+            </div>
           </form>
         )}
 
         {/* Footer info */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-1.5">
-          <div>
-            <span>HTEIM School of Ministry © 2026</span>
-            <span className="mx-1 text-slate-300">•</span>
-            <span className="text-slate-600">App created by <strong className="text-slate-800">Rockproxy Technologies</strong></span>
-          </div>
-          <span className="font-mono text-indigo-700 font-bold">Role Access: Admin • Teacher • Student</span>
+        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <span>HTEIM School of Ministry © 2026</span>
+          <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">Academic Portal</span>
         </div>
       </div>
     </div>

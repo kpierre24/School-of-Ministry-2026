@@ -1,7 +1,6 @@
 import express from "express";
 import { createServer as createHttpServer } from "http";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 
 import { githubRouter } from "./src/server/routes/github";
@@ -14,7 +13,7 @@ dotenv.config();
 
 const app = express();
 const httpServer = createHttpServer(app);
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Apply security response headers globally
 app.use(securityHeaders);
@@ -25,10 +24,11 @@ app.use(express.json({ limit: "10mb" }));
 // Sanitize incoming JSON bodies
 app.use(sanitizeBody);
 
-// Apply rate limiting specifically to /api endpoints
+// Apply rate limiting specifically to /api endpoints (exclude health check)
 app.use("/api", rateLimiter(100, 15 * 60 * 1000));
 
-app.get("/health", (req, res) => {
+// Health endpoints for Cloud Run and monitoring probes
+app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
@@ -38,6 +38,7 @@ app.use("/api/drive-proxy", driveProxyRouter);
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: { server: httpServer } },
       appType: "spa",
@@ -60,7 +61,7 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
-    logger.info(`HTEIM School of Ministry server running on http://localhost:${PORT}`);
+    logger.info(`HTEIM School of Ministry server running on http://0.0.0.0:${PORT}`);
   });
 }
 

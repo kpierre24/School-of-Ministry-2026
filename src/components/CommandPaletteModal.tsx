@@ -45,7 +45,7 @@ interface CommandPaletteModalProps {
   onOpenSettings: () => void;
   onOpenAdminTools: () => void;
   onOpenBatchBroadcast: () => void;
-  onOpenLiveCheckin: () => void;
+  onOpenLiveCheckin?: () => void;
   onOpenMobileDownload: () => void;
   onOpenLogin: () => void;
 }
@@ -118,102 +118,95 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   const allItems: CommandPaletteItem[] = [];
 
   // 1. Core Navigation & System Actions
-  allItems.push(
-    {
-      id: 'nav-home',
-      category: 'Actions & Views',
-      title: 'Go to Home Dashboard',
-      subtitle: 'Overview, Pillars & Ministry Curriculum Highlights',
-      icon: <Sparkles className="w-4 h-4 text-amber-500" />,
-      badge: 'View',
-      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-      action: () => { onNavigate('home'); onClose(); }
-    },
-    {
-      id: 'nav-attendance',
-      category: 'Actions & Views',
-      title: 'Open Student Attendance Portal',
-      subtitle: 'Live Attendance Records & Class Check-In Sheets',
-      icon: <UserCheck className="w-4 h-4 text-indigo-500" />,
-      badge: 'View',
-      badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-      action: () => { onNavigate('attendance'); onClose(); }
-    },
-    {
-      id: 'nav-students',
-      category: 'Actions & Views',
-      title: 'Open Students Directory',
-      subtitle: 'View Student Roster, Contact Profiles & Enrolment Levels',
-      icon: <User className="w-4 h-4 text-emerald-500" />,
-      badge: 'View',
-      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      action: () => { onNavigate('students'); onClose(); }
-    },
-    {
-      id: 'nav-courses',
-      category: 'Actions & Views',
-      title: 'Courses & Curriculum Modules',
-      subtitle: 'Browse 6 Core Ministry Modules & Syllabi Details',
-      icon: <BookOpen className="w-4 h-4 text-blue-500" />,
-      badge: 'View',
-      badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
-      action: () => { onNavigate('courses'); onClose(); }
-    },
-    {
-      id: 'nav-exams',
-      category: 'Actions & Views',
-      title: 'Exams, Assignments & Evaluations',
-      subtitle: 'Scripture Examinations, Quizzes & Grade Books',
-      icon: <Award className="w-4 h-4 text-amber-600" />,
-      badge: 'View',
-      badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
-      action: () => { onNavigate('exams'); onClose(); }
-    },
-    {
-      id: 'nav-schedule',
-      category: 'Actions & Views',
-      title: 'Academic Calendar & Schedule',
-      subtitle: 'Classroom Days, Lecture Slots & Room Locations',
-      icon: <Calendar className="w-4 h-4 text-purple-500" />,
-      badge: 'View',
-      badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
-      action: () => { onNavigate('schedule'); onClose(); }
-    },
-    {
-      id: 'nav-library',
-      category: 'Actions & Views',
-      title: 'Digital Library & Reading Resources',
-      subtitle: 'Download Handouts, Manuals & Theological Syllabi',
-      icon: <Bookmark className="w-4 h-4 text-teal-500" />,
-      badge: 'View',
-      badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
-      action: () => { onNavigate('library'); onClose(); }
-    },
-    {
-      id: 'nav-payments',
-      category: 'Actions & Views',
-      title: 'Tuition Statements & Payment Ledger',
-      subtitle: 'Receipts, Payment Options & Financial Records',
-      icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
-      badge: 'View',
-      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      action: () => { onNavigate('payments'); onClose(); }
-    }
-  );
+  allItems.push({
+    id: 'nav-home',
+    category: 'Actions & Views',
+    title: 'Go to Home Dashboard',
+    subtitle: 'Overview, Pillars & Ministry Curriculum Highlights',
+    icon: <Sparkles className="w-4 h-4 text-amber-500" />,
+    badge: 'View',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    action: () => { onNavigate('home'); onClose(); }
+  });
+
+  if (appUser) {
+    allItems.push(
+      {
+        id: 'nav-attendance',
+        category: 'Actions & Views',
+        title: 'Open Student Attendance Portal',
+        subtitle: 'Live Attendance Records & Class Check-In Sheets',
+        icon: <UserCheck className="w-4 h-4 text-indigo-500" />,
+        badge: 'View',
+        badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        action: () => { onNavigate('attendance'); onClose(); }
+      },
+      {
+        id: 'nav-students',
+        category: 'Actions & Views',
+        title: 'Open Students Directory',
+        subtitle: 'View Student Roster, Contact Profiles & Enrolment Levels',
+        icon: <User className="w-4 h-4 text-emerald-500" />,
+        badge: 'View',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        action: () => { onNavigate('students'); onClose(); }
+      },
+      {
+        id: 'nav-courses',
+        category: 'Actions & Views',
+        title: 'Courses & Curriculum Modules',
+        subtitle: 'Browse 6 Core Ministry Modules & Syllabi Details',
+        icon: <BookOpen className="w-4 h-4 text-blue-500" />,
+        badge: 'View',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+        action: () => { onNavigate('courses'); onClose(); }
+      },
+      {
+        id: 'nav-exams',
+        category: 'Actions & Views',
+        title: 'Exams, Assignments & Evaluations',
+        subtitle: 'Scripture Examinations, Quizzes & Grade Books',
+        icon: <Award className="w-4 h-4 text-amber-600" />,
+        badge: 'View',
+        badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
+        action: () => { onNavigate('exams'); onClose(); }
+      },
+      {
+        id: 'nav-schedule',
+        category: 'Actions & Views',
+        title: 'Academic Calendar & Schedule',
+        subtitle: 'Classroom Days, Lecture Slots & Room Locations',
+        icon: <Calendar className="w-4 h-4 text-purple-500" />,
+        badge: 'View',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+        action: () => { onNavigate('schedule'); onClose(); }
+      },
+      {
+        id: 'nav-library',
+        category: 'Actions & Views',
+        title: 'Digital Library & Reading Resources',
+        subtitle: 'Download Handouts, Manuals & Theological Syllabi',
+        icon: <Bookmark className="w-4 h-4 text-teal-500" />,
+        badge: 'View',
+        badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
+        action: () => { onNavigate('library'); onClose(); }
+      },
+      {
+        id: 'nav-payments',
+        category: 'Actions & Views',
+        title: 'Tuition Statements & Payment Ledger',
+        subtitle: 'Receipts, Payment Options & Financial Records',
+        icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
+        badge: 'View',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        action: () => { onNavigate('payments'); onClose(); }
+      }
+    );
+  }
 
   // System Tool Triggers
   if (appUser?.role !== 'student') {
     allItems.push(
-      {
-        id: 'action-live-checkin',
-        category: 'Actions & Views',
-        title: 'Launch Live Classroom Check-In Modal',
-        subtitle: 'Quick single-tap student roll call for active class session',
-        icon: <UserCheck className="w-4 h-4 text-emerald-600 animate-pulse" />,
-        badge: 'Live',
-        badgeColor: 'bg-emerald-500 text-white border-emerald-600 font-bold',
-        action: () => { onOpenLiveCheckin(); onClose(); }
-      },
       {
         id: 'action-broadcast',
         category: 'Actions & Views',
@@ -273,74 +266,76 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     }
   );
 
-  // 2. Students List
-  studentList.forEach((st, idx) => {
-    allItems.push({
-      id: `student-${idx}-${st.name}`,
-      category: 'Students',
-      title: st.name,
-      subtitle: `Student Record • Attendance Rate: ${st.rate !== undefined ? Math.round(st.rate) : 95}%`,
-      icon: <User className="w-4 h-4 text-indigo-600" />,
-      badge: 'Student',
-      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      action: () => {
-        onNavigate('students');
-        onClose();
-      }
+  if (appUser) {
+    // 2. Students List
+    studentList.forEach((st, idx) => {
+      allItems.push({
+        id: `student-${idx}-${st.name}`,
+        category: 'Students',
+        title: st.name,
+        subtitle: `Student Record • Attendance Rate: ${st.rate !== undefined ? Math.round(st.rate) : 95}%`,
+        icon: <User className="w-4 h-4 text-indigo-600" />,
+        badge: 'Student',
+        badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        action: () => {
+          onNavigate('students');
+          onClose();
+        }
+      });
     });
-  });
 
-  // 3. Courses List
-  coreModules.forEach((mod) => {
-    allItems.push({
-      id: `course-${mod.code}`,
-      category: 'Courses',
-      title: `${mod.code}: ${mod.title}`,
-      subtitle: `Faculty: ${mod.instructor} • 5 Credits`,
-      icon: <BookOpen className="w-4 h-4 text-amber-600" />,
-      badge: 'Module',
-      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
-      action: () => {
-        onNavigate('courses');
-        onClose();
-      }
+    // 3. Courses List
+    coreModules.forEach((mod) => {
+      allItems.push({
+        id: `course-${mod.code}`,
+        category: 'Courses',
+        title: `${mod.code}: ${mod.title}`,
+        subtitle: `Faculty: ${mod.instructor} • 5 Credits`,
+        icon: <BookOpen className="w-4 h-4 text-amber-600" />,
+        badge: 'Module',
+        badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+        action: () => {
+          onNavigate('courses');
+          onClose();
+        }
+      });
     });
-  });
 
-  // 4. Exams List
-  coreExams.forEach((exam) => {
-    allItems.push({
-      id: `exam-${exam.code}`,
-      category: 'Exams',
-      title: exam.title,
-      subtitle: `Academic Evaluation • Weight: ${exam.weight}`,
-      icon: <Award className="w-4 h-4 text-rose-600" />,
-      badge: 'Exam',
-      badgeColor: 'bg-rose-50 text-rose-800 border-rose-200',
-      action: () => {
-        onNavigate('exams');
-        onClose();
-      }
+    // 4. Exams List
+    coreExams.forEach((exam) => {
+      allItems.push({
+        id: `exam-${exam.code}`,
+        category: 'Exams',
+        title: exam.title,
+        subtitle: `Academic Evaluation • Weight: ${exam.weight}`,
+        icon: <Award className="w-4 h-4 text-rose-600" />,
+        badge: 'Exam',
+        badgeColor: 'bg-rose-50 text-rose-800 border-rose-200',
+        action: () => {
+          onNavigate('exams');
+          onClose();
+        }
+      });
     });
-  });
 
-  // 5. Payment Records
-  corePayments.forEach((pm, idx) => {
-    const isPaid = pm.status === 'Paid In Full';
-    allItems.push({
-      id: `payment-${idx}`,
-      category: 'Payments',
-      title: `Tuition Statement: ${pm.name}`,
-      subtitle: `Track: ${pm.track} • Status: ${pm.status}`,
-      icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
-      badge: pm.status,
-      badgeColor: isPaid ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-900 border-amber-200',
-      action: () => {
-        onNavigate('payments');
-        onClose();
-      }
+    // 5. Payment Records
+    corePayments.forEach((pm, idx) => {
+      const isPaid = pm.status === 'Paid In Full';
+      allItems.push({
+        id: `payment-${idx}`,
+        category: 'Payments',
+        title: `Tuition Statement: ${pm.name}`,
+        subtitle: `Track: ${pm.track} • Status: ${pm.status}`,
+        icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
+        badge: pm.status,
+        badgeColor: isPaid ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-900 border-amber-200',
+        action: () => {
+          onNavigate('payments');
+          onClose();
+        }
+      });
     });
-  });
+  }
 
   // Filter items based on user search query
   const filtered = query.trim() === '' 

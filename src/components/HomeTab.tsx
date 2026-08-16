@@ -428,15 +428,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     return payments.find(p => (p?.studentName || '').toLowerCase().trim() === nameToMatch) || null;
   }, [isStudent, appUser, payments]);
 
-  // Scripture Copy Toast state
-  const [copiedScripture, setCopiedScripture] = useState(false);
-  const handleCopyScripture = () => {
-    navigator.clipboard.writeText(`"Study to show yourself approved unto God, a workman that needs not to be ashamed, rightly dividing the word of truth." — 2 Timothy 2:15 (HTEIM School of Ministry)`);
-    setCopiedScripture(true);
-    if (navigator.vibrate) navigator.vibrate(20);
-    setTimeout(() => setCopiedScripture(false), 2500);
-  };
-
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
 
@@ -1228,8 +1219,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       key={idx}
                       onClick={() => setCurrentSlideIdx(idx)}
                       className={`h-2 rounded-full transition-all cursor-pointer ${idx === currentSlideIdx
-                          ? 'w-6 bg-amber-400 shadow-xs'
-                          : 'w-2 bg-slate-700 hover:bg-slate-600'
+                        ? 'w-6 bg-amber-400 shadow-xs'
+                        : 'w-2 bg-slate-700 hover:bg-slate-600'
                         }`}
                       aria-label={`Go to slide ${idx}`}
                     />
@@ -1243,8 +1234,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 <button
                   onClick={() => setCurrentSlideIdx(0)}
                   className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${currentSlideIdx === 0
-                      ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
+                    ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
                     }`}
                 >
                   <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950 flex items-center justify-center">
@@ -1270,8 +1261,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       key={teacher.id}
                       onClick={() => setCurrentSlideIdx(slideNum)}
                       className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${isActive
-                          ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
+                        ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
                         }`}
                     >
                       <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950">
@@ -1297,6 +1288,125 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         )}
       </section>
+
+      {/* Active Class Quiz Announcement Banner (Students Only) */}
+      {isStudent && activeQuizzes.length > 0 && (
+        <section className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 rounded-2xl border-2 border-purple-500/40 p-4 sm:p-6 text-white shadow-xl relative overflow-hidden animate-fadeIn my-2">
+          <div className="absolute top-0 right-0 -mr-10 -mt-10 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-500/30 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                  <Sparkles className="w-3 h-3" /> Active Class Quiz Available
+                </span>
+                <span className="text-xs text-purple-200 font-medium hidden sm:inline">
+                  ({activeQuizzes.length} published quiz{activeQuizzes.length > 1 ? 'zes' : ''} active)
+                </span>
+              </div>
+
+              <span className="text-[11px] font-mono font-bold text-purple-200 bg-purple-800/60 px-2.5 py-1 rounded-lg border border-purple-400/30">
+                Auto-Compiled to Total Grade Score
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {activeQuizzes.map((asg) => {
+                const quiz = asg.quizData!;
+                const currentStudentName = appUser?.studentName || appUser?.name || userEmail || '';
+                const targetName = (currentStudentName || '').toLowerCase().trim();
+                const hasSubmitted = submissions?.some(
+                  s => s.assignmentId === asg.id && (s.studentName || '').toLowerCase().trim() === targetName
+                );
+
+                return (
+                  <div key={asg.id} className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/15 hover:border-purple-300/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 bg-purple-500/30 text-purple-100 font-mono font-bold text-[10px] rounded border border-purple-300/30">
+                          {asg.courseCode || 'MIN-101'}
+                        </span>
+                        <span className="text-xs font-semibold text-purple-200">
+                          {asg.moduleTrack || 'Module 1'}
+                        </span>
+                        {hasSubmitted && (
+                          <span className="px-2 py-0.5 bg-emerald-500/30 text-emerald-200 font-extrabold text-[10px] rounded-full border border-emerald-400/40 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-300" /> Completed
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                        {quiz.title}
+                      </h3>
+
+                      <p className="text-xs text-purple-100/80 line-clamp-2 leading-relaxed">
+                        {quiz.description || 'Complete this weighted class day quiz to compile your academic score.'}
+                      </p>
+
+                      {/* Metrics row */}
+                      <div className="flex items-center gap-3 pt-1 text-xs text-purple-200 font-mono font-bold flex-wrap">
+                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
+                          <Award className="w-3.5 h-3.5 text-amber-300" />
+                          <span>{quiz.totalPoints || asg.maxPoints} Points Max</span>
+                        </span>
+
+                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
+                          <Clock className="w-3.5 h-3.5 text-indigo-300" />
+                          <span>{quiz.timeLimitMinutes ? `${quiz.timeLimitMinutes} Mins Limit` : 'No Time Limit'}</span>
+                        </span>
+
+                        <span className="flex items-center gap-1 bg-purple-900/60 px-2.5 py-1 rounded-lg border border-purple-400/20">
+                          <Calendar className="w-3.5 h-3.5 text-purple-300" />
+                          <span>Due: {quiz.dueDate || asg.dueDate}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-purple-500/30">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const shareUrl = `${window.location.origin}${window.location.pathname}?quiz=${quiz.shareCode || quiz.id}`;
+                          navigator.clipboard.writeText(shareUrl);
+                          setCopiedQuizLink(quiz.id);
+                          setTimeout(() => setCopiedQuizLink(null), 2500);
+                        }}
+                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Copy shareable link for this quiz"
+                      >
+                        {copiedQuizLink === quiz.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-purple-200" />}
+                        <span>{copiedQuizLink === quiz.id ? 'Copied!' : 'Copy Link'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onTakeQuiz) {
+                            onTakeQuiz(quiz);
+                          } else {
+                            onNavigate('exams');
+                          }
+                        }}
+                        className={`px-4 py-2.5 ${hasSubmitted
+                            ? 'bg-purple-800/90 hover:bg-purple-800 text-white font-bold border border-purple-400/40'
+                            : 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-lg hover:shadow-amber-400/20 active:scale-95'
+                          } text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5`}
+                      >
+                        {hasSubmitted ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <BookOpen className="w-4 h-4" />}
+                        <span>{hasSubmitted ? 'Completed (View Score)' : 'Take Quiz Now'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Welcome & Pathway Selector (Only shown for guest/prospective mode) */}
       {!appUser && (
@@ -1338,17 +1448,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
               <div className="pt-2 flex items-center gap-2">
                 <button
-                  onClick={() => onNavigate('attendance')}
+                  onClick={onOpenLogin}
                   className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                 >
-                  <span>My Attendance</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onNavigate('exams')}
-                  className="py-2 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-                >
-                  Quizzes
+                  <Lock className="w-3 h-3" />
+                  <span>Student Sign In</span>
                 </button>
               </div>
             </div>
@@ -1366,28 +1470,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </div>
 
               <div className="pt-2 flex items-center gap-2">
-                {appUser ? (
-                  <button
-                    onClick={() => onNavigate('students')}
-                    className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
-                  >
-                    <span>Roster Directory</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={onOpenLogin}
-                    className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
-                  >
-                    <Lock className="w-3 h-3" />
-                    <span>Faculty Sign In</span>
-                  </button>
-                )}
                 <button
-                  onClick={() => onNavigate('schedule')}
-                  className="py-2 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  onClick={onOpenLogin}
+                  className="flex-1 py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1"
                 >
-                  Schedule
+                  <Lock className="w-3 h-3" />
+                  <span>Faculty Sign In</span>
                 </button>
               </div>
             </div>
@@ -1410,8 +1498,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </div>
             {loggedInStudentData && (
               <span className={`px-2.5 py-1 text-[9px] font-bold rounded-full uppercase tracking-wider shrink-0 ${loggedInStudentData.rate >= atRiskThreshold
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                 }`}>
                 {loggedInStudentData.rate >= atRiskThreshold ? 'Satisfactory' : 'At-Risk'}
               </span>
@@ -1654,6 +1742,305 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
 
       </div>
+
+      {/* Admin & Faculty Academic Insights Panel */}
+      {isAdminOrTeacher && (
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <div
+            onClick={() => setIsAdminPanelExpanded(prev => !prev)}
+            className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
+                <BarChart2 className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+                    Academic Analytics & At-Risk Monitoring
+                  </h3>
+                  {rawAtRiskStudents.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
+                      {rawAtRiskStudents.length} At-Risk
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Faculty tools for student attendance intervention, module trends, and cloud state synchronization.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
+                {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
+              </span>
+              {isAdminPanelExpanded ? (
+                <ChevronUp className="w-5 h-5 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-500" />
+              )}
+            </div>
+          </div>
+
+          {isAdminPanelExpanded && (
+            <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
+              {/* Sub-Tabs */}
+              <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('at_risk')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${adminTab === 'at_risk'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>At-Risk Triggers ({rawAtRiskStudents.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('trends')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${adminTab === 'trends'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                  <BarChart2 className="w-3.5 h-3.5" />
+                  <span>Module Attendance Trends</span>
+                </button>
+              </div>
+
+              {/* At-Risk Tab Content */}
+              {adminTab === 'at_risk' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search student..."
+                        value={atRiskSearch}
+                        onChange={(e) => setAtRiskSearch(e.target.value)}
+                        className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setAtRiskFilter('all')}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
+                      >
+                        All ({rawAtRiskStudents.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAtRiskFilter('critical')}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
+                      >
+                        Critical (≤50%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAtRiskFilter('moderate')}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
+                      >
+                        Warning (51-74%)
+                      </button>
+                    </div>
+                  </div>
+
+                  {filteredAtRiskStudents.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {filteredAtRiskStudents.map((student) => {
+                        const isCritical = student.rate <= 50;
+                        const totalClasses = classDays.length || 6;
+                        const missedClasses = Math.max(0, totalClasses - student.attended);
+
+                        return (
+                          <div
+                            key={student.name}
+                            className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${isCritical
+                                ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900'
+                                : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
+                              }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${isCritical ? 'bg-rose-600' : 'bg-amber-600'
+                                  }`}>
+                                  {student.photoUrl ? (
+                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
+                                  ) : (
+                                    student.name.charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
+                                  <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                    Missed {missedClasses} of {totalClasses} Sessions
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${isCritical
+                                    ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200'
+                                    : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
+                                  }`}>
+                                  <AlertTriangle className="w-3 h-3" /> {Math.round(student.rate)}%
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span>Attendance Rate</span>
+                                <span>{student.attended} / {totalClasses} Attended</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'bg-rose-600' : 'bg-amber-500'}`}
+                                  style={{ width: `${Math.max(5, student.rate)}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => onNavigate('attendance')}
+                                className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <UserX className="w-3 h-3 text-rose-500" /> Review
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onNavigate('messages')}
+                                className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <MessageSquare className="w-3 h-3" /> Direct Msg
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSentAlertStudent(student.name);
+                                  setTimeout(() => setSentAlertStudent(null), 3000);
+                                }}
+                                className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${sentAlertStudent === student.name
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                                  }`}
+                              >
+                                {sentAlertStudent === student.name ? <CheckCircle className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
+                                {sentAlertStudent === student.name ? 'Alerted' : 'Flag'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="All students meeting expectations"
+                      description="No students are currently falling below the attendance threshold in this filter view."
+                      icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Trends Tab Content */}
+              {adminTab === 'trends' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setTrendChartType('bar')}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
+                          }`}
+                      >
+                        <BarChart2 className="w-3.5 h-3.5" /> Bar View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTrendChartType('area')}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
+                          }`}
+                      >
+                        <Activity className="w-3.5 h-3.5" /> Trend Line
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="h-64 w-full bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      {trendChartType === 'bar' ? (
+                        <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
+                                    <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                                    <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
+                                    <p>Absence Rate: <strong className="text-rose-400">{data.absenceRate}%</strong></p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="attendanceRate" radius={[8, 8, 0, 0]} name="Attendance Rate (%)">
+                            {moduleTrendData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.attendanceRate < 75 ? '#F43F5E' : '#4F46E5'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      ) : (
+                        <AreaChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
+                          <defs>
+                            <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
+                                    <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                                    <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Area type="monotone" dataKey="attendanceRate" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
+                        </AreaChart>
+                      )}
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Admin Faculty & Instructors Manager Modal */}
       {isAdmin && (
