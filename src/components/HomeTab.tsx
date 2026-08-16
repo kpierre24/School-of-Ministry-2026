@@ -2,23 +2,23 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import hteimBannerAsset from '../assets/images/regenerated_image_1785852170450.png';
 import biblicalHeroAsset from '../assets/images/caribbean_bible_school_clean_1786453783620.jpg';
-import gillianSelkridgeAsset from '../assets/images/gillian_selkridge_1786642912894.jpg';
+import gillianSelkridgeAsset from '../assets/images/gill.png';
 import samuelSelkridgeAsset from '../assets/images/samuel_selkridge_1786642928268.jpg';
 import galeGrantAsset from '../assets/images/gale_grant_1786642942313.jpg';
 import christyRubenAsset from '../assets/images/christy_ruben_1786642955859.jpg';
 import garodAndrewsAsset from '../assets/images/garod_andrews_1786642969381.jpg';
 import { LogoImage } from './LogoImage';
-import { 
-  BookOpen, 
-  GraduationCap, 
-  Award, 
-  Calendar, 
-  Users, 
-  ArrowRight, 
-  ShieldCheck, 
-  Sparkles, 
-  Trophy, 
-  TrendingUp, 
+import {
+  BookOpen,
+  GraduationCap,
+  Award,
+  Calendar,
+  Users,
+  ArrowRight,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  TrendingUp,
   BookMarked,
   Clock,
   MapPin,
@@ -70,16 +70,16 @@ import { TabType, StudentSummary, ClassDay, PaymentRecord, CustomAssignment, Ass
 import { FacultyManagerModal } from './FacultyManagerModal';
 import { syncFacultyImagesToSupabase } from '../lib/supabaseClient';
 import { AppUser } from '../lib/userAuth';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  Legend, 
-  CartesianGrid, 
-  Cell, 
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+  Cell,
   AreaChart,
   Area
 } from 'recharts';
@@ -376,8 +376,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         });
       }
 
-      const attendanceRate = totalExpected > 0 
-        ? Math.round((presentTotal / totalExpected) * 100) 
+      const attendanceRate = totalExpected > 0
+        ? Math.round((presentTotal / totalExpected) * 100)
         : Math.max(50, 88 - (idx * 4));
 
       const absenceRate = 100 - attendanceRate;
@@ -439,7 +439,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
-      
+
       {/* Executive Personalized Dashboard Metric Cards (Pillar 5) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {isStudent ? (
@@ -450,11 +450,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400">Attendance Rate</span>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">{loggedInStudentData?.rate ? Math.round(loggedInStudentData.rate) : 92}%</span>
-                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                    (loggedInStudentData?.rate || 92) >= 75
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${(loggedInStudentData?.rate || 92) >= 75
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
                       : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
-                  }`}>
+                    }`}>
                     {(loggedInStudentData?.rate || 92) >= 75 ? 'Satisfactory ✓' : 'At-Risk ⚠'}
                   </span>
                 </div>
@@ -612,308 +611,300 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* Admin & Faculty Academic Insights Panel (Elevated Above the Fold for Immediate Action) */}
       {isAdminOrTeacher && (
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden my-2">
-        <div 
-          onClick={() => setIsAdminPanelExpanded(prev => !prev)}
-          className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
-                  Academic Analytics & At-Risk Monitoring
-                </h3>
-                {rawAtRiskStudents.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
-                    {rawAtRiskStudents.length} At-Risk
-                  </span>
-                )}
+          <div
+            onClick={() => setIsAdminPanelExpanded(prev => !prev)}
+            className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
+                <BarChart2 className="w-5 h-5" />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Faculty tools for student attendance intervention, module trends, and cloud state synchronization.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
-              {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
-            </span>
-            {isAdminPanelExpanded ? (
-              <ChevronUp className="w-5 h-5 text-slate-500" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-500" />
-            )}
-          </div>
-        </div>
-
-        {isAdminPanelExpanded && (
-          <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
-            {/* Sub-Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setAdminTab('at_risk')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  adminTab === 'at_risk'
-                    ? 'bg-rose-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>At-Risk Triggers ({rawAtRiskStudents.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAdminTab('trends')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  adminTab === 'trends'
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <BarChart2 className="w-3.5 h-3.5" />
-                <span>Module Attendance Trends</span>
-              </button>
-            </div>
-
-            {/* At-Risk Tab Content */}
-            {adminTab === 'at_risk' && (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search student..."
-                      value={atRiskSearch}
-                      onChange={(e) => setAtRiskSearch(e.target.value)}
-                      className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('all')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
-                    >
-                      All ({rawAtRiskStudents.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('critical')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
-                    >
-                      Critical (≤50%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('moderate')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
-                    >
-                      Warning (51-74%)
-                    </button>
-                  </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+                    Academic Analytics & At-Risk Monitoring
+                  </h3>
+                  {rawAtRiskStudents.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
+                      {rawAtRiskStudents.length} At-Risk
+                    </span>
+                  )}
                 </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Faculty tools for student attendance intervention, module trends, and cloud state synchronization.
+                </p>
+              </div>
+            </div>
 
-                {filteredAtRiskStudents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {filteredAtRiskStudents.map((student) => {
-                      const isCritical = student.rate <= 50;
-                      const totalClasses = classDays.length || 6;
-                      const missedClasses = Math.max(0, totalClasses - student.attended);
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
+                {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
+              </span>
+              {isAdminPanelExpanded ? (
+                <ChevronUp className="w-5 h-5 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-500" />
+              )}
+            </div>
+          </div>
 
-                      return (
-                        <div 
-                          key={student.name}
-                          className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${
-                            isCritical 
-                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' 
-                              : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${
-                                isCritical ? 'bg-rose-600' : 'bg-amber-600'
-                              }`}>
-                                {student.photoUrl ? (
-                                  <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
-                                ) : (
-                                  student.name.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
-                                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                                  Missed {missedClasses} of {totalClasses} Sessions
-                                </p>
-                              </div>
-                            </div>
+          {isAdminPanelExpanded && (
+            <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
+              {/* Sub-Tabs */}
+              <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('at_risk')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${adminTab === 'at_risk'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>At-Risk Triggers ({rawAtRiskStudents.length})</span>
+                </button>
 
-                            <div className="text-right shrink-0">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
-                                isCritical 
-                                  ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200' 
-                                  : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
-                              }`}>
-                                <AlertTriangle className="w-3 h-3" /> {Math.round(student.rate)}%
-                              </span>
-                            </div>
-                          </div>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('trends')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${adminTab === 'trends'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                  <BarChart2 className="w-3.5 h-3.5" />
+                  <span>Module Attendance Trends</span>
+                </button>
+              </div>
 
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                              <span>Attendance Rate</span>
-                              <span>{student.attended} / {totalClasses} Attended</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'bg-rose-600' : 'bg-amber-500'}`}
-                                style={{ width: `${Math.max(5, student.rate)}%` }}
-                              />
-                            </div>
-                          </div>
+              {/* At-Risk Tab Content */}
+              {adminTab === 'at_risk' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search student..."
+                        value={atRiskSearch}
+                        onChange={(e) => setAtRiskSearch(e.target.value)}
+                        className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
+                      />
+                    </div>
 
-                          <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('attendance')}
-                              className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <UserX className="w-3 h-3 text-rose-500" /> Review
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('messages')}
-                              className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <MessageSquare className="w-3 h-3" /> Direct Msg
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSentAlertStudent(student.name);
-                                setTimeout(() => setSentAlertStudent(null), 3000);
-                              }}
-                              className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                sentAlertStudent === student.name
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setAtRiskFilter('all')}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
+                      >
+                        All ({rawAtRiskStudents.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAtRiskFilter('critical')}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
+                      >
+                        Critical (≤50%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAtRiskFilter('moderate')}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
+                      >
+                        Warning (51-74%)
+                      </button>
+                    </div>
+                  </div>
+
+                  {filteredAtRiskStudents.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {filteredAtRiskStudents.map((student) => {
+                        const isCritical = student.rate <= 50;
+                        const totalClasses = classDays.length || 6;
+                        const missedClasses = Math.max(0, totalClasses - student.attended);
+
+                        return (
+                          <div
+                            key={student.name}
+                            className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${isCritical
+                                ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900'
+                                : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
                               }`}
-                            >
-                              {sentAlertStudent === student.name ? <CheckCircle className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
-                              {sentAlertStudent === student.name ? 'Alerted' : 'Flag'}
-                            </button>
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${isCritical ? 'bg-rose-600' : 'bg-amber-600'
+                                  }`}>
+                                  {student.photoUrl ? (
+                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
+                                  ) : (
+                                    student.name.charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
+                                  <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                    Missed {missedClasses} of {totalClasses} Sessions
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${isCritical
+                                    ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200'
+                                    : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
+                                  }`}>
+                                  <AlertTriangle className="w-3 h-3" /> {Math.round(student.rate)}%
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                <span>Attendance Rate</span>
+                                <span>{student.attended} / {totalClasses} Attended</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'bg-rose-600' : 'bg-amber-500'}`}
+                                  style={{ width: `${Math.max(5, student.rate)}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => onNavigate('attendance')}
+                                className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <UserX className="w-3 h-3 text-rose-500" /> Review
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onNavigate('messages')}
+                                className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <MessageSquare className="w-3 h-3" /> Direct Msg
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSentAlertStudent(student.name);
+                                  setTimeout(() => setSentAlertStudent(null), 3000);
+                                }}
+                                className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${sentAlertStudent === student.name
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                                  }`}
+                              >
+                                {sentAlertStudent === student.name ? <CheckCircle className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
+                                {sentAlertStudent === student.name ? 'Alerted' : 'Flag'}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="All students meeting expectations"
-                    description="No students are currently falling below the attendance threshold in this filter view."
-                    icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
-                  />
-                )}
-              </div>
-            )}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="All students meeting expectations"
+                      description="No students are currently falling below the attendance threshold in this filter view."
+                      icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                    />
+                  )}
+                </div>
+              )}
 
-            {/* Trends Tab Content */}
-            {adminTab === 'trends' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setTrendChartType('bar')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
-                      }`}
-                    >
-                      <BarChart2 className="w-3.5 h-3.5" /> Bar View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrendChartType('area')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
-                      }`}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> Area Trend
-                    </button>
+              {/* Trends Tab Content */}
+              {adminTab === 'trends' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setTrendChartType('bar')}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
+                          }`}
+                      >
+                        <BarChart2 className="w-3.5 h-3.5" /> Bar View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTrendChartType('area')}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
+                          }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> Area Trend
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      {trendChartType === 'bar' ? (
+                        <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
+                                    <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                                    <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
+                                    <p>Absence Rate: <strong className="text-rose-400">{data.absenceRate}%</strong></p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="attendanceRate" radius={[8, 8, 0, 0]} name="Attendance Rate (%)">
+                            {moduleTrendData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.attendanceRate < 75 ? '#F43F5E' : '#4F46E5'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      ) : (
+                        <AreaChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
+                          <defs>
+                            <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
+                                    <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                                    <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Area type="monotone" dataKey="attendanceRate" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
+                        </AreaChart>
+                      )}
+                    </ResponsiveContainer>
                   </div>
                 </div>
-
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {trendChartType === 'bar' ? (
-                      <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
-                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
-                                  <p>Absence Rate: <strong className="text-rose-400">{data.absenceRate}%</strong></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="attendanceRate" radius={[8, 8, 0, 0]} name="Attendance Rate (%)">
-                          {moduleTrendData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.attendanceRate < 75 ? '#F43F5E' : '#4F46E5'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    ) : (
-                      <AreaChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
-                        <defs>
-                          <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
-                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area type="monotone" dataKey="attendanceRate" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
-                      </AreaChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
+              )}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Daily Ministry Scripture Anchor Card */}
@@ -952,7 +943,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </section>
 
       {/* Course Faculty & Opening Intro Revolving Showcase Banner */}
-      <section 
+      <section
         className="bg-slate-950 text-white rounded-3xl border border-slate-800 shadow-2xl overflow-hidden my-2 transition-all"
         onMouseEnter={() => setIsTeacherAutoplay(false)}
         onMouseLeave={() => setIsTeacherAutoplay(true)}
@@ -974,8 +965,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                {currentSlideIdx === 0 
-                  ? 'Anointed biblical instruction, exegesis, and ministerial governance' 
+                {currentSlideIdx === 0
+                  ? 'Anointed biblical instruction, exegesis, and ministerial governance'
                   : `Equipping saints with five-fold wisdom and ministerial excellence (${activeTeacher.name})`}
               </p>
             </div>
@@ -1058,9 +1049,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-10 min-h-[340px] flex flex-col justify-between shadow-2xl"
                 >
                   <div className="absolute inset-0 z-0">
-                    <img 
-                      src={biblicalHeroAsset} 
-                      alt="HTEIM School of Ministry" 
+                    <img
+                      src={biblicalHeroAsset}
+                      alt="HTEIM School of Ministry"
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover object-center"
                     />
@@ -1142,7 +1133,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     <div className="md:col-span-5 lg:col-span-4 flex flex-col items-center justify-center">
                       <div className="relative group w-full max-w-[250px] sm:max-w-[270px]">
                         <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-purple-600 to-indigo-600 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition duration-500" />
-                        
+
                         <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 shadow-2xl aspect-[3/4] w-full">
                           <img
                             src={activeTeacher.image || gillianSelkridgeAsset}
@@ -1154,7 +1145,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                             className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
-                          
+
                           <div className="absolute bottom-3 left-3 right-3">
                             <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border shadow-md ${activeTeacher.badgeColor}`}>
                               {activeTeacher.module}
@@ -1180,7 +1171,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-snug font-syne">
                           {activeTeacher.name}
                         </h3>
-                        
+
                         <p className="text-xs sm:text-sm font-extrabold text-amber-400 uppercase tracking-wide">
                           {activeTeacher.role} — {activeTeacher.title}
                         </p>
@@ -1236,11 +1227,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     <button
                       key={idx}
                       onClick={() => setCurrentSlideIdx(idx)}
-                      className={`h-2 rounded-full transition-all cursor-pointer ${
-                        idx === currentSlideIdx 
-                          ? 'w-6 bg-amber-400 shadow-xs' 
+                      className={`h-2 rounded-full transition-all cursor-pointer ${idx === currentSlideIdx
+                          ? 'w-6 bg-amber-400 shadow-xs'
                           : 'w-2 bg-slate-700 hover:bg-slate-600'
-                      }`}
+                        }`}
                       aria-label={`Go to slide ${idx}`}
                     />
                   ))}
@@ -1252,11 +1242,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 {/* Slide 0 Thumbnail: Opening Intro */}
                 <button
                   onClick={() => setCurrentSlideIdx(0)}
-                  className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${
-                    currentSlideIdx === 0
+                  className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${currentSlideIdx === 0
                       ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
                       : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
-                  }`}
+                    }`}
                 >
                   <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950 flex items-center justify-center">
                     <img
@@ -1280,11 +1269,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     <button
                       key={teacher.id}
                       onClick={() => setCurrentSlideIdx(slideNum)}
-                      className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${
-                        isActive
+                      className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${isActive
                           ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
                           : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
-                      }`}
+                        }`}
                     >
                       <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950">
                         <img
@@ -1421,11 +1409,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </div>
             </div>
             {loggedInStudentData && (
-              <span className={`px-2.5 py-1 text-[9px] font-bold rounded-full uppercase tracking-wider shrink-0 ${
-                loggedInStudentData.rate >= atRiskThreshold 
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+              <span className={`px-2.5 py-1 text-[9px] font-bold rounded-full uppercase tracking-wider shrink-0 ${loggedInStudentData.rate >= atRiskThreshold
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                   : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-              }`}>
+                }`}>
                 {loggedInStudentData.rate >= atRiskThreshold ? 'Satisfactory' : 'At-Risk'}
               </span>
             )}
@@ -1454,9 +1441,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <div className="grid grid-cols-3 gap-2.5 text-center">
             <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               <p className="text-[9px] uppercase font-bold text-slate-500 tracking-wider truncate">My Attendance</p>
-              <p className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${
-                loggedInStudentData && loggedInStudentData.rate < atRiskThreshold ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-              }`}>
+              <p className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${loggedInStudentData && loggedInStudentData.rate < atRiskThreshold ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                }`}>
                 {loggedInStudentData ? `${Math.round(loggedInStudentData.rate)}%` : '—'}
               </p>
             </div>
@@ -1470,9 +1456,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </div>
             <div className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               <p className="text-[9px] uppercase font-bold text-slate-500 tracking-wider truncate">Pending Tasks</p>
-              <p className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${
-                pendingAssignmentsCount > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'
-              }`}>
+              <p className={`text-sm sm:text-base font-bold font-mono mt-0.5 ${pendingAssignmentsCount > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'
+                }`}>
                 {pendingAssignmentsCount}
               </p>
             </div>
@@ -1517,7 +1502,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* 4. MAIN STRUCTURAL LAYOUT: Portal Access, Broadcast & Covenant Mandate */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
+
         {/* Portal Access Card */}
         <section className="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-4">
