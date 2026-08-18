@@ -87,6 +87,7 @@ import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
 import { EnrollmentInquiryModal } from './EnrollmentInquiryModal';
 import { EnrollmentCtaSection, StudentStoriesSection, FaqSection } from './VisitorSections';
+import { AdminCommandCenter } from './AdminCommandCenter';
 
 interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
@@ -108,6 +109,7 @@ interface HomeTabProps {
   nextClassTitle?: string;
   isCloudSyncing?: boolean;
   cloudSyncError?: string | null;
+  onPlayIntro?: () => void;
   lastSyncedTime?: string | null;
   onPushToCloud?: () => Promise<void>;
   userEmail?: string | null;
@@ -194,6 +196,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   nextClassTitle = 'Day 1',
   isCloudSyncing = false,
   cloudSyncError = null,
+  onPlayIntro,
   lastSyncedTime = null,
   onPushToCloud,
   userEmail = null,
@@ -948,6 +951,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       <EnrollmentCtaSection
         onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
         onNavigate={onNavigate}
+        onPlayIntro={onPlayIntro}
       />
 
       {/* Student & Alumni Impact Stories */}
@@ -958,311 +962,23 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
       />
 
-      {/* Admin & Faculty Academic Insights Panel */}
+      {/* Administrator Operational Command Center */}
       {isAdminOrTeacher && (
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-        <div 
-          onClick={() => setIsAdminPanelExpanded(prev => !prev)}
-          className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight">
-                  Academic Analytics & At-Risk Monitoring
-                </h3>
-                {rawAtRiskStudents.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white">
-                    {rawAtRiskStudents.length} At-Risk
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Faculty tools for student attendance intervention, module trends, and cloud state synchronization.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:inline">
-              {isAdminPanelExpanded ? 'Collapse' : 'Expand'}
-            </span>
-            {isAdminPanelExpanded ? (
-              <ChevronUp className="w-5 h-5 text-slate-500" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-500" />
-            )}
-          </div>
-        </div>
-
-        {isAdminPanelExpanded && (
-          <div className="p-5 sm:p-6 space-y-6 animate-fadeIn">
-            {/* Sub-Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setAdminTab('at_risk')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  adminTab === 'at_risk'
-                    ? 'bg-rose-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>At-Risk Triggers ({rawAtRiskStudents.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAdminTab('trends')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  adminTab === 'trends'
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <BarChart2 className="w-3.5 h-3.5" />
-                <span>Module Attendance Trends</span>
-              </button>
-            </div>
-
-            {/* At-Risk Tab Content */}
-            {adminTab === 'at_risk' && (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search student..."
-                      value={atRiskSearch}
-                      onChange={(e) => setAtRiskSearch(e.target.value)}
-                      className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('all')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'all' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}
-                    >
-                      All ({rawAtRiskStudents.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('critical')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'critical' ? 'bg-rose-600 text-white' : 'text-slate-500'}`}
-                    >
-                      Critical (≤50%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAtRiskFilter('moderate')}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${atRiskFilter === 'moderate' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
-                    >
-                      Warning (51-74%)
-                    </button>
-                  </div>
-                </div>
-
-                {filteredAtRiskStudents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {filteredAtRiskStudents.map((student) => {
-                      const isCritical = student.rate <= 50;
-                      const totalClasses = classDays.length || 6;
-                      const missedClasses = Math.max(0, totalClasses - student.attended);
-
-                      return (
-                        <div 
-                          key={student.name}
-                          className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 ${
-                            isCritical 
-                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900' 
-                              : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 ${
-                                isCritical ? 'bg-rose-600' : 'bg-amber-600'
-                              }`}>
-                                {student.photoUrl ? (
-                                  <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover rounded-lg" />
-                                ) : (
-                                  student.name.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">{student.name}</h4>
-                                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                                  Missed {missedClasses} of {totalClasses} Sessions
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="text-right shrink-0">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
-                                isCritical 
-                                  ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900 dark:text-rose-200' 
-                                  : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200'
-                              }`}>
-                                <AlertTriangle className="w-3 h-3" /> {Math.round(student.rate)}%
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                              <span>Attendance Rate</span>
-                              <span>{student.attended} / {totalClasses} Attended</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-500 ${isCritical ? 'bg-rose-600' : 'bg-amber-500'}`}
-                                style={{ width: `${Math.max(5, student.rate)}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('attendance')}
-                              className="flex-1 py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <UserX className="w-3 h-3 text-rose-500" /> Review
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('messages')}
-                              className="flex-1 py-1 px-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <MessageSquare className="w-3 h-3" /> Direct Msg
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSentAlertStudent(student.name);
-                                setTimeout(() => setSentAlertStudent(null), 3000);
-                              }}
-                              className={`py-1 px-2 rounded-md font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                                sentAlertStudent === student.name
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
-                              }`}
-                            >
-                              {sentAlertStudent === student.name ? <CheckCircle className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
-                              {sentAlertStudent === student.name ? 'Alerted' : 'Flag'}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="All students meeting expectations"
-                    description="No students are currently falling below the attendance threshold in this filter view."
-                    icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Trends Tab Content */}
-            {adminTab === 'trends' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500">Attendance Rates by Core Module</span>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setTrendChartType('bar')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'bar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
-                      }`}
-                    >
-                      <BarChart2 className="w-3.5 h-3.5" /> Bar View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrendChartType('area')}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                        trendChartType === 'area' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'
-                      }`}
-                    >
-                      <Activity className="w-3.5 h-3.5" /> Trend Line
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-64 w-full bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {trendChartType === 'bar' ? (
-                      <BarChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
-                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
-                                  <p>Absence Rate: <strong className="text-rose-400">{data.absenceRate}%</strong></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="attendanceRate" radius={[8, 8, 0, 0]} name="Attendance Rate (%)">
-                          {moduleTrendData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.attendanceRate < 75 ? '#F43F5E' : '#4F46E5'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    ) : (
-                      <AreaChart data={moduleTrendData} margin={{ top: 15, right: 15, left: -20, bottom: 25 }}>
-                        <defs>
-                          <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} interval={0} angle={-10} textAnchor="end" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontWeight: 700 }} unit="%" />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                                  <p className="font-extrabold text-amber-400">{data.fullName}</p>
-                                  <p>Attendance Rate: <strong className="text-emerald-400">{data.attendanceRate}%</strong></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area type="monotone" dataKey="attendanceRate" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
-                      </AreaChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
+        <AdminCommandCenter
+          students={students}
+          payments={payments}
+          classDays={classDays}
+          customAssignments={customAssignments}
+          submissions={submissions}
+          coursesCount={coursesCount}
+          onNavigate={onNavigate}
+          atRiskThreshold={atRiskThreshold}
+          isCloudSyncing={isCloudSyncing}
+          lastSyncedTime={lastSyncedTime}
+          cloudSyncError={cloudSyncError}
+          appUser={appUser}
+          onPushToCloud={onPushToCloud}
+        />
       )}
 
       {/* Admin Faculty & Instructors Manager Modal */}

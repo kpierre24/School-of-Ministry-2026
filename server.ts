@@ -13,7 +13,7 @@ dotenv.config();
 
 const app = express();
 const httpServer = createHttpServer(app);
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000; // Hardcoded strictly to 3000 as mandated by infrastructure proxy configuration
 
 // Apply security response headers globally
 app.use(securityHeaders);
@@ -24,13 +24,21 @@ app.use(express.json({ limit: "10mb" }));
 // Sanitize incoming JSON bodies
 app.use(sanitizeBody);
 
+// Health endpoints for Cloud Run and monitoring probes (both root and api)
+app.get(["/", "/health", "/api/health", "/_health"], (req, res, next) => {
+  // If it's a browser requesting HTML at '/', let it fall through to static SPA serving
+  if (req.path === "/" && req.accepts("html")) {
+    return next();
+  }
+  res.status(200).json({
+    status: "ok",
+    service: "hteim-school-of-ministry",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Apply rate limiting specifically to /api endpoints (exclude health check)
 app.use("/api", rateLimiter(100, 15 * 60 * 1000));
-
-// Health endpoints for Cloud Run and monitoring probes
-app.get(["/health", "/api/health"], (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-});
 
 app.use("/api/github", githubRouter);
 app.use("/api/ai", aiRouter);

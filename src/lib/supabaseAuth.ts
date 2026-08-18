@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient';
 import { AppUser, UserRole, UserCredential, generateStudentUsername, getStudentEmailFromName, isMatchingCredential, mergeUserCredentials, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME, DEFAULT_USER_PASSWORD } from './userAuth';
 import { loadFromSupabase, saveToSupabase } from './supabaseSync';
 import { logger } from './logger';
+import { handleError } from './errorHandler';
 
 export interface AuthVerificationResult {
   success: boolean;
@@ -188,7 +189,7 @@ export async function supabaseLogout(): Promise<void> {
   try {
     await supabase.auth.signOut();
   } catch (err) {
-    logger.warn('Supabase auth signOut error:', err);
+    handleError(err, 'supabaseLogout - signOut failure', 'authentication');
   }
 
   // Ensure active user session state is cleared without wiping the persistent credentials registry
@@ -267,7 +268,7 @@ export async function updatePasswordInSupabase(
       updatedCredentials = mergedCloud;
     }
   } catch (err) {
-    logger.error('Failed to update password in Supabase cloud:', err);
+    handleError(err, 'updatePasswordInSupabase - cloud save failure', 'database');
   }
 
   // 3. If Supabase Auth session is active, update password there too

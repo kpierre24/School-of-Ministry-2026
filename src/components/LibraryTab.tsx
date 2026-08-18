@@ -160,6 +160,23 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     setClassroomMedia(prev => [newMedia, ...prev]);
   };
 
+  const handleUpdateGlobalMedia = (updatedMedia: MediaResource) => {
+    setClassroomMedia(prev => prev.map(m => m.id === updatedMedia.id ? updatedMedia : m));
+    // Also sync corresponding lesson resource if one was registered in the library cards
+    setResources(prev => prev.map(res => {
+      if (res.id === updatedMedia.id || (res.category === 'Livestream Recording' && res.downloadUrl === updatedMedia.url)) {
+        return {
+          ...res,
+          title: updatedMedia.title,
+          author: updatedMedia.speaker,
+          downloadUrl: updatedMedia.url,
+          summary: updatedMedia.description || res.summary
+        };
+      }
+      return res;
+    }));
+  };
+
   const handleRemoveGlobalMedia = (mediaId: string) => {
     setClassroomMedia(prev => prev.filter(m => m.id !== mediaId));
   };
@@ -723,6 +740,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         mediaResources={classroomMedia}
         userRole={userRole}
         onAddMedia={handleAddGlobalMedia}
+        onUpdateMedia={handleUpdateGlobalMedia}
         onRemoveMedia={handleRemoveGlobalMedia}
       />
 

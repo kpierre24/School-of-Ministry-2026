@@ -65,25 +65,23 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
  */
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
   const cspDirectives = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' https: wss: ws:",
-    "frame-src 'self' https://drive.google.com https://docs.google.com https://*.google.com https://www.youtube.com https://youtube.com https://*.youtube.com",
-    "media-src 'self' blob: data: https:",
-    "frame-ancestors 'self' https://*.run.app https://*.google.com https://*.googleusercontent.com https://ai.studio https://*.aistudio.google.com",
+    "default-src 'self' https: http: data: blob:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:",
+    "style-src 'self' 'unsafe-inline' https: http: https://fonts.googleapis.com",
+    "font-src 'self' https: http: data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https: http:",
+    "connect-src 'self' https: http: wss: ws:",
+    "frame-src 'self' https: http: blob:",
+    "media-src 'self' blob: data: https: http:",
+    "frame-ancestors *",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
   ].join("; ");
 
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Content-Security-Policy", cspDirectives);
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(self)");
   next();
 }

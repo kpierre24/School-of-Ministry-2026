@@ -17,7 +17,9 @@ import {
   BookMarked
 } from 'lucide-react';
 import { AppUser, UserRole, UserCredential } from '../lib/userAuth';
-import { authenticateWithSupabase, updatePasswordInSupabase } from '../lib/supabaseAuth';
+import { loginWithSupabaseAuth as authenticateWithSupabase } from '../services/authService';
+import { updatePasswordInSupabase } from '../lib/supabaseAuth';
+import { classifyError, handleError } from '../lib/errorHandler';
 
 interface LoginModalProps {
   isOpen?: boolean;
@@ -171,11 +173,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           if (onClose) onClose();
         }
       } else {
-        setErrorMessage(result.error || 'Supabase authentication failed. Please verify your credentials.');
+        const classified = classifyError(new Error(result.error || 'Invalid credentials'), 'authentication');
+        setErrorMessage(classified.userMessage);
       }
     } catch (err: any) {
       setIsVerifying(false);
-      setErrorMessage(err.message || 'Authentication error during Supabase verification.');
+      const appErr = handleError(err, 'LoginModal handleSubmit verification failure', 'authentication');
+      setErrorMessage(appErr.userMessage);
     }
   };
 
@@ -217,7 +221,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       try {
         await updatePasswordInSupabase(userWithoutMustChange, newPass, userCredentials || []);
       } catch (err) {
-        console.warn('Password cloud update notice:', err);
+        handleError(err, 'LoginModal - Password cloud update error', 'database');
       }
       onLoginSuccess(userWithoutMustChange);
       setShowPasswordChangeForm(false);

@@ -13,26 +13,34 @@ interface Particle {
   size: number;
   delay: number;
   duration: number;
+  opacity: number;
 }
 
 export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete }) => {
-  const [stage, setStage] = useState<'particles' | 'globe' | 'logo' | 'slogan'>('particles');
+  // 4 progressive stages over 6.0 seconds:
+  // 0s - 1.5s: 'bokeh' (particles & deep navy atmosphere)
+  // 1.5s - 3.2s: 'globe' (3D earth globe emerging & rotating with light rays)
+  // 3.2s - 4.6s: 'hand_seal' (divine hand touching globe & gold seal forming)
+  // 4.6s - 6.0s: 'motto' (official emblem + "BRINGING HEAVEN TO EARTH, TAKING PEOPLE TO HEAVEN")
+  const [stage, setStage] = useState<'bokeh' | 'globe' | 'hand_seal' | 'motto'>('bokeh');
   const [muted, setMuted] = useState(true);
+  const [progress, setProgress] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Generate 40 golden particles
+  // Generate 45 golden bokeh light orbs
   const particles = useRef<Particle[]>(
-    Array.from({ length: 40 }).map((_, i) => ({
+    Array.from({ length: 45 }).map((_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: Math.random() * 4 + 1.5,
-      delay: Math.random() * 4,
-      duration: Math.random() * 6 + 4,
+      size: Math.random() * 8 + 3,
+      delay: Math.random() * 2,
+      duration: Math.random() * 4 + 3,
+      opacity: Math.random() * 0.5 + 0.25,
     }))
   ).current;
 
-  // Synthesize a majestic ambient church pad chord when the user interacts or toggles sound
+  // Synthesize ambient celestial chord progression
   const playAmbientSound = () => {
     try {
       if (audioContextRef.current) return;
@@ -42,82 +50,83 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
       const ctx = new AudioContextClass();
       audioContextRef.current = ctx;
 
-      // Base nodes
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(450, ctx.currentTime);
-      filter.Q.setValueAtTime(1, ctx.currentTime);
+      filter.frequency.setValueAtTime(550, ctx.currentTime);
+      filter.Q.setValueAtTime(1.2, ctx.currentTime);
 
       const mainGain = ctx.createGain();
       mainGain.gain.setValueAtTime(0, ctx.currentTime);
-      mainGain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 2.5);
+      mainGain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 1.5);
 
       filter.connect(mainGain);
       mainGain.connect(ctx.destination);
 
-      // Uplifting minor 9th / major chord progression (Dmaj9 vibe: D, A, C#, E, F#)
-      const freqs = [146.83, 220.00, 277.18, 329.63, 369.99];
+      // Majestic celestial chord (D major 9th)
+      const freqs = [146.83, 220.0, 293.66, 369.99, 440.0, 554.37];
 
       freqs.forEach((freq, index) => {
         const osc = ctx.createOscillator();
         const oscGain = ctx.createGain();
-
-        // Warm triangle and smooth sine wave blend
-        osc.type = index % 2 === 0 ? 'triangle' : 'sine';
+        osc.type = index % 2 === 0 ? 'sine' : 'triangle';
         osc.frequency.setValueAtTime(freq, ctx.currentTime);
-
-        // Detune slightly for lush chorus effect
-        osc.detune.setValueAtTime((Math.random() - 0.5) * 8, ctx.currentTime);
+        osc.detune.setValueAtTime((Math.random() - 0.5) * 6, ctx.currentTime);
 
         oscGain.gain.setValueAtTime(0, ctx.currentTime);
-        oscGain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 1.5 + Math.random());
+        oscGain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 1.2 + index * 0.1);
 
         osc.connect(oscGain);
         oscGain.connect(filter);
         osc.start();
 
-        // Slow fade out at the end
-        oscGain.gain.setValueAtTime(0.08, ctx.currentTime + 8.5);
-        oscGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 10.5);
-        osc.stop(ctx.currentTime + 11);
+        oscGain.gain.setValueAtTime(0.06, ctx.currentTime + 5.0);
+        oscGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 6.0);
+        osc.stop(ctx.currentTime + 6.1);
       });
 
-      // Majestic high frequency chime at stage 2 (globe zoom)
+      // High crystal shimmer bell at 3.2s
       setTimeout(() => {
         if (ctx.state === 'closed') return;
         const chimeOsc = ctx.createOscillator();
         const chimeGain = ctx.createGain();
         chimeOsc.type = 'sine';
-        chimeOsc.frequency.setValueAtTime(880, ctx.currentTime); // A5 chime
+        chimeOsc.frequency.setValueAtTime(1174.66, ctx.currentTime); // D6 bell
         chimeGain.gain.setValueAtTime(0, ctx.currentTime);
-        chimeGain.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 0.5);
-        chimeGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 4.5);
+        chimeGain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.1);
+        chimeGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2.5);
         chimeOsc.connect(chimeGain);
         chimeGain.connect(ctx.destination);
         chimeOsc.start();
-        chimeOsc.stop(ctx.currentTime + 5);
-      }, 2000);
-
+        chimeOsc.stop(ctx.currentTime + 2.6);
+      }, 3200);
     } catch (e) {
-      console.warn("AudioContext block: User must interact first or browser muted", e);
+      console.warn("AudioContext init skipped:", e);
     }
   };
 
+  // Precise 6.0 second sequence matching the video
   useEffect(() => {
-    // Stage controller following the exact timings of the uploaded video
-    const tGlobe = setTimeout(() => setStage('globe'), 1800);
-    const tLogo = setTimeout(() => setStage('logo'), 4800);
-    const tSlogan = setTimeout(() => setStage('slogan'), 7800);
+    const startTime = Date.now();
+    const totalDuration = 6000; // strictly 6.0 seconds
+
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const currentPct = Math.min(100, (elapsed / totalDuration) * 100);
+      setProgress(currentPct);
+    }, 40);
+
+    const tGlobe = setTimeout(() => setStage('globe'), 1500);
+    const tHandSeal = setTimeout(() => setStage('hand_seal'), 3200);
+    const tMotto = setTimeout(() => setStage('motto'), 4600);
     const tComplete = setTimeout(() => {
-      // Small fade out window
-      const exitTimer = setTimeout(() => onComplete(), 600);
-      return () => clearTimeout(exitTimer);
-    }, 11200);
+      onComplete();
+    }, 6000);
 
     return () => {
+      clearInterval(progressInterval);
       clearTimeout(tGlobe);
-      clearTimeout(tLogo);
-      clearTimeout(tSlogan);
+      clearTimeout(tHandSeal);
+      clearTimeout(tMotto);
       clearTimeout(tComplete);
       if (audioContextRef.current) {
         audioContextRef.current.close();
@@ -143,14 +152,42 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
       id="intro-splash-screen"
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.6 }}
-      className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center overflow-hidden select-none"
+      exit={{ opacity: 0, scale: 1.03 }}
+      transition={{ duration: 0.7, ease: "easeInOut" }}
+      className="fixed inset-0 z-[9999] bg-[#070e1b] flex flex-col items-center justify-center overflow-hidden select-none"
+      role="region"
+      aria-label="HTEIM School of Ministry Cinematic Intro"
     >
-      {/* 1. Cinematic Background with Radial Dark Blue Gradient */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,32,67,0.85)_0%,rgba(5,9,20,1)_100%)] pointer-events-none" />
+      {/* Dynamic Background Transitions */}
+      {/* Stage 1 & 2: Midnight Navy & Deep Cosmic Atmosphere */}
+      <div 
+        className={`absolute inset-0 transition-opacity duration-1000 ${
+          stage === 'motto' || stage === 'hand_seal' ? 'opacity-30' : 'opacity-100'
+        } bg-[radial-gradient(ellipse_at_center,_#0f2240_0%,_#060d19_65%,_#03070d_100%)] pointer-events-none`} 
+      />
 
-      {/* 2. Floating Golden Particles (Bokeh) Loop */}
+      {/* Stage 3 & 4: Heavenly Bright Pearlescent Glow Transition (matching the clean white backdrop in the video end) */}
+      <div 
+        className={`absolute inset-0 transition-opacity duration-1000 ${
+          stage === 'motto' ? 'opacity-95' : stage === 'hand_seal' ? 'opacity-60' : 'opacity-0'
+        } bg-[radial-gradient(circle_at_center,_#ffffff_0%,_#f5f6f8_50%,_#e2e6ec_100%)] pointer-events-none`} 
+      />
+
+      {/* Rotating Divine Golden Light Rays in Background */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          className={`w-[800px] h-[800px] sm:w-[1100px] sm:h-[1100px] rounded-full opacity-30 transition-opacity duration-1000 ${
+            stage === 'motto' ? 'opacity-15' : 'opacity-35'
+          }`}
+          style={{
+            background: 'conic-gradient(from 0deg, transparent 0deg, rgba(245,158,11,0.2) 20deg, transparent 40deg, rgba(245,158,11,0.25) 60deg, transparent 80deg, rgba(245,158,11,0.2) 110deg, transparent 140deg, rgba(245,158,11,0.3) 180deg, transparent 210deg, rgba(245,158,11,0.2) 240deg, transparent 270deg, rgba(245,158,11,0.25) 310deg, transparent 360deg)'
+          }}
+        />
+      </div>
+
+      {/* Floating Golden Bokeh Lights & Particles (Exact Match to Video Opening) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {particles.map((p) => (
           <motion.div
@@ -158,13 +195,13 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
             initial={{ 
               opacity: 0, 
               x: `${p.x}vw`, 
-              y: `${p.y + 10}vh`, 
-              scale: 0.5 
+              y: `${p.y + 8}vh`, 
+              scale: 0.4 
             }}
             animate={{ 
-              opacity: [0, 0.65, 0.65, 0],
-              y: [`${p.y + 10}vh`, `${p.y - 15}vh`],
-              scale: [0.5, 1.2, 1.2, 0.4]
+              opacity: [0, p.opacity, p.opacity, 0],
+              y: [`${p.y + 8}vh`, `${p.y - 18}vh`],
+              scale: [0.4, 1.15, 1.15, 0.3]
             }}
             transition={{
               duration: p.duration,
@@ -173,106 +210,122 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
               ease: "easeInOut"
             }}
             style={{ width: p.size, height: p.size }}
-            className="absolute bg-amber-400/60 rounded-full blur-[1px] shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+            className={`absolute rounded-full blur-[1px] ${
+              stage === 'motto' 
+                ? 'bg-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.3)]' 
+                : 'bg-amber-300/70 shadow-[0_0_14px_rgba(251,191,36,0.6)]'
+            }`}
           />
         ))}
       </div>
 
-      {/* 3. Audio Controller */}
+      {/* Bottom-Right Video Watermark Sparkle (Exact Reproduction from Video Frame) */}
+      <div className="absolute bottom-6 right-8 pointer-events-none z-20 flex items-center gap-1">
+        <motion.div
+          animate={{ 
+            scale: [0.85, 1.25, 0.85],
+            opacity: [0.4, 0.9, 0.4],
+            rotate: [0, 90, 180]
+          }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className={`w-6 h-6 ${stage === 'motto' ? 'text-slate-400' : 'text-amber-200/60'}`}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+          </svg>
+        </motion.div>
+      </div>
+
+      {/* Audio Controller Toggle */}
       <button
         onClick={handleMuteToggle}
-        className="absolute top-6 right-6 z-50 p-2.5 rounded-full bg-white/5 border border-white/10 hover:border-amber-400/40 text-slate-300 hover:text-amber-400 transition-all cursor-pointer flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider shadow-md"
+        className={`absolute top-6 right-6 z-50 p-2.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider shadow-lg ${
+          stage === 'motto'
+            ? 'bg-slate-900/10 border-slate-300 text-slate-700 hover:bg-slate-900/20 hover:text-slate-950'
+            : 'bg-white/10 border-white/15 text-slate-200 hover:border-amber-400/50 hover:text-amber-300'
+        }`}
+        title="Toggle atmospheric audio"
       >
         {muted ? (
           <>
             <VolumeX className="w-3.5 h-3.5 text-amber-500" />
-            <span>Enable Sound</span>
+            <span>Sound Off</span>
           </>
         ) : (
           <>
-            <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <Volume2 className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
             <span>Sound On</span>
           </>
         )}
       </button>
 
-      {/* Main Cinematic Visuals Wrapper */}
-      <div className="relative z-10 flex flex-col items-center justify-center max-w-lg px-6 text-center w-full">
+      {/* Central Visual Stage */}
+      <div className="relative z-10 flex flex-col items-center justify-center max-w-xl px-4 text-center w-full">
         
-        {/* Globe Stage */}
-        <div className="relative w-72 h-72 sm:w-85 sm:h-85 flex items-center justify-center">
+        {/* Main Emblem / Globe Stage Area */}
+        <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center">
           
-          {/* Glowing Aura Rings behind Globe */}
-          <AnimatePresence>
-            {stage !== 'particles' && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.3 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.8, ease: "easeOut" }}
-                className="absolute inset-0 flex items-center justify-center"
-              >
-                {/* Outer halo */}
-                <div className="absolute w-64 h-64 rounded-full bg-amber-500/10 blur-3xl animate-pulse" />
-                <div className="absolute w-52 h-52 rounded-full border border-amber-500/20 animate-spin [animation-duration:25s]" />
-                <div className="absolute w-44 h-44 rounded-full border border-dashed border-amber-400/10 animate-spin [animation-duration:15s]" />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Radiant Halo Backlight */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ 
+              opacity: stage === 'bokeh' ? 0.3 : stage === 'motto' ? 0.6 : 0.85, 
+              scale: stage === 'bokeh' ? 0.6 : 1 
+            }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          >
+            <div className="w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-gradient-to-tr from-amber-400/30 via-yellow-200/20 to-sky-400/20 blur-2xl animate-pulse" />
+          </motion.div>
 
-          {/* Earth Globe (Stage: Globe) */}
+          {/* Stage 1 & 2: 3D Earth Globe Spinning */}
           <AnimatePresence>
-            {stage !== 'particles' && (
+            {(stage === 'globe' || stage === 'bokeh') && (
               <motion.div
-                initial={{ scale: 0.1, rotate: -120, opacity: 0 }}
-                animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                transition={{ 
-                  scale: { duration: 2.2, ease: [0.16, 1, 0.3, 1] },
-                  rotate: { duration: 2.8, ease: "easeOut" },
-                  opacity: { duration: 1.2 }
+                key="earth-globe"
+                initial={{ scale: 0.1, opacity: 0, rotate: -45 }}
+                animate={{ 
+                  scale: stage === 'globe' ? 1 : 0.2, 
+                  opacity: stage === 'globe' ? 1 : 0, 
+                  rotate: 0 
                 }}
-                className="absolute w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden bg-sky-950 border-4 border-amber-400/80 shadow-[0_0_50px_rgba(245,158,11,0.35)] flex items-center justify-center"
+                exit={{ scale: 1.15, opacity: 0 }}
+                transition={{ 
+                  scale: { duration: 1.6, ease: [0.16, 1, 0.3, 1] },
+                  rotate: { duration: 2.0, ease: "easeOut" },
+                  opacity: { duration: 0.8 }
+                }}
+                className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full overflow-hidden bg-[#0d2a54] border-[3px] border-amber-400/90 shadow-[0_0_45px_rgba(245,158,11,0.45)] flex items-center justify-center"
               >
-                {/* 3D-like Spherical Shadow & Specular Highlight */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,transparent_30%,rgba(0,0,0,0.85)_100%)] z-20 pointer-events-none" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_30%,rgba(255,255,255,0.25)_0%,transparent_50%)] z-20 pointer-events-none" />
+                {/* 3D Spherical Atmosphere Specular Shading */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0.05)_40%,rgba(0,0,0,0.85)_100%)] z-20 pointer-events-none" />
+                
+                {/* Glowing Blue Outer Rim */}
+                <div className="absolute inset-0 rounded-full border border-sky-300/40 shadow-inner z-20 pointer-events-none" />
 
-                {/* Spinning Grid Lines */}
-                <svg className="absolute inset-0 w-full h-full text-white/10 z-10" viewBox="0 0 100 100">
-                  <ellipse cx="50" cy="50" rx="50" ry="20" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                  <ellipse cx="50" cy="50" rx="50" ry="38" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                  <ellipse cx="50" cy="50" rx="20" ry="50" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                  <ellipse cx="50" cy="50" rx="38" ry="50" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                  <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeWidth="0.5" />
-                  <line x1="50" y1="0" x2="50" y2="100" stroke="currentColor" strokeWidth="0.5" />
-                </svg>
-
-                {/* Sliding Continents Map to create the rotating Earth illusion */}
+                {/* Animated Rotating Continents Map */}
                 <motion.div
                   animate={{ x: ["0%", "-50%"] }}
-                  transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
-                  className="absolute top-0 bottom-0 w-[200%] flex z-0 opacity-85"
+                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                  className="absolute top-0 bottom-0 w-[200%] flex z-0 opacity-95"
                 >
-                  {/* Continent pattern set 1 */}
-                  <div className="w-1/2 h-full relative text-emerald-500">
+                  <div className="w-1/2 h-full relative text-emerald-400">
                     <svg className="w-full h-full" viewBox="0 0 200 200" fill="currentColor">
-                      {/* North America */}
-                      <path d="M20,40 Q40,30 60,45 T80,30 T90,60 T60,80 T30,60 Z" />
-                      {/* South America */}
-                      <path d="M65,90 Q85,100 70,140 T50,175 T40,150 T45,110 Z" />
-                      {/* Africa */}
-                      <path d="M120,85 Q145,75 160,110 T145,160 T115,130 T110,105 Z" />
-                      {/* Europe */}
-                      <path d="M110,30 Q130,25 140,45 T115,70 T100,50 Z" />
+                      {/* Realistic Green Continent Silhouettes */}
+                      <path d="M25,35 Q45,20 65,38 T85,25 T95,55 T65,75 T35,55 Z" fill="#22c55e" />
+                      <path d="M70,85 Q90,95 75,135 T55,170 T45,145 T50,105 Z" fill="#16a34a" />
+                      <path d="M115,75 Q145,65 165,100 T150,155 T120,130 T115,100 Z" fill="#22c55e" />
+                      <path d="M110,25 Q135,18 145,38 T120,62 T105,42 Z" fill="#4ade80" />
+                      <path d="M150,90 Q170,80 185,110 T170,140 T150,115 Z" fill="#15803d" />
                     </svg>
                   </div>
-                  {/* Continent pattern set 2 (Identical for seamless infinite scroll) */}
-                  <div className="w-1/2 h-full relative text-emerald-500">
+                  <div className="w-1/2 h-full relative text-emerald-400">
                     <svg className="w-full h-full" viewBox="0 0 200 200" fill="currentColor">
-                      <path d="M20,40 Q40,30 60,45 T80,30 T90,60 T60,80 T30,60 Z" />
-                      <path d="M65,90 Q85,100 70,140 T50,175 T40,150 T45,110 Z" />
-                      <path d="M120,85 Q145,75 160,110 T145,160 T115,130 T110,105 Z" />
-                      <path d="M110,30 Q130,25 140,45 T115,70 T100,50 Z" />
+                      <path d="M25,35 Q45,20 65,38 T85,25 T95,55 T65,75 T35,55 Z" fill="#22c55e" />
+                      <path d="M70,85 Q90,95 75,135 T55,170 T45,145 T50,105 Z" fill="#16a34a" />
+                      <path d="M115,75 Q145,65 165,100 T150,155 T120,130 T115,100 Z" fill="#22c55e" />
+                      <path d="M110,25 Q135,18 145,38 T120,62 T105,42 Z" fill="#4ade80" />
+                      <path d="M150,90 Q170,80 185,110 T170,140 T150,115 Z" fill="#15803d" />
                     </svg>
                   </div>
                 </motion.div>
@@ -280,107 +333,93 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
             )}
           </AnimatePresence>
 
-          {/* Core HTEIM Gold Logo Overlay & Drawn Hand (Stage: Logo) */}
+          {/* Stage 3 & 4: The Official HTEIM Emblem with Heavenly Hand Touching the Earth */}
           <AnimatePresence>
-            {stage === 'logo' || stage === 'slogan' ? (
+            {(stage === 'hand_seal' || stage === 'motto') && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-                className="absolute inset-0 flex flex-col items-center justify-center z-30"
+                key="official-hteim-seal"
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0 flex items-center justify-center z-30"
               >
-                {/* Gold Circle Frame */}
-                <div className="absolute w-52 h-52 sm:w-60 sm:h-60 rounded-full border-[6px] border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.5)] bg-slate-950/20 backdrop-blur-[1px] pointer-events-none" />
-
-                {/* Hand outline drawn over the Earth */}
-                <svg className="absolute w-44 h-44 sm:w-52 sm:h-52 text-white z-40" viewBox="0 0 100 100" fill="none">
-                  <motion.path
-                    d="M 50,22 Q 43,26 40,36 T 38,55 Q 38,65 44,70 T 56,70 T 62,55 T 60,36 Z"
-                    stroke="#F59E0B"
-                    strokeWidth="1.5"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 2, ease: "easeInOut" }}
+                {/* High-Resolution Emblem Render */}
+                <div className="relative w-52 h-52 sm:w-68 sm:h-68 flex items-center justify-center filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]">
+                  <img
+                    src="/hteim_logo.svg"
+                    alt="Heaven Touching Earth Int'l Ministries Logo"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Fallback to png if svg render fails
+                      (e.currentTarget as HTMLImageElement).src = '/hteim_logo.png';
+                    }}
                   />
-                  {/* Detailed pointing hand silhouette */}
-                  <motion.path
-                    d="M 50,42 C 48,42 46,44 46,46 L 46,58 C 46,60 48,62 50,62 C 52,62 54,60 54,58 L 54,46 C 54,44 52,42 50,42 Z"
-                    stroke="#FFFFFF"
-                    strokeWidth="1"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.5, delay: 0.6, ease: "easeInOut" }}
+                  
+                  {/* Subtle Divine Light Sweep across the Seal */}
+                  <motion.div
+                    initial={{ x: '-120%' }}
+                    animate={{ x: '120%' }}
+                    transition={{ duration: 1.4, delay: 0.2, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none rounded-full"
                   />
-                </svg>
-
-                {/* Elegant Circular Ministry Label */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4, duration: 1 }}
-                  className="absolute -bottom-2 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full border border-amber-300 text-slate-950 text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap z-50 font-sans"
-                >
-                  HEAVEN TOUCHING EARTH
-                </motion.div>
+                </div>
               </motion.div>
-            ) : null}
+            )}
           </AnimatePresence>
         </div>
 
-        {/* Title & Slogan Area (Stage: Slogan) */}
-        <div className="h-28 mt-4 flex flex-col items-center justify-center">
+        {/* Stage 4: Inspiring Motto & Official Slogan Reveal (Exact match to video ending) */}
+        <div className="h-24 mt-4 sm:mt-6 flex flex-col items-center justify-center">
           <AnimatePresence>
-            {stage === 'logo' && (
+            {stage === 'motto' && (
               <motion.div
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.8 }}
-                className="flex flex-col items-center"
+                transition={{ duration: 0.9, ease: "easeOut" }}
+                className="flex flex-col items-center max-w-md px-2"
               >
-                <h2 className="text-xl sm:text-2xl font-black text-amber-400 font-syne tracking-widest drop-shadow-[0_2px_10px_rgba(245,158,11,0.25)]">
-                  HTEIM
+                {/* Official Motto: "BRINGING HEAVEN TO EARTH, TAKING PEOPLE TO HEAVEN" */}
+                <h2 className="text-xs sm:text-sm md:text-base font-black tracking-[0.18em] uppercase text-slate-800 font-syne text-center">
+                  BRINGING HEAVEN TO EARTH,
                 </h2>
-                <p className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-widest text-slate-400 mt-1">
-                  School of Ministry
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {stage === 'slogan' && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.4, ease: "easeOut" }}
-                className="flex flex-col items-center"
-              >
-                {/* Slogan Top Row */}
-                <h3 className="text-sm sm:text-base font-black text-white font-syne tracking-[0.18em] uppercase text-center max-w-sm">
-                  BRINGING HEAVEN TO EARTH
-                </h3>
-                {/* Slogan Bottom Row */}
-                <p className="text-[11px] sm:text-xs font-bold text-amber-400 font-sans tracking-[0.14em] uppercase text-center mt-1.5">
+                <h3 className="text-xs sm:text-sm md:text-base font-black tracking-[0.18em] uppercase text-slate-800 font-syne text-center mt-1">
                   TAKING PEOPLE TO HEAVEN
-                </p>
-                <div className="w-16 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent mt-4" />
+                </h3>
+
+                {/* Sparkling Accent Divider */}
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="w-12 sm:w-16 h-[1.5px] bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                  <div className="w-12 sm:w-16 h-[1.5px] bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Interactive Skip Button */}
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6 }}
-          whileHover={{ opacity: 1, scale: 1.05 }}
-          onClick={onComplete}
-          className="absolute bottom-10 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-400/40 rounded-full flex items-center gap-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-300 hover:text-amber-400 transition-all cursor-pointer shadow-md active:scale-95 z-50"
-        >
-          Skip Intro
-          <ArrowRight className="w-3.5 h-3.5" />
-        </motion.button>
+        {/* 6-Second Progress Bar & Skip Intro Control */}
+        <div className="absolute bottom-8 w-full max-w-xs px-4 flex flex-col items-center gap-2 z-50">
+          <div className="w-full h-1 bg-slate-300/30 rounded-full overflow-hidden backdrop-blur-xs">
+            <motion.div
+              className="h-full bg-gradient-to-r from-amber-400 to-amber-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={onComplete}
+            className={`px-4 py-1.5 rounded-full flex items-center gap-1 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95 ${
+              stage === 'motto'
+                ? 'bg-slate-900/10 hover:bg-slate-900/20 text-slate-700 hover:text-slate-950 border border-slate-300'
+                : 'bg-white/10 hover:bg-white/20 text-slate-200 hover:text-amber-300 border border-white/20'
+            }`}
+          >
+            <span>Skip Intro</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
       </div>
     </motion.div>
   );

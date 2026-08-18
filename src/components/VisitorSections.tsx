@@ -34,7 +34,8 @@ interface VisitorSectionsProps {
 export const EnrollmentCtaSection: React.FC<{
   onOpenEnrollmentModal: () => void;
   onNavigate: (tab: TabType) => void;
-}> = ({ onOpenEnrollmentModal, onNavigate }) => {
+  onPlayIntro?: () => void;
+}> = ({ onOpenEnrollmentModal, onNavigate, onPlayIntro }) => {
   return (
     <section className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-indigo-500/30 shadow-2xl relative overflow-hidden space-y-6">
       {/* Decorative ambient background glows */}
@@ -123,6 +124,17 @@ export const EnrollmentCtaSection: React.FC<{
               <BookOpen className="w-4 h-4 text-indigo-300" />
               <span>Browse 6 Core Curriculum Tracks</span>
             </button>
+
+            {onPlayIntro && (
+              <button
+                type="button"
+                onClick={onPlayIntro}
+                className="w-full py-2 px-4 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-bold text-xs rounded-xl border border-amber-400/30 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Watch Official Ministry Intro (6s)</span>
+              </button>
+            )}
           </div>
 
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-300">
@@ -152,7 +164,7 @@ interface Testimony {
 const TESTIMONIES: Testimony[] = [
   {
     id: '1',
-    name: 'Minister Marcus Vance',
+    name: 'Minister Renee Pierre',
     role: 'Graduate & Pastoral Ordination Candidate',
     cohort: 'Cohort of 2025',
     quote: 'The 6 core modules bridged the gap between raw theological knowledge and practical supernatural ministry in the field. The personal mentorship of Apostle Gillian and Pastor Samuel completely transformed my walk.',
@@ -161,7 +173,7 @@ const TESTIMONIES: Testimony[] = [
   },
   {
     id: '2',
-    name: 'Sister Keisha Baptiste',
+    name: 'Sister Atiya Williams',
     role: 'Diploma Candidate & Outreach Leader',
     cohort: 'Level 2 Track',
     quote: 'Balancing a career and ministry was overwhelming until I joined the interactive Tuesday & Thursday live streams. The attendance accountability and quiz grading pushed me to excel at the highest standard.',
@@ -170,7 +182,7 @@ const TESTIMONIES: Testimony[] = [
   },
   {
     id: '3',
-    name: 'Pastor Jonathan Reid',
+    name: 'Pastor Christy Arthur',
     role: 'Church Planter & Global Missionary',
     cohort: 'Level 3 Cohort',
     quote: 'The apostolic governance and leadership practicum provided our church planting team with a bulletproof biblical foundation. Every leader in modern ministry needs this training.',
@@ -295,12 +307,12 @@ const FAQS: FaqItem[] = [
   {
     category: 'tuition',
     question: 'How does tuition and payment installments work?',
-    answer: 'Tuition is structured per module track to keep kingdom education accessible. Students can pay in full or utilize customized payment installments tracked transparently through the student portal dashboard with instant digital receipts.'
+    answer: ' Students can pay in full or utilize customized payment installments tracked transparently through the student portal dashboard with instant digital receipts.'
   },
   {
     category: 'academics',
     question: 'What credentials or certificates are awarded upon completion?',
-    answer: 'Graduates receive official certificates of completion for each level: Level 1 Foundation Certificate, Level 2 Intermediate Ministry Diploma, and Level 3 Advanced Ministerial Degree & Ordination License.'
+    answer: 'Graduates receive official certificates of completion for finishing the course'
   },
   {
     category: 'format',

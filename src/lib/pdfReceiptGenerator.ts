@@ -28,7 +28,6 @@ async function getLogoBase64(): Promise<string | null> {
 }
 
 export async function generateTuitionReceiptPDF(payment: PaymentRecord): Promise<void> {
-  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

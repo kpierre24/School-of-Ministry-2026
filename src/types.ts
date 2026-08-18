@@ -1,4 +1,6 @@
-export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages';
+export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages' | 'reports';
+
+export * from './types/database';
 
 export interface FacultyTeacher {
   id: string;
@@ -85,6 +87,53 @@ export type PaymentRecord = {
   receiptName?: string;
   receiptNumber?: string;
   paymentPlan?: PaymentPlanType;
+};
+
+export type Invoice = {
+  id: string; // INV-2026-XXXX
+  studentId: string;
+  studentName: string;
+  email?: string;
+  phone?: string;
+  moduleTrack: string;
+  issueDate: string;
+  dueDate: string;
+  totalTuition: number;
+  discounts: number;
+  scholarships: number;
+  netTuition: number; // totalTuition - discounts - scholarships
+  amountPaid: number;
+  outstandingBalance: number; // netTuition - amountPaid
+  paymentPlan: 'Pay In Full' | 'Monthly Installments' | 'Custom Plan' | string;
+  status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Past Due';
+  notes?: string;
+};
+
+export type PaymentTransaction = {
+  id: string; // TXN-2026-XXXX
+  invoiceId: string;
+  studentName: string;
+  studentId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe' | string;
+  receiptNumber: string;
+  status: 'Completed' | 'Pending' | 'Failed';
+  notes?: string;
+};
+
+export type Receipt = {
+  id: string; // REC-2026-XXXX
+  receiptNumber: string;
+  paymentId: string; // Links to transaction ID
+  invoiceId: string;
+  studentName: string;
+  studentId: string;
+  amountPaid: number;
+  paymentDate: string;
+  paymentMethod: string;
+  issuedAt: string;
+  notes?: string;
 };
 
 export type StudentProfile = {
@@ -288,6 +337,7 @@ export type AppNotification = {
   title: string;
   message: string;
   type: 'due_date' | 'past_due' | 'graded' | 'submission' | 'general' | 'at_risk_attendance' | 'payment_past_due';
+  category?: 'assignment_due' | 'assignment_graded' | 'attendance_warning' | 'payment_due' | 'payment_received' | 'application_status' | 'announcement' | 'system';
   targetRole?: 'admin' | 'teacher' | 'student' | 'all';
   studentName?: string;
   assignmentId?: string;

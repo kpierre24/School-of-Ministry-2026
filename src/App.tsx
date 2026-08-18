@@ -80,7 +80,8 @@ import {
   MoreHorizontal,
   Users
 } from 'lucide-react';
-import { loadFromSupabase, saveToSupabase, testSupabaseConnection } from './lib/supabaseSync';
+import { loadAuthoritativeState as loadFromSupabase, saveAuthoritativeState as saveToSupabase } from './services/dataSyncService';
+import { testSupabaseConnection, loadFromSupabase as loadDirectFromSupabase } from './lib/supabaseSync';
 import { supabase, uploadToSupabaseStorage, ensureSupabaseStorageUrl, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase, syncStudentPhotosToSupabase } from './lib/supabaseClient';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
@@ -98,14 +99,15 @@ import {
   Tooltip,
   CartesianGrid
 } from 'recharts';
-import { initAuth, googleSignIn, logout } from './lib/auth';
+import { subscribeToOAuthState as initAuth, loginWithGoogleOAuth as googleSignIn, logoutUserSession as logout, logoutUserSession as supabaseLogout } from './services/authService';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
 import { getDemoAttendance } from './data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword, isMatchingCredential, mergeUserCredentials, DEFAULT_USER_PASSWORD } from './lib/userAuth';
-import { supabaseLogout, updatePasswordInSupabase } from './lib/supabaseAuth';
+import { updatePasswordInSupabase } from './lib/supabaseAuth';
 import { NotificationCenter } from './components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from './lib/notifications';
+import { CentralNotificationService } from './services/notification/CentralNotificationService';
 import { LoginModal } from './components/LoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
@@ -118,6 +120,7 @@ import { ScheduleTab, INITIAL_SCHEDULE } from './components/ScheduleTab';
 import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
 import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
 import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
+import { ReportsTab } from './components/ReportsTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
@@ -140,6 +143,7 @@ import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { AppPresentationModal } from './components/AppPresentationModal';
 import { EmptyState } from './components/UXPrimitives';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { displayErrorToUser } from './lib/errorHandler';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
 import { trackUxEvent } from './lib/uxTelemetry';
@@ -150,7 +154,7 @@ const EXCLUDED_STUDENTS = [
   'sam selk',
 ];
 
-const VALID_TABS: TabType[] = ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages'];
+const VALID_TABS: TabType[] = ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages', 'reports'];
 
 const getTabFromLocation = (): TabType => {
   if (typeof window === 'undefined') return 'home';
@@ -378,7 +382,13 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  const [showIntro, setShowIntro] = useState<boolean>(false);
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    try {
+      return !sessionStorage.getItem('hteim_intro_shown');
+    } catch {
+      return true;
+    }
+  });
 
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
@@ -691,6 +701,20 @@ export default function App() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }>>([]);
+
+  useEffect(() => {
+    (window as any).triggerPortalToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
+      const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setToasts(prev => [...prev, { id, type, title, message }]);
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 5500);
+    };
+    return () => {
+      delete (window as any).triggerPortalToast;
+    };
+  }, []);
 
   // Synchronized States
   const [courses, setCourses] = useState<Course[]>(() => {
@@ -979,16 +1003,8 @@ export default function App() {
 
   // Automated Due Date & Grading Notifications State
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem('hteim_app_notifications');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return [];
+    return CentralNotificationService.getNotifications() as AppNotification[];
   });
-
-  useEffect(() => {
-    localStorage.setItem('hteim_app_notifications', JSON.stringify(notifications));
-  }, [notifications]);
 
   // Lifted Custom Assignments & Submissions State
   const [customAssignments, setCustomAssignments] = useState<CustomAssignment[]>(() => {
@@ -1123,9 +1139,25 @@ export default function App() {
     }).length;
   }, [messages, appUser]);
 
+  // Subscribe to CentralNotificationService to keep notifications in sync
+  useEffect(() => {
+    setNotifications(CentralNotificationService.getNotifications() as AppNotification[]);
+    const unsubscribe = CentralNotificationService.subscribe(() => {
+      setNotifications(CentralNotificationService.getNotifications() as AppNotification[]);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Handler to scan assignments & submissions for automated notification generation
   const handleRunNotificationScan = () => {
-    setNotifications(prev => generateAutomatedNotifications(customAssignments, submissions, prev, appUser?.role, appUser?.studentName || appUser?.name));
+    const updated = generateAutomatedNotifications(
+      customAssignments,
+      submissions,
+      CentralNotificationService.getNotifications() as AppNotification[],
+      appUser?.role,
+      appUser?.studentName || appUser?.name
+    );
+    CentralNotificationService.setNotifications(updated as any);
   };
 
   useEffect(() => {
@@ -1133,19 +1165,20 @@ export default function App() {
   }, [appUser, customAssignments, submissions]);
 
   const handleMarkNotifAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    CentralNotificationService.markAsRead(id);
   };
 
   const handleMarkAllNotifsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    CentralNotificationService.markAllAsRead(appUser?.role, appUser?.studentName || appUser?.name);
   };
 
   const handleClearNotifs = () => {
-    setNotifications([]);
+    CentralNotificationService.clearAll();
   };
 
   const handleAddTestNotif = (notif: AppNotification) => {
-    setNotifications(prev => [notif, ...prev]);
+    const current = CentralNotificationService.getNotifications();
+    CentralNotificationService.setNotifications([notif as any, ...current]);
   };
 
   const handleSelectNotif = (notif: AppNotification) => {
@@ -1212,7 +1245,8 @@ export default function App() {
       read: false,
       priority: 'high'
     };
-    setNotifications(prev => [notif, ...prev]);
+    const current = CentralNotificationService.getNotifications();
+    CentralNotificationService.setNotifications([notif as any, ...current]);
   };
 
   // Export Backup Handler
@@ -1250,7 +1284,7 @@ export default function App() {
       if (parsed.satisfactoryThreshold !== undefined) setSatisfactoryThreshold(parsed.satisfactoryThreshold);
       if (parsed.autoSyncInterval !== undefined) setAutoSyncInterval(parsed.autoSyncInterval);
       if (parsed.syncOnTabFocus !== undefined) setSyncOnTabFocus(parsed.syncOnTabFocus);
-      if (parsed.notifications) setNotifications(parsed.notifications);
+      if (parsed.notifications) CentralNotificationService.setNotifications(parsed.notifications);
       if (parsed.rubricScores) setRubricScores(parsed.rubricScores);
       if (parsed.studentNotes) setStudentNotes(parsed.studentNotes);
       if (parsed.excusedAbsences) setExcusedAbsences(parsed.excusedAbsences);
@@ -1277,7 +1311,7 @@ export default function App() {
     localStorage.removeItem('hteim_app_notifications');
     localStorage.removeItem('studentNotes');
     localStorage.removeItem('excusedAbsences');
-    setNotifications([]);
+    CentralNotificationService.clearAll();
     setStudentNotes({});
     setExcusedAbsences({});
     setAtRiskThreshold(70);
@@ -1714,7 +1748,7 @@ export default function App() {
             });
           }
 
-          if (cloudState.notifications !== undefined) setNotifications(cloudState.notifications);
+          if (cloudState.notifications !== undefined) CentralNotificationService.setNotifications(cloudState.notifications);
           if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
           if (cloudState.courses !== undefined) setCourses(cloudState.courses);
           if (cloudState.schedules !== undefined) setSchedules(cloudState.schedules);
@@ -1959,7 +1993,7 @@ export default function App() {
           if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
           if (cloudState.customAssignments !== undefined) setCustomAssignments(cloudState.customAssignments);
           if (cloudState.submissions !== undefined) setSubmissions(cloudState.submissions);
-          if (cloudState.notifications !== undefined) setNotifications(cloudState.notifications);
+          if (cloudState.notifications !== undefined) CentralNotificationService.setNotifications(cloudState.notifications);
           if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
           if (cloudState.courses !== undefined) setCourses(cloudState.courses);
           if (cloudState.schedules !== undefined) setSchedules(cloudState.schedules);
@@ -2560,7 +2594,8 @@ export default function App() {
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch spreadsheet data.');
+      const appErr = displayErrorToUser(err, 'handleSyncWithGoogleSheets - sync sequence failure', 'network');
+      setError(appErr.userMessage);
     } finally {
       setIsLoading(false);
     }
@@ -3495,8 +3530,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <button
                   onClick={async () => {
                     try {
-                      const { loadFromSupabase } = await import('./lib/supabaseSync');
-                      await loadFromSupabase(user?.email);
+                      await loadDirectFromSupabase(user?.email);
                       setSupabaseTableMissing(false);
                       setSyncedBannerMessage("✅ Supabase table verified — workspace synced.");
                       setTimeout(() => setSyncedBannerMessage(null), 4000);
@@ -3618,6 +3652,13 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-1.5 z-40 space-y-0.5"
                   style={{ boxShadow: 'var(--md-elev-2)' }}>
                   <div className="space-y-0.5">
+                    <button
+                      onClick={() => { setShowMoreMenu(false); setShowIntro(true); }}
+                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Play Intro (6s)</span>
+                    </button>
                     <button
                       onClick={() => { setShowMoreMenu(false); setShowPresentationModal(true); }}
                       className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -3778,6 +3819,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               { tab: 'library', label: 'Library', Icon: Bookmark },
               { tab: 'payments', label: 'Payments', Icon: DollarSign, paymentOnly: true },
               { tab: 'messages', label: 'Messages', Icon: MessageSquare, badgeAlert: unreadMessagesCount > 0, badgeCount: unreadMessagesCount },
+              { tab: 'reports', label: 'Reports', Icon: FileText, adminOrTeacherOnly: true },
             ].filter(item => {
               if ((item as any).adminOnly && appUser?.role === 'student') return false;
               if ((item as any).adminOrTeacherOnly && appUser?.role === 'student') return false;
@@ -3850,6 +3892,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     coursesCount={courses.length || 6}
                     classDaysCount={classDays.length}
                     avgAttendanceRate={avgAttendance}
+                    onPlayIntro={() => setShowIntro(true)}
                     pendingAssignmentsCount={pendingAssignmentsCount}
                     uncollectedTuitionAmount={uncollectedTuitionAmount}
                     libraryResourcesCount={libraryResources.length}
@@ -4012,7 +4055,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 onUpdateRubric={handleUpdateRubric}
                 userRole={appUser?.role}
                 currentStudentName={appUser?.studentName || appUser?.name}
-                onNotificationCreated={(notif) => setNotifications(prev => [notif, ...prev])}
+                onNotificationCreated={(notif) => CentralNotificationService.setNotifications([notif as any, ...CentralNotificationService.getNotifications()])}
                 customAssignments={customAssignments}
                 setCustomAssignments={setCustomAssignments}
                 submissions={submissions}
@@ -4148,6 +4191,31 @@ create policy "Allow public update" on app_states for update using (true) with c
                 />
               </ErrorBoundary>
             </Suspense>
+            </motion.div>
+          )}
+
+          {activeErpTab === 'reports' && (
+            <motion.div
+              key="reports"
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
+              className="flex-1 w-full"
+            >
+              <ErrorBoundary label="Reports Tab">
+                <ReportsTab
+                  students={uniqueStudents}
+                  attendanceRecords={records}
+                  payments={payments}
+                  courses={courses}
+                  assignments={customAssignments}
+                  submissions={submissions}
+                  currentUserRole={appUser?.role}
+                  onRefreshData={handlePushToCloud}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -4965,6 +5033,50 @@ onRequestTranscript={(s) => {
             <div className="text-xs font-medium text-rose-800 break-words w-full">{error}</div>
           </div>
         )}
+
+        {/* Centralized Global Toasts Stack */}
+        <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+          <AnimatePresence>
+            {toasts.map((toast) => {
+              const themeClasses = {
+                success: 'bg-emerald-50/95 border-emerald-200 text-emerald-800 dark:bg-emerald-950/95 dark:border-emerald-800 dark:text-emerald-100',
+                info: 'bg-indigo-50/95 border-indigo-200 text-indigo-800 dark:bg-slate-900/95 dark:border-slate-800 dark:text-slate-100',
+                warning: 'bg-amber-50/95 border-amber-200 text-amber-800 dark:bg-amber-950/95 dark:border-amber-800 dark:text-amber-100',
+                error: 'bg-rose-50/95 border-rose-200 text-rose-800 dark:bg-rose-950/95 dark:border-rose-900 dark:text-rose-100',
+              };
+
+              const Icon = {
+                success: CheckCircle2,
+                info: Info,
+                warning: AlertCircle,
+                error: XCircle,
+              }[toast.type] || AlertCircle;
+
+              return (
+                <motion.div
+                  key={toast.id}
+                  layout
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+                  className={`pointer-events-auto p-3.5 rounded-xl border flex items-start gap-3 shadow-lg backdrop-blur-md ${themeClasses[toast.type] || themeClasses.info}`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold leading-tight">{toast.title}</p>
+                    <p className="text-[11px] font-medium opacity-90 mt-1.5 break-words">{toast.message}</p>
+                  </div>
+                  <button
+                    onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                    className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg flex-shrink-0 cursor-pointer"
+                  >
+                    <X className="w-3 h-3 opacity-60" />
+                  </button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
         </AnimatePresence>
       </main>
 
@@ -6444,6 +6556,19 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         </div>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        setShowMobileMoreMenu(false);
+                        setShowIntro(true);
+                      }}
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <span>Play Intro (6s)</span>
+                      </div>
+                    </button>
 
                     <button
                       onClick={() => {
