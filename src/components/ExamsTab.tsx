@@ -1595,10 +1595,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         </td>
                       </tr>
                     )}
-                    {displayedStudents.length > 0 && customAssignments.length > 0 && displayedStudents.map(std => {
+                    {displayedStudents.length > 0 && customAssignments.length > 0 && displayedStudents.map((std, sIdx) => {
                       const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
 
-                      return targetAsgs.map(asg => {
+                      return targetAsgs.map((asg, aIdx) => {
                         const sub = submissions.find(s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (std?.name || '').toLowerCase().trim());
                         
                         if (searchQuery.trim() && !(std?.name || '').toLowerCase().includes(searchQuery.toLowerCase().trim())) {
@@ -1610,7 +1610,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         const isGraded = sub?.status === 'Graded' || sub?.status === 'Correction Returned';
 
                         return (
-                          <tr key={`${std.name}-${asg.id}`} className="group hover:bg-slate-50/80 transition-colors">
+                          <tr key={`sub-row-${std.name || sIdx}-${asg.id}-${sIdx}-${aIdx}`} className="group hover:bg-slate-50/80 transition-colors">
                             <td className="p-3 pl-3 sm:pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] transition-colors min-w-[140px] sm:min-w-[170px] max-w-[150px] sm:max-w-none">
                               <div className="truncate font-bold text-slate-900 text-xs" title={std.name}>
                                 {std.name}
@@ -2121,11 +2121,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         <span>Student Candidate</span>
                       </div>
                     </th>
-                    {allQuizSheets.map(qs => (
-                      <th key={qs} className="p-3 text-center min-w-[120px] sm:min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>
+                    {allQuizSheets.map((qs, qIdx) => (
+                      <th key={`qs-head-${qs}-${qIdx}`} className="p-3 text-center min-w-[120px] sm:min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>
                     ))}
-                    {customAssignments.map(asg => (
-                      <th key={asg.id} className="p-3 text-center min-w-[140px] sm:min-w-[150px] sticky top-0 z-20 bg-indigo-50/95 text-indigo-900 border-b border-indigo-200 shadow-2xs" title={asg.title}>
+                    {customAssignments.map((asg, aIdx) => (
+                      <th key={`asg-head-${asg.id}-${aIdx}`} className="p-3 text-center min-w-[140px] sm:min-w-[150px] sticky top-0 z-20 bg-indigo-50/95 text-indigo-900 border-b border-indigo-200 shadow-2xs" title={asg.title}>
                         {asg.title} ({asg.maxPoints} pts)
                       </th>
                     ))}
@@ -2137,7 +2137,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedStudents.map((s) => {
+                  {displayedStudents.map((s, sIdx) => {
                     const studentKey = (s?.name || '').toLowerCase().trim();
                     const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
                     const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
@@ -2145,22 +2145,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     const gradeLetter = getGradeLetter(s.percentage);
 
                     return (
-                      <tr key={s.name} className="group hover:bg-slate-50/80 transition-colors">
+                      <tr key={`student-row-${s.name || sIdx}-${sIdx}`} className="group hover:bg-slate-50/80 transition-colors">
                         <td className="p-3 pl-3 sm:pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] transition-colors min-w-[140px] sm:min-w-[180px] max-w-[160px] sm:max-w-none">
                           <div className="truncate font-bold text-slate-900 text-xs" title={s.name}>
                             {s.name}
                           </div>
                         </td>
-                        {allQuizSheets.map(qs => {
+                        {allQuizSheets.map((qs, qIdx) => {
                           const score = s.attendanceByDay?.[qs]?.score || '—';
                           const hasScore = score !== '—';
                           return (
-                            <td key={`${qs}-${score}`} className={`p-3 text-center font-mono font-bold text-slate-800 border-b border-slate-200 transition-all duration-300 ${hasScore ? 'animate-grade-pulse' : ''}`}>
+                            <td key={`qs-cell-${qs}-${score}-${qIdx}`} className={`p-3 text-center font-mono font-bold text-slate-800 border-b border-slate-200 transition-all duration-300 ${hasScore ? 'animate-grade-pulse' : ''}`}>
                               {score}
                             </td>
                           );
                         })}
-                        {customAssignments.map(asg => {
+                        {customAssignments.map((asg, aIdx) => {
                           const sub = submissions.find(subItem => 
                             subItem.assignmentId === asg.id && 
                             ((subItem?.studentName || '').toLowerCase().trim() === studentKey || 
@@ -2169,7 +2169,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           const scoreDisplay = sub && sub.score !== undefined ? `${sub.score}/${asg.maxPoints}` : (sub?.status === 'Submitted' ? 'Submitted' : '—');
                           const badgeColor = sub && sub.score !== undefined ? 'text-indigo-700 font-bold bg-indigo-50/40 animate-grade-pulse' : 'text-slate-400';
                           return (
-                            <td key={`${asg.id}-${sub?.score || 0}-${sub?.updatedAt || ''}`} className={`p-3 text-center font-mono border-b border-slate-200 transition-all duration-300 ${badgeColor}`}>
+                            <td key={`asg-cell-${asg.id}-${sub?.score || 0}-${sub?.updatedAt || ''}-${aIdx}`} className={`p-3 text-center font-mono border-b border-slate-200 transition-all duration-300 ${badgeColor}`}>
                               {scoreDisplay}
                             </td>
                           );

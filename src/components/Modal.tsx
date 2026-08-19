@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, GripHorizontal } from 'lucide-react';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
 
@@ -102,6 +103,7 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isDragging]);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES.lg;
 
@@ -130,10 +132,25 @@ export const Modal: React.FC<ModalProps> = ({
     setIsDragging(true);
   };
 
-  return (
+  const handleModalKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.stopPropagation();
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || 
+                      target.tagName === 'TEXTAREA' || 
+                      target.isContentEditable;
+      if (!isInput) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/80 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200 modal-material-scrim"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/80 backdrop-blur-xs overflow-hidden animate-fadeIn modal-material-scrim"
       onClick={handleBackdropClick}
+      onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
+      onKeyDown={handleModalKeyDown}
     >
       <div
         ref={dialogRef}
@@ -145,7 +162,7 @@ export const Modal: React.FC<ModalProps> = ({
           transform: (position.x !== 0 || position.y !== 0) ? `translate3d(${position.x}px, ${position.y}px, 0)` : undefined,
           transition: isDragging ? 'none' : undefined,
         }}
-        className={`bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full ${sizeClass} max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog my-auto ${className}`}
+        className={`bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full ${sizeClass} max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn modal-material-dialog my-auto ${className}`}
       >
         {/* Modal Header (if title or close button provided) */}
         {(title || showCloseButton) && (
@@ -212,6 +229,7 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -187,6 +187,11 @@ const MANUAL_ALIASES: Record<string, string> = {
   'vanessa mohammed': 'Vanessa Mohammed',
   'v mohammed': 'Vanessa Mohammed',
   'v. mohammed': 'Vanessa Mohammed',
+  'colette blackburn joseph': 'Colette Blackburne Joseph',
+  'colette blackburne joseph': 'Colette Blackburne Joseph',
+  'colette blackburne joseph ': 'Colette Blackburne Joseph',
+  'colette blackburn': 'Colette Blackburne Joseph',
+  'colette blackburne': 'Colette Blackburne Joseph',
 };
 
 const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
@@ -881,7 +886,17 @@ export default function App() {
   const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
   
   // Deleted / Excluded Students state
-  const [deletedStudentNames, setDeletedStudentNames] = useState<string[]>([]);
+  const [deletedStudentNames, setDeletedStudentNames] = useState<string[]>(() => {
+    const saved = localStorage.getItem('deletedStudentNames');
+    let list: string[] = [];
+    if (saved) {
+      try { list = JSON.parse(saved); } catch {}
+    }
+    return list.filter(name => {
+      const lower = (name || '').toLowerCase().trim();
+      return !lower.includes('colette') && !lower.includes('blackburn');
+    });
+  });
 
   // Custom Student Notes & Excused Absences
   const [studentNotes, setStudentNotes] = useState<Record<string, string>>(() => {
@@ -1361,6 +1376,19 @@ export default function App() {
   // ERP Classroom System Active Tab State
   const [activeErpTab, setActiveErpTab] = useState<TabType>(getTabFromLocation);
 
+  // Lock body scroll when any custom inline modal is active
+  useEffect(() => {
+    const isAnyModalOpen = !!selectedStudent || showStudentTranscriptModal || showCertificateModal;
+    if (isAnyModalOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [selectedStudent, showStudentTranscriptModal, showCertificateModal]);
+
   // Keep guest users strictly on home tab
   useEffect(() => {
     if (!appUser && activeErpTab !== 'home') {
@@ -1699,7 +1727,12 @@ export default function App() {
           if (cloudState.studentNotes !== undefined) setStudentNotes(cloudState.studentNotes);
           if (cloudState.excusedAbsences !== undefined) setExcusedAbsences(cloudState.excusedAbsences);
           if (cloudState.rubricScores !== undefined) setRubricScores(cloudState.rubricScores);
-          if (cloudState.deletedStudentNames !== undefined) setDeletedStudentNames(cloudState.deletedStudentNames);
+          if (cloudState.deletedStudentNames !== undefined) {
+            setDeletedStudentNames(cloudState.deletedStudentNames.filter((name: string) => {
+              const lower = (name || '').toLowerCase().trim();
+              return !lower.includes('colette') && !lower.includes('blackburn');
+            }));
+          }
           if (cloudState.studentPhotos !== undefined) setStudentPhotos(cloudState.studentPhotos);
           if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
 
@@ -1988,7 +2021,12 @@ export default function App() {
           if (cloudState.studentNotes !== undefined) setStudentNotes(cloudState.studentNotes);
           if (cloudState.excusedAbsences !== undefined) setExcusedAbsences(cloudState.excusedAbsences);
           if (cloudState.rubricScores !== undefined) setRubricScores(cloudState.rubricScores);
-          if (cloudState.deletedStudentNames !== undefined) setDeletedStudentNames(cloudState.deletedStudentNames);
+          if (cloudState.deletedStudentNames !== undefined) {
+            setDeletedStudentNames(cloudState.deletedStudentNames.filter((name: string) => {
+              const lower = (name || '').toLowerCase().trim();
+              return !lower.includes('colette') && !lower.includes('blackburn');
+            }));
+          }
           if (cloudState.studentPhotos !== undefined) setStudentPhotos(cloudState.studentPhotos);
           if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
           if (cloudState.customAssignments !== undefined) setCustomAssignments(cloudState.customAssignments);
@@ -2589,7 +2627,10 @@ export default function App() {
           updatedClassDays
         });
       } else {
-        // Attendance records and class days are permanently managed manually inside the portal and are not overwritten by Google Sheets syncs
+        // Apply the synced records and class days to local state
+        const finalRecords = [...preservedRecords, ...newSyncedRecords];
+        setClassDays(updatedClassDays);
+        setRecords(finalRecords);
         setDataSource('sheets');
         setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
       }
@@ -2810,7 +2851,18 @@ export default function App() {
   // Synchronize credentials database when student directory is loaded/updated
   useEffect(() => {
     const studentNames = uniqueStudents ? uniqueStudents.map(s => s.name) : [];
-    const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames, facultyTeachers);
+    const studentEmailMap: Record<string, string> = {};
+    if (uniqueStudents) {
+      uniqueStudents.forEach(st => {
+        if (st && st.name) {
+          const key = st.name.toLowerCase().trim();
+          if (st.email && st.email.trim()) {
+            studentEmailMap[key] = st.email.trim();
+          }
+        }
+      });
+    }
+    const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames, facultyTeachers, studentEmailMap);
     if (changed) {
       setUserCredentials(updatedCredentials);
       try {
@@ -5027,7 +5079,7 @@ onRequestTranscript={(s) => {
       )}
 
         {/* Error notification if any */}
-        {activeErpTab === 'attendance' && appUser?.role !== 'student' && error && (
+        {(activeErpTab === 'attendance' || activeErpTab === 'exams') && appUser?.role !== 'student' && error && (
           <div className="fixed bottom-4 right-4 z-50 max-w-sm p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 shadow-lg animate-fadeIn">
             <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
             <div className="text-xs font-medium text-rose-800 break-words w-full">{error}</div>
@@ -5117,7 +5169,22 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           const modalPhoto = studentPhotos[studentKey] || selectedStudent.photoUrl;
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden"
+              onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                  e.stopPropagation();
+                  const target = e.target as HTMLElement;
+                  const isInput = target.tagName === 'INPUT' || 
+                                  target.tagName === 'TEXTAREA' || 
+                                  target.isContentEditable;
+                  if (!isInput) {
+                    e.preventDefault();
+                  }
+                }
+              }}
+            >
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -5899,7 +5966,22 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       {/* Individual Student Academic Transcript PDF Modal */}
       <AnimatePresence>
         {showStudentTranscriptModal && selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden"
+            onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Spacebar') {
+                e.stopPropagation();
+                const target = e.target as HTMLElement;
+                const isInput = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.isContentEditable;
+                if (!isInput) {
+                  e.preventDefault();
+                }
+              }
+            }}
+          >
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -6125,7 +6207,22 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       )}
     </AnimatePresence>
       {showCertificateModal && certificateData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden"
+          onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
+          onKeyDown={(e) => {
+            if (e.key === ' ' || e.key === 'Spacebar') {
+              e.stopPropagation();
+              const target = e.target as HTMLElement;
+              const isInput = target.tagName === 'INPUT' || 
+                              target.tagName === 'TEXTAREA' || 
+                              target.isContentEditable;
+              if (!isInput) {
+                e.preventDefault();
+              }
+            }
+          }}
+        >
           <div className="bg-white border-8 border-double border-amber-600 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden my-auto animate-scaleUp p-8 text-center relative text-slate-900 print:border-8 print:shadow-none print:m-0" id="printable-certificate">
             {/* Top Certificate Header */}
             <div className="flex flex-col items-center justify-center mb-6">

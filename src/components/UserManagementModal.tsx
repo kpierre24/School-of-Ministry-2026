@@ -295,7 +295,7 @@ Access Portal: ${window.location.origin}
     uniqueStudents.forEach(st => {
       if (!st || !st.name) return;
       const stName = st.name.trim();
-      const stEmail = getStudentEmailFromName(stName, st.note && st.note.includes('@') ? st.note : undefined);
+      const stEmail = getStudentEmailFromName(stName, st.email || (st.note && st.note.includes('@') ? st.note : undefined));
 
       const exists = currentList.some(c => 
         (c.studentName && (c?.studentName || '').toLowerCase().trim() === (stName || '').toLowerCase().trim()) ||

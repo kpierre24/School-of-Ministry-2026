@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Play, 
   Pause, 
@@ -646,9 +647,9 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
       </div>
 
       {/* Add Media Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleAddSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-slate-100 animate-scaleUp">
+      {showAddModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <form onSubmit={handleAddSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-slate-100 animate-scaleIn">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
               <h4 className="text-xs font-extrabold text-white flex items-center gap-2">
                 <Radio className="w-4 h-4 text-amber-400" /> Add Livestream Recording / Audio Media
@@ -788,13 +789,14 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
               <button type="submit" className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg cursor-pointer">Add Track</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Media Modal */}
-      {editingTrack && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleSaveEditSubmit} className="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden text-slate-100 animate-scaleUp">
+      {editingTrack && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <form onSubmit={handleSaveEditSubmit} className="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden text-slate-100 animate-scaleIn">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -1020,7 +1022,8 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
