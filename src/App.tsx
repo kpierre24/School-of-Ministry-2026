@@ -3956,6 +3956,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                     userEmail={user?.email}
                     supabaseTableMissing={supabaseTableMissing}
                     onVerifySetup={handleVerifySupabase}
+                    atRiskThreshold={atRiskThreshold}
                     customAssignments={customAssignments}
                     submissions={submissions}
                     facultyTeachers={facultyTeachers}
@@ -5869,11 +5870,43 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         currentUserRole={appUser?.role}
         currentActorName={appUser ? (appUser.role === 'admin' ? 'Administrator' : appUser.name) : 'Administrator'}
         onDataRestored={() => {
-          // Refresh records from local storage
-          const savedAtt = localStorage.getItem('attendanceRecords');
-          if (savedAtt) {
-            try { setRecords(JSON.parse(savedAtt)); } catch(e){}
-          }
+          // Rehydrate all records and database entities from local storage upon restoration
+          try {
+            const savedAtt = localStorage.getItem('attendanceRecords');
+            if (savedAtt) setRecords(JSON.parse(savedAtt));
+          } catch(e){}
+
+          try {
+            const savedPay = localStorage.getItem('hteim_student_payments');
+            if (savedPay) setPayments(JSON.parse(savedPay));
+          } catch(e){}
+
+          try {
+            const savedAssign = localStorage.getItem('hteim_custom_assignments');
+            if (savedAssign) setCustomAssignments(JSON.parse(savedAssign));
+          } catch(e){}
+
+          try {
+            const savedSubs = localStorage.getItem('hteim_assignment_submissions');
+            if (savedSubs) setSubmissions(JSON.parse(savedSubs));
+          } catch(e){}
+
+          try {
+            const savedCreds = localStorage.getItem('hteim_user_credentials');
+            if (savedCreds) setUserCredentials(JSON.parse(savedCreds));
+          } catch(e){}
+
+          try {
+            const savedFaculty = localStorage.getItem('hteim_faculty_teachers_v1');
+            if (savedFaculty) setFacultyTeachers(JSON.parse(savedFaculty));
+          } catch(e){}
+
+          try {
+            const savedAtRisk = localStorage.getItem('atRiskThreshold');
+            if (savedAtRisk) setAtRiskThreshold(Number(savedAtRisk));
+            const savedSat = localStorage.getItem('satisfactoryThreshold');
+            if (savedSat) setSatisfactoryThreshold(Number(savedSat));
+          } catch(e){}
         }}
         userCredentials={userCredentials}
         onResetPassword={handleChangeUserPassword}

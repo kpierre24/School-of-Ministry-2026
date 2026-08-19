@@ -38,16 +38,15 @@ import {
   Check,
   Edit3,
   Globe,
-  RefreshCw,
-  CloudDownload
+  RefreshCw
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
 import { LibraryResource, MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
-import { uploadToSupabaseStorage, syncLibraryFromSupabaseBucket } from '../lib/supabaseClient';
 import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
 import { parseVideoMediaUrl } from '../lib/mediaUtils';
+import { DocumentReaderModal } from './DocumentReaderModal';
 
 interface LibraryTabProps {
   userRole?: UserRole;
@@ -132,7 +131,25 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
   const [localResources, setLocalResources] = useState<LibraryResource[]>(() => {
     const saved = localStorage.getItem('hteim_library_resources');
-    return saved ? JSON.parse(saved) : INITIAL_RESOURCES;
+    if (saved) {
+      try {
+        const parsed: LibraryResource[] = JSON.parse(saved);
+        // Strip any Supabase file links or data urls from downloadUrl to ensure clean lesson cards
+        return parsed.map(r => {
+          let cleaned = { ...r };
+          if (cleaned.downloadUrl && (cleaned.downloadUrl.includes('supabase.co') || cleaned.downloadUrl.startsWith('data:'))) {
+            delete cleaned.downloadUrl;
+          }
+          if (cleaned.summary && cleaned.summary.includes("Imported from Supabase Storage bucket")) {
+            cleaned.summary = `Curriculum resource titled "${cleaned.title}" for the School of Ministry student body.`;
+          }
+          return cleaned;
+        });
+      } catch (e) {
+        return INITIAL_RESOURCES;
+      }
+    }
+    return INITIAL_RESOURCES;
   });
 
   const resources = propResources !== undefined ? propResources : localResources;
@@ -184,43 +201,6 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
-  const [isSyncingStorage, setIsSyncingStorage] = useState(false);
-  
-  // Auto-scan Supabase storage bucket for missing uploaded files on mount
-  useEffect(() => {
-    syncLibraryFromSupabaseBucket(resources).then(({ updatedResources, addedCount }) => {
-      if (addedCount > 0) {
-        setResources(updatedResources);
-      }
-    }).catch(err => {
-      console.warn("Library storage auto-sync skipped:", err);
-    });
-  }, []);
-
-  const [syncBannerMessage, setSyncBannerMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
-
-  const showSyncBanner = (type: 'success' | 'error' | 'info', text: string) => {
-    setSyncBannerMessage({ type, text });
-    setTimeout(() => setSyncBannerMessage(null), 5000);
-  };
-
-  const handleSyncFromSupabaseStorage = async () => {
-    setIsSyncingStorage(true);
-    try {
-      const { updatedResources, addedCount } = await syncLibraryFromSupabaseBucket(resources);
-      if (addedCount > 0) {
-        setResources(updatedResources);
-        showSyncBanner('success', `Synced ${addedCount} document(s) from Supabase 'library' storage into your Library.`);
-      } else {
-        showSyncBanner('info', "All files are already synced — no new documents found in Supabase storage.");
-      }
-    } catch (err: any) {
-      console.error("Storage sync failed:", err);
-      showSyncBanner('error', `Storage sync failed: ${err.message || String(err)}`);
-    } finally {
-      setIsSyncingStorage(false);
-    }
-  };
   
   // Modals
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -727,15 +707,9 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         // Extract clean text from file (using Mammoth for DOCX / Word files)
         let fileContentText = await extractCleanTextFromFile(file);
 
-        // Upload lesson/media files directly to Supabase storage with a fallback to local Base64
+        // Convert file to base64 data URL for reliable in-app reading and direct downloading
         let fileDataUrl = '';
         try {
-          fileDataUrl = await uploadToSupabaseStorage('library', file.name, file);
-        } catch (err) {
-          console.error("Failed to upload library resource to Supabase Storage:", err);
-        }
-
-        if (!fileDataUrl) {
           fileDataUrl = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -744,6 +718,8 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             reader.onerror = () => resolve('');
             reader.readAsDataURL(file);
           });
+        } catch (err) {
+          console.error("Failed to read file into data URL:", err);
         }
 
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
@@ -769,7 +745,6 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           summary: aiResult.summary,
           fullContent: fileContentText || '',
           fileDataUrl,
-          downloadUrl: fileDataUrl,
           fileName: file.name,
           mimeType: file.type,
           keyTakeaways: aiResult.keyTakeaways || [],
@@ -797,24 +772,6 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
-      {/* Sync Feedback Banner */}
-      {syncBannerMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-medium shadow-sm animate-fadeIn ${
-            syncBannerMessage.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300' :
-            syncBannerMessage.type === 'error' ? 'bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/60 dark:border-rose-700 dark:text-rose-300' :
-            'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/60 dark:border-blue-700 dark:text-blue-300'
-          }`}
-        >
-          <span>{syncBannerMessage.text}</span>
-          <button onClick={() => setSyncBannerMessage(null)} className="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* AI Summary Feedback Toast Banner */}
       {aiSummaryFeedback && (
         <div
@@ -858,25 +815,6 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
         {!isStudent && (
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleSyncFromSupabaseStorage}
-              disabled={isSyncingStorage}
-              className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Fetch and import any documents from Supabase Storage bucket 'library' into your app"
-            >
-              <CloudDownload className={`w-4 h-4 text-slate-600 dark:text-slate-300 ${isSyncingStorage ? 'animate-bounce' : ''}`} /> 
-              {isSyncingStorage ? 'Scanning Storage...' : 'Sync Storage Files'}
-            </button>
-
-            {onOpenDiagnostics && (
-              <button
-                onClick={onOpenDiagnostics}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Evaluate Supabase storage buckets and permissions for missing files"
-              >
-                <ShieldAlert className="w-4 h-4 text-slate-600 dark:text-slate-300" /> Storage Diagnostics
-              </button>
-            )}
 
             {resources.length > 0 && !isStudent && (
               (() => {
@@ -1253,7 +1191,11 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   </div>
                 </div>
 
-                <h3 className="text-sm font-extrabold text-slate-900 mb-1 leading-snug line-clamp-2">
+                <h3
+                  onClick={() => setPreviewResource(res)}
+                  className="text-sm font-extrabold text-slate-900 dark:text-white mb-1 leading-snug line-clamp-2 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors"
+                  title="Click to read document"
+                >
                   {res.title}
                 </h3>
 
@@ -1261,12 +1203,15 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   <User className="w-3 h-3 text-slate-400" /> {res.author}
                 </p>
 
-                {/* Resource Link / URL Badge if present */}
-                {res.downloadUrl && (
-                  <div className="mb-3 p-2 bg-indigo-50/80 border border-indigo-200/80 rounded-xl flex items-center justify-between gap-2">
+                {/* External Video / Stream Link Badge if present (Google Drive / YouTube) */}
+                {res.downloadUrl && 
+                  !res.downloadUrl.includes('supabase.co') && 
+                  !res.downloadUrl.startsWith('data:') && 
+                  (res.format === 'VIDEO' || res.category === 'Livestream Recording' || res.downloadUrl.includes('drive.google.com') || res.downloadUrl.includes('youtube.com') || res.downloadUrl.includes('youtu.be')) && (
+                  <div className="mb-3 p-2 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 rounded-xl flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <Link className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
-                      <span className="text-[10px] font-mono font-bold text-indigo-900 truncate">
+                      <Link className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                      <span className="text-[10px] font-mono font-bold text-indigo-900 dark:text-indigo-300 truncate">
                         {res.downloadUrl}
                       </span>
                     </div>
@@ -1275,7 +1220,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-md flex items-center gap-1 flex-shrink-0 cursor-pointer shadow-2xs"
-                      title="Open external link in new tab"
+                      title="Open video in new tab"
                     >
                       <ExternalLink className="w-3 h-3" /> Visit
                     </a>
@@ -1689,207 +1634,17 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         </Modal>
       )}
 
-      {/* Preview Full Lesson Modal */}
-      {previewResource && (
-        <Modal
-          isOpen={!!previewResource}
-          onClose={() => setPreviewResource(null)}
-          title={previewResource.title}
-          subtitle={`${previewResource.courseCode} • ${previewResource.category}`}
-          icon={<BookMarked className="w-5 h-5 text-indigo-600 shrink-0" />}
-          size="2xl"
-        >
-          <div className="space-y-4 text-xs text-slate-800">
-              {/* AI Evaluation Box */}
-              <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-xl space-y-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="font-extrabold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5 text-xs">
-                    <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> AI Executive Summary
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded">
-                      {previewResource.format} ({previewResource.size})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => handleGenerateAiSummary(previewResource, e)}
-                      disabled={generatingSummaryId === previewResource.id}
-                      className="px-2.5 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-[11px] rounded-lg flex items-center gap-1 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                      title="Generate or update AI summary with Gemini"
-                    >
-                      {generatingSummaryId === previewResource.id ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Generating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3 h-3 text-amber-300" />
-                          <span>{previewResource.summary ? 'Regenerate with AI' : 'Generate AI Summary'}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {previewResource.summary ? (
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                    {previewResource.summary}
-                  </p>
-                ) : (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-dashed border-amber-300 dark:border-amber-800 rounded-lg flex items-center justify-between gap-2">
-                    <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" /> No summary generated yet for this lesson.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => handleGenerateAiSummary(previewResource, e)}
-                      disabled={generatingSummaryId === previewResource.id}
-                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-lg cursor-pointer"
-                    >
-                      Generate Now
-                    </button>
-                  </div>
-                )}
-
-                {previewResource.keyTakeaways && previewResource.keyTakeaways.length > 0 && (
-                  <div className="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60 space-y-1">
-                    <span className="font-extrabold text-[10px] uppercase text-indigo-800 dark:text-indigo-300">Key Learning Takeaways:</span>
-                    {previewResource.keyTakeaways.map((k, i) => (
-                      <p key={i} className="text-slate-700 dark:text-slate-300 flex items-start gap-1.5 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                        <span>{k}</span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Full Content */}
-              <div>
-                <h4 className="font-extrabold uppercase text-[10px] text-slate-400 tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Full Lesson Material / Document Content</span>
-                  {isParsingPreview && (
-                    <span className="text-amber-500 font-bold flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Parsing Word document...
-                    </span>
-                  )}
-                </h4>
-
-                {isParsingPreview ? (
-                  <div className="p-8 bg-slate-900 text-slate-300 rounded-xl text-center space-y-2">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-400" />
-                    <p className="text-xs font-bold">Extracting clean lesson text from Word (.docx) document...</p>
-                  </div>
-                ) : (parseVideoMediaUrl(previewResource.downloadUrl || '').isDrive || previewResource.format === 'VIDEO') ? (
-                  <div className="space-y-3">
-                    {parseVideoMediaUrl(previewResource.downloadUrl || '').isDrive ? (
-                      <div className="space-y-2">
-                        <iframe
-                          src={parseVideoMediaUrl(previewResource.downloadUrl || '').embedUrl}
-                          title={previewResource.title}
-                          className="w-full h-72 sm:h-80 border-0 rounded-2xl shadow-xl bg-slate-950"
-                          allow="autoplay; encrypted-media; picture-in-picture"
-                          allowFullScreen
-                        />
-                        <div className="flex items-center justify-between text-xs px-1">
-                          <span className="text-slate-400 font-medium">Google Drive Video Player</span>
-                          <a
-                            href={previewResource.downloadUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-all"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>Open in Google Drive</span>
-                          </a>
-                        </div>
-                      </div>
-                    ) : (
-                      <video
-                        controls
-                        src={previewResource.downloadUrl || previewResource.fileDataUrl}
-                        className="w-full h-72 sm:h-80 rounded-2xl bg-slate-950 object-contain shadow-xl"
-                      />
-                    )}
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-slate-100 p-2.5 rounded-xl">
-                      <span className="flex items-center gap-1 text-slate-800">
-                        <Globe className="w-4 h-4 text-blue-600" /> Streamed via Google Drive Cloud
-                      </span>
-                      {previewResource.downloadUrl && (
-                        <a
-                          href={previewResource.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:underline flex items-center gap-1"
-                        >
-                          <ExternalLink className="w-3 h-3" /> Open in Drive Tab
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ) : previewExtractedText && !isBinaryZipContent(previewExtractedText) ? (
-                  <div className="bg-slate-900 text-slate-100 p-4 rounded-xl font-sans text-xs whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto border border-slate-800">
-                    {previewExtractedText}
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl text-slate-800 space-y-3">
-                    <div className="flex items-center gap-2.5 font-black text-indigo-950 text-sm">
-                      <FileText className="w-5 h-5 text-indigo-600" />
-                      <span>{previewResource.format} Document Attached ({previewResource.fileName || `${previewResource.title}.${(previewResource.format || '').toLowerCase()}`})</span>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      This lesson is stored in native <strong>{previewResource.format}</strong> document format ({previewResource.size}). Gemini AI has evaluated the lesson structure and generated the full executive summary and key takeaways above.
-                    </p>
-                    <div className="pt-2 flex items-center justify-between border-t border-slate-200">
-                      <span className="text-[10px] font-mono font-bold text-slate-400">
-                        {previewResource.courseCode} • Author: {previewResource.author}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDownload(previewResource, e)}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                      >
-                        <Download className="w-4 h-4" /> Download Original File
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <span className="text-[10px] font-bold text-slate-400">
-                Author: {previewResource.author}
-              </span>
-              <div className="flex items-center gap-2">
-                {!isStudent && (
-                  <button
-                    onClick={() => {
-                      startEditing(previewResource);
-                      setPreviewResource(null);
-                    }}
-                    className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Pencil className="w-3.5 h-3.5" /> Edit Resource
-                  </button>
-                )}
-                <button
-                  onClick={() => setPreviewResource(null)}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={(e) => handleDownload(previewResource, e)}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs"
-                >
-                  <Download className="w-4 h-4" /> Download File Anytime
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )}
+      {/* Full Multi-Format Document Reader Modal (PDF, DOCX, Word, Text, Audio, Video) */}
+      <DocumentReaderModal
+        isOpen={!!previewResource}
+        resource={previewResource}
+        onClose={() => setPreviewResource(null)}
+        onDownload={handleDownload}
+        onEdit={startEditing}
+        onGenerateSummary={handleGenerateAiSummary}
+        isGeneratingSummary={generatingSummaryId === previewResource?.id}
+        isStudent={isStudent}
+      />
 
       {/* ========================================================= */}
       {/* MODAL: AI LESSON SUMMARY & THEOLOGICAL INSIGHTS */}

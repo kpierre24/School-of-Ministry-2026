@@ -947,20 +947,31 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
       )}
 
-      {/* Prospective Student Enrollment CTA & Schedule Snippet */}
-      <EnrollmentCtaSection
-        onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
-        onNavigate={onNavigate}
-        onPlayIntro={onPlayIntro}
-      />
+      {/* Prospective Student Enrollment CTA, Testimonials, FAQ & Modal: ONLY for unauthenticated / unlogged-in visitors */}
+      {!appUser && (
+        <>
+          {/* Prospective Student Enrollment CTA & Schedule Snippet */}
+          <EnrollmentCtaSection
+            onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
+            onNavigate={onNavigate}
+            onPlayIntro={onPlayIntro}
+          />
 
-      {/* Student & Alumni Impact Stories */}
-      <StudentStoriesSection />
+          {/* Student & Alumni Impact Stories */}
+          <StudentStoriesSection />
 
-      {/* Frequently Asked Questions (FAQ) Section */}
-      <FaqSection
-        onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
-      />
+          {/* Frequently Asked Questions (FAQ) Section */}
+          <FaqSection
+            onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
+          />
+
+          {/* Cohort Enrollment Application & Inquiry Modal */}
+          <EnrollmentInquiryModal
+            isOpen={isEnrollmentModalOpen}
+            onClose={() => setIsEnrollmentModalOpen(false)}
+          />
+        </>
+      )}
 
       {/* Administrator Operational Command Center */}
       {isAdminOrTeacher && (
@@ -991,12 +1002,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           onResetToDefault={handleResetFacultyList}
         />
       )}
-
-      {/* Cohort Enrollment Application & Inquiry Modal */}
-      <EnrollmentInquiryModal
-        isOpen={isEnrollmentModalOpen}
-        onClose={() => setIsEnrollmentModalOpen(false)}
-      />
 
     </div>
   );
