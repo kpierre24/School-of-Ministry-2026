@@ -13,6 +13,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
+  // DO NOT read process.env.PORT. AI Studio infrastructure requires strictly 3000.
   const PORT = 3000;
 
   // Apply security response headers globally
