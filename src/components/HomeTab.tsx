@@ -531,7 +531,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
         {/* Main Banner Slide Content Area with AnimatePresence Smooth Fade */}
         {!isBannerCollapsed && (
-          <div className="p-4 sm:p-6 md:p-8 relative">
+          <div className="p-3 sm:p-6 md:p-8 relative">
             <AnimatePresence mode="wait">
               {currentSlideIdx === 0 ? (
                 /* Slide 0: Opening Intro Hero Card */
@@ -540,8 +540,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   initial={{ opacity: 0, y: 8, filter: 'blur(6px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
-                  transition={{ duration: 0.55, ease: 'easeInOut' }}
-                  className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-10 min-h-[340px] flex flex-col justify-between shadow-2xl"
+                  transition={{ duration: 0.4, ease: 'easeInOut' }}
+                  className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4 sm:p-8 md:p-10 min-h-[300px] flex flex-col justify-between shadow-2xl"
                 >
                   <div className="absolute inset-0 z-0">
                     <img 
@@ -550,65 +550,69 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover object-center"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/50" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-slate-950/60" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   </div>
 
-                  <div className="relative z-10 w-full max-w-4xl space-y-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 text-[10px] sm:text-[11px] font-bold tracking-wide rounded-full border border-amber-400/30">
-                      <Flame className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="relative z-10 w-full max-w-4xl space-y-3 sm:space-y-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 text-[10px] sm:text-[11px] font-bold tracking-wide rounded-full border border-amber-400/30 backdrop-blur-md">
+                      <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span>Heaven Touching Earth International Ministries</span>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-white font-syne">
+                    <div className="space-y-1">
+                      <h1 className="text-xl sm:text-3xl md:text-5xl font-extrabold tracking-tight leading-tight text-white font-syne">
                         Anointed Biblical Instruction & <br className="hidden sm:inline" />
-                        <span className="inline-block my-1 px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-xl text-base sm:text-3xl md:text-4xl shadow-lg">
+                        <span className="inline-block mt-1 px-2.5 sm:px-3 py-0.5 sm:py-1 bg-amber-400 text-slate-950 font-black rounded-lg sm:rounded-xl text-sm sm:text-2xl md:text-4xl shadow-lg">
                           Ministerial Governance
                         </span>
                       </h1>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap pt-1">
-                      <span className="px-3 py-1 bg-white/10 text-white border border-white/15 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
-                        <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-                        6 Core Curriculum Modules
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-0.5">
+                      <span className="px-2.5 py-0.5 sm:py-1 bg-white/10 text-white border border-white/15 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
+                        <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
+                        6 Core Modules
                       </span>
-                      <span className="px-3 py-1 bg-white/10 text-white border border-white/15 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                        75% Attendance Standard
+                      <span className="px-2.5 py-0.5 sm:py-1 bg-white/10 text-white border border-white/15 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
+                        <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+                        75% Standard
                       </span>
-                      <span className="px-3 py-1 bg-white/10 text-white border border-white/15 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
-                        <Radio className="w-3.5 h-3.5 text-amber-400" />
-                        Live Hybrid Classes
+                      <span className="px-2.5 py-0.5 sm:py-1 bg-white/10 text-white border border-white/15 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md">
+                        <Radio className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
+                        Live Hybrid
                       </span>
                     </div>
 
-                    <p className="text-xs sm:text-sm md:text-base text-slate-200/95 leading-relaxed max-w-2xl font-medium">
+                    <p className="text-xs sm:text-sm md:text-base text-slate-200/95 leading-relaxed max-w-2xl font-medium line-clamp-3 sm:line-clamp-none">
                       "Bringing Heaven to Earth, Taking People to Heaven." Equipping saints through deep exegesis, high ministerial ethics, prophetic discernment, and five-fold apostolic oversight.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 flex-wrap">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-2 flex-wrap">
+                      {!appUser && (
+                        <button
+                          onClick={() => setIsEnrollmentModalOpen(true)}
+                          className="px-4 py-2.5 sm:py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-300"
+                        >
+                          <Sparkles className="w-4 h-4 text-slate-950" />
+                          <span>Apply for Enrollment</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => onNavigate('courses')}
-                        className="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
+                        className="px-4 py-2.5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
                       >
-                        <BookOpen className="w-4 h-4 text-amber-300" /> 6 Core Modules
+                        <BookOpen className="w-4 h-4 text-amber-300" /> 
+                        <span>6 Core Modules</span>
                       </button>
 
                       <button
                         onClick={() => onNavigate('schedule')}
-                        className="w-full sm:w-auto px-5 py-3 bg-slate-900/90 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700 cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                        className="px-4 py-2.5 sm:py-3 bg-slate-900/90 hover:bg-slate-800 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                       >
-                        <Calendar className="w-4 h-4 text-emerald-400" /> Class Schedule
-                      </button>
-
-                      <button
-                        onClick={handleNextSlide}
-                        className="w-full sm:w-auto px-4 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
-                      >
-                        <span>View Faculty Banner</span>
-                        <ArrowRight className="w-4 h-4 text-slate-950" />
+                        <Calendar className="w-4 h-4 text-emerald-400" /> 
+                        <span>Class Schedule</span>
                       </button>
                     </div>
                   </div>
@@ -620,16 +624,16 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   initial={{ opacity: 0, y: 8, filter: 'blur(6px)' }}
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
-                  transition={{ duration: 0.55, ease: 'easeInOut' }}
-                  className="p-5 sm:p-7 relative overflow-hidden bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-2xl"
+                  transition={{ duration: 0.4, ease: 'easeInOut' }}
+                  className="p-4 sm:p-6 md:p-7 relative overflow-hidden bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-2xl"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center">
                     {/* Instructor Portrait Photo */}
-                    <div className="md:col-span-5 lg:col-span-4 flex flex-col items-center justify-center">
-                      <div className="relative group w-full max-w-[250px] sm:max-w-[270px]">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-purple-600 to-indigo-600 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition duration-500" />
+                    <div className="md:col-span-4 lg:col-span-3 flex sm:flex-col items-center justify-center gap-4">
+                      <div className="relative group w-24 h-24 sm:w-44 sm:h-52 md:w-full md:max-w-[240px] shrink-0">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-purple-600 to-indigo-600 rounded-2xl blur-sm opacity-40 group-hover:opacity-75 transition duration-500" />
                         
-                        <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 shadow-2xl aspect-[3/4] w-full">
+                        <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700 bg-slate-950 shadow-2xl w-full h-full aspect-square sm:aspect-[3/4]">
                           <img
                             src={activeTeacher.image || gillianSelkridgeAsset}
                             alt={activeTeacher.name}
@@ -639,68 +643,81 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                             }}
                             className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent hidden sm:block" />
                           
-                          <div className="absolute bottom-3 left-3 right-3">
-                            <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border shadow-md ${activeTeacher.badgeColor}`}>
+                          <div className="absolute bottom-2 left-2 right-2 hidden sm:block">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border shadow-sm ${activeTeacher.badgeColor}`}>
                               {activeTeacher.module}
                             </span>
                           </div>
                         </div>
                       </div>
+
+                      {/* Mobile Badge View */}
+                      <div className="sm:hidden flex-1 space-y-1">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border shadow-sm ${activeTeacher.badgeColor}`}>
+                          {activeTeacher.module}
+                        </span>
+                        <h3 className="text-lg font-black text-white leading-tight font-syne">
+                          {activeTeacher.name}
+                        </h3>
+                        <p className="text-[11px] font-bold text-amber-400">
+                          {activeTeacher.role}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Instructor Details & Bio */}
-                    <div className="md:col-span-7 lg:col-span-8 space-y-4">
-                      <div className="space-y-1.5">
+                    <div className="md:col-span-8 lg:col-span-9 space-y-3 sm:space-y-4">
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-3 py-1 bg-purple-950/80 text-purple-200 border border-purple-800 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                            <UserCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <span className="px-2.5 py-0.5 bg-purple-950/80 text-purple-200 border border-purple-800 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-purple-400 shrink-0" />
                             HTEIM Course Faculty
                           </span>
-                          <span className="text-xs text-slate-400 font-bold">
-                            • Instructor {currentSlideIdx} of {facultyTeachers.length}
+                          <span className="text-[11px] text-slate-400 font-bold">
+                            • Instructor 0{currentSlideIdx} of 0{facultyTeachers.length}
                           </span>
                         </div>
 
-                        <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-snug font-syne">
+                        <h3 className="hidden sm:block text-xl sm:text-3xl font-black text-white tracking-tight leading-snug font-syne">
                           {activeTeacher.name}
                         </h3>
                         
-                        <p className="text-xs sm:text-sm font-extrabold text-amber-400 uppercase tracking-wide">
+                        <p className="hidden sm:block text-xs sm:text-sm font-extrabold text-amber-400 uppercase tracking-wide">
                           {activeTeacher.role} — {activeTeacher.title}
                         </p>
                       </div>
 
-                      <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium bg-slate-800/80 p-4 rounded-2xl border border-slate-700/80 shadow-xs italic">
+                      <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium bg-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-700/80 shadow-xs italic">
                         "{activeTeacher.bio}"
                       </p>
 
-                      <div className="pt-1 flex flex-wrap items-center gap-3">
+                      <div className="pt-1 flex flex-wrap items-center gap-2 sm:gap-3">
                         <button
                           onClick={() => onNavigate('courses')}
-                          className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                          className="px-3.5 py-2 sm:py-2.5 bg-white hover:bg-slate-100 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                         >
-                          <BookOpen className="w-4 h-4 shrink-0" />
-                          <span>Explore Course Curriculum</span>
-                          <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                          <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                          <span>Explore Syllabus</span>
+                          <ArrowRight className="w-3 h-3 shrink-0" />
                         </button>
 
                         <button
                           onClick={() => onNavigate('schedule')}
-                          className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-2"
+                          className="px-3.5 py-2 sm:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
                         >
-                          <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span>View Class Schedule</span>
+                          <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Class Schedule</span>
                         </button>
 
                         {isAdmin && (
                           <button
                             onClick={() => setIsFacultyModalOpen(true)}
-                            className="px-4 py-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/40 transition-all cursor-pointer flex items-center gap-2"
+                            className="px-3.5 py-2 sm:py-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-400/40 transition-all cursor-pointer flex items-center gap-1.5"
                           >
-                            <Edit3 className="w-4 h-4 text-amber-400 shrink-0" />
-                            <span>Edit Faculty Info</span>
+                            <Edit3 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>Edit Faculty</span>
                           </button>
                         )}
                       </div>
@@ -710,22 +727,22 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               )}
             </AnimatePresence>
 
-            {/* Revolving Slide Selectors (Intro + 5 Faculty Members) */}
-            <div className="mt-6 pt-5 border-t border-slate-800">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  Showcase Slides (Opening Vision + {facultyTeachers.length} Course Faculty)
+            {/* Revolving Slide Selectors (Intro + 5 Faculty Members) - Horizontal Scrolling Reel on Mobile */}
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-5 border-t border-slate-800">
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Users className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>Showcase Roster ({facultyTeachers.length} Instructors)</span>
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {Array.from({ length: totalSlides }).map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentSlideIdx(idx)}
-                      className={`h-2 rounded-full transition-all cursor-pointer ${
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
                         idx === currentSlideIdx 
-                          ? 'w-6 bg-amber-400 shadow-xs' 
-                          : 'w-2 bg-slate-700 hover:bg-slate-600'
+                          ? 'w-5 bg-amber-400 shadow-xs' 
+                          : 'w-1.5 bg-slate-700 hover:bg-slate-600'
                       }`}
                       aria-label={`Go to slide ${idx}`}
                     />
@@ -733,18 +750,18 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </div>
               </div>
 
-              {/* Slide Thumbnail Buttons */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              {/* Horizontal Scrollable Thumbnail Reel */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                 {/* Slide 0 Thumbnail: Opening Intro */}
                 <button
                   onClick={() => setCurrentSlideIdx(0)}
-                  className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${
+                  className={`p-1.5 sm:p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border shrink-0 min-w-[140px] sm:min-w-0 sm:flex-1 ${
                     currentSlideIdx === 0
                       ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
                       : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
                   }`}
                 >
-                  <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950 flex items-center justify-center">
                     <img
                       src={biblicalHeroAsset}
                       alt="Opening Intro"
@@ -753,8 +770,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-extrabold truncate text-white">Opening Intro</p>
-                    <p className="text-[9px] text-amber-400 truncate font-mono">HTEIM Vision</p>
+                    <p className="text-[10px] sm:text-[11px] font-extrabold truncate text-white">Opening Intro</p>
+                    <p className="text-[8px] sm:text-[9px] text-amber-400 truncate font-mono">HTEIM Vision</p>
                   </div>
                 </button>
 
@@ -766,13 +783,13 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     <button
                       key={teacher.id}
                       onClick={() => setCurrentSlideIdx(slideNum)}
-                      className={`p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border ${
+                      className={`p-1.5 sm:p-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 border shrink-0 min-w-[140px] sm:min-w-0 sm:flex-1 ${
                         isActive
                           ? 'bg-amber-400/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400'
                           : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800'
                       }`}
                     >
-                      <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950">
+                      <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-950">
                         <img
                           src={teacher.image || gillianSelkridgeAsset}
                           alt={teacher.name}
@@ -784,8 +801,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-extrabold truncate text-white">{teacher.name}</p>
-                        <p className="text-[9px] text-amber-400 truncate font-mono">Faculty {slideNum}</p>
+                        <p className="text-[10px] sm:text-[11px] font-extrabold truncate text-white">{teacher.name}</p>
+                        <p className="text-[8px] sm:text-[9px] text-amber-400 truncate font-mono">Faculty 0{slideNum}</p>
                       </div>
                     </button>
                   );
@@ -794,6 +811,213 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </div>
           </div>
         )}
+      </section>
+
+      {/* 2. DUAL-TRACK QUICK ACTION PATHWAYS (For Visitors vs Logged-In Students) */}
+      {!appUser ? (
+        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+          {/* Pathway 1: Prospective Student Enrollment */}
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/30 dark:to-slate-900 border border-amber-400/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-400 text-slate-950 font-black">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Admissions Open
+                </span>
+              </div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                Apply for Enrollment
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Step into theological and ministerial training. Register for the upcoming hybrid cohort.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsEnrollmentModalOpen(true)}
+              className="w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 border border-amber-300 active:scale-95"
+            >
+              <span>Start Application</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Pathway 2: Current Student Portal Login */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-indigo-600 text-white font-black">
+                  <Lock className="w-4 h-4" />
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Enrolled Students
+                </span>
+              </div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                Student & Staff Portal
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Sign in with your student PIN to view live attendance, quiz scores, homework, and tuition.
+              </p>
+            </div>
+            <button
+              onClick={onOpenLogin}
+              className="w-full py-2.5 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-extrabold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Portal Sign In</span>
+            </button>
+          </div>
+
+          {/* Pathway 3: Course Curriculum & Syllabus */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3 sm:col-span-2 md:col-span-1">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-emerald-600 text-white font-black">
+                  <BookOpen className="w-4 h-4" />
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Academic Syllabus
+                </span>
+              </div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                6 Core Curriculum
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Explore our comprehensive theological roadmap spanning foundations, ethics, and five-fold leadership.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('courses')}
+              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <span>Browse Curriculum</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {/* 3. 6 CORE CURRICULUM BENTO GRID (Comprehensive Overview) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+              <GraduationCap className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                6-Module Core Curriculum Framework
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Rigorous theological foundation, five-fold governance, and practical ministry training
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onNavigate('courses')}
+            className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+          >
+            <span>Full Syllabus & Handouts</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            {
+              modNum: '01',
+              code: 'SOM-MOD-1',
+              title: 'Introduction & Foundations',
+              instructor: 'Gillian Selkridge',
+              badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+              accent: 'border-amber-400/40',
+              description: 'Kingdom citizenship, covenant alignment, scripture recitation, and classroom integrity.'
+            },
+            {
+              modNum: '02',
+              code: 'SOM-MOD-2',
+              title: 'Evangelism & Soul Winning',
+              instructor: 'Samuel Selkridge',
+              badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+              accent: 'border-emerald-400/40',
+              description: 'The Matthew 28:19-20 mandate, personal witnessing, follow-up, and discipleship.'
+            },
+            {
+              modNum: '03',
+              code: 'SOM-MOD-3',
+              title: 'Ministerial Ethics & Character',
+              instructor: 'Gale Grant',
+              badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-800',
+              accent: 'border-purple-400/40',
+              description: 'High standards of integrity, financial transparency, counseling ethics, and servant leadership.'
+            },
+            {
+              modNum: '04',
+              code: 'SOM-MOD-4',
+              title: 'Apostolic Ministry & Order',
+              instructor: 'Christy Ruben',
+              badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800',
+              accent: 'border-indigo-400/40',
+              description: 'Ephesians 2:20 foundation, apostolic signs, five-fold governance, and kingdom expansion.'
+            },
+            {
+              modNum: '05',
+              code: 'SOM-MOD-5',
+              title: 'Prophetic Ministry & Warfare',
+              instructor: 'Garod Andrews',
+              badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800',
+              accent: 'border-rose-400/40',
+              description: 'Spiritual discernment, hearing the voice of God, testing prophecy, and prophetic protocol.'
+            },
+            {
+              modNum: '06',
+              code: 'SOM-MOD-6',
+              title: 'Pastors & Teachers Academy',
+              instructor: 'Samuel Selkridge',
+              badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-300 dark:border-sky-800',
+              accent: 'border-sky-400/40',
+              description: 'Pastoral care, preaching hermeneutics, flock governance, and spiritual mentorship.'
+            }
+          ].map((item) => (
+            <div
+              key={item.code}
+              onClick={() => onNavigate('courses')}
+              className={`p-4 bg-white dark:bg-slate-900 border ${item.accent} rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-2 group active:scale-[0.99]`}
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase border ${item.badgeColor}`}>
+                    {item.code}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-slate-400">
+                    Module {item.modNum}
+                  </span>
+                </div>
+
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {item.title}
+                </h3>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                  {item.description}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px]">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                  Lead: <strong className="text-slate-800 dark:text-slate-200">{item.instructor}</strong>
+                </span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                  <span>View</span>
+                  <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
 

@@ -3643,13 +3643,13 @@ create policy "Allow public update" on app_states for update using (true) with c
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/40 via-amber-500/40 to-indigo-500/0 pointer-events-none" />
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink-0 group" onClick={() => setActiveErpTab('home')}>
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink group" onClick={() => setActiveErpTab('home')}>
             <LogoImage
               alt="HTEIM Logo"
               className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
             />
             <div className="min-w-0 shrink flex items-center gap-2">
-              <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[130px] xs:max-w-[180px] sm:max-w-[260px]">
+              <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[280px]">
                 HTEIM School of Ministry
               </h1>
               <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -3660,41 +3660,46 @@ create policy "Allow public update" on app_states for update using (true) with c
           </div>
 
           {/* MD3 AppBar Actions */}
-          <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
-            {/* Messages */}
-            <button
-              type="button"
-              onClick={() => handleNavigate('messages')}
-              aria-label="Open messages"
-              className="relative p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Messages"
-            >
-              <MessageSquare className="w-4 h-4" />
-              {unreadMessagesCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center px-1">
-                  {unreadMessagesCount}
-                </span>
-              )}
-            </button>
+          <div className="flex items-center gap-1 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
+            {/* Only show Messages and Notifications when user is logged in */}
+            {appUser && (
+              <>
+                {/* Messages */}
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('messages')}
+                  aria-label="Open messages"
+                  className="relative p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                  title="Messages"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  {unreadMessagesCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center px-1">
+                      {unreadMessagesCount}
+                    </span>
+                  )}
+                </button>
 
-            {/* Notifications */}
-            <NotificationCenter
-              notifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
-              onMarkAsRead={handleMarkNotifAsRead}
-              onMarkAllAsRead={handleMarkAllNotifsAsRead}
-              onClearNotifications={handleClearNotifs}
-              onSelectNotification={handleSelectNotif}
-              onTriggerScan={handleRunNotificationScan}
-              onAddTestNotification={handleAddTestNotif}
-              currentRole={appUser?.role}
-              currentStudentName={appUser?.studentName || appUser?.name}
-            />
+                {/* Notifications */}
+                <NotificationCenter
+                  notifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
+                  onMarkAsRead={handleMarkNotifAsRead}
+                  onMarkAllAsRead={handleMarkAllNotifsAsRead}
+                  onClearNotifications={handleClearNotifs}
+                  onSelectNotification={handleSelectNotif}
+                  onTriggerScan={handleRunNotificationScan}
+                  onAddTestNotification={handleAddTestNotif}
+                  currentRole={appUser?.role}
+                  currentStudentName={appUser?.studentName || appUser?.name}
+                />
+              </>
+            )}
 
             {/* More Dropdown */}
             <div className="relative shrink-0">
               <button
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
                 aria-label="More actions"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -3774,13 +3779,27 @@ create policy "Allow public update" on app_states for update using (true) with c
                   )}
 
                   <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                    <button
-                      onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Settings</span>
-                    </button>
+                    {appUser?.role === 'admin' ? (
+                      <button
+                        onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Settings</span>
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-between p-2 rounded-lg text-xs font-medium text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60"
+                        title="Settings can only be changed by Administrator"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Settings className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
+                          <span>Settings</span>
+                        </div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">Admin Only</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => { setShowMoreMenu(false); setShowGuideModal(true); }}
                       className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -3798,16 +3817,18 @@ create policy "Allow public update" on app_states for update using (true) with c
                       <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                       <span>Switch Role</span>
                     </button>
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        handleAppLogout();
-                      }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Logout</span>
-                    </button>
+                    {appUser && (
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          handleAppLogout();
+                        }}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Logout</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -3817,7 +3838,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             {appUser ? (
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-2 p-1 pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800/80"
+                className="flex items-center gap-1.5 sm:gap-2 p-1 pr-2 sm:pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800/80"
                 aria-label={`Account: ${appUser.name}`}
                 title="Account & Role Settings"
               >
@@ -3845,11 +3866,11 @@ create policy "Allow public update" on app_states for update using (true) with c
             ) : (
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-bold text-xs shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-bold text-xs shadow-xs whitespace-nowrap"
                 aria-label="Sign In to Portal"
                 title="Sign in to Student or Faculty Portal"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-3.5 h-3.5 shrink-0" />
                 <span>Sign In</span>
               </button>
             )}
@@ -6714,18 +6735,32 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       <span className="text-[10px] text-slate-400 font-mono">⌘K</span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        setShowMobileMoreMenu(false);
-                        setShowSettingsModal(true);
-                      }}
-                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Settings className="w-4 h-4 text-slate-400" />
-                        <span>Settings</span>
-                      </div>
-                    </button>
+                    {appUser?.role === 'admin' ? (
+                      <button
+                        onClick={() => {
+                          setShowMobileMoreMenu(false);
+                          setShowSettingsModal(true);
+                        }}
+                        className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-slate-400" />
+                          <span>Settings</span>
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-600 text-xs font-medium rounded-xl flex items-center justify-between cursor-not-allowed opacity-60"
+                        title="Settings can only be changed by Administrator"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-slate-400 dark:text-slate-600" />
+                          <span>Settings</span>
+                        </div>
+                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800 text-slate-400">Admin Only</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -6859,13 +6894,20 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             <span>Guide</span>
           </button>
           <span className="text-slate-300 dark:text-slate-700">•</span>
-          <button
-            onClick={() => setShowSettingsModal(true)}
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span>Settings</span>
-          </button>
+          {appUser?.role === 'admin' ? (
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Settings</span>
+            </button>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-600 flex items-center gap-1 cursor-not-allowed text-[11px] font-medium" title="Settings can only be changed by Administrator">
+              <Lock className="w-3 h-3 text-slate-400 dark:text-slate-600" />
+              <span>Settings (Admin)</span>
+            </span>
+          )}
           <span className="text-slate-300 dark:text-slate-700">•</span>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">HTEIM © 2026</p>
         </div>

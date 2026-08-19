@@ -160,8 +160,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return localStorage.getItem('hteim_developer_mode') === 'true';
   });
 
-  // Save changes to localStorage automatically
+  // Save changes to localStorage automatically only if user is an admin
   React.useEffect(() => {
+    if (userRole !== 'admin') return;
+
     localStorage.setItem('hteim_passing_score', passingScore.toString());
     localStorage.setItem('hteim_credit_hours_default', creditHoursDefault.toString());
     localStorage.setItem('hteim_tuition_per_credit', tuitionPerCredit.toString());
@@ -187,6 +189,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }
     }));
   }, [
+    userRole,
     passingScore,
     creditHoursDefault,
     tuitionPerCredit,
@@ -204,10 +207,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isAdmin = userRole === 'admin';
   const isStudent = userRole === 'student';
+  const isLocked = !isAdmin;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isStudent) return;
+    if (!isAdmin) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -287,7 +292,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span>Appearance</span>
           </button>
 
-          {!isStudent && (
+          {isAdmin ? (
             <>
               <button
                 onClick={() => setActiveTab('academic')}
@@ -313,6 +318,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span>Sync & Backup</span>
               </button>
             </>
+          ) : (
+            <button
+              onClick={() => setActiveTab('academic')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === 'academic'
+                  ? 'bg-white text-emerald-700 shadow-2xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Academic Policy (Read-Only)</span>
+            </button>
           )}
 
           <button
@@ -331,6 +348,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Tab Content Area */}
         <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5 text-xs text-slate-700 bg-white">
           
+          {/* Read-Only Notice for Non-Admins */}
+          {!isAdmin && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Settings can only be changed by an Administrator. Read-only permissions active for {userRole ? `${userRole}s` : 'guests'}.</span>
+              </div>
+              <span className="text-[10px] font-mono uppercase bg-amber-200/80 px-2 py-0.5 rounded font-bold text-amber-900 shrink-0">
+                Admin Locked
+              </span>
+            </div>
+          )}
+
           {/* 1. APPEARANCE & THEME TAB */}
           {activeTab === 'appearance' && (
             <div className="space-y-5">
@@ -445,14 +475,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Define the attendance boundary percentages used across matrices, student cards, and transcript generators.
                 </p>
 
-                {isStudent && (
+                {isLocked && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium mb-3">
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                      <span>Read-Only Mode: Academic performance thresholds are established by institution faculty & administration.</span>
+                      <span>Read-Only Mode: Academic performance thresholds can only be modified by an Administrator.</span>
                     </div>
                     <span className="text-[10px] font-mono uppercase bg-amber-200/70 px-2 py-0.5 rounded font-bold text-amber-900 flex-shrink-0">
-                      Managed by Admin
+                      Admin Only
                     </span>
                   </div>
                 )}
@@ -469,10 +499,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       min="10" 
                       max="75" 
                       step="5"
-                      disabled={isStudent}
+                      disabled={isLocked}
                       value={atRiskThreshold} 
                       onChange={(e) => setAtRiskThreshold(parseInt(e.target.value, 10))}
-                      className={`w-full accent-rose-600 ${isStudent ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                      className={`w-full accent-rose-600 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     />
                     <p className="text-[10px] text-slate-400 mt-0.5">Students with attendance below this rate are flagged in batch email notices & statistics.</p>
                   </div>
@@ -488,10 +518,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       min="60" 
                       max="100" 
                       step="5"
-                      disabled={isStudent}
+                      disabled={isLocked}
                       value={satisfactoryThreshold} 
                       onChange={(e) => setSatisfactoryThreshold(parseInt(e.target.value, 10))}
-                      className={`w-full accent-emerald-600 ${isStudent ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                      className={`w-full accent-emerald-600 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     />
                     <p className="text-[10px] text-slate-400 mt-0.5">Students meeting or exceeding this rate are highlighted green as satisfactory.</p>
                   </div>
@@ -535,10 +565,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Course Credit Hours Default</label>
                     <select
-                      disabled={isStudent}
+                      disabled={isLocked}
                       value={creditHoursDefault}
                       onChange={(e) => setCreditHoursDefault(parseInt(e.target.value, 10))}
-                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value={1}>1 Credit Hour</option>
                       <option value={2}>2 Credit Hours</option>
@@ -560,10 +590,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       min="50" 
                       max="90" 
                       step="5"
-                      disabled={isStudent}
+                      disabled={isLocked}
                       value={passingScore} 
                       onChange={(e) => setPassingScore(parseInt(e.target.value, 10))}
-                      className="w-full accent-emerald-600 cursor-pointer mt-1"
+                      className={`w-full accent-emerald-600 mt-1 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     />
                     <p className="text-[10px] text-slate-400 mt-0.5">Assignments scoring below this threshold are marked as "Fail / Needs Revision".</p>
                   </div>
@@ -581,10 +611,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
 
                 <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <label className="flex items-start gap-2.5 font-bold text-slate-700 cursor-pointer">
+                  <label className={`flex items-start gap-2.5 font-bold text-slate-700 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                     <input 
                       type="checkbox"
-                      disabled={isStudent}
+                      disabled={isLocked}
                       checked={allowStudentAttendanceSelfReport}
                       onChange={(e) => setAllowStudentAttendanceSelfReport(e.target.checked)}
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
@@ -599,10 +629,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <hr className="border-slate-200" />
 
-                  <label className="flex items-start gap-2.5 font-bold text-slate-700 cursor-pointer">
+                  <label className={`flex items-start gap-2.5 font-bold text-slate-700 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                     <input 
                       type="checkbox"
-                      disabled={isStudent}
+                      disabled={isLocked}
                       checked={developerMode}
                       onChange={(e) => setDeveloperMode(e.target.checked)}
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
@@ -1005,9 +1035,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
 
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                  {isStudent && (
-                    <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg font-bold">
-                      ⚠️ Standard student role: profile customization is locked to administrative actors.
+                  {isLocked && (
+                    <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg font-bold flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Institutional profile customization is restricted to Administrator accounts.</span>
                     </div>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1016,7 +1047,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="block font-bold text-slate-700 mb-1">Official Address</label>
                       <input
                         type="text"
-                        disabled={isStudent}
+                        disabled={isLocked}
                         value={instAddress}
                         onChange={(e) => {
                           setInstAddress(e.target.value);
@@ -1024,7 +1055,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }}
                         onBlur={() => setInstAddressError(instAddress.trim() ? null : 'Address is required')}
                         placeholder="e.g. 124 Ministry Lane, NY 10001"
-                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${instAddressError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${instAddressError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
                       {instAddressError && (
                         <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
@@ -1038,7 +1069,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="block font-bold text-slate-700 mb-1">Office Contact Phone</label>
                       <input
                         type="text"
-                        disabled={isStudent}
+                        disabled={isLocked}
                         value={instPhone}
                         onChange={(e) => {
                           setInstPhone(e.target.value);
@@ -1046,7 +1077,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }}
                         onBlur={() => setInstPhoneError(validatePhone(instPhone))}
                         placeholder="e.g. +1 (555) 777-1212"
-                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${instPhoneError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${instPhoneError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
                       {instPhoneError && (
                         <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
@@ -1059,7 +1090,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="block font-bold text-slate-700 mb-1">Contact Email Address</label>
                       <input
                         type="email"
-                        disabled={isStudent}
+                        disabled={isLocked}
                         value={instEmail}
                         onChange={(e) => {
                           setInstEmail(e.target.value);
@@ -1067,7 +1098,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }}
                         onBlur={() => setInstEmailError(validateEmail(instEmail))}
                         placeholder="e.g. office@school.org"
-                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${instEmailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${instEmailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
                       {instEmailError && (
                         <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
@@ -1081,7 +1112,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="block font-bold text-slate-700 mb-1">Authorized Certifying Signatory Name</label>
                       <input
                         type="text"
-                        disabled={isStudent}
+                        disabled={isLocked}
                         value={authorizedSignature}
                         onChange={(e) => {
                           setAuthorizedSignature(e.target.value);
@@ -1089,7 +1120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }}
                         onBlur={() => setAuthorizedSignatureError(authorizedSignature.trim() ? null : 'Signatory name is required')}
                         placeholder="e.g. Apostle Kendell Pierre"
-                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${authorizedSignatureError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
+                        className={`w-full p-2 bg-white border rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${authorizedSignatureError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200'}`}
                       />
                       {authorizedSignatureError && (
                         <p className="text-[10px] text-rose-600 font-medium mt-0.5 flex items-center gap-1">
