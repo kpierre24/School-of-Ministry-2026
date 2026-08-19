@@ -12,7 +12,7 @@ interface RateLimitRecord {
 const ipLimits = new Map<string, RateLimitRecord>();
 
 // Clean up stale rate limit records every 10 minutes
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [ip, record] of ipLimits.entries()) {
     if (now > record.resetTime) {
@@ -20,6 +20,10 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000);
+
+if (cleanupTimer.unref) {
+  cleanupTimer.unref();
+}
 
 /**
  * Rate Limiting Middleware
@@ -64,23 +68,8 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
  * Appends industry-standard protective HTTP response headers.
  */
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
-  const cspDirectives = [
-    "default-src 'self' https: http: data: blob:",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:",
-    "style-src 'self' 'unsafe-inline' https: http: https://fonts.googleapis.com",
-    "font-src 'self' https: http: data: https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https: http:",
-    "connect-src 'self' https: http: wss: ws:",
-    "frame-src 'self' https: http: blob:",
-    "media-src 'self' blob: data: https: http:",
-    "frame-ancestors *",
-    "object-src 'none'",
-    "base-uri 'self'",
-  ].join("; ");
-
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-XSS-Protection", "1; mode=block");
-  res.setHeader("Content-Security-Policy", cspDirectives);
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(self)");
   next();
