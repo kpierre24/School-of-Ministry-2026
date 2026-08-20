@@ -338,10 +338,10 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-slate-600 dark:text-slate-300 shrink-0" />
+            <BookOpen className="w-6 h-6 text-[#025798] dark:text-[#7dd3fc] shrink-0" />
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ministry Courses & Curriculum</h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
@@ -352,15 +352,15 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
         {!isStudent && (
           <button
             onClick={handleOpenAddModal}
-            className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0"
+            className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0 border border-[#b38f53]/30 shadow-xs active:scale-95"
           >
-            <Plus className="w-4 h-4" /> Add New Course
+            <Plus className="w-4 h-4 text-[#dfc18b]" /> Add New Course
           </button>
         )}
       </div>
 
       {/* Search Bar & Counter & Status Filter */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -368,17 +368,17 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
             placeholder="Search courses by title, code (e.g. SOM-101), or instructor..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
           />
         </div>
 
         {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
             className={`px-3 py-1 rounded-lg transition-all ${
-              statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              statusFilter === 'all' ? 'bg-[#023264] text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             All ({courses.length})
@@ -387,7 +387,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
             type="button"
             onClick={() => setStatusFilter('active')}
             className={`px-3 py-1 rounded-lg transition-all ${
-              statusFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-700 hover:bg-emerald-50'
+              statusFilter === 'active' ? 'bg-[#01883c] text-white shadow-xs' : 'text-[#01883c] dark:text-[#4ade80] hover:bg-[#01883c]/10'
             }`}
           >
             Active
@@ -422,19 +422,19 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
           return (
             <div 
               key={course.id} 
-              className={`bg-white border rounded-2xl p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group ${
-                isExpired ? 'border-rose-300 bg-rose-50/10' : 'border-slate-200'
+              className={`bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group ${
+                isExpired ? 'border-rose-300 bg-rose-50/10' : 'border-slate-200 dark:border-slate-800'
               }`}
             >
               <div>
                 {/* Header Badge & Action Buttons */}
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-mono font-black rounded-lg">
+                    <span className="px-3 py-1 bg-[#023264]/10 dark:bg-[#023264]/40 border border-[#025798]/30 text-[#023264] dark:text-[#bae6fd] text-xs font-mono font-black rounded-lg">
                       {course.code}
                     </span>
-                    <span className="px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold rounded-lg flex items-center gap-1">
-                      <Award className="w-3 h-3 text-amber-600" /> {course.credits} Credits
+                    <span className="px-2.5 py-1 bg-[#b38f53]/15 text-[#8c6a32] dark:text-[#dfc18b] border border-[#b38f53]/30 text-[10px] font-bold rounded-lg flex items-center gap-1">
+                      <Award className="w-3 h-3 text-[#b38f53]" /> {course.credits} Credits
                     </span>
 
                     {/* Expiry Badge */}
@@ -456,14 +456,14 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleOpenEditModal(course)}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg transition-all cursor-pointer"
+                        className="p-1.5 text-slate-500 hover:text-[#025798] hover:bg-[#025798]/10 border border-slate-200 dark:border-slate-700 hover:border-[#025798]/40 rounded-lg transition-all cursor-pointer"
                         title="Edit Course Information"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteCourse(course.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition-all cursor-pointer"
+                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 dark:border-slate-700 hover:border-rose-200 rounded-lg transition-all cursor-pointer"
                         title="Remove Course Card"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -472,39 +472,39 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                   )}
                 </div>
 
-              <h3 className="text-base font-extrabold text-slate-900 mb-2 leading-snug">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-2 leading-snug">
                 {course.title}
               </h3>
 
-              <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 mb-4">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 mb-4">
                 {course.description}
               </p>
 
               {/* Course Info Cards */}
-              <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
-                <div className="flex items-center justify-between text-slate-700">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500">
-                    <GraduationCap className="w-4 h-4 text-indigo-600" /> Faculty Instructor:
+              <div className="space-y-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
+                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                    <GraduationCap className="w-4 h-4 text-[#025798] dark:text-[#7dd3fc]" /> Faculty Instructor:
                   </span>
-                  <span className="font-bold text-slate-900">{course.instructor}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{course.instructor}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-700 pt-1 border-t border-slate-200/60">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500">
-                    <Calendar className="w-4 h-4 text-emerald-600" /> Schedule:
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                    <Calendar className="w-4 h-4 text-[#01883c]" /> Schedule:
                   </span>
-                  <span className="font-medium text-slate-800 text-[11px]">{course.scheduleDays}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px]">{course.scheduleDays}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-700 pt-1 border-t border-slate-200/60">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500">
-                    <MapPin className="w-4 h-4 text-rose-500" /> Location:
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                    <MapPin className="w-4 h-4 text-[#b38f53]" /> Location:
                   </span>
-                  <span className="font-medium text-slate-800 text-[11px]">{course.location}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px]">{course.location}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-700 pt-1 border-t border-slate-200/60">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500">
-                    <Users className="w-4 h-4 text-indigo-500" /> Enrolled Roster:
+                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                    <Users className="w-4 h-4 text-[#0277b8]" /> Enrolled Roster:
                   </span>
-                  <span className="font-mono font-bold text-indigo-700">{course.enrolledCount} Students Enrolled</span>
+                  <span className="font-mono font-bold text-[#023264] dark:text-[#7dd3fc]">{course.enrolledCount} Students Enrolled</span>
                 </div>
               </div>
 
@@ -517,7 +517,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                   {!isStudent && (
                     <button
                       onClick={() => handleOpenEditModal(course)}
-                      className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5 cursor-pointer"
+                      className="text-[10px] font-bold text-[#025798] dark:text-[#7dd3fc] hover:underline flex items-center gap-0.5 cursor-pointer"
                     >
                       <Plus className="w-2.5 h-2.5" /> Edit Topics
                     </button>
@@ -525,12 +525,12 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {course.topics.slice(0, 3).map((topic, idx) => (
-                    <span key={idx} className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded-md border border-slate-200 flex items-center gap-1">
+                    <span key={idx} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
                       • {topic}
                     </span>
                   ))}
                   {course.topics.length > 3 && (
-                    <span className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-md">
+                    <span className="px-2 py-1 bg-[#025798]/10 text-[#025798] dark:text-[#7dd3fc] text-[10px] font-bold rounded-md">
                       +{course.topics.length - 3} more
                     </span>
                   )}
@@ -539,18 +539,18 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
             </div>
 
             {/* Footer Action Buttons */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
               <button
                 onClick={() => setSelectedCourse(course)}
-                className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                className="flex-1 py-2.5 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs border border-[#b38f53]/30"
               >
-                View Full Syllabus & Materials <ChevronRight className="w-4 h-4" />
+                <span>View Full Syllabus & Materials</span> <ChevronRight className="w-4 h-4 text-[#dfc18b]" />
               </button>
 
               {!isStudent && (
                 <button
                   onClick={() => handleOpenEditModal(course)}
-                  className="py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer border border-indigo-200"
+                  className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-[#025798]/15 text-[#023264] dark:text-[#7dd3fc] font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer border border-slate-200 dark:border-slate-700"
                   title="Edit Course"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> Edit
@@ -566,10 +566,10 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       {/* Course Detail Syllabus Modal */}
       {selectedCourse && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scaleUp">
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scaleUp">
+            <div className="p-5 bg-[#023264] text-white flex items-center justify-between border-b border-[#b38f53]/30">
               <div>
-                <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-400/20 px-2 py-0.5 rounded border border-amber-400/30">
+                <span className="text-[10px] font-mono font-bold text-[#dfc18b] bg-[#b38f53]/20 px-2 py-0.5 rounded border border-[#b38f53]/40">
                   {selectedCourse.code}
                 </span>
                 <h3 className="text-base font-extrabold mt-1">{selectedCourse.title}</h3>
@@ -582,42 +582,42 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                       setSelectedCourse(null);
                       handleOpenEditModal(c);
                     }}
-                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1 bg-[#025798] hover:bg-[#0277b8] text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5" /> Edit Course
                   </button>
                 )}
                 <button 
                   onClick={() => setSelectedCourse(null)}
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar text-xs text-slate-800">
+            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar text-xs text-slate-800 dark:text-slate-200">
               <div>
                 <h4 className="font-extrabold uppercase text-[10px] text-slate-400 tracking-wider mb-1">Course Description</h4>
-                <p className="text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">{selectedCourse.description}</p>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">{selectedCourse.description}</p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">Instructor</span>
-                  <span className="font-bold text-slate-900">{selectedCourse.instructor}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedCourse.instructor}</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">Schedule</span>
-                  <span className="font-bold text-slate-900">{selectedCourse.scheduleDays}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedCourse.scheduleDays}</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">Location</span>
-                  <span className="font-bold text-slate-900">{selectedCourse.location}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedCourse.location}</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">Credits / Roster</span>
-                  <span className="font-bold text-indigo-700">{selectedCourse.credits} Cr ({selectedCourse.enrolledCount} Enrolled)</span>
+                  <span className="font-bold text-[#025798] dark:text-[#7dd3fc]">{selectedCourse.credits} Cr ({selectedCourse.enrolledCount} Enrolled)</span>
                 </div>
               </div>
 
@@ -632,9 +632,9 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
 
                 <div className="space-y-2 mb-3">
                   {selectedCourse.topics.map((t, idx) => (
-                    <div key={idx} className="p-2.5 bg-white border border-slate-200 rounded-lg flex items-center justify-between gap-2 font-bold text-slate-800 group/topic">
+                    <div key={idx} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-between gap-2 font-bold text-slate-800 dark:text-slate-200 group/topic">
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-[#01883c] flex-shrink-0" />
                         <span>Module {idx + 1}: {t}</span>
                       </div>
                       {!isStudent && (
@@ -652,7 +652,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
 
                 {/* Quick Add Topic Input (Admin/Teacher only) */}
                 {!isStudent && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                     <input
                       type="text"
                       placeholder="Add a new syllabus topic or lecture module..."
@@ -664,23 +664,23 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                           handleQuickAddSyllabusTopic(selectedCourse.id);
                         }
                       }}
-                      className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30 text-slate-900 dark:text-white"
                     />
                     <button
                       onClick={() => handleQuickAddSyllabusTopic(selectedCourse.id)}
-                      className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-2 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add Topic
+                      <Plus className="w-3.5 h-3.5 text-[#dfc18b]" /> Add Topic
                     </button>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end">
               <button
                 onClick={() => setSelectedCourse(null)}
-                className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+                className="px-5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl cursor-pointer"
               >
                 Close Course
               </button>
@@ -692,10 +692,10 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       {/* Add / Edit Course Modal */}
       {!isStudent && showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleSaveCourse} className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <form onSubmit={handleSaveCourse} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
+            <div className="p-4 bg-[#023264] text-white flex items-center justify-between border-b border-[#b38f53]/30">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-amber-400" />
+                <BookOpen className="w-5 h-5 text-[#dfc18b]" />
                 <h3 className="text-sm font-extrabold">
                   {editingCourse ? `Edit Course Card (${editingCourse.code})` : 'Add New Ministry Course'}
                 </h3>
@@ -703,7 +703,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
               <button 
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center cursor-pointer"
+                className="w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center cursor-pointer"
               >
                 ✕
               </button>
@@ -719,7 +719,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                     placeholder="e.g. SOM-MOD-7"
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                   />
                 </div>
                 <div>
@@ -730,7 +730,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                     max="100"
                     value={formCredits}
                     onChange={(e) => setFormCredits(parseInt(e.target.value, 10) || 1)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                   />
                 </div>
                 <div>
@@ -741,7 +741,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                     max="500"
                     value={formEnrolled}
                     onChange={(e) => setFormEnrolled(parseInt(e.target.value, 10) || 0)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                   />
                 </div>
               </div>
@@ -754,7 +754,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                   placeholder="e.g. Practical Pastoral Ministry & Shepherding"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                 />
               </div>
 
@@ -766,7 +766,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                     placeholder="e.g. Dr. Faculty Director"
                     value={formInstructor}
                     onChange={(e) => setFormInstructor(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                   />
                 </div>
 
@@ -776,7 +776,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                     type="date"
                     value={formExpiryDate}
                     onChange={(e) => setFormExpiryDate(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                   />
                 </div>
               </div>
@@ -788,7 +788,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                   placeholder="e.g. Tuesdays (7:00 PM - 9:00 PM)"
                   value={formSchedule}
                   onChange={(e) => setFormSchedule(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                 />
               </div>
 
@@ -799,7 +799,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                   placeholder="e.g. Main Sanctuary Hall A"
                   value={formLocation}
                   onChange={(e) => setFormLocation(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                 />
               </div>
 
@@ -810,7 +810,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                   placeholder="Provide detailed course summary and objectives..."
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
                 />
               </div>
 
@@ -821,7 +821,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                 </label>
                 <div className="space-y-1.5 mb-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
                   {formTopics.map((top, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
+                    <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium">
                       <span className="truncate pr-2">• {top}</span>
                       <button
                         type="button"
@@ -847,12 +847,12 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                         handleAddTopic();
                       }
                     }}
-                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none"
+                    className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none text-slate-900 dark:text-white"
                   />
                   <button
                     type="button"
                     onClick={handleAddTopic}
-                    className="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                    className="px-3 py-2 bg-[#025798]/15 hover:bg-[#025798]/25 text-[#023264] dark:text-[#7dd3fc] font-bold text-xs rounded-lg transition-colors cursor-pointer border border-[#025798]/30"
                   >
                     + Add Topic
                   </button>
@@ -860,7 +860,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
               {editingCourse ? (
                 <button
                   type="button"
@@ -875,15 +875,15 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-lg cursor-pointer"
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
+                  className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1 shadow-xs border border-[#b38f53]/30"
                 >
-                  <Save className="w-3.5 h-3.5" />
+                  <Save className="w-3.5 h-3.5 text-[#dfc18b]" />
                   {editingCourse ? 'Save Changes' : 'Create Course'}
                 </button>
               </div>

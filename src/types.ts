@@ -13,6 +13,20 @@ export interface FacultyTeacher {
   badgeColor: string;
 }
 
+export interface GraduationPhoto {
+  id: string;
+  title: string;
+  caption: string;
+  cohortYear: string;
+  date?: string;
+  imageUrl: string;
+  category: 'commencement' | 'diploma' | 'prayer' | 'celebration' | 'fellowship';
+  featuredQuote?: string;
+  scripture?: string;
+  studentHonors?: string[];
+  imageFit?: 'contain' | 'cover' | 'top';
+}
+
 export type AcademicLevel = {
   id: string;
   code: string;

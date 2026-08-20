@@ -37,28 +37,28 @@ export const EnrollmentCtaSection: React.FC<{
   onPlayIntro?: () => void;
 }> = ({ onOpenEnrollmentModal, onNavigate, onPlayIntro }) => {
   return (
-    <section className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-indigo-500/30 shadow-2xl relative overflow-hidden space-y-6">
+    <section className="bg-gradient-to-br from-[#022044] via-[#023264] to-[#011b38] text-white rounded-3xl p-6 sm:p-8 border border-[#b38f53]/30 shadow-2xl relative overflow-hidden space-y-6">
       {/* Decorative ambient background glows */}
-      <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#0277b8]/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-[#b38f53]/20 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
         {/* Left Col: Headings & Value Props */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-              <Sparkles className="w-3 h-3 text-slate-950" /> Next Cohort Admissions Open
+            <span className="px-3 py-1 rounded-full bg-[#b38f53] text-white font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-md border border-[#dfc18b]/40">
+              <Sparkles className="w-3 h-3 text-[#dfc18b]" /> Next Cohort Admissions Open
             </span>
-            <span className="text-xs text-indigo-200 font-mono font-semibold">
+            <span className="text-xs text-[#bae6fd] font-mono font-semibold">
               Fall & Spring Term Tracks
             </span>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-              Answer the Call. <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-indigo-200 to-purple-300">Equip Your Ministry.</span>
+              Answer the Call. <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#dfc18b] via-[#bae6fd] to-[#7dd3fc]">Equip Your Ministry.</span>
             </h2>
-            <p className="text-xs sm:text-sm text-indigo-100/80 leading-relaxed max-w-xl">
+            <p className="text-xs sm:text-sm text-slate-200/90 leading-relaxed max-w-xl">
               Whether you are stepping into pastoral leadership, apostolic ministry, or deepening your biblical doctrine, our structured 6-module curriculum provides theological depth and real-world spiritual power.
             </p>
           </div>
@@ -66,7 +66,7 @@ export const EnrollmentCtaSection: React.FC<{
           {/* Quick Highlight Pills */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 space-y-1">
-              <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[11px]">
+              <div className="flex items-center gap-1.5 text-[#dfc18b] font-bold text-[11px]">
                 <Calendar className="w-3.5 h-3.5" /> Term Dates
               </div>
               <p className="text-slate-200 font-semibold text-[11px]">Upcoming 2026 Term</p>
@@ -74,7 +74,7 @@ export const EnrollmentCtaSection: React.FC<{
             </div>
 
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 space-y-1">
-              <div className="flex items-center gap-1.5 text-indigo-300 font-bold text-[11px]">
+              <div className="flex items-center gap-1.5 text-[#7dd3fc] font-bold text-[11px]">
                 <Clock className="w-3.5 h-3.5" /> Class Schedule
               </div>
               <p className="text-slate-200 font-semibold text-[11px]">Tue & Thu @ 7PM EST</p>
@@ -82,7 +82,7 @@ export const EnrollmentCtaSection: React.FC<{
             </div>
 
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 space-y-1 col-span-2 sm:col-span-1">
-              <div className="flex items-center gap-1.5 text-purple-300 font-bold text-[11px]">
+              <div className="flex items-center gap-1.5 text-[#86efac] font-bold text-[11px]">
                 <Video className="w-3.5 h-3.5" /> Format
               </div>
               <p className="text-slate-200 font-semibold text-[11px]">Hybrid Delivery</p>
@@ -94,7 +94,7 @@ export const EnrollmentCtaSection: React.FC<{
         {/* Right Col: Call-to-Action Card */}
         <div className="lg:col-span-5 bg-white/10 backdrop-blur-md rounded-2xl p-5 sm:p-6 border border-white/20 space-y-4 shadow-xl">
           <div className="space-y-1">
-            <span className="text-[10px] font-mono font-bold uppercase text-amber-300 tracking-wider">
+            <span className="text-[10px] font-mono font-bold uppercase text-[#dfc18b] tracking-wider">
               Admissions & Inquiries
             </span>
             <h3 className="text-lg font-black text-white">
@@ -109,11 +109,11 @@ export const EnrollmentCtaSection: React.FC<{
             <button
               type="button"
               onClick={onOpenEnrollmentModal}
-              className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg hover:shadow-amber-400/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-gradient-to-r from-[#b38f53] via-[#c4a166] to-[#b38f53] hover:from-[#c4a166] hover:to-[#dfc18b] text-[#022044] font-black text-xs uppercase tracking-wider rounded-xl shadow-lg hover:shadow-[#b38f53]/30 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#dfc18b]/40"
             >
-              <GraduationCap className="w-4 h-4 text-slate-950" />
+              <GraduationCap className="w-4 h-4 text-[#022044]" />
               <span>Apply for Next Cohort</span>
-              <ArrowRight className="w-4 h-4 text-slate-950" />
+              <ArrowRight className="w-4 h-4 text-[#022044]" />
             </button>
 
             <button
@@ -121,7 +121,7 @@ export const EnrollmentCtaSection: React.FC<{
               onClick={() => onNavigate('courses')}
               className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <BookOpen className="w-4 h-4 text-indigo-300" />
+              <BookOpen className="w-4 h-4 text-[#bae6fd]" />
               <span>Browse 6 Core Curriculum Tracks</span>
             </button>
 
@@ -129,9 +129,9 @@ export const EnrollmentCtaSection: React.FC<{
               <button
                 type="button"
                 onClick={onPlayIntro}
-                className="w-full py-2 px-4 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-bold text-xs rounded-xl border border-amber-400/30 transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2 px-4 bg-[#b38f53]/20 hover:bg-[#b38f53]/30 text-[#dfc18b] font-bold text-xs rounded-xl border border-[#b38f53]/40 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                <Sparkles className="w-4 h-4 text-amber-400" />
+                <Sparkles className="w-4 h-4 text-[#dfc18b]" />
                 <span>Watch Official Ministry Intro (6s)</span>
               </button>
             )}
@@ -139,7 +139,7 @@ export const EnrollmentCtaSection: React.FC<{
 
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-300">
             <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Accredited Ministry Training
+              <ShieldCheck className="w-3.5 h-3.5 text-[#4ade80]" /> Accredited Ministry Training
             </span>
             <span>Ephesians 2:20 Grounded</span>
           </div>
@@ -169,7 +169,7 @@ const TESTIMONIES: Testimony[] = [
     cohort: 'Cohort of 2025',
     quote: 'The 6 core modules bridged the gap between raw theological knowledge and practical supernatural ministry in the field. The personal mentorship of Apostle Gillian and Pastor Samuel completely transformed my walk.',
     badge: 'Alumni Graduate',
-    accent: 'border-amber-400/40 bg-amber-500/10 text-amber-300'
+    accent: 'border-[#b38f53]/40 bg-[#b38f53]/10 text-[#dfc18b]'
   },
   {
     id: '2',
@@ -178,7 +178,7 @@ const TESTIMONIES: Testimony[] = [
     cohort: 'Level 2 Track',
     quote: 'Balancing a career and ministry was overwhelming until I joined the interactive Tuesday & Thursday live streams. The attendance accountability and quiz grading pushed me to excel at the highest standard.',
     badge: 'Current Student',
-    accent: 'border-indigo-400/40 bg-indigo-500/10 text-indigo-300'
+    accent: 'border-[#0277b8]/40 bg-[#0277b8]/10 text-[#7dd3fc]'
   },
   {
     id: '3',
@@ -187,7 +187,7 @@ const TESTIMONIES: Testimony[] = [
     cohort: 'Level 3 Cohort',
     quote: 'The apostolic governance and leadership practicum provided our church planting team with a bulletproof biblical foundation. Every leader in modern ministry needs this training.',
     badge: 'Ministry Leader',
-    accent: 'border-purple-400/40 bg-purple-500/10 text-purple-300'
+    accent: 'border-[#01883c]/40 bg-[#01883c]/10 text-[#86efac]'
   }
 ];
 
@@ -199,8 +199,8 @@ export const StudentStoriesSection: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Quote className="w-4 h-4 text-amber-500" />
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            <Quote className="w-4 h-4 text-[#b38f53]" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#025798] dark:text-[#7dd3fc]">
               Transformational Impact
             </span>
           </div>
@@ -219,7 +219,7 @@ export const StudentStoriesSection: React.FC = () => {
               key={idx}
               onClick={() => setActiveTestimony(idx)}
               className={`h-2 rounded-full transition-all cursor-pointer ${
-                idx === activeTestimony ? 'w-6 bg-indigo-600 dark:bg-indigo-400' : 'w-2 bg-slate-200 dark:bg-slate-700'
+                idx === activeTestimony ? 'w-6 bg-[#023264] dark:bg-[#7dd3fc]' : 'w-2 bg-slate-200 dark:bg-slate-700'
               }`}
               aria-label={`View testimony ${idx + 1}`}
             />
@@ -237,7 +237,7 @@ export const StudentStoriesSection: React.FC = () => {
               onClick={() => setActiveTestimony(idx)}
               className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
                 isSelected
-                  ? 'bg-slate-50 dark:bg-slate-800/80 border-indigo-500/60 shadow-md ring-1 ring-indigo-500/20'
+                  ? 'bg-slate-50 dark:bg-slate-800/80 border-[#025798]/60 shadow-md ring-1 ring-[#025798]/20'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 opacity-80 hover:opacity-100'
               }`}
             >
@@ -260,7 +260,7 @@ export const StudentStoriesSection: React.FC = () => {
               </div>
 
               <div className="pt-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#023264] to-[#025798] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
                   {item.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                 </div>
                 <div className="min-w-0">
@@ -307,7 +307,7 @@ const FAQS: FaqItem[] = [
   {
     category: 'tuition',
     question: 'How does tuition and payment installments work?',
-    answer: ' Students can pay in full or utilize customized payment installments tracked transparently through the student portal dashboard with instant digital receipts.'
+    answer: 'Students can pay in full or utilize customized payment installments tracked transparently through the student portal dashboard with instant digital receipts.'
   },
   {
     category: 'academics',
@@ -340,8 +340,8 @@ export const FaqSection: React.FC<{
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <HelpCircle className="w-4 h-4 text-indigo-500" />
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            <HelpCircle className="w-4 h-4 text-[#025798] dark:text-[#7dd3fc]" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#025798] dark:text-[#7dd3fc]">
               Visitor & Prospective Guide
             </span>
           </div>
@@ -362,7 +362,7 @@ export const FaqSection: React.FC<{
               placeholder="Search questions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#025798]/30 focus:outline-none text-slate-900 dark:text-white"
             />
           </div>
         </div>
@@ -382,7 +382,7 @@ export const FaqSection: React.FC<{
             onClick={() => setActiveCategory(cat.id)}
             className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 ${
               activeCategory === cat.id
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
+                ? 'bg-[#023264] text-white dark:bg-white dark:text-slate-900 shadow-2xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
             }`}
           >
@@ -401,7 +401,7 @@ export const FaqSection: React.FC<{
                 key={idx}
                 className={`rounded-2xl border transition-all overflow-hidden ${
                   isOpen
-                    ? 'bg-slate-50 dark:bg-slate-800/70 border-indigo-300 dark:border-indigo-800/80 shadow-xs'
+                    ? 'bg-slate-50 dark:bg-slate-800/70 border-[#025798]/40 dark:border-[#025798]/60 shadow-xs'
                     : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
@@ -413,7 +413,7 @@ export const FaqSection: React.FC<{
                   <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
                     {faq.question}
                   </span>
-                  <div className={`p-1 rounded-lg shrink-0 transition-transform ${isOpen ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rotate-180' : 'text-slate-400'}`}>
+                  <div className={`p-1 rounded-lg shrink-0 transition-transform ${isOpen ? 'bg-[#023264]/10 dark:bg-[#023264]/40 text-[#023264] dark:text-[#7dd3fc] rotate-180' : 'text-slate-400'}`}>
                     <ChevronDown className="w-4 h-4" />
                   </div>
                 </button>
@@ -443,7 +443,7 @@ export const FaqSection: React.FC<{
       </div>
 
       {/* Still have questions footer banner */}
-      <div className="p-4 bg-gradient-to-r from-slate-100 to-indigo-50 dark:from-slate-800 dark:to-indigo-950/40 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div className="p-4 bg-gradient-to-r from-slate-50 to-[#023264]/10 dark:from-slate-800 dark:to-[#023264]/30 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
         <div className="space-y-0.5 text-center sm:text-left">
           <p className="font-bold text-slate-900 dark:text-white">Have a specific question about your enrollment?</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">Our faculty and admissions advisors are ready to assist you.</p>
@@ -451,7 +451,7 @@ export const FaqSection: React.FC<{
         <button
           type="button"
           onClick={onOpenEnrollmentModal}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+          className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0 border border-[#b38f53]/30"
         >
           Contact Admissions
         </button>

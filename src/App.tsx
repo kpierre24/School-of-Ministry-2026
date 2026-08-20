@@ -3645,9 +3645,9 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="relative bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-40 max-w-full overflow-visible transition-all rounded-2xl">
-        {/* Subtle Brand Accent Line */}
-        <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/40 via-amber-500/40 to-indigo-500/0 pointer-events-none" />
+      <header className="relative bg-white/85 dark:bg-[#08182c]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-[#1a385c] px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-40 max-w-full overflow-visible transition-all rounded-2xl">
+        {/* Subtle Brand Accent Line (HTEIM Royal Navy & Ministry Gold) */}
+        <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-[#023264]/0 via-[#025798]/60 via-[#b38f53]/70 to-[#0277b8]/0 pointer-events-none" />
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
           {/* Logo & Brand */}
           <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink group" onClick={() => setActiveErpTab('home')}>
@@ -3659,8 +3659,8 @@ create policy "Allow public update" on app_states for update using (true) with c
               <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[280px]">
                 HTEIM School of Ministry
               </h1>
-              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#0e2540] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1a385c]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#01883c] animate-pulse"></span>
                 Spring 2026 • Term 2
               </span>
             </div>
@@ -3845,14 +3845,14 @@ create policy "Allow public update" on app_states for update using (true) with c
             {appUser ? (
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 sm:gap-2 p-1 pr-2 sm:pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800/80"
+                className="flex items-center gap-1.5 sm:gap-2 p-1 pr-2 sm:pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#0e2540] border border-slate-200/80 dark:border-[#1a385c]"
                 aria-label={`Account: ${appUser.name}`}
                 title="Account & Role Settings"
               >
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
-                  appUser?.role === 'admin' ? 'bg-purple-900 dark:bg-purple-100 text-white dark:text-purple-900' :
-                  appUser?.role === 'teacher' ? 'bg-emerald-800 dark:bg-emerald-100 text-white dark:text-emerald-900' :
-                  'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
+                  appUser?.role === 'admin' ? 'bg-[#023264] text-white dark:bg-[#dceaf8] dark:text-[#023264]' :
+                  appUser?.role === 'teacher' ? 'bg-[#01883c] text-white dark:bg-[#d1fae5] dark:text-[#01883c]' :
+                  'bg-[#b38f53] text-white dark:bg-[#fef3c7] dark:text-[#8c6a32]'
                 }`}>
                   {appUser.name.charAt(0).toUpperCase()}
                 </div>
@@ -3861,9 +3861,9 @@ create policy "Allow public update" on app_states for update using (true) with c
                     {appUser.name.split(' ')[0]}
                   </span>
                   <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                    appUser?.role === 'admin' ? 'text-purple-600 dark:text-purple-400' :
-                    appUser?.role === 'teacher' ? 'text-emerald-600 dark:text-emerald-400' :
-                    appUser?.role === 'student' ? 'text-amber-600 dark:text-amber-400' :
+                    appUser?.role === 'admin' ? 'text-[#025798] dark:text-[#7dd3fc]' :
+                    appUser?.role === 'teacher' ? 'text-[#01883c] dark:text-[#4ade80]' :
+                    appUser?.role === 'student' ? 'text-[#b38f53] dark:text-[#dfc18b]' :
                     'text-slate-400'
                   }`}>
                     {appUser?.role}
@@ -3873,11 +3873,11 @@ create policy "Allow public update" on app_states for update using (true) with c
             ) : (
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-bold text-xs shadow-xs whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs shadow-xs whitespace-nowrap border border-[#b38f53]/30"
                 aria-label="Sign In to Portal"
                 title="Sign in to Student or Faculty Portal"
               >
-                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <Lock className="w-3.5 h-3.5 shrink-0 text-[#dfc18b]" />
                 <span>Sign In</span>
               </button>
             )}
@@ -3888,7 +3888,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       {/* Desktop Navigation */}
       {appUser && (
         <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
-          <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-slate-700/60">
+          <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-[#08182c]/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-[#1a385c]">
             {[
               { tab: 'home', label: 'Home', Icon: Sparkles },
               { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
@@ -3915,17 +3915,17 @@ create policy "Allow public update" on app_states for update using (true) with c
                   aria-current={isActive ? 'page' : undefined}
                   className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer active:scale-95 ${
                     isActive
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
+                      ? 'bg-white dark:bg-[#0e2540] text-[#023264] dark:text-white shadow-sm font-bold border border-[#025798]/20 dark:border-[#0277b8]/30'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-[#023264] dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#0e2540]/50'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'}`} />
                   <span className="hidden lg:inline">{label}</span>
                   {badgeAlert && (
                     <span className={`text-[10px] min-w-4 h-4 px-1 rounded-full font-bold flex items-center justify-center ${
                       isActive 
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' 
-                        : 'bg-rose-500 text-white animate-pulse'
+                        ? 'bg-[#023264] dark:bg-[#dfc18b] text-white dark:text-[#023264]' 
+                        : 'bg-[#b38f53] text-white animate-pulse'
                     }`}>
                       {badgeCount || '•'}
                     </span>
@@ -7132,7 +7132,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
       {/* Mobile Bottom Navigation */}
       {appUser && (
-        <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/90 dark:border-slate-800/90 backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
+        <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#08182c]/95 border-t border-slate-200/90 dark:border-[#1a385c] backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
           {[
             { tab: 'home', Icon: Sparkles, label: 'Home' },
             { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
@@ -7149,15 +7149,15 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 aria-current={isActive ? 'page' : undefined}
                 className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
                   isActive
-                    ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
+                    ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <div className="relative">
-                  <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'}`} />
                 </div>
                 <span className={`text-[10px] tracking-tight truncate max-w-full ${
-                  isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+                  isActive ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
                 }`}>{label}</span>
               </button>
             );
@@ -7170,22 +7170,22 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             aria-label="Open more portal sections"
             className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
               showMobileMoreMenu
-                ? 'bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-white font-bold'
+                ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <div className="relative">
               <Menu className={`w-5 h-5 transition-transform ${
-                showMobileMoreMenu ? 'scale-110 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+                showMobileMoreMenu ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'
               }`} />
               {unreadMessagesCount > 0 && (
-                <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center px-0.5">
+                <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-[#b38f53] text-white font-bold text-[8px] flex items-center justify-center px-0.5">
                   {unreadMessagesCount}
                 </span>
               )}
             </div>
             <span className={`text-[10px] tracking-tight ${
-              showMobileMoreMenu ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+              showMobileMoreMenu ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
             }`}>More</span>
           </button>
         </nav>

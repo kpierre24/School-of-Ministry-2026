@@ -2200,14 +2200,14 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       </div>
 
       {/* Sub-Navigation Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full lg:w-auto">
           <button
             onClick={() => setActiveSubTab('invoices')}
             className={`min-h-11 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
               activeSubTab === 'invoices' || activeSubTab === 'ledger'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-[#023264] text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <FileText className="w-4 h-4" /> Invoice Ledger ({invoices.length})
@@ -2217,8 +2217,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             onClick={() => setActiveSubTab('payments')}
             className={`min-h-11 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
               activeSubTab === 'payments'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-[#023264] text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <CreditCard className="w-4 h-4" /> Payment History ({transactions.length})
@@ -2228,8 +2228,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             onClick={() => setActiveSubTab('receipts')}
             className={`min-h-11 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
               activeSubTab === 'receipts'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-[#023264] text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <ReceiptIcon className="w-4 h-4" /> Issued Receipts ({receipts.length})
@@ -2239,8 +2239,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             onClick={() => setActiveSubTab('analytics')}
             className={`min-h-11 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
               activeSubTab === 'analytics'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-[#023264] text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <TrendingUp className="w-4 h-4" /> Financial Analytics
@@ -2253,17 +2253,17 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               setShowBulkReminderModal(true);
               navigate({ action: 'bulk-reminder' });
             }}
-            className="col-span-2 sm:col-span-1 min-h-11 px-3.5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 hover:from-emerald-700 hover:to-indigo-800 text-white font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-95 border border-emerald-400/30"
+            className="col-span-2 sm:col-span-1 min-h-11 px-3.5 py-2 bg-gradient-to-r from-[#023264] via-[#025798] to-[#01883c] hover:from-[#022044] hover:to-[#01682e] text-white font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-95 border border-[#b38f53]/30"
           >
-            <MessageSquare className="w-4 h-4 text-emerald-300 animate-pulse" />
+            <MessageSquare className="w-4 h-4 text-[#dfc18b] animate-pulse" />
             <span>Send Bulk Reminders (WhatsApp & Email)</span>
-            <span className="px-1.5 py-0.5 bg-emerald-400 text-slate-950 text-[10px] font-extrabold rounded-md ml-1">
+            <span className="px-1.5 py-0.5 bg-[#dfc18b] text-[#022044] text-[10px] font-extrabold rounded-md ml-1">
               {payments.filter(p => p.totalTuition - p.amountPaid > 0).length} Due
             </span>
           </button>
           <button
             onClick={handleExportCSV}
-            className="min-h-11 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+            className="min-h-11 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
@@ -2273,7 +2273,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 setShowRemovedArchiveModal(true);
                 navigate({ action: 'archive' });
               }}
-              className="min-h-11 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              className="min-h-11 px-3.5 py-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               title="View or restore previously removed students and fees"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -2283,8 +2283,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </span>
             </button>
           )}
-          <div className="flex items-center gap-1 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold shrink-0" title="Payment records and student payment logs are permanently stored and managed manually inside the portal">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-1 px-3 py-2 bg-[#01883c]/10 border border-[#01883c]/30 rounded-xl text-xs text-[#01883c] dark:text-[#86efac] font-bold shrink-0" title="Payment records and student payment logs are permanently stored and managed manually inside the portal">
+            <ShieldCheck className="w-4 h-4 text-[#01883c] shrink-0" />
             <span className="hidden sm:inline text-xs">Permanent Ledger</span>
           </div>
 
@@ -2293,9 +2293,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               setShowAddStudentModal(true);
               navigate({ action: 'add-student' });
             }}
-            className="min-h-11 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            className="min-h-11 px-3.5 py-2 bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs border border-[#b38f53]/30"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-400" /> Log Tuition
+            <Plus className="w-3.5 h-3.5 text-[#dfc18b]" /> Log Tuition
           </button>
         </div>
       </div>

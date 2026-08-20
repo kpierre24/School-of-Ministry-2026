@@ -86,8 +86,9 @@ import {
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
 import { EnrollmentInquiryModal } from './EnrollmentInquiryModal';
-import { EnrollmentCtaSection, StudentStoriesSection, FaqSection } from './VisitorSections';
+import { StudentStoriesSection, FaqSection } from './VisitorSections';
 import { AdminCommandCenter } from './AdminCommandCenter';
+import { GraduationCarousel } from './GraduationCarousel';
 
 interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
@@ -132,7 +133,7 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
     bio: 'Visionary founder of Heaven Touching Earth International Ministries. Overseeing apostolic alignment, ministerial ethics, and five-fold leadership equipping across the 6 core modules.',
     module: 'Module 1 & 6: Apostolic Governance',
     image: gillianSelkridgeAsset,
-    badgeColor: 'bg-purple-100 text-purple-900 dark:bg-purple-900/90 dark:text-purple-100 border-purple-300 dark:border-purple-700'
+    badgeColor: 'bg-[#023264]/20 text-[#023264] dark:bg-[#023264]/60 dark:text-[#bae6fd] border-[#025798]/40'
   },
   {
     id: 'samuel-selkridge',
@@ -142,7 +143,7 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
     bio: 'Senior Pastor and Dean of Faculty with decades of pastoral devotion. Teaching deep scriptural hermeneutics, flock care, and foundational Christian doctrine.',
     module: 'Module 2: Exegetical Theology & Doctrine',
     image: samuelSelkridgeAsset,
-    badgeColor: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900/90 dark:text-indigo-100 border-indigo-300 dark:border-indigo-700'
+    badgeColor: 'bg-[#025798]/20 text-[#025798] dark:bg-[#025798]/60 dark:text-[#7dd3fc] border-[#0277b8]/40'
   },
   {
     id: 'gale-grant',
@@ -152,7 +153,7 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
     bio: 'Leading curriculum development and systematic theology. Specialized in biblical worldview, ministerial integrity, and structured church administration.',
     module: 'Module 3: Systematic Theology & Ethics',
     image: galeGrantAsset,
-    badgeColor: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/90 dark:text-emerald-100 border-emerald-300 dark:border-emerald-700'
+    badgeColor: 'bg-[#01883c]/20 text-[#01883c] dark:bg-[#01883c]/60 dark:text-[#a7f3d0] border-[#01883c]/40'
   },
   {
     id: 'christy-ruben',
@@ -162,7 +163,7 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
     bio: 'Dedicated to empowering ministers in the art of sermon preparation, spirit-led homiletics, pulpit decorum, and transformative community outreach.',
     module: 'Module 4: Homiletics & Practical Preaching',
     image: christyRubenAsset,
-    badgeColor: 'bg-amber-100 text-amber-950 dark:bg-amber-900/90 dark:text-amber-100 border-amber-300 dark:border-amber-700'
+    badgeColor: 'bg-[#b38f53]/20 text-[#8c6a32] dark:bg-[#b38f53]/60 dark:text-[#dfc18b] border-[#b38f53]/40'
   },
   {
     id: 'garod-andrews',
@@ -172,7 +173,7 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
     bio: 'Equipping saints in spiritual discernment, prophetic protocol, intercessory prayer warfare, and operating with spiritual authority.',
     module: 'Module 5: Prophetic Ministry & Intercession',
     image: garodAndrewsAsset,
-    badgeColor: 'bg-sky-100 text-sky-900 dark:bg-sky-900/90 dark:text-sky-100 border-sky-300 dark:border-sky-700'
+    badgeColor: 'bg-[#0277b8]/20 text-[#0277b8] dark:bg-[#0277b8]/60 dark:text-[#bae6fd] border-[#0277b8]/40'
   }
 ];
 
@@ -592,7 +593,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                       {!appUser && (
                         <button
                           onClick={() => setIsEnrollmentModalOpen(true)}
-                          className="px-4 py-2.5 sm:py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-300"
+                          className="px-4 py-2.5 sm:py-3 bg-[#b38f53] hover:bg-[#a07c42] text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-[#dfc18b]"
                         >
                           <Sparkles className="w-4 h-4 text-slate-950" />
                           <span>Apply for Enrollment</span>
@@ -601,17 +602,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
                       <button
                         onClick={() => onNavigate('courses')}
-                        className="px-4 py-2.5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-indigo-400"
+                        className="px-4 py-2.5 sm:py-3 bg-[#023264] hover:bg-[#025798] text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-[#0277b8]/40"
                       >
-                        <BookOpen className="w-4 h-4 text-amber-300" /> 
+                        <BookOpen className="w-4 h-4 text-[#dfc18b]" /> 
                         <span>6 Core Modules</span>
                       </button>
 
                       <button
                         onClick={() => onNavigate('schedule')}
-                        className="px-4 py-2.5 sm:py-3 bg-slate-900/90 hover:bg-slate-800 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-slate-700 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        className="px-4 py-2.5 sm:py-3 bg-[#01883c]/90 hover:bg-[#01883c] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl backdrop-blur-md transition-all border border-[#01883c]/60 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                       >
-                        <Calendar className="w-4 h-4 text-emerald-400" /> 
+                        <Calendar className="w-4 h-4 text-[#a7f3d0]" /> 
                         <span>Class Schedule</span>
                       </button>
                     </div>
@@ -847,10 +848,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-indigo-600 text-white font-black">
-                  <Lock className="w-4 h-4" />
+                <span className="p-1.5 rounded-lg bg-[#023264] text-white font-black">
+                  <Lock className="w-4 h-4 text-[#dfc18b]" />
                 </span>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#025798] dark:text-[#7dd3fc]">
                   Enrolled Students
                 </span>
               </div>
@@ -863,7 +864,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             </div>
             <button
               onClick={onOpenLogin}
-              className="w-full py-2.5 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-extrabold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              className="w-full py-2.5 px-4 bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-[#b38f53]/30"
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Portal Sign In</span>
@@ -874,10 +875,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3 sm:col-span-2 md:col-span-1">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-emerald-600 text-white font-black">
-                  <BookOpen className="w-4 h-4" />
+                <span className="p-1.5 rounded-lg bg-[#01883c] text-white font-black">
+                  <BookOpen className="w-4 h-4 text-[#a7f3d0]" />
                 </span>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#01883c] dark:text-[#4ade80]">
                   Academic Syllabus
                 </span>
               </div>
@@ -903,8 +904,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       <section className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-              <GraduationCap className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-[#023264] text-white flex items-center justify-center shadow-xs">
+              <GraduationCap className="w-4 h-4 text-[#dfc18b]" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
@@ -918,7 +919,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
           <button
             onClick={() => onNavigate('courses')}
-            className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            className="text-xs font-bold text-[#025798] dark:text-[#7dd3fc] hover:underline flex items-center gap-1"
           >
             <span>Full Syllabus & Handouts</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -932,8 +933,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               code: 'SOM-MOD-1',
               title: 'Introduction & Foundations',
               instructor: 'Gillian Selkridge',
-              badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800',
-              accent: 'border-amber-400/40',
+              badgeColor: 'bg-[#b38f53]/15 text-[#8c6a32] dark:bg-[#b38f53]/30 dark:text-[#dfc18b] border-[#b38f53]/40',
+              accent: 'border-[#b38f53]/30',
               description: 'Kingdom citizenship, covenant alignment, scripture recitation, and classroom integrity.'
             },
             {
@@ -941,8 +942,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               code: 'SOM-MOD-2',
               title: 'Evangelism & Soul Winning',
               instructor: 'Samuel Selkridge',
-              badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-              accent: 'border-emerald-400/40',
+              badgeColor: 'bg-[#01883c]/15 text-[#01883c] dark:bg-[#01883c]/30 dark:text-[#a7f3d0] border-[#01883c]/40',
+              accent: 'border-[#01883c]/30',
               description: 'The Matthew 28:19-20 mandate, personal witnessing, follow-up, and discipleship.'
             },
             {
@@ -950,8 +951,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               code: 'SOM-MOD-3',
               title: 'Ministerial Ethics & Character',
               instructor: 'Gale Grant',
-              badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-800',
-              accent: 'border-purple-400/40',
+              badgeColor: 'bg-[#023264]/15 text-[#023264] dark:bg-[#023264]/40 dark:text-[#bae6fd] border-[#025798]/40',
+              accent: 'border-[#025798]/30',
               description: 'High standards of integrity, financial transparency, counseling ethics, and servant leadership.'
             },
             {
@@ -959,8 +960,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               code: 'SOM-MOD-4',
               title: 'Apostolic Ministry & Order',
               instructor: 'Christy Ruben',
-              badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800',
-              accent: 'border-indigo-400/40',
+              badgeColor: 'bg-[#025798]/15 text-[#025798] dark:bg-[#025798]/40 dark:text-[#7dd3fc] border-[#0277b8]/40',
+              accent: 'border-[#0277b8]/30',
               description: 'Ephesians 2:20 foundation, apostolic signs, five-fold governance, and kingdom expansion.'
             },
             {
@@ -968,8 +969,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               code: 'SOM-MOD-5',
               title: 'Prophetic Ministry & Warfare',
               instructor: 'Garod Andrews',
-              badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800',
-              accent: 'border-rose-400/40',
+              badgeColor: 'bg-[#b38f53]/20 text-[#8c6a32] dark:bg-[#b38f53]/40 dark:text-[#dfc18b] border-[#b38f53]/50',
+              accent: 'border-[#b38f53]/40',
               description: 'Spiritual discernment, hearing the voice of God, testing prophecy, and prophetic protocol.'
             },
             {
@@ -977,8 +978,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               code: 'SOM-MOD-6',
               title: 'Pastors & Teachers Academy',
               instructor: 'Samuel Selkridge',
-              badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-300 dark:border-sky-800',
-              accent: 'border-sky-400/40',
+              badgeColor: 'bg-[#0277b8]/15 text-[#0277b8] dark:bg-[#0277b8]/40 dark:text-[#bae6fd] border-[#0277b8]/40',
+              accent: 'border-[#0277b8]/30',
               description: 'Pastoral care, preaching hermeneutics, flock governance, and spiritual mentorship.'
             }
           ].map((item) => (
@@ -997,7 +998,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   </span>
                 </div>
 
-                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#025798] dark:group-hover:text-[#7dd3fc] transition-colors">
                   {item.title}
                 </h3>
 
@@ -1010,7 +1011,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 <span className="font-semibold text-slate-600 dark:text-slate-400">
                   Lead: <strong className="text-slate-800 dark:text-slate-200">{item.instructor}</strong>
                 </span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                <span className="text-[#025798] dark:text-[#7dd3fc] font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
                   <span>View</span>
                   <ChevronRight className="w-3 h-3" />
                 </span>
@@ -1020,7 +1021,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </section>
 
-
+      {/* Roving Carousel of Last Year's Graduation Photos */}
+      <GraduationCarousel
+        appUser={appUser}
+        onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
+        onNavigateToCourses={() => onNavigate('courses')}
+      />
 
       {/* 4. MAIN STRUCTURAL LAYOUT: Portal Access, Broadcast & Covenant Mandate */}
       {appUser ? (
@@ -1142,8 +1148,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </p>
               </div>
             </div>
-            <div className="border-l-2 border-indigo-500 pl-4 py-2 shrink-0">
-              <span className="font-bold text-[10px] uppercase text-indigo-600 dark:text-indigo-400 block tracking-wider">Vision Statement</span>
+            <div className="border-l-2 border-[#b38f53] pl-4 py-2 shrink-0">
+              <span className="font-bold text-[10px] uppercase text-[#b38f53] dark:text-[#dfc18b] block tracking-wider">Vision Statement</span>
               <p className="text-slate-800 dark:text-slate-200 font-extrabold italic text-sm font-serif">
                 "Bringing Heaven to Earth, Taking People to Heaven"
               </p>
@@ -1162,8 +1168,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               </p>
             </div>
           </div>
-          <div className="border-l-2 border-indigo-500 pl-4 py-2 shrink-0">
-            <span className="font-bold text-[10px] uppercase text-indigo-600 dark:text-indigo-400 block tracking-wider">Vision Statement</span>
+          <div className="border-l-2 border-[#b38f53] pl-4 py-2 shrink-0">
+            <span className="font-bold text-[10px] uppercase text-[#b38f53] dark:text-[#dfc18b] block tracking-wider">Vision Statement</span>
             <p className="text-slate-800 dark:text-slate-200 font-extrabold italic text-sm font-serif">
               "Bringing Heaven to Earth, Taking People to Heaven"
             </p>
@@ -1171,16 +1177,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
       )}
 
-      {/* Prospective Student Enrollment CTA, Testimonials, FAQ & Modal: ONLY for unauthenticated / unlogged-in visitors */}
+      {/* Prospective Student Testimonials & FAQ: ONLY for unauthenticated / unlogged-in visitors */}
       {!appUser && (
         <>
-          {/* Prospective Student Enrollment CTA & Schedule Snippet */}
-          <EnrollmentCtaSection
-            onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
-            onNavigate={onNavigate}
-            onPlayIntro={onPlayIntro}
-          />
-
           {/* Student & Alumni Impact Stories */}
           <StudentStoriesSection />
 
@@ -1188,14 +1187,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <FaqSection
             onOpenEnrollmentModal={() => setIsEnrollmentModalOpen(true)}
           />
-
-          {/* Cohort Enrollment Application & Inquiry Modal */}
-          <EnrollmentInquiryModal
-            isOpen={isEnrollmentModalOpen}
-            onClose={() => setIsEnrollmentModalOpen(false)}
-          />
         </>
       )}
+
+      {/* Cohort Enrollment Application & Inquiry Modal with Combined Graduation Showcase */}
+      <EnrollmentInquiryModal
+        isOpen={isEnrollmentModalOpen}
+        onClose={() => setIsEnrollmentModalOpen(false)}
+        onNavigateToCourses={() => onNavigate('courses')}
+      />
 
       {/* Administrator Operational Command Center */}
       {isAdminOrTeacher && (

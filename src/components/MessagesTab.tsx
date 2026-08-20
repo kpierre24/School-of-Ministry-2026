@@ -64,7 +64,13 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   prefilledCategory = 'general',
   prefilledSubject = ''
 }) => {
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(() => messages[0]?.id || null);
+  // On mobile screens default to null so the user lands on the inbox threads list; on desktop auto-select first
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      return messages[0]?.id || null;
+    }
+    return null;
+  });
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'open' | 'in_progress' | 'resolved' | 'archived' | 'sent_by_me'>('all');
   const [selectedCategory, setSelectedCategory] = useState<MessageCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,8 +138,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   }, [messages, currentUserRole, currentUserName, currentUserEmail, activeFilter, selectedCategory, searchQuery]);
 
   const activeMessage = useMemo(() => {
-    return messages.find(m => m.id === selectedMessageId) || filteredMessages[0] || null;
-  }, [messages, selectedMessageId, filteredMessages]);
+    if (!selectedMessageId) return null;
+    return messages.find(m => m.id === selectedMessageId) || null;
+  }, [messages, selectedMessageId]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -229,17 +236,17 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   };
 
   return (
-    <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
+    <div className="material-screen space-y-4 sm:space-y-6 animate-fadeIn pb-36 sm:pb-28 md:pb-12">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-2xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-5 md:p-6 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-2xs">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+              <MessageSquare className="w-3.5 h-3.5 text-[#025798]" />
               Direct Communication Center
             </span>
           </div>
-          <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-base sm:text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             Messages & Academic Support
           </h2>
           <p className="hidden sm:block text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-2xl leading-relaxed">
@@ -250,64 +257,64 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
         <div className="w-full md:w-auto shrink-0">
           <button
             onClick={() => setShowNewMsgModal(true)}
-            className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+            className="w-full md:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98] border border-[#b38f53]/30"
           >
-            <MessageSquarePlus className="w-4 h-4" />
+            <MessageSquarePlus className="w-4 h-4 text-[#dfc18b]" />
             <span>Compose New Message</span>
           </button>
         </div>
       </div>
 
       {/* Quick Metrics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2 sm:gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-[#023264]/10 dark:bg-[#023264]/40 text-[#023264] dark:text-[#7dd3fc] shrink-0">
             <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Total</p>
-            <p className="text-base sm:text-xl font-black text-slate-900 dark:text-white leading-tight">{stats.total}</p>
+            <p className="text-sm sm:text-xl font-black text-slate-900 dark:text-white leading-tight">{stats.total}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2 sm:gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-[#b38f53]/15 dark:bg-[#b38f53]/30 text-[#8c6a32] dark:text-[#dfc18b] shrink-0">
             <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Unread</p>
-            <p className="text-base sm:text-xl font-black text-amber-600 dark:text-amber-400 leading-tight">{stats.unread}</p>
+            <p className="text-sm sm:text-xl font-black text-[#8c6a32] dark:text-[#dfc18b] leading-tight">{stats.unread}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2 sm:gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-[#0277b8]/10 dark:bg-[#0277b8]/30 text-[#0277b8] dark:text-[#7dd3fc] shrink-0">
             <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Open</p>
-            <p className="text-base sm:text-xl font-black text-blue-600 dark:text-blue-400 leading-tight">{stats.open}</p>
+            <p className="text-sm sm:text-xl font-black text-[#0277b8] dark:text-[#7dd3fc] leading-tight">{stats.open}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2 sm:gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-[#01883c]/10 dark:bg-[#01883c]/30 text-[#01883c] dark:text-[#4ade80] shrink-0">
             <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Resolved</p>
-            <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 leading-tight">{stats.resolved}</p>
+            <p className="text-sm sm:text-xl font-black text-[#01883c] dark:text-[#4ade80] leading-tight">{stats.resolved}</p>
           </div>
         </div>
       </div>
 
       {/* Main Workspace Layout (Sidebar Threads List + Chat View) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px]">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[500px] md:min-h-[620px]">
         
-        {/* LEFT COLUMN: Threads List (4 cols on lg) */}
-        <div className={`lg:col-span-5 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/50 dark:bg-slate-950/40 ${activeMessage && 'hidden lg:flex'}`}>
+        {/* LEFT COLUMN: Threads List (5 cols on lg) */}
+        <div className={`lg:col-span-5 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/50 dark:bg-slate-950/40 ${activeMessage ? 'hidden lg:flex' : 'flex'}`}>
           {/* Search & Filter Header */}
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-white dark:bg-slate-900">
+          <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 bg-white dark:bg-slate-900">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -315,7 +322,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 placeholder="Search messages, subject, or sender..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full pl-9 pr-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/50"
               />
               {searchQuery && (
                 <button 
@@ -333,7 +340,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 onClick={() => setActiveFilter('all')}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeFilter === 'all'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-[#023264] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -344,7 +351,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 onClick={() => setActiveFilter('unread')}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeFilter === 'unread'
-                    ? 'bg-amber-600 text-white shadow-xs'
+                    ? 'bg-[#b38f53] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -355,7 +362,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 onClick={() => setActiveFilter('open')}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeFilter === 'open'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[#0277b8] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -366,7 +373,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 onClick={() => setActiveFilter('resolved')}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeFilter === 'resolved'
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-[#01883c] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -377,7 +384,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 onClick={() => setActiveFilter('sent_by_me')}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeFilter === 'sent_by_me'
-                    ? 'bg-purple-600 text-white shadow-xs'
+                    ? 'bg-[#025798] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -388,7 +395,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 onClick={() => setActiveFilter('archived')}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
                   activeFilter === 'archived'
-                    ? 'bg-indigo-700 text-white shadow-xs font-bold'
+                    ? 'bg-slate-800 text-white shadow-xs font-bold'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -404,9 +411,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-2 py-0.5 rounded-full capitalize transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full capitalize transition-all cursor-pointer whitespace-nowrap ${
                     selectedCategory === cat
-                      ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200 font-bold border border-indigo-300 dark:border-indigo-700'
+                      ? 'bg-[#023264]/15 text-[#023264] dark:bg-[#023264]/60 dark:text-[#bae6fd] font-bold border border-[#025798]/30'
                       : 'bg-slate-200/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-300'
                   }`}
                 >
@@ -417,14 +424,25 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
           </div>
 
           {/* Messages Thread List */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-200/80 dark:divide-slate-800">
+          <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-200/80 dark:divide-slate-800 max-h-[580px] lg:max-h-[680px]">
             {filteredMessages.length === 0 ? (
-              <EmptyState
-                title="No messages match these filters"
-                description="Try clearing the search or selecting a different message category."
-                icon={<MessageSquare className="h-6 w-6" />}
-                action={<button type="button" onClick={() => { setActiveFilter('all'); setSelectedCategory('all'); setSearchQuery(''); }} className="md-btn-tonal text-sm">Reset filters</button>}
-              />
+              <div className="p-6 text-center space-y-3">
+                <EmptyState
+                  title="No messages match these filters"
+                  description="Try clearing the search or selecting a different message category."
+                  icon={<MessageSquare className="h-6 w-6 text-slate-400" />}
+                  action={
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
+                      <button type="button" onClick={() => { setActiveFilter('all'); setSelectedCategory('all'); setSearchQuery(''); }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold">
+                        Reset filters
+                      </button>
+                      <button type="button" onClick={() => setShowNewMsgModal(true)} className="px-3 py-1.5 bg-[#023264] text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                        <MessageSquarePlus className="w-3.5 h-3.5" /> Compose Message
+                      </button>
+                    </div>
+                  }
+                />
+              </div>
             ) : (
               filteredMessages.map(msg => {
                 const isSelected = activeMessage?.id === msg.id;
@@ -436,26 +454,26 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   <div
                     key={msg.id}
                     onClick={() => setSelectedMessageId(msg.id)}
-                    className={`p-4 transition-all cursor-pointer relative ${
+                    className={`p-3.5 sm:p-4 transition-all cursor-pointer relative active:bg-slate-100/80 ${
                       isSelected
-                        ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-l-4 border-indigo-600 dark:border-indigo-400'
+                        ? 'bg-[#025798]/10 dark:bg-[#025798]/25 border-l-4 border-[#025798] dark:border-[#7dd3fc]'
                         : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-                    } ${isUnread ? 'bg-amber-50/40 dark:bg-amber-950/20 font-medium' : ''}`}
+                    } ${isUnread ? 'bg-[#b38f53]/10 dark:bg-[#b38f53]/20 font-medium' : ''}`}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex items-center gap-1.5 overflow-hidden">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                          msg.status === 'open' ? 'bg-blue-500' :
-                          msg.status === 'in_progress' ? 'bg-amber-500' :
-                          msg.status === 'resolved' ? 'bg-emerald-500' : 'bg-slate-400'
+                          msg.status === 'open' ? 'bg-[#0277b8]' :
+                          msg.status === 'in_progress' ? 'bg-[#b38f53]' :
+                          msg.status === 'resolved' ? 'bg-[#01883c]' : 'bg-slate-400'
                         }`} />
                         <span className="text-xs font-black text-slate-900 dark:text-white truncate">
                           {msg.senderName}
                         </span>
                         <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${
-                          msg.senderRole === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' :
-                          msg.senderRole === 'teacher' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' :
-                          'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                          msg.senderRole === 'admin' ? 'bg-[#023264]/15 text-[#023264] dark:bg-[#023264]/50 dark:text-[#bae6fd]' :
+                          msg.senderRole === 'teacher' ? 'bg-[#01883c]/15 text-[#01883c] dark:bg-[#01883c]/50 dark:text-[#a7f3d0]' :
+                          'bg-[#b38f53]/15 text-[#8c6a32] dark:bg-[#b38f53]/50 dark:text-[#dfc18b]'
                         }`}>
                           {msg.senderRole}
                         </span>
@@ -492,7 +510,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                           <Paperclip className="w-3 h-3 text-slate-400" />
                         )}
                         {replyCount > 0 && (
-                          <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold">
+                          <span className="px-1.5 py-0.2 rounded-full bg-[#025798]/15 dark:bg-[#025798]/40 text-[#025798] dark:text-[#7dd3fc] font-bold">
                             {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
                           </span>
                         )}
@@ -506,30 +524,32 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
         </div>
 
         {/* RIGHT COLUMN: Selected Conversation Workspace (7 cols on lg) */}
-        <div className={`lg:col-span-7 flex flex-col bg-white dark:bg-slate-900 ${!activeMessage && 'hidden lg:flex'}`}>
+        <div className={`lg:col-span-7 flex flex-col bg-white dark:bg-slate-900 ${activeMessage ? 'flex' : 'hidden lg:flex'}`}>
           {activeMessage ? (
             <div className="flex flex-col h-full">
               {/* Thread Top Header */}
-              <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="space-y-1">
+              <div className="p-3.5 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="space-y-1 w-full sm:w-auto">
+                  {/* Mobile Back Button */}
                   <button
                     onClick={() => setSelectedMessageId(null)}
-                    className="lg:hidden text-indigo-700 dark:text-indigo-300 text-xs font-black flex items-center gap-1.5 mb-2 py-1.5 px-3 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 shadow-2xs hover:bg-indigo-200 transition-all cursor-pointer active:scale-95"
+                    className="lg:hidden text-[#023264] dark:text-[#7dd3fc] text-xs font-black flex items-center gap-1.5 mb-2 py-2 px-3.5 rounded-xl bg-[#025798]/15 dark:bg-[#025798]/30 border border-[#025798]/30 dark:border-[#0277b8]/40 shadow-2xs hover:bg-[#025798]/25 transition-all cursor-pointer active:scale-95 touch-min-44 min-h-[44px]"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Messages
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Messages Inbox</span>
                   </button>
 
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      activeMessage.status === 'open' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200' :
-                      activeMessage.status === 'in_progress' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200' :
-                      activeMessage.status === 'resolved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200' :
+                      activeMessage.status === 'open' ? 'bg-[#0277b8]/15 text-[#0277b8] dark:bg-[#0277b8]/30 dark:text-[#7dd3fc]' :
+                      activeMessage.status === 'in_progress' ? 'bg-[#b38f53]/15 text-[#8c6a32] dark:bg-[#b38f53]/30 dark:text-[#dfc18b]' :
+                      activeMessage.status === 'resolved' ? 'bg-[#01883c]/15 text-[#01883c] dark:bg-[#01883c]/30 dark:text-[#a7f3d0]' :
                       'bg-slate-200 text-slate-700'
                     }`}>
                       {activeMessage.status.replace('_', ' ')}
                     </span>
 
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 text-[10px] font-bold capitalize">
+                    <span className="px-2 py-0.5 rounded-full bg-[#023264]/10 dark:bg-[#023264]/40 text-[#023264] dark:text-[#bae6fd] text-[10px] font-bold capitalize">
                       {activeMessage.category}
                     </span>
 
@@ -540,23 +560,23 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                     )}
                   </div>
 
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                  <h3 className="text-sm sm:text-base md:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {activeMessage.subject}
                   </h3>
 
-                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5">
                     <span>From: <strong className="text-slate-800 dark:text-slate-200">{activeMessage.senderName}</strong> ({activeMessage.senderRole})</span>
                     <span>•</span>
                     <span>To: <strong className="text-slate-800 dark:text-slate-200">{activeMessage.recipientName}</strong></span>
                   </p>
                 </div>
 
-                {/* Status Toggle & Supabase Archive Actions */}
-                <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                {/* Status Toggle & Archive Actions */}
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto justify-start sm:justify-end pt-1 sm:pt-0">
                   <select
                     value={activeMessage?.status ?? 'unread'}
                     onChange={(e) => onUpdateStatus(activeMessage.id, e.target.value as AppMessage['status'])}
-                    className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-[#025798]/50 cursor-pointer min-h-[38px]"
                   >
                     <option value="open">Status: Open</option>
                     <option value="in_progress">Status: In Progress</option>
@@ -567,16 +587,16 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   {activeMessage.status !== 'archived' ? (
                     <button
                       onClick={() => onUpdateStatus(activeMessage.id, 'archived')}
-                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
-                      title="Archive this message thread in Supabase database"
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-[#023264] hover:text-white text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer min-h-[38px]"
+                      title="Archive this message thread"
                     >
                       <Archive className="w-3.5 h-3.5" />
-                      <span>Archive Thread</span>
+                      <span>Archive</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => onUpdateStatus(activeMessage.id, 'open')}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 hover:bg-emerald-200 text-xs font-bold flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-800 transition-all cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-xl bg-[#01883c]/15 text-[#01883c] dark:bg-[#01883c]/30 dark:text-[#a7f3d0] hover:bg-[#01883c]/25 text-xs font-bold flex items-center gap-1.5 border border-[#01883c]/30 transition-all cursor-pointer min-h-[38px]"
                       title="Unarchive and reopen this thread"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
@@ -592,7 +612,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                           setSelectedMessageId(null);
                         }
                       }}
-                      className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all"
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all min-h-[38px] flex items-center justify-center"
                       title="Delete Thread"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -602,18 +622,18 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
               </div>
 
               {/* Scrollable Conversation Bubbles */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 custom-scrollbar bg-slate-50/30 dark:bg-slate-950/20 max-h-[480px]">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 custom-scrollbar bg-slate-50/30 dark:bg-slate-950/20 max-h-[420px] sm:max-h-[480px]">
                 {/* Original Parent Message Card */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-sm shadow-xs">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-2.5 sm:space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5 sm:pb-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#023264] text-white font-bold flex items-center justify-center text-xs sm:text-sm shadow-xs">
                         {activeMessage.senderName.charAt(0)}
                       </div>
                       <div>
                         <p className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                           {activeMessage.senderName}
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200">
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-[#025798]/15 text-[#025798] dark:bg-[#025798]/40 dark:text-[#7dd3fc]">
                             {activeMessage.senderRole}
                           </span>
                         </p>
@@ -646,7 +666,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                             download={att.name}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-600 transition-all"
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-[#025798]/15 text-[#025798] dark:text-[#7dd3fc] text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-600 transition-all"
                           >
                             <FileText className="w-3.5 h-3.5" />
                             <span className="max-w-[140px] truncate">{att.name}</span>
@@ -665,15 +685,15 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   return (
                     <div
                       key={reply.id}
-                      className={`flex gap-3 ${isStaffReply ? 'justify-start' : 'justify-start'}`}
+                      className="flex gap-2.5 sm:gap-3 justify-start"
                     >
-                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center justify-center shrink-0 mt-1">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center justify-center shrink-0 mt-1">
                         {reply.senderName.charAt(0)}
                       </div>
 
-                      <div className={`flex-1 rounded-2xl p-4 shadow-2xs space-y-2 border ${
+                      <div className={`flex-1 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-1.5 sm:space-y-2 border ${
                         isStaffReply
-                          ? 'bg-indigo-900/10 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60'
+                          ? 'bg-[#025798]/10 dark:bg-[#025798]/20 border-[#025798]/30 dark:border-[#0277b8]/40'
                           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                       }`}>
                         <div className="flex items-center justify-between pb-1">
@@ -682,7 +702,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                               {reply.senderName}
                             </span>
                             <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${
-                              isStaffReply ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                              isStaffReply ? 'bg-[#023264]/15 text-[#023264] dark:bg-[#023264]/50 dark:text-[#bae6fd]' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                             }`}>
                               {reply.senderRole}
                             </span>
@@ -708,7 +728,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                                 download={att.name}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-600"
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-[#025798] dark:text-[#7dd3fc] text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-600"
                               >
                                 <Paperclip className="w-3 h-3" />
                                 <span className="max-w-[120px] truncate">{att.name}</span>
@@ -723,7 +743,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
               </div>
 
               {/* Reply Input Box */}
-              <form onSubmit={handleSendReply} className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+              <form onSubmit={handleSendReply} className="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5 sm:space-y-3 sticky bottom-0">
                 {/* Staff Quick Reply Presets */}
                 {currentUserRole !== 'student' && (
                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 overflow-x-auto custom-scrollbar pb-1">
@@ -731,21 +751,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                     <button
                       type="button"
                       onClick={() => setReplyText('Thank you for reaching out. Your request has been approved and logged in your student portal.')}
-                      className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer"
+                      className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-[#025798]/15 text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer"
                     >
                       "Request Approved"
                     </button>
                     <button
                       type="button"
                       onClick={() => setReplyText('Greetings! We have verified your tuition payment receipt. Your account status is now Paid In Full.')}
-                      className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer"
+                      className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-[#025798]/15 text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer"
                     >
                       "Payment Confirmed"
                     </button>
                     <button
                       type="button"
                       onClick={() => setReplyText('Please refer to the Library tab and Classroom Media player for the recorded Zoom session audio.')}
-                      className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer"
+                      className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-[#025798]/15 text-slate-700 dark:text-slate-300 shrink-0 cursor-pointer"
                     >
                       "Check Class Recording"
                     </button>
@@ -753,10 +773,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 )}
 
                 {/* Text-Only Policy Banner */}
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between gap-2">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-[#b38f53]/15 border border-[#b38f53]/30 text-[#8c6a32] dark:text-[#dfc18b] text-xs flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="text-[11px] font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#b38f53] shrink-0" />
+                    <span className="text-[10px] sm:text-[11px] font-medium">
                       Messaging is for <strong>typed text only</strong>. Submit assignment files in the <strong>Exams</strong> tab.
                     </span>
                   </div>
@@ -769,24 +789,24 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                       placeholder="Write a typed reply or follow-up question..."
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                      className="w-full p-2.5 sm:p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/50 resize-none"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={!replyText.trim()}
-                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-md flex items-center gap-1.5 transition-all cursor-pointer h-full"
+                    className="min-h-[44px] px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-[#023264] hover:bg-[#025798] disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-[#b38f53]/30 active:scale-95"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-4 h-4 text-[#dfc18b]" />
                     <span className="hidden sm:inline">Send</span>
                   </button>
                 </div>
               </form>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shadow-md">
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#023264]/10 dark:bg-[#023264]/40 flex items-center justify-center text-[#023264] dark:text-[#7dd3fc] border border-[#025798]/30 shadow-md">
                 <MessageSquare className="w-8 h-8" />
               </div>
 
@@ -801,9 +821,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
 
               <button
                 onClick={() => setShowNewMsgModal(true)}
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer border border-[#b38f53]/30"
               >
-                <MessageSquarePlus className="w-4 h-4" />
+                <MessageSquarePlus className="w-4 h-4 text-[#dfc18b]" />
                 <span>Compose New Message</span>
               </button>
             </div>
@@ -818,42 +838,42 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
           onClose={() => setShowNewMsgModal(false)}
           title="Compose Direct Message"
           subtitle="Send a typed message to faculty, staff, or fellow students"
-          icon={<MessageSquarePlus className="w-5 h-5 text-indigo-600 shrink-0" />}
+          icon={<MessageSquarePlus className="w-5 h-5 text-[#023264] dark:text-[#7dd3fc] shrink-0" />}
           size="xl"
         >
 
             {/* Student Presets */}
             {currentUserRole === 'student' && (
-              <div className="space-y-1.5 p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-900/60">
-                <p className="text-[11px] font-black text-indigo-900 dark:text-indigo-200 uppercase flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Quick Message Templates:
+              <div className="space-y-1.5 p-3 rounded-2xl bg-[#023264]/10 dark:bg-[#023264]/30 border border-[#025798]/30">
+                <p className="text-[11px] font-black text-[#023264] dark:text-[#bae6fd] uppercase flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-[#b38f53]" /> Quick Message Templates:
                 </p>
                 <div className="flex flex-wrap gap-2 text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => applyStudentTemplate('absence')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 shadow-2xs transition-all cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#025798] dark:text-[#7dd3fc] hover:bg-[#025798]/10 border border-[#025798]/30 shadow-2xs transition-all cursor-pointer"
                   >
                     Class Absence Notice
                   </button>
                   <button
                     type="button"
                     onClick={() => applyStudentTemplate('tuition')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 shadow-2xs transition-all cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#01883c] dark:text-[#4ade80] hover:bg-[#01883c]/10 border border-[#01883c]/30 shadow-2xs transition-all cursor-pointer"
                   >
                     Tuition Balance Query
                   </button>
                   <button
                     type="button"
                     onClick={() => applyStudentTemplate('extension')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 shadow-2xs transition-all cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#b38f53] dark:text-[#dfc18b] hover:bg-[#b38f53]/10 border border-[#b38f53]/30 shadow-2xs transition-all cursor-pointer"
                   >
                     Assignment Extension
                   </button>
                   <button
                     type="button"
                     onClick={() => applyStudentTemplate('peer')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#0277b8] dark:text-[#7dd3fc] hover:bg-[#0277b8]/10 border border-[#0277b8]/30 shadow-2xs transition-all cursor-pointer"
                   >
                     Classmate Study Question
                   </button>
@@ -870,7 +890,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 <select
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-[#025798]/50"
                 >
                   <optgroup label="Faculty & Administration">
                     <option value="All Administration & Faculty">All Administration & Faculty</option>
@@ -943,7 +963,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   placeholder="e.g. Question regarding module study notes"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#025798]/50"
                 />
               </div>
 
@@ -958,14 +978,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   placeholder="Write your message here..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#025798]/50 resize-none"
                 />
               </div>
 
               {/* Policy Notice: No File Attachments in Messaging */}
               <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                  <Shield className="w-4 h-4 text-indigo-500" />
+                  <Shield className="w-4 h-4 text-[#025798]" />
                   <span>Typed Text Communication Policy</span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
@@ -986,9 +1006,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 <button
                   type="submit"
                   disabled={!subject.trim() || !content.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs sm:text-sm shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs sm:text-sm shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 border border-[#b38f53]/30"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 text-[#dfc18b]" />
                   <span>Send Message</span>
                 </button>
               </div>
