@@ -27,6 +27,9 @@ import {
   Lock,
   Clock,
   ShieldCheck,
+  MessageCircle,
+  CheckCheck,
+  Download,
 } from 'lucide-react';
 
 import { StudentAttendancePortal } from '../components/StudentAttendancePortal';
@@ -614,7 +617,7 @@ export function AttendanceTab({
                   {/* Table Sticky Header */}
                   <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
                     <tr>
-                      <th className={`sticky left-0 z-30 bg-slate-100 border-r border-slate-200 ${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} font-black uppercase text-slate-700 tracking-wider w-64 min-w-[256px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]`}>
+                      <th className={`sticky left-0 z-30 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 ${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} font-black uppercase text-slate-700 dark:text-slate-200 tracking-wider w-64 min-w-[256px] shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.5)]`}>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <input
@@ -684,9 +687,25 @@ export function AttendanceTab({
                                   </div>
                                 )}
                               </div>
-                              <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 border border-slate-200 text-slate-600">
-                                <span>{stats.count}/{uniqueStudents.length}</span>
-                                <span className="text-emerald-600">({Math.round(stats.percentage)}%)</span>
+                              <div className="mt-1 flex items-center justify-center gap-1 flex-wrap">
+                                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                                  <span>{stats.count}/{uniqueStudents.length}</span>
+                                  <span className="text-emerald-600 dark:text-emerald-400">({Math.round(stats.percentage)}%)</span>
+                                </div>
+                                {(appUser?.role as string) !== 'student' && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      alert(`Admin Quick Override: Unlocked 24h attendance editing window for session "${day.name}". Records can now be modified.`);
+                                    }}
+                                    className="p-0.5 px-1.5 text-[9px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                                    title="Admin Quick Override: Click to unlock 24h editing window for this session"
+                                  >
+                                    <Lock className="w-2.5 h-2.5" />
+                                    <span className="font-extrabold text-[8px] uppercase">Unlock</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </th>
@@ -714,7 +733,7 @@ export function AttendanceTab({
                             className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
                           >
                             {/* Student Name Sticky Column */}
-                            <td className={`sticky left-0 z-10 ${densityMode === 'dense' ? 'py-1.5 px-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 font-bold text-slate-800 bg-white group-hover:bg-indigo-50/80 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] w-64 min-w-[256px] truncate ${student.rate < atRiskThreshold ? 'text-rose-700' : ''}`} title="Click to view student detail">
+                            <td className={`sticky left-0 z-10 ${densityMode === 'dense' ? 'py-1.5 px-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 dark:border-slate-800 font-bold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 group-hover:bg-indigo-50/90 dark:group-hover:bg-slate-800/90 transition-colors shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.5)] w-64 min-w-[256px] truncate ${student.rate < atRiskThreshold ? 'text-rose-700 dark:text-rose-400' : ''}`} title="Click to view student detail">
                               <div className="flex items-center justify-between gap-1 min-w-0">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <input
@@ -857,9 +876,9 @@ export function AttendanceTab({
 
           {/* Batch Selection Faculty Action Bar */}
           {selectedStudentNames.length > 0 && (
-            <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-lg animate-slideUp z-30">
+            <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-xl animate-slideUp z-30">
               <div className="flex items-center gap-3">
-                <span className="px-2.5 py-1 bg-amber-500 text-slate-950 font-black text-xs rounded-full">
+                <span className="px-3 py-1 bg-amber-500 text-slate-950 font-black text-xs rounded-full shadow-xs">
                   {selectedStudentNames.length} Student{selectedStudentNames.length > 1 ? 's' : ''} Selected
                 </span>
                 <button
@@ -870,7 +889,95 @@ export function AttendanceTab({
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Quick Batch Marking Controls for Latest/Active Session */}
+                {effectiveClassDays.length > 0 && (
+                  <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 px-2">
+                      Mark Day: {effectiveClassDays[effectiveClassDays.length - 1].name.substring(0, 10)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const targetDay = effectiveClassDays[effectiveClassDays.length - 1].id;
+                        selectedStudentNames.forEach(name => {
+                          handleToggleStudentAttendance(name, targetDay, 'present');
+                        });
+                      }}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[36px]"
+                      title="Mark selected students Present for active session"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Present
+                    </button>
+                    <button
+                      onClick={() => {
+                        const targetDay = effectiveClassDays[effectiveClassDays.length - 1].id;
+                        selectedStudentNames.forEach(name => {
+                          handleToggleStudentAttendance(name, targetDay, 'excused');
+                        });
+                      }}
+                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[36px]"
+                      title="Mark selected students Excused for active session"
+                    >
+                      <AlertCircle className="w-3.5 h-3.5" /> Excused
+                    </button>
+                    <button
+                      onClick={() => {
+                        const targetDay = effectiveClassDays[effectiveClassDays.length - 1].id;
+                        selectedStudentNames.forEach(name => {
+                          handleToggleStudentAttendance(name, targetDay, 'absent');
+                        });
+                      }}
+                      className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[36px]"
+                      title="Mark selected students Absent for active session"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Absent
+                    </button>
+                    <button
+                      onClick={() => {
+                        const targetDay = effectiveClassDays[effectiveClassDays.length - 1].id;
+                        const targetList = selectedStudentNames.length > 0 ? selectedStudentNames : filteredAndSortedStudents.map(s => s.name);
+                        targetList.forEach(name => {
+                          const student = filteredAndSortedStudents.find(s => s.name === name);
+                          const existing = student?.attendanceByDay[targetDay];
+                          if (!existing || !existing.present) {
+                            handleToggleStudentAttendance(name, targetDay, 'present');
+                          }
+                        });
+                      }}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[36px]"
+                      title="Mark all remaining unmarked/absent students as Present"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5 text-indigo-200" /> Mark Unmarked Present
+                    </button>
+                  </div>
+                )}
+
+                {/* Export Session Roster */}
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all cursor-pointer border border-slate-700 min-h-[36px]"
+                  title="Export active session roster to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-400" /> Export CSV
+                </button>
+
+                {/* Send WhatsApp/Email Attendance Reminder */}
+                <button
+                  onClick={() => {
+                    const atRiskList = selectedStudentNames.filter(name => {
+                      const st = filteredAndSortedStudents.find(s => s.name === name);
+                      return st && st.rate < atRiskThreshold;
+                    });
+                    const targetNames = atRiskList.length > 0 ? atRiskList : selectedStudentNames;
+                    const text = encodeURIComponent(`Shalom! School of Ministry Attendance Notice for: ${targetNames.join(', ')}. Please review your student attendance portal regarding recent session attendance.`);
+                    window.open(`mailto:?subject=HTEIM%20School%20of%20Ministry%20Attendance%20Notice&body=${text}`, '_blank');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer min-h-[36px]"
+                  title="Send WhatsApp or Email attendance reminder to selected students"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Notice
+                </button>
+
                 <button
                   onClick={() => {
                     if (window.confirm(`Clear all attendance records for the ${selectedStudentNames.length} selected student(s)?`)) {
@@ -892,24 +999,24 @@ export function AttendanceTab({
                       });
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-lg transition-all cursor-pointer border border-slate-700 min-h-[36px]"
                   title="Clear attendance history for all selected students"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  Clear Attendance ({selectedStudentNames.length})
+                  Clear ({selectedStudentNames.length})
                 </button>
 
                 <button
                   onClick={() => setShowBatchEmailModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm min-h-[36px]"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  Batch At-Risk Email Notice
+                  Batch Email
                 </button>
 
                 <button
                   onClick={clearBatchSelection}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-700 min-h-[36px]"
                 >
                   Deselect All
                 </button>

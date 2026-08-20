@@ -231,26 +231,26 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-2xs">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
+            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
               Direct Communication Center
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             Messages & Academic Support
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-2xl leading-relaxed">
+          <p className="hidden sm:block text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-2xl leading-relaxed">
             Send direct inquiries to Course Instructors, Academic Deans, or the Bursar's Office. Receive official updates, assignment feedback, and support.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+        <div className="w-full md:w-auto shrink-0">
           <button
             onClick={() => setShowNewMsgModal(true)}
-            className="w-full sm:w-auto px-5 py-3 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
           >
             <MessageSquarePlus className="w-4 h-4" />
             <span>Compose New Message</span>
@@ -259,60 +259,47 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
       </div>
 
       {/* Quick Metrics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
-            <MessageSquare className="w-5 h-5" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total Conversations</p>
-            <p className="text-xl font-black text-slate-900 dark:text-white">{stats.total}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Unread Messages</p>
-            <p className="text-xl font-black text-amber-600 dark:text-amber-400">{stats.unread}</p>
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Total</p>
+            <p className="text-base sm:text-xl font-black text-slate-900 dark:text-white leading-tight">{stats.total}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-            <AlertTriangle className="w-5 h-5" />
+        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Open Inquiries</p>
-            <p className="text-xl font-black text-blue-600 dark:text-blue-400">{stats.open}</p>
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Unread</p>
+            <p className="text-base sm:text-xl font-black text-amber-600 dark:text-amber-400 leading-tight">{stats.unread}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shrink-0">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Resolved</p>
-            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{stats.resolved}</p>
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Open</p>
+            <p className="text-base sm:text-xl font-black text-blue-600 dark:text-blue-400 leading-tight">{stats.open}</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Resolved</p>
+            <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 leading-tight">{stats.resolved}</p>
           </div>
         </div>
       </div>
-
-      {/* Mobile back button — shown above the grid on small screens when a message is open */}
-      {activeMessage && (
-        <div className="lg:hidden flex items-center gap-2 px-1 -mb-2">
-          <button
-            onClick={() => setSelectedMessageId(null)}
-            className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-bold py-2 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors"
-            aria-label="Back to message list"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Messages
-          </button>
-        </div>
-      )}
 
       {/* Main Workspace Layout (Sidebar Threads List + Chat View) */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px]">
@@ -527,9 +514,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 <div className="space-y-1">
                   <button
                     onClick={() => setSelectedMessageId(null)}
-                    className="lg:hidden text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center gap-1 mb-1"
+                    className="lg:hidden text-indigo-700 dark:text-indigo-300 text-xs font-black flex items-center gap-1.5 mb-2 py-1.5 px-3 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 shadow-2xs hover:bg-indigo-200 transition-all cursor-pointer active:scale-95"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Threads
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Messages
                   </button>
 
                   <div className="flex items-center gap-2 flex-wrap">

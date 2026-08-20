@@ -8,6 +8,7 @@ import html2canvas from 'html2canvas';
 import { 
   FileSpreadsheet, 
   AlertCircle, 
+  Filter,
   User as UserIcon, 
   Upload, 
   Loader2, 
@@ -1208,6 +1209,12 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncedBannerMessage, setSyncedBannerMessage] = useState<string | null>(null);
 
+  // Report Modal Search & Sorting & View Detail state
+  const [reportSearchQuery, setReportSearchQuery] = useState('');
+  const [reportSortBy, setReportSortBy] = useState<'name' | 'rate' | 'score'>('name');
+  const [reportSortDir, setReportSortDir] = useState<'asc' | 'desc'>('asc');
+  const [reportViewDetailMode, setReportViewDetailMode] = useState<'compact' | 'detailed'>('compact');
+
   const handleNavigate = (tab: TabType) => {
     if (!appUser && tab !== 'home') {
       setShowLoginModal(true);
@@ -1336,7 +1343,7 @@ export default function App() {
 
   // View Mode: Matrix (Grid) vs Cards
   const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
-  const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>('cards');
+  const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>('rapid');
 
   // Density Mode: Comfortable vs Dense
   const [densityMode, setDensityMode] = useState<'comfortable' | 'dense'>(() => {
@@ -4340,17 +4347,17 @@ onRequestTranscript={(s) => {
               <>
                 {/* Toolbar: Search, Filter, Date Range, View Mode & Settings */}
               {/* Sticky Search Header & Mobile Quick Filter Chips Toolbar */}
-              <div className="sticky top-0 z-20 p-2.5 sm:p-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2.5 flex-shrink-0 shadow-2xs">
-                {/* Search Bar & Primary Actions Row */}
-                <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-                  <div className="relative flex-1 min-w-[180px] max-w-md">
+              <div className="sticky top-0 z-20 p-2 sm:p-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2 flex-shrink-0 shadow-2xs">
+                {/* Search Bar & Mobile View Mode Switcher */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="relative flex-1 min-w-0">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search student by name..."
+                      placeholder="Search student..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     />
                     {searchQuery && (
                       <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -4359,115 +4366,92 @@ onRequestTranscript={(s) => {
                     )}
                   </div>
 
-                  {/* Secondary Controls: Date Range, Modules, Sorting & View Modes */}
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
-                    {/* Date Range Filter */}
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300">
-                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                      <select
-                        value={dateRangeFilter}
-                        onChange={(e: any) => setDateRangeFilter(e.target.value)}
-                        className="bg-transparent focus:outline-none font-bold text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
-                      >
-                        <option value="all">All Dates</option>
-                        <option value="30days">Last 30 Days</option>
-                        <option value="month">This Month</option>
-                      </select>
-                    </div>
-
-                    {/* Academic Module Filter */}
-                    <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl px-2 py-1 text-xs text-amber-900 dark:text-amber-200">
-                      <Layers className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <select
-                        value={selectedModule}
-                        onChange={(e: any) => setSelectedModule(e.target.value)}
-                        className="bg-transparent focus:outline-none font-bold text-xs text-amber-900 dark:text-amber-200 cursor-pointer"
-                      >
-                        <option value="all">All Modules</option>
-                        <option value="m1">Module 1</option>
-                        <option value="m2">Module 2</option>
-                        <option value="m3">Module 3</option>
-                      </select>
-                    </div>
-
-                    {/* Sorting */}
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300">
-                      <ArrowUpDown className="w-3 h-3 text-slate-400 shrink-0" />
-                      <select
-                        value={sortBy}
-                        onChange={(e: any) => setSortBy(e.target.value)}
-                        className="bg-transparent focus:outline-none font-bold text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
-                      >
-                        <option value="name_asc">Name (A-Z)</option>
-                        <option value="name_desc">Name (Z-A)</option>
-                        <option value="rate_desc">Rate (Highest)</option>
-                        <option value="rate_asc">Rate (Lowest)</option>
-                      </select>
-                    </div>
-
-                    {/* View Mode Toggle */}
+                  {/* Desktop View Switcher & Action Buttons */}
+                  <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                     <div className="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-xl text-xs text-slate-600 dark:text-slate-300">
                       <button
                         onClick={() => setViewMode('matrix')}
-                        className={`p-1 rounded-lg transition-all cursor-pointer ${viewMode === 'matrix' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${viewMode === 'matrix' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                         title="Visual Attendance Matrix (Grid)"
                       >
                         <LayoutGrid className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setViewMode('cards')}
-                        className={`p-1 rounded-lg transition-all cursor-pointer ${viewMode === 'cards' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${viewMode === 'cards' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                         title="Student Profile Cards View"
                       >
                         <List className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    {/* Dense / Comfortable View Toggle */}
-                    <div className="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-xl text-xs text-slate-600 dark:text-slate-300 hidden md:flex">
-                      <button
-                        onClick={() => setDensityMode('comfortable')}
-                        className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${densityMode === 'comfortable' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                        title="Comfortable spacing"
-                      >
-                        <Maximize2 className="w-3 h-3" />
-                        <span className="text-[10px]">Comfortable</span>
-                      </button>
-                      <button
-                        onClick={() => setDensityMode('dense')}
-                        className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${densityMode === 'dense' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                        title="Dense compact matrix view"
-                      >
-                        <Minimize2 className="w-3 h-3" />
-                        <span className="text-[10px]">Dense</span>
-                      </button>
-                    </div>
-
-                    {/* Add Class Day & Manage Class Days Action Buttons */}
                     {(appUser?.role as string) !== 'student' && (
                       <div className="flex items-center gap-1.5">
-                        <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 font-bold shrink-0" title="Attendance records and class days are permanently managed manually inside the portal">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="hidden sm:inline text-[11px]">Permanent Records</span>
-                        </div>
                         <button
                           onClick={() => handleAddClassDay()}
-                          className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                           title="Add a new class session"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">+ Class Day</span>
+                          <span>+ Class Day</span>
                         </button>
                         <button
                           onClick={() => setShowClassDaysModal(true)}
-                          className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                          className="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
                           title="Manage class session titles"
                         >
                           <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                          <span className="text-xs font-bold">Manage Days ({classDays.length})</span>
+                          <span>Manage ({classDays.length})</span>
                         </button>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Mobile Touch-Scrollable Dropdowns & Filter Chips Row */}
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar touch-pan-x py-0.5 max-w-full">
+                  {/* Date Range Filter */}
+                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300 shrink-0">
+                    <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                    <select
+                      value={dateRangeFilter}
+                      onChange={(e: any) => setDateRangeFilter(e.target.value)}
+                      className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
+                    >
+                      <option value="all">All Dates</option>
+                      <option value="30days">Last 30 Days</option>
+                      <option value="month">This Month</option>
+                    </select>
+                  </div>
+
+                  {/* Academic Module Filter */}
+                  <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl px-2 py-1 text-xs text-amber-900 dark:text-amber-200 shrink-0">
+                    <Layers className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <select
+                      value={selectedModule}
+                      onChange={(e: any) => setSelectedModule(e.target.value)}
+                      className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-amber-900 dark:text-amber-200 cursor-pointer"
+                    >
+                      <option value="all">All Modules</option>
+                      <option value="m1">Module 1</option>
+                      <option value="m2">Module 2</option>
+                      <option value="m3">Module 3</option>
+                    </select>
+                  </div>
+
+                  {/* Sorting */}
+                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300 shrink-0">
+                    <ArrowUpDown className="w-3 h-3 text-slate-400 shrink-0" />
+                    <select
+                      value={sortBy}
+                      onChange={(e: any) => setSortBy(e.target.value)}
+                      className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
+                    >
+                      <option value="name_asc">Name (A-Z)</option>
+                      <option value="name_desc">Name (Z-A)</option>
+                      <option value="rate_desc">Rate (Highest)</option>
+                      <option value="rate_asc">Rate (Lowest)</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -4581,32 +4565,37 @@ onRequestTranscript={(s) => {
                   <div className="md:hidden flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
                     {/* Mobile Active Check-in Session Quick Controller Bar */}
                     {(appUser?.role as string) !== 'student' && effectiveClassDays.length > 0 && (
-                      <div className="sticky top-0 z-10 p-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                      <div className="sticky top-0 z-10 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md space-y-2.5">
+                        {/* Session Header & Mode Selector */}
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-mono uppercase tracking-wider text-slate-400 font-bold">Active Roll Call Session</p>
-                              <select
-                                value={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
-                                onChange={(e) => setLiveCheckinDayId(e.target.value)}
-                                className="bg-transparent font-black text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer truncate max-w-[190px]"
-                              >
-                                {effectiveClassDays.map(d => (
-                                  <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                                    {d.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="relative flex h-2.5 w-2.5 shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+                              Active Roll Call Session
+                            </span>
                           </div>
 
-                          {/* Mobile View Mode Switcher: Cards vs Rapid List */}
+                          {/* Mobile View Mode Switcher: Rapid List vs Full Cards */}
                           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
                             <button
                               type="button"
+                              onClick={() => setMobileRollCallMode('rapid')}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                                mobileRollCallMode === 'rapid' 
+                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
+                                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              <Zap className="w-3 h-3 text-amber-500" />
+                              <span>Rapid List</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => setMobileRollCallMode('cards')}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
                                 mobileRollCallMode === 'cards' 
                                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
                                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -4615,25 +4604,31 @@ onRequestTranscript={(s) => {
                               <LayoutGrid className="w-3 h-3" />
                               <span>Cards</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => setMobileRollCallMode('rapid')}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                                mobileRollCallMode === 'rapid' 
-                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
-                                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                              }`}
-                            >
-                              <Zap className="w-3 h-3 text-amber-500" />
-                              <span>Rapid</span>
-                            </button>
                           </div>
                         </div>
 
-                        {/* Quick Batch Button for Active Session */}
-                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
-                            Tap P/E/A buttons to mark attendance.
+                        {/* Full Width Styled Session Selector Dropdown */}
+                        <div className="relative">
+                          <select
+                            value={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
+                            onChange={(e) => setLiveCheckinDayId(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer pr-8 truncate appearance-none"
+                          >
+                            {effectiveClassDays.map(d => (
+                              <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+
+                        {/* Quick Action Row */}
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+                          <span className="text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shrink-0">
+                            <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded font-extrabold">
+                              {filteredAndSortedStudents.length} Students
+                            </span>
                           </span>
                           <button
                             type="button"
@@ -4648,10 +4643,10 @@ onRequestTranscript={(s) => {
                               });
                               if (navigator.vibrate) navigator.vibrate([20, 50, 20]);
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black shrink-0 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black shrink-0 active:scale-95 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[36px]"
                           >
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Mark Remaining Present</span>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Mark Unmarked Present</span>
                           </button>
                         </div>
                       </div>
@@ -5028,7 +5023,7 @@ onRequestTranscript={(s) => {
                       onClick={handleSelectAllAtRisk}
                       className="text-xs text-amber-300 hover:text-amber-200 underline font-semibold cursor-pointer"
                     >
-                      Select All At-Risk (&lt;{atRiskThreshold}%)
+                      Select All At-Risk Students
                     </button>
                   </div>
 
@@ -5171,7 +5166,7 @@ onRequestTranscript={(s) => {
 This is an official academic notice from HTEIM School of Ministry regarding your class attendance record.
 
 Current Course Attendance & Evaluation Summary:
-• Attendance Rate: ${Math.round(selectedStudent.rate)}% (Satisfactory Threshold: ${satisfactoryThreshold}%, At-Risk Threshold: ${atRiskThreshold}%)
+• Attendance Rate: ${Math.round(selectedStudent.rate)}%
 • Total Sessions Attended: ${selectedStudent.attended} out of ${effectiveClassDays.length}
 • Total Missed Sessions: ${missedDays.length}
 ${missedDays.length > 0 ? `Missed Class Sessions:\n${missedListText}\n\n` : ''}Consistent class attendance is essential to your ministry preparation and course completion. Please contact your instructor or administration team at HTEIM School of Ministry to discuss your standing.
@@ -5579,14 +5574,36 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         } else if (selectedReportAttendanceFilter === 'satisfactory') {
           reportStudents = reportStudents.filter(s => s.rate >= satisfactoryThreshold);
         }
+
+        if (reportSearchQuery.trim()) {
+          const q = reportSearchQuery.toLowerCase().trim();
+          reportStudents = reportStudents.filter(s => 
+            s.name.toLowerCase().includes(q) || (s.note && s.note.toLowerCase().includes(q))
+          );
+        }
+
+        // Apply sorting
+        reportStudents = [...reportStudents].sort((a, b) => {
+          let comp = 0;
+          if (reportSortBy === 'name') {
+            comp = a.name.localeCompare(b.name);
+          } else if (reportSortBy === 'rate') {
+            comp = a.rate - b.rate;
+          } else if (reportSortBy === 'score') {
+            const scoreA = a.avgScore ?? -1;
+            const scoreB = b.avgScore ?? -1;
+            comp = scoreA - scoreB;
+          }
+          return reportSortDir === 'asc' ? comp : -comp;
+        });
         
         let filterSuffix = '';
         if (selectedReportAttendanceFilter === 'fifty_percent') {
           filterSuffix = ' (Low Attendance: \u2264 50%)';
         } else if (selectedReportAttendanceFilter === 'at_risk') {
-          filterSuffix = ` (At Risk: < ${atRiskThreshold}%)`;
+          filterSuffix = ' (At Risk)';
         } else if (selectedReportAttendanceFilter === 'satisfactory') {
-          filterSuffix = ` (Satisfactory: \u2265 ${satisfactoryThreshold}%)`;
+          filterSuffix = ' (Satisfactory Standing)';
         }
 
         const reportTitle = `School of Ministry Academic Attendance & Evaluation Report${filterSuffix}`;
@@ -5602,6 +5619,15 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
         const atRiskInReport = reportStudents.filter(s => s.rate < atRiskThreshold);
         const fiftyPercentInReport = reportStudents.filter(s => s.rate <= 50);
+
+        const handleHeaderSort = (field: 'name' | 'rate' | 'score') => {
+          if (reportSortBy === field) {
+            setReportSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+          } else {
+            setReportSortBy(field);
+            setReportSortDir(field === 'name' ? 'asc' : 'desc');
+          }
+        };
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -5645,12 +5671,12 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 </div>
               </div>
 
-              {/* Advanced Filter Sub-Bar */}
-              <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex flex-col gap-2 flex-shrink-0">
-                {/* Attendance Criteria Row (No Academic Level selector) */}
+              {/* Advanced Filter & Search Sub-Bar */}
+              <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+                {/* Attendance Criteria Row */}
                 <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-                  <span className="text-[10px] font-extrabold uppercase text-slate-500 mr-2 flex items-center gap-1 flex-shrink-0">
-                    <AlertCircle className="w-3.5 h-3.5 text-purple-600" /> Attendance Filter:
+                  <span className="text-[10px] font-extrabold uppercase text-slate-500 mr-1.5 flex items-center gap-1 flex-shrink-0">
+                    <Filter className="w-3 h-3 text-purple-600" /> Filter:
                   </span>
                   <button
                     onClick={() => setSelectedReportAttendanceFilter('all')}
@@ -5660,7 +5686,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
                     }`}
                   >
-                    All Attendance Statuses
+                    All Statuses
                   </button>
                   <button
                     onClick={() => setSelectedReportAttendanceFilter('fifty_percent')}
@@ -5670,7 +5696,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         : 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-200'
                     }`}
                   >
-                    <span>Low Attendance (&le;50%)</span>
+                    <span>Low (&le;50%)</span>
                     <span className="opacity-75 font-mono text-[10px]">
                       ({uniqueStudents.filter(s => s.rate <= 50).length})
                     </span>
@@ -5683,7 +5709,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
                     }`}
                   >
-                    <span>At-Risk (&lt;{atRiskThreshold}%)</span>
+                    <span>At-Risk Students</span>
                     <span className="opacity-75 font-mono text-[10px]">
                       ({uniqueStudents.filter(s => s.rate < atRiskThreshold).length})
                     </span>
@@ -5696,11 +5722,31 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
                     }`}
                   >
-                    <span>Satisfactory (&ge;{satisfactoryThreshold}%)</span>
+                    <span>Satisfactory Standing</span>
                     <span className="opacity-75 font-mono text-[10px]">
                       ({uniqueStudents.filter(s => s.rate >= satisfactoryThreshold).length})
                     </span>
                   </button>
+                </div>
+
+                {/* Quick Search in Report */}
+                <div className="relative flex-1 min-w-[200px] max-w-[280px]">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={reportSearchQuery}
+                    onChange={(e) => setReportSearchQuery(e.target.value)}
+                    placeholder="Search roster..."
+                    className="w-full pl-8 pr-3 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:outline-hidden focus:border-indigo-500 shadow-2xs"
+                  />
+                  {reportSearchQuery && (
+                    <button
+                      onClick={() => setReportSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -5743,7 +5789,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     </div>
                   )}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">At-Risk Students (&lt;{atRiskThreshold}%)</p>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">At-Risk Students</p>
                     <p className="text-2xl font-mono font-bold text-rose-600 mt-1">
                       {atRiskInReport.length}
                     </p>
@@ -5755,7 +5801,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
                     <h3 className="text-xs font-bold uppercase text-rose-800 mb-2 flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 text-rose-600" />
-                      At-Risk Students (&lt;{atRiskThreshold}% Attendance)
+                      At-Risk Students (Attendance Follow-Up)
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {atRiskInReport.map((st, i) => (
@@ -5792,19 +5838,75 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 {/* Student Table for Selected Level */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                      Student Roster ({reportStudents.length})
-                    </h3>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                        Student Roster ({reportStudents.length})
+                      </h3>
+                      <div className="flex bg-slate-200 p-0.5 rounded-lg text-xs font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setReportViewDetailMode('compact')}
+                          className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                            reportViewDetailMode === 'compact' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Compact Summary
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReportViewDetailMode('detailed')}
+                          className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                            reportViewDetailMode === 'detailed' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Detailed Session Grid
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium italic">
+                      Click headers to sort column values
+                    </p>
                   </div>
 
                   {reportStudents.length > 0 ? (
+                    reportViewDetailMode === 'compact' ? (
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
-                          <th className="p-2 font-bold">Student Name</th>
+                          <th 
+                            onClick={() => handleHeaderSort('name')}
+                            className="p-2 font-bold cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                          >
+                            <div className="flex items-center gap-1">
+                              Student Name
+                              {reportSortBy === 'name' && (
+                                <span className="text-indigo-600 font-extrabold">{reportSortDir === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </th>
                           <th className="p-2 font-bold text-center">Attended / Total</th>
-                          <th className="p-2 font-bold text-center">Attendance %</th>
-                          <th className="p-2 font-bold text-center">Avg Score</th>
+                          <th 
+                            onClick={() => handleHeaderSort('rate')}
+                            className="p-2 font-bold text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              Attendance %
+                              {reportSortBy === 'rate' && (
+                                <span className="text-indigo-600 font-extrabold">{reportSortDir === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleHeaderSort('score')}
+                            className="p-2 font-bold text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              Avg Score
+                              {reportSortBy === 'score' && (
+                                <span className="text-indigo-600 font-extrabold">{reportSortDir === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </div>
+                          </th>
                           <th className="p-2 font-bold">Notes / Remarks</th>
                         </tr>
                       </thead>
@@ -5830,6 +5932,51 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                         })}
                       </tbody>
                     </table>
+                    ) : (
+                      /* Detailed Session Grid View */
+                      <div className="overflow-x-auto custom-scrollbar border border-slate-200 rounded-lg">
+                        <table className="w-full text-left border-collapse text-[11px]">
+                          <thead>
+                            <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
+                              <th className="p-2 font-bold sticky left-0 bg-slate-100 z-10 w-48 shadow-[1px_0_3px_rgba(0,0,0,0.05)]">Student Name</th>
+                              {effectiveClassDays.map(day => (
+                                <th key={day.id} className="p-2 font-bold text-center border-r border-slate-200 min-w-[70px]">
+                                  {day.name.substring(0, 8)}
+                                </th>
+                              ))}
+                              <th className="p-2 font-bold text-center bg-slate-200/80 min-w-[75px]">Rate %</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {reportStudents.map((st, idx) => (
+                              <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                                <td className="p-2 font-bold text-slate-900 sticky left-0 bg-white z-10 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate max-w-[192px]">
+                                  {st.name}
+                                </td>
+                                {effectiveClassDays.map(day => {
+                                  const attendance = st.attendanceByDay[day.id];
+                                  const isPresent = attendance?.present;
+                                  return (
+                                    <td key={day.id} className="p-1.5 text-center border-r border-slate-100 font-bold font-mono">
+                                      {isPresent ? (
+                                        <span className="text-emerald-600">✓</span>
+                                      ) : (
+                                        <span className="text-rose-500">✗</span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                                <td className="p-2 text-center font-mono font-bold bg-slate-50">
+                                  <span className={st.rate >= satisfactoryThreshold ? 'text-emerald-700' : st.rate >= atRiskThreshold ? 'text-amber-700' : 'text-rose-700'}>
+                                    {Math.round(st.rate)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
                   ) : (
                     <div className="p-8 text-center text-slate-400 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
                       No students match the selected attendance filter criteria.

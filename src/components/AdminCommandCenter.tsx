@@ -1172,7 +1172,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
                   <Activity className="w-5 h-5 text-rose-500" /> Attendance Monitoring & At-Risk Intervention
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Identify students below the 75% satisfactory threshold and send academic warning alerts.
+                  Identify students with low attendance and send academic warning alerts.
                 </p>
               </div>
 
@@ -1188,7 +1188,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4" /> Students Below 75% Threshold ({studentsBelowThreshold.length})
+                  <ShieldAlert className="w-4 h-4" /> Students Needing Attendance Support ({studentsBelowThreshold.length})
                 </h4>
               </div>
 
@@ -1254,7 +1254,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
                 <div className="p-6 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-2xl text-center space-y-1">
                   <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
                   <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200">100% Student Attendance Compliance!</p>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">All enrolled students are currently above the 75% attendance threshold.</p>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400">All enrolled students currently have healthy attendance records.</p>
                 </div>
               )}
             </div>
@@ -1384,7 +1384,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
                     <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="text-xs font-extrabold text-rose-950 dark:text-rose-200 uppercase tracking-wider">
-                        {studentsBelowThreshold.length} Students Below 75% Attendance Threshold
+                        {studentsBelowThreshold.length} Students Needing Attendance Follow-up
                       </h4>
                       <p className="text-xs text-rose-800 dark:text-rose-300 mt-0.5">
                         Students require academic attendance warning notices and faculty intervention.

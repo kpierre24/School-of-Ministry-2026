@@ -63,8 +63,8 @@ export const CATEGORY_LABELS: Record<NotificationCategory, { label: string; desc
     icon: 'Award'
   },
   attendance_warning: {
-    label: 'Attendance Alerts (75% Threshold)',
-    description: 'Notifications when attendance drops near or below 75%',
+    label: 'Attendance Alerts',
+    description: 'Notifications when attendance status changes or drops',
     icon: 'AlertCircle'
   },
   payment_due: {

@@ -41,7 +41,9 @@ import {
   ShieldCheck,
   CloudDownload,
   UploadCloud,
-  ArrowLeft
+  ArrowLeft,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 
 import { EmptyState } from './UXPrimitives';
@@ -360,6 +362,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     setActiveQuizTaker(null);
   };
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('all');
+  const [submissionsMobileView, setSubmissionsMobileView] = useState<'cards' | 'table'>('cards');
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState<'all' | 'perfect' | 'passed' | 'failed'>('all');
   const [isSyncingAssignments, setIsSyncingAssignments] = useState(false);
@@ -1548,88 +1551,108 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             </div>
           </div>
 
-          {/* TEACHER / ADMIN SUBMISSIONS MATRIX TABLE */}
+          {/* TEACHER / ADMIN SUBMISSIONS MATRIX */}
           {isTeacherOrAdmin && (
             <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden space-y-0">
-              <div className="p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Card / Table Control Header */}
+              <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <FileCheck className="w-4.5 h-4.5 text-amber-400" />
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider">Student Assignment Submissions & Corrections Matrix</h3>
+                  <FileCheck className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider">Student Assignment Submissions & Corrections</h3>
                 </div>
-                <div className="flex items-center justify-between sm:justify-end gap-2 text-[10px] sm:text-[11px] text-slate-400">
-                  <span className="sm:hidden text-amber-300 font-bold bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700/80 flex items-center gap-1">
-                    <span>← Swipe horizontally →</span>
-                  </span>
-                  <span className="font-mono text-slate-400">
-                    {filteredSubmissions.length} Record(s) Shown
+
+                <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
+                  {/* View Mode Switcher: Cards vs Table */}
+                  <div className="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => setSubmissionsMobileView('cards')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                        submissionsMobileView === 'cards' 
+                          ? 'bg-indigo-600 text-white shadow-xs' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Card view optimized for mobile screens"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                      <span>Cards</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSubmissionsMobileView('table')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                        submissionsMobileView === 'table' 
+                          ? 'bg-indigo-600 text-white shadow-xs' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Full table matrix view"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span>Table</span>
+                    </button>
+                  </div>
+
+                  <span className="font-mono text-[10px] sm:text-xs text-slate-400 bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/60">
+                    {filteredSubmissions.length} Record(s)
                   </span>
                 </div>
               </div>
 
-              <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 touch-pan-x overscroll-x-contain">
-                <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[950px]">
-                  <thead>
-                    <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                      <th className="p-3 pl-3 sm:pl-4 min-w-[140px] sm:min-w-[170px] max-w-[150px] sm:max-w-none sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <User className="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" />
-                          <span>Student Name</span>
-                        </div>
-                      </th>
-                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[200px]">Assignment Title</th>
-                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[140px]">Submission Status</th>
-                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Student's Uploaded Response</th>
-                      <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Teacher Corrected Document</th>
-                      <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[90px]">Score</th>
-                      <th className="p-3 text-right pr-4 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(displayedStudents.length === 0 || customAssignments.length === 0) && (
-                      <tr>
-                        <td colSpan={7} className="p-0">
-                          <EmptyState
-                            title="No submissions to display"
-                            description="There are no assignment submissions matching your current filters."
-                          />
-                        </td>
-                      </tr>
-                    )}
-                    {displayedStudents.length > 0 && customAssignments.length > 0 && displayedStudents.map((std, sIdx) => {
-                      const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
+              {/* VIEW MODE 1: MOBILE CARDS VIEW (Clean, High-Readability Stacked Layout) */}
+              {submissionsMobileView === 'cards' ? (
+                <div className="p-3 sm:p-4 space-y-3 max-h-[650px] overflow-y-auto custom-scrollbar bg-slate-50/50">
+                  {(displayedStudents.length === 0 || customAssignments.length === 0) && (
+                    <EmptyState
+                      title="No submissions to display"
+                      description="There are no assignment submissions matching your current filters."
+                    />
+                  )}
 
-                      return targetAsgs.map((asg, aIdx) => {
-                        const sub = submissions.find(s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (std?.name || '').toLowerCase().trim());
-                        
-                        if (searchQuery.trim() && !(std?.name || '').toLowerCase().includes(searchQuery.toLowerCase().trim())) {
-                          return null;
-                        }
+                  {displayedStudents.length > 0 && customAssignments.length > 0 && displayedStudents.map((std, sIdx) => {
+                    const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
 
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const isPastDue = Boolean(asg.dueDate && asg.dueDate < todayStr);
-                        const isGraded = sub?.status === 'Graded' || sub?.status === 'Correction Returned';
+                    return targetAsgs.map((asg, aIdx) => {
+                      const sub = submissions.find(s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (std?.name || '').toLowerCase().trim());
+                      
+                      if (searchQuery.trim() && !(std?.name || '').toLowerCase().includes(searchQuery.toLowerCase().trim())) {
+                        return null;
+                      }
 
-                        return (
-                          <tr key={`sub-row-${std.name || sIdx}-${asg.id}-${sIdx}-${aIdx}`} className="group hover:bg-slate-50/80 transition-colors">
-                            <td className="p-3 pl-3 sm:pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] transition-colors min-w-[140px] sm:min-w-[170px] max-w-[150px] sm:max-w-none">
-                              <div className="truncate font-bold text-slate-900 text-xs" title={std.name}>
-                                {std.name}
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const isPastDue = Boolean(asg.dueDate && asg.dueDate < todayStr);
+                      const isGraded = sub?.status === 'Graded' || sub?.status === 'Correction Returned';
+
+                      return (
+                        <div key={`sub-card-${std.name || sIdx}-${asg.id}`} className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-2xs space-y-3 hover:border-indigo-200 transition-all">
+                          {/* Card Header: Student & Assignment */}
+                          <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-800 font-black text-[10px] flex items-center justify-center shrink-0">
+                                  {std.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <h4 className="font-extrabold text-xs text-slate-900 truncate" title={std.name}>
+                                  {std.name}
+                                </h4>
                               </div>
-                            </td>
-                            <td className="p-3 text-slate-700 font-medium max-w-[220px] border-b border-slate-200" title={asg.title}>
-                              <div className="font-bold text-slate-900 truncate">{asg.title}</div>
-                              <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
-                                <Calendar className="w-3 h-3 text-slate-400" /> Due: {asg.dueDate || 'N/A'}
+                              <p className="font-bold text-xs text-indigo-900 mt-1 line-clamp-2" title={asg.title}>
+                                📚 {asg.title}
+                              </p>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <span>Due: {asg.dueDate || 'N/A'}</span>
                                 {isPastDue && (
                                   <span className="text-[9px] bg-rose-100 text-rose-800 border border-rose-200 font-black px-1.5 py-0.2 rounded uppercase">
                                     Past Due
                                   </span>
                                 )}
                               </div>
-                            </td>
-                            <td className="p-3">
+                            </div>
+
+                            {/* Status Tag */}
+                            <div className="shrink-0">
                               {sub ? (
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1 ${
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1 shadow-2xs ${
                                   isGraded ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
                                   'bg-indigo-100 text-indigo-800 border border-indigo-200'
                                 }`}>
@@ -1637,102 +1660,274 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                                   {sub.status}
                                 </span>
                               ) : isPastDue ? (
-                                <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 rounded-full text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3 text-rose-600" /> Past Due (Missing)
+                                <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-full text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 text-rose-600" /> Past Due
                                 </span>
                               ) : (
-                                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold uppercase tracking-wider">
                                   Not Submitted
                                 </span>
                               )}
-                            </td>
+                            </div>
+                          </div>
 
-                            {/* STUDENT'S FILE */}
-                            <td className="p-3">
+                          {/* Files & Grade Info Row */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {/* Student Uploaded File */}
+                            <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 space-y-1">
+                              <span className="text-[10px] font-extrabold uppercase text-slate-400 block">Student Response File</span>
                               {sub?.studentFiles && sub.studentFiles.length > 0 ? (
-                                <div className="space-y-1 max-w-[220px]">
+                                <div className="space-y-1">
                                   {sub.studentFiles.map((file, fIdx) => (
-                                    <div key={fIdx} className="flex items-center justify-between gap-1.5 bg-indigo-50/50 p-1 px-1.5 rounded-lg border border-indigo-100/40 text-[11px] hover:bg-indigo-50 transition-colors">
+                                    <div key={fIdx} className="flex items-center justify-between gap-1.5 bg-white p-1 px-2 rounded-lg border border-slate-200 text-[11px]">
                                       <span className="font-mono text-indigo-800 font-bold truncate flex-1" title={file.name}>
                                         📄 {file.name}
                                       </span>
                                       <button
                                         onClick={() => setPreviewFile({ name: file.name, url: file.url })}
-                                        className="p-0.5 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer flex-shrink-0"
-                                        title={`View ${file.name}`}
+                                        className="p-1 text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer shrink-0 font-bold text-[10px] flex items-center gap-0.5"
                                       >
-                                        <Eye className="w-3.5 h-3.5" />
+                                        <Eye className="w-3.5 h-3.5" /> View
                                       </button>
                                     </div>
                                   ))}
                                 </div>
                               ) : sub?.studentFileName ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono text-indigo-700 font-bold truncate max-w-[150px]" title={sub.studentFileName}>
-                                    {sub.studentFileName}
+                                <div className="flex items-center justify-between gap-2 bg-white p-1 px-2 rounded-lg border border-slate-200 text-[11px]">
+                                  <span className="font-mono text-indigo-800 font-bold truncate flex-1" title={sub.studentFileName}>
+                                    📄 {sub.studentFileName}
                                   </span>
                                   <button
                                     onClick={() => setPreviewFile({ name: sub.studentFileName!, url: sub.studentFileUrl })}
-                                    className="p-1 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
-                                    title="View Student Document"
+                                    className="p-1 text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer shrink-0 font-bold text-[10px] flex items-center gap-0.5"
                                   >
-                                    <Eye className="w-3.5 h-3.5" />
+                                    <Eye className="w-3.5 h-3.5" /> View
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-slate-400 italic text-[11px]">—</span>
+                                <span className="text-slate-400 italic text-[11px]">No file attached</span>
                               )}
-                            </td>
+                            </div>
 
-                            {/* TEACHER'S CORRECTED FILE */}
-                            <td className="p-3">
+                            {/* Teacher Corrected File & Score */}
+                            <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-extrabold uppercase text-slate-400 block">Corrected File & Score</span>
+                                <span className="font-mono font-black text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                  {sub?.score !== undefined ? `${sub.score}/${asg.maxPoints} pts` : 'Ungraded'}
+                                </span>
+                              </div>
                               {sub?.teacherCorrectedFileName ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono text-emerald-700 font-bold truncate max-w-[150px]" title={sub.teacherCorrectedFileName}>
-                                    {sub.teacherCorrectedFileName}
+                                <div className="flex items-center justify-between gap-2 bg-white p-1 px-2 rounded-lg border border-slate-200 text-[11px]">
+                                  <span className="font-mono text-emerald-800 font-bold truncate flex-1" title={sub.teacherCorrectedFileName}>
+                                    ✏️ {sub.teacherCorrectedFileName}
                                   </span>
                                   <button
                                     onClick={() => setPreviewFile({ name: sub.teacherCorrectedFileName!, url: sub.teacherCorrectedFileUrl })}
-                                    className="p-1 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
-                                    title="View Corrected Document"
+                                    className="p-1 text-emerald-600 hover:text-emerald-800 transition-colors cursor-pointer shrink-0 font-bold text-[10px] flex items-center gap-0.5"
                                   >
-                                    <Eye className="w-3.5 h-3.5" />
+                                    <Eye className="w-3.5 h-3.5" /> View
                                   </button>
                                 </div>
                               ) : (
                                 <span className="text-slate-400 italic text-[11px]">No correction uploaded</span>
                               )}
-                            </td>
+                            </div>
+                          </div>
 
-                            {/* SCORE */}
-                            <td className="p-3 text-center font-mono font-black text-slate-900">
-                              {sub?.score !== undefined ? `${sub.score}/${asg.maxPoints}` : '—'}
-                            </td>
+                          {/* Action Buttons Row */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              onClick={() => handleOpenCorrection(asg, std.name)}
+                              className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" /> {sub?.score !== undefined ? 'Edit Grade' : 'Grade & Correct'}
+                            </button>
 
-                            {/* ACTIONS */}
-                            <td className="p-3 text-right pr-4 space-x-2">
-                              <button
-                                onClick={() => handleOpenCorrection(asg, std.name)}
-                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
-                              >
-                                <Edit3 className="w-3 h-3" /> {sub?.score !== undefined ? 'Edit Grade' : 'Grade & Correct'}
-                              </button>
+                            <button
+                              onClick={() => handleOpenDirectStudentUpload(std.name, asg.id)}
+                              className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                              title="Upload or edit student response file directly"
+                            >
+                              <Upload className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="hidden sm:inline">Edit Upload</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })}
+                </div>
+              ) : (
+                /* VIEW MODE 2: TABLE MATRIX VIEW */
+                <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 touch-pan-x overscroll-x-contain">
+                  <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[900px]">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                        <th className="p-3 pl-3 sm:pl-4 min-w-[120px] max-w-[130px] sm:min-w-[170px] sm:max-w-none sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <User className="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" />
+                            <span>Student Name</span>
+                          </div>
+                        </th>
+                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Assignment Title</th>
+                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[130px]">Submission Status</th>
+                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Student's Uploaded Response</th>
+                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Teacher Corrected Document</th>
+                        <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[90px]">Score</th>
+                        <th className="p-3 text-right pr-4 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(displayedStudents.length === 0 || customAssignments.length === 0) && (
+                        <tr>
+                          <td colSpan={7} className="p-0">
+                            <EmptyState
+                              title="No submissions to display"
+                              description="There are no assignment submissions matching your current filters."
+                            />
+                          </td>
+                        </tr>
+                      )}
+                      {displayedStudents.length > 0 && customAssignments.length > 0 && displayedStudents.map((std, sIdx) => {
+                        const targetAsgs = selectedAssignmentId === 'all' ? customAssignments : customAssignments.filter(a => a.id === selectedAssignmentId);
 
-                              <button
-                                onClick={() => handleOpenDirectStudentUpload(std.name, asg.id)}
-                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
-                                title="Upload or edit student response file directly"
-                              >
-                                <Upload className="w-3 h-3 text-slate-500" /> Edit Upload
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                       });
-                     })}
-                   </tbody>
-                </table>
-              </div>
+                        return targetAsgs.map((asg, aIdx) => {
+                          const sub = submissions.find(s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (std?.name || '').toLowerCase().trim());
+                          
+                          if (searchQuery.trim() && !(std?.name || '').toLowerCase().includes(searchQuery.toLowerCase().trim())) {
+                            return null;
+                          }
+
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          const isPastDue = Boolean(asg.dueDate && asg.dueDate < todayStr);
+                          const isGraded = sub?.status === 'Graded' || sub?.status === 'Correction Returned';
+
+                          return (
+                            <tr key={`sub-row-${std.name || sIdx}-${asg.id}-${sIdx}-${aIdx}`} className="group hover:bg-slate-50/80 transition-colors">
+                              <td className="p-3 pl-3 sm:pl-4 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] transition-colors min-w-[120px] max-w-[130px] sm:min-w-[170px] sm:max-w-none">
+                                <div className="truncate font-bold text-slate-900 text-xs" title={std.name}>
+                                  {std.name}
+                                </div>
+                              </td>
+                              <td className="p-3 text-slate-700 font-medium max-w-[200px] border-b border-slate-200" title={asg.title}>
+                                <div className="font-bold text-slate-900 truncate">{asg.title}</div>
+                                <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                  <Calendar className="w-3 h-3 text-slate-400" /> Due: {asg.dueDate || 'N/A'}
+                                  {isPastDue && (
+                                    <span className="text-[9px] bg-rose-100 text-rose-800 border border-rose-200 font-black px-1.5 py-0.2 rounded uppercase">
+                                      Past Due
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                {sub ? (
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1 ${
+                                    isGraded ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                    'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                  }`}>
+                                    {isGraded ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Clock className="w-3 h-3 text-indigo-600" />}
+                                    {sub.status}
+                                  </span>
+                                ) : isPastDue ? (
+                                  <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 rounded-full text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3 text-rose-600" /> Past Due (Missing)
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                    Not Submitted
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* STUDENT'S FILE */}
+                              <td className="p-3">
+                                {sub?.studentFiles && sub.studentFiles.length > 0 ? (
+                                  <div className="space-y-1 max-w-[220px]">
+                                    {sub.studentFiles.map((file, fIdx) => (
+                                      <div key={fIdx} className="flex items-center justify-between gap-1.5 bg-indigo-50/50 p-1 px-1.5 rounded-lg border border-indigo-100/40 text-[11px] hover:bg-indigo-50 transition-colors">
+                                        <span className="font-mono text-indigo-800 font-bold truncate flex-1" title={file.name}>
+                                          📄 {file.name}
+                                        </span>
+                                        <button
+                                          onClick={() => setPreviewFile({ name: file.name, url: file.url })}
+                                          className="p-0.5 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer flex-shrink-0"
+                                          title={`View ${file.name}`}
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : sub?.studentFileName ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-indigo-700 font-bold truncate max-w-[150px]" title={sub.studentFileName}>
+                                      {sub.studentFileName}
+                                    </span>
+                                    <button
+                                      onClick={() => setPreviewFile({ name: sub.studentFileName!, url: sub.studentFileUrl })}
+                                      className="p-1 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                                      title="View Student Document"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic text-[11px]">—</span>
+                                )}
+                              </td>
+
+                              {/* TEACHER'S CORRECTED FILE */}
+                              <td className="p-3">
+                                {sub?.teacherCorrectedFileName ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-emerald-700 font-bold truncate max-w-[150px]" title={sub.teacherCorrectedFileName}>
+                                      {sub.teacherCorrectedFileName}
+                                    </span>
+                                    <button
+                                      onClick={() => setPreviewFile({ name: sub.teacherCorrectedFileName!, url: sub.teacherCorrectedFileUrl })}
+                                      className="p-1 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                                      title="View Corrected Document"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic text-[11px]">No correction uploaded</span>
+                                )}
+                              </td>
+
+                              {/* SCORE */}
+                              <td className="p-3 text-center font-mono font-black text-slate-900">
+                                {sub?.score !== undefined ? `${sub.score}/${asg.maxPoints}` : '—'}
+                              </td>
+
+                              {/* ACTIONS */}
+                              <td className="p-3 text-right pr-4 space-x-2">
+                                <button
+                                  onClick={() => handleOpenCorrection(asg, std.name)}
+                                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                                >
+                                  <Edit3 className="w-3 h-3" /> {sub?.score !== undefined ? 'Edit Grade' : 'Grade & Correct'}
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenDirectStudentUpload(std.name, asg.id)}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
+                                  title="Upload or edit student response file directly"
+                                >
+                                  <Upload className="w-3 h-3 text-slate-500" /> Edit Upload
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                         });
+                       })}
+                     </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

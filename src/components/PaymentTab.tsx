@@ -39,7 +39,9 @@ import {
   ArrowDown,
   ArrowUpDown,
   ShieldCheck,
-  Receipt as ReceiptIcon
+  Receipt as ReceiptIcon,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { PaymentRecord, Invoice, PaymentTransaction, Receipt } from '../types';
 import { getInvoices, saveInvoices, getTransactions, saveTransactions, getReceipts, saveReceipts, bootstrapFromPaymentRecords } from '../lib/financialWorkflow';
@@ -1156,6 +1158,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'invoices' | 'payments' | 'receipts' | 'analytics' | 'ledger'>('invoices');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid In Full' | 'Partial' | 'Past Due' | 'Pending Review'>('All');
+  const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards');
   
   // Sorting State
   type PaymentSortField = 'studentName' | 'studentId' | 'moduleTrack' | 'totalTuition' | 'amountPaid' | 'balance' | 'status' | 'lastPaymentDate';
@@ -2300,9 +2303,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       {/* VIEW 2: Invoice Ledger */}
       {(activeSubTab === 'invoices' || activeSubTab === 'ledger') && (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm overflow-hidden">
             {/* Controls Bar */}
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
                 <div className="relative w-full sm:w-64">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -2311,140 +2314,276 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                     placeholder="Search invoice, student, ID..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Filter className="w-4 h-4 text-emerald-600" />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none cursor-pointer shadow-2xs"
-                  >
-                    <option value="All">All Invoices</option>
-                    <option value="Paid In Full">Paid</option>
-                    <option value="Partial">Partially Paid</option>
-                    <option value="Past Due">Past Due</option>
-                    <option value="Pending Review">Unpaid</option>
-                  </select>
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                      className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer shadow-2xs"
+                    >
+                      <option value="All">All Invoices</option>
+                      <option value="Paid In Full">Paid</option>
+                      <option value="Partial">Partially Paid</option>
+                      <option value="Past Due">Past Due</option>
+                      <option value="Pending Review">Unpaid</option>
+                    </select>
+                  </div>
+
+                  {/* Mobile/Desktop View Switcher */}
+                  <div className="flex items-center bg-slate-200 dark:bg-slate-700 p-1 rounded-xl shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setMobileViewMode('cards')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        mobileViewMode === 'cards' 
+                          ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs' 
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      }`}
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Cards</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobileViewMode('table')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        mobileViewMode === 'table' 
+                          ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs' 
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      }`}
+                    >
+                      <List className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Table</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="text-xs font-semibold text-slate-500">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Showing {filteredInvoices.length} of {invoices.length} invoices
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/50 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <th className="p-4">Invoice ID</th>
-                    <th className="p-4">Student Name & ID</th>
-                    <th className="p-4">Program Track</th>
-                    <th className="p-4 text-right">Base Tuition</th>
-                    <th className="p-4 text-right">Scholarships</th>
-                    <th className="p-4 text-right">Discounts</th>
-                    <th className="p-4 text-right">Net Tuition</th>
-                    <th className="p-4 text-right">Amount Paid</th>
-                    <th className="p-4 text-right">Outstanding Balance</th>
-                    <th className="p-4">Payment Plan</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {filteredInvoices.map((inv) => {
-                    return (
-                      <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="p-4 font-mono font-bold text-slate-700">{inv.id}</td>
-                        <td className="p-4">
-                          <div className="font-bold text-slate-900">{inv.studentName}</div>
-                          <div className="text-[10px] text-slate-500 font-mono">{inv.studentId}</div>
-                        </td>
-                        <td className="p-4 text-slate-600 font-medium">{inv.moduleTrack}</td>
-                        <td className="p-4 text-right font-mono text-slate-700">${inv.totalTuition.toLocaleString()}</td>
-                        <td className="p-4 text-right font-mono text-indigo-600 font-bold">
-                          {inv.scholarships > 0 ? `-${inv.scholarships.toLocaleString()}` : '$0'}
-                        </td>
-                        <td className="p-4 text-right font-mono text-amber-600 font-bold">
-                          {inv.discounts > 0 ? `-${inv.discounts.toLocaleString()}` : '$0'}
-                        </td>
-                        <td className="p-4 text-right font-mono text-slate-900 font-extrabold">${inv.netTuition.toLocaleString()}</td>
-                        <td className="p-4 text-right font-mono text-emerald-600 font-bold">${inv.amountPaid.toLocaleString()}</td>
-                        <td className={`p-4 text-right font-mono font-extrabold ${inv.outstandingBalance > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          ${inv.outstandingBalance.toLocaleString()}
-                        </td>
-                        <td className="p-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                            {inv.paymentPlan}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase ${
-                            inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
-                            inv.status === 'Partially Paid' ? 'bg-amber-100 text-amber-800' :
-                            'bg-rose-100 text-rose-800'
-                          }`}>
-                            {inv.status}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => {
-                                setSelectedInvoiceForEdit(inv);
-                                setEditInvoiceTuition(inv.totalTuition);
-                                setEditInvoiceDiscounts(inv.discounts);
-                                setEditInvoiceScholarships(inv.scholarships);
-                                setEditInvoicePlan(inv.paymentPlan);
-                                setEditInvoiceStatus(inv.status);
-                                setEditInvoiceNotes(inv.notes || '');
-                                setShowEditInvoiceModal(true);
-                              }}
-                              title="Edit Invoice Settings"
-                              className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Settings className="w-4 h-4" />
-                            </button>
-                            {inv.outstandingBalance > 0 && (
+            {/* Content: Cards View (Default for Mobile) */}
+            {(mobileViewMode === 'cards') ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredInvoices.map((inv) => (
+                  <div key={inv.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-600/50 transition-all">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold text-sm flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+                            {inv.studentName.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight">{inv.studentName}</h4>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                              <span>{inv.studentId}</span>
+                              <span>•</span>
+                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{inv.id}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                          inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' :
+                          inv.status === 'Partially Paid' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800' :
+                          'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                        }`}>
+                          {inv.status}
+                        </span>
+                      </div>
+
+                      {/* Tuition Stats Box */}
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/70 grid grid-cols-3 gap-2 text-center text-xs">
+                        <div>
+                          <p className="text-[9px] font-bold uppercase text-slate-400">Net Tuition</p>
+                          <p className="font-mono font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">${inv.netTuition.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold uppercase text-slate-400">Amount Paid</p>
+                          <p className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">${inv.amountPaid.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold uppercase text-slate-400">Outstanding</p>
+                          <p className={`font-mono font-extrabold mt-0.5 ${inv.outstandingBalance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            ${inv.outstandingBalance.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700/50">
+                        <span className="text-[11px] font-semibold truncate max-w-[170px]" title={inv.moduleTrack}>{inv.moduleTrack}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">{inv.paymentPlan}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                      {inv.outstandingBalance > 0 ? (
+                        <button
+                          onClick={() => {
+                            setSelectedInvoiceForPayment(inv);
+                            setRecordPaymentAmount(inv.outstandingBalance);
+                            setRecordPaymentNotes('');
+                            setShowRecordCustomPaymentModal(true);
+                          }}
+                          className="py-2.5 px-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <DollarSign className="w-3.5 h-3.5" /> Pay
+                        </button>
+                      ) : (
+                        <div className="py-2.5 px-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 font-extrabold text-[10px] rounded-xl flex items-center justify-center gap-1 border border-emerald-200/60 dark:border-emerald-800">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Cleared
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedInvoiceForEdit(inv);
+                          setEditInvoiceTuition(inv.totalTuition);
+                          setEditInvoiceDiscounts(inv.discounts);
+                          setEditInvoiceScholarships(inv.scholarships);
+                          setEditInvoicePlan(inv.paymentPlan);
+                          setEditInvoiceStatus(inv.status);
+                          setEditInvoiceNotes(inv.notes || '');
+                          setShowEditInvoiceModal(true);
+                        }}
+                        className="py-2.5 px-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Settings className="w-3.5 h-3.5" /> Edit
+                      </button>
+
+                      <button
+                        onClick={() => viewInvoiceAsReceipt(inv)}
+                        className="py-2.5 px-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer border border-indigo-100 dark:border-indigo-800/50"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Statement
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {filteredInvoices.length === 0 && (
+                  <div className="col-span-full p-12 text-center text-slate-400 font-medium">
+                    No invoices found matching current criteria.
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Table View */
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <th className="p-4">Invoice ID</th>
+                      <th className="p-4">Student Name & ID</th>
+                      <th className="p-4">Program Track</th>
+                      <th className="p-4 text-right">Base Tuition</th>
+                      <th className="p-4 text-right">Scholarships</th>
+                      <th className="p-4 text-right">Discounts</th>
+                      <th className="p-4 text-right">Net Tuition</th>
+                      <th className="p-4 text-right">Amount Paid</th>
+                      <th className="p-4 text-right">Outstanding Balance</th>
+                      <th className="p-4">Payment Plan</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
+                    {filteredInvoices.map((inv) => {
+                      return (
+                        <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">{inv.id}</td>
+                          <td className="p-4">
+                            <div className="font-bold text-slate-900 dark:text-white">{inv.studentName}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">{inv.studentId}</div>
+                          </td>
+                          <td className="p-4 text-slate-600 dark:text-slate-400 font-medium">{inv.moduleTrack}</td>
+                          <td className="p-4 text-right font-mono text-slate-700 dark:text-slate-300">${inv.totalTuition.toLocaleString()}</td>
+                          <td className="p-4 text-right font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                            {inv.scholarships > 0 ? `-${inv.scholarships.toLocaleString()}` : '$0'}
+                          </td>
+                          <td className="p-4 text-right font-mono text-amber-600 dark:text-amber-400 font-bold">
+                            {inv.discounts > 0 ? `-${inv.discounts.toLocaleString()}` : '$0'}
+                          </td>
+                          <td className="p-4 text-right font-mono text-slate-900 dark:text-white font-extrabold">${inv.netTuition.toLocaleString()}</td>
+                          <td className="p-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">${inv.amountPaid.toLocaleString()}</td>
+                          <td className={`p-4 text-right font-mono font-extrabold ${inv.outstandingBalance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                            ${inv.outstandingBalance.toLocaleString()}
+                          </td>
+                          <td className="p-4">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {inv.paymentPlan}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase ${
+                              inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' :
+                              inv.status === 'Partially Paid' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300' :
+                              'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => {
-                                  setSelectedInvoiceForPayment(inv);
-                                  setRecordPaymentAmount(inv.outstandingBalance);
-                                  setRecordPaymentNotes('');
-                                  setShowRecordCustomPaymentModal(true);
+                                  setSelectedInvoiceForEdit(inv);
+                                  setEditInvoiceTuition(inv.totalTuition);
+                                  setEditInvoiceDiscounts(inv.discounts);
+                                  setEditInvoiceScholarships(inv.scholarships);
+                                  setEditInvoicePlan(inv.paymentPlan);
+                                  setEditInvoiceStatus(inv.status);
+                                  setEditInvoiceNotes(inv.notes || '');
+                                  setShowEditInvoiceModal(true);
                                 }}
-                                title="Record Tuition Payment"
-                                className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Invoice Settings"
+                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
                               >
-                                <DollarSign className="w-4 h-4" />
+                                <Settings className="w-4 h-4" />
                               </button>
-                            )}
-                            <button
-                              onClick={() => viewInvoiceAsReceipt(inv)}
-                              title="View Account Statement"
-                              className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <FileText className="w-4 h-4" />
-                            </button>
-                          </div>
+                              {inv.outstandingBalance > 0 && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedInvoiceForPayment(inv);
+                                    setRecordPaymentAmount(inv.outstandingBalance);
+                                    setRecordPaymentNotes('');
+                                    setShowRecordCustomPaymentModal(true);
+                                  }}
+                                  title="Record Tuition Payment"
+                                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <DollarSign className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => viewInvoiceAsReceipt(inv)}
+                                title="View Account Statement"
+                                className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredInvoices.length === 0 && (
+                      <tr>
+                        <td colSpan={12} className="p-12 text-center text-slate-400">
+                          No invoices found matching current criteria.
                         </td>
                       </tr>
-                    );
-                  })}
-                  {filteredInvoices.length === 0 && (
-                    <tr>
-                      <td colSpan={12} className="p-12 text-center text-slate-400">
-                        No invoices found matching current criteria.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2452,8 +2591,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       {/* VIEW 2b: Payment History */}
       {activeSubTab === 'payments' && (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm overflow-hidden">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="relative w-full sm:w-64">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2461,64 +2600,130 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   placeholder="Search payments by student or method..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
-              <div className="text-xs font-bold text-slate-500">
-                Total recorded payments: {filteredTransactions.length} transactions
+              <div className="flex items-center gap-3 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
+                <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  Total: {filteredTransactions.length} transactions
+                </div>
+                <div className="flex items-center bg-slate-200 dark:bg-slate-700 p-1 rounded-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewMode('cards')}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      mobileViewMode === 'cards' 
+                        ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs' 
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewMode('table')}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      mobileViewMode === 'table' 
+                        ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs' 
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Table</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/50 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <th className="p-4">Transaction ID</th>
-                    <th className="p-4">Invoice ID</th>
-                    <th className="p-4">Student Name & ID</th>
-                    <th className="p-4">Payment Date</th>
-                    <th className="p-4 text-right">Amount Paid</th>
-                    <th className="p-4">Payment Method</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {filteredTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 font-mono font-bold text-slate-700">{tx.id}</td>
-                      <td className="p-4 font-mono text-slate-500">{tx.invoiceId}</td>
-                      <td className="p-4 font-bold text-slate-900">
-                        {tx.studentName}
-                        <span className="block text-[9px] font-mono font-normal text-slate-500">{tx.studentId}</span>
-                      </td>
-                      <td className="p-4 font-medium text-slate-600">{tx.paymentDate}</td>
-                      <td className="p-4 text-right font-mono text-emerald-600 font-extrabold">${tx.amount.toLocaleString()}</td>
-                      <td className="p-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                          {tx.paymentMethod}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 uppercase">
+            {/* Cards View */}
+            {mobileViewMode === 'cards' ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTransactions.map((tx) => (
+                  <div key={tx.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-slate-400">{tx.id} • {tx.invoiceId}</span>
+                        <h4 className="font-extrabold text-slate-900 dark:text-white text-sm mt-0.5">{tx.studentName}</h4>
+                        <p className="text-[10px] font-mono text-slate-500">{tx.studentId}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">${tx.amount.toLocaleString()}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase">
                           {tx.status}
                         </span>
-                      </td>
-                      <td className="p-4 text-slate-500 italic max-w-xs truncate" title={tx.notes}>
-                        {tx.notes}
-                      </td>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                      <span>Date: <strong className="text-slate-700 dark:text-slate-200">{tx.paymentDate}</strong></span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">{tx.paymentMethod}</span>
+                    </div>
+                    {tx.notes && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                        "{tx.notes}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {filteredTransactions.length === 0 && (
+                  <div className="col-span-full p-12 text-center text-slate-400">
+                    No transactions recorded.
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Table View */
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <th className="p-4">Transaction ID</th>
+                      <th className="p-4">Invoice ID</th>
+                      <th className="p-4">Student Name & ID</th>
+                      <th className="p-4">Payment Date</th>
+                      <th className="p-4 text-right">Amount Paid</th>
+                      <th className="p-4">Payment Method</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4">Notes</th>
                     </tr>
-                  ))}
-                  {filteredTransactions.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="p-12 text-center text-slate-400">
-                        No transactions recorded.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
+                    {filteredTransactions.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">{tx.id}</td>
+                        <td className="p-4 font-mono text-slate-500">{tx.invoiceId}</td>
+                        <td className="p-4 font-bold text-slate-900 dark:text-white">
+                          {tx.studentName}
+                          <span className="block text-[9px] font-mono font-normal text-slate-500">{tx.studentId}</span>
+                        </td>
+                        <td className="p-4 font-medium text-slate-600 dark:text-slate-400">{tx.paymentDate}</td>
+                        <td className="p-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-extrabold">${tx.amount.toLocaleString()}</td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {tx.paymentMethod}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase">
+                            {tx.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-500 dark:text-slate-400 italic max-w-xs truncate" title={tx.notes}>
+                          {tx.notes}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredTransactions.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-slate-400">
+                          No transactions recorded.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2526,8 +2731,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       {/* VIEW 2c: Issued Receipts */}
       {activeSubTab === 'receipts' && (
         <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm overflow-hidden">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="relative w-full sm:w-64">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2535,75 +2740,157 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                   placeholder="Search receipts by student or number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
-              <div className="text-xs font-bold text-slate-500">
-                Total official receipts: {filteredReceipts.length} issued
+              <div className="flex items-center gap-3 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
+                <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  Total: {filteredReceipts.length} receipts
+                </div>
+                <div className="flex items-center bg-slate-200 dark:bg-slate-700 p-1 rounded-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewMode('cards')}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      mobileViewMode === 'cards' 
+                        ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs' 
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewMode('table')}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      mobileViewMode === 'table' 
+                        ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs' 
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Table</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/50 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <th className="p-4">Receipt Number</th>
-                    <th className="p-4">Student Name & ID</th>
-                    <th className="p-4">Payment Method</th>
-                    <th className="p-4 text-right">Amount Paid</th>
-                    <th className="p-4">Date Issued</th>
-                    <th className="p-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {filteredReceipts.map((rec) => (
-                    <tr key={rec.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 font-mono font-extrabold text-emerald-700">{rec.receiptNumber}</td>
-                      <td className="p-4">
-                        <div className="font-bold text-slate-900">{rec.studentName}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">{rec.studentId}</div>
-                      </td>
-                      <td className="p-4 font-medium text-slate-600">{rec.paymentMethod}</td>
-                      <td className="p-4 text-right font-mono text-emerald-600 font-extrabold">${rec.amountPaid.toLocaleString()}</td>
-                      <td className="p-4 text-slate-500">{rec.issuedAt}</td>
-                      <td className="p-4">
-                        <div className="flex items-center justify-center">
-                          <button
-                            onClick={() => {
-                              // Synthesize PaymentRecord representation
-                              const rep: PaymentRecord = {
-                                id: rec.invoiceId.replace('INV-', 'pay-'),
-                                studentName: rec.studentName,
-                                studentId: rec.studentId,
-                                moduleTrack: invoices.find(inv => inv.id === rec.invoiceId)?.moduleTrack || 'Active Ministry Module',
-                                totalTuition: rec.amountPaid,
-                                amountPaid: rec.amountPaid,
-                                status: 'Paid In Full',
-                                lastPaymentDate: rec.paymentDate,
-                                paymentMethod: rec.paymentMethod as any,
-                                notes: rec.notes,
-                                receiptNumber: rec.receiptNumber
-                              };
-                              generateTuitionReceiptPDF(rep);
-                            }}
-                            className="px-3 py-1 bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Download className="w-3 h-3" /> PDF Receipt
-                          </button>
+            {/* Cards View */}
+            {mobileViewMode === 'cards' ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredReceipts.map((rec) => (
+                  <div key={rec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-xs font-mono font-black text-emerald-700 dark:text-emerald-400">{rec.receiptNumber}</span>
+                          <h4 className="font-extrabold text-slate-900 dark:text-white text-sm mt-0.5">{rec.studentName}</h4>
+                          <p className="text-[10px] font-mono text-slate-500">{rec.studentId}</p>
                         </div>
-                      </td>
+                        <div className="text-right shrink-0">
+                          <p className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">${rec.amountPaid.toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{rec.issuedAt}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">
+                        <span>Method: <strong className="text-slate-700 dark:text-slate-200">{rec.paymentMethod}</strong></span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rep: PaymentRecord = {
+                          id: rec.invoiceId.replace('INV-', 'pay-'),
+                          studentName: rec.studentName,
+                          studentId: rec.studentId,
+                          moduleTrack: invoices.find(inv => inv.id === rec.invoiceId)?.moduleTrack || 'Active Ministry Module',
+                          totalTuition: rec.amountPaid,
+                          amountPaid: rec.amountPaid,
+                          status: 'Paid In Full',
+                          lastPaymentDate: rec.paymentDate,
+                          paymentMethod: rec.paymentMethod as any,
+                          notes: rec.notes,
+                          receiptNumber: rec.receiptNumber
+                        };
+                        generateTuitionReceiptPDF(rep);
+                      }}
+                      className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <Download className="w-4 h-4" /> Download PDF Receipt
+                    </button>
+                  </div>
+                ))}
+                {filteredReceipts.length === 0 && (
+                  <div className="col-span-full p-12 text-center text-slate-400">
+                    No issued receipts found.
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Table View */
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <th className="p-4">Receipt Number</th>
+                      <th className="p-4">Student Name & ID</th>
+                      <th className="p-4">Payment Method</th>
+                      <th className="p-4 text-right">Amount Paid</th>
+                      <th className="p-4">Date Issued</th>
+                      <th className="p-4 text-center">Actions</th>
                     </tr>
-                  ))}
-                  {filteredReceipts.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-12 text-center text-slate-400">
-                        No issued receipts found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
+                    {filteredReceipts.map((rec) => (
+                      <tr key={rec.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="p-4 font-mono font-extrabold text-emerald-700 dark:text-emerald-400">{rec.receiptNumber}</td>
+                        <td className="p-4">
+                          <div className="font-bold text-slate-900 dark:text-white">{rec.studentName}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{rec.studentId}</div>
+                        </td>
+                        <td className="p-4 font-medium text-slate-600 dark:text-slate-400">{rec.paymentMethod}</td>
+                        <td className="p-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-extrabold">${rec.amountPaid.toLocaleString()}</td>
+                        <td className="p-4 text-slate-500">{rec.issuedAt}</td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => {
+                                const rep: PaymentRecord = {
+                                  id: rec.invoiceId.replace('INV-', 'pay-'),
+                                  studentName: rec.studentName,
+                                  studentId: rec.studentId,
+                                  moduleTrack: invoices.find(inv => inv.id === rec.invoiceId)?.moduleTrack || 'Active Ministry Module',
+                                  totalTuition: rec.amountPaid,
+                                  amountPaid: rec.amountPaid,
+                                  status: 'Paid In Full',
+                                  lastPaymentDate: rec.paymentDate,
+                                  paymentMethod: rec.paymentMethod as any,
+                                  notes: rec.notes,
+                                  receiptNumber: rec.receiptNumber
+                                };
+                                generateTuitionReceiptPDF(rep);
+                              }}
+                              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 hover:text-emerald-800 dark:hover:bg-emerald-950/80 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Download className="w-3 h-3" /> PDF Receipt
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredReceipts.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center text-slate-400">
+                          No issued receipts found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

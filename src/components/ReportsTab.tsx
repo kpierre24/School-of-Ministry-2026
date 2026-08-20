@@ -188,7 +188,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
           .filter(Boolean);
 
         const summaryMetrics: ReportSummaryMetric[] = [
-          { label: 'Total At-Risk Students', value: rows.length, subtext: 'Below 75% thresholds' },
+          { label: 'Total At-Risk Students', value: rows.length, subtext: 'Low Standing' },
           { label: 'Critical Attendance (<=50%)', value: rows.filter(r => r?.riskLevel === 'CRITICAL').length, subtext: 'Immediate intervention required' },
           { label: 'Tuition Arrears Count', value: rows.filter(r => r?.riskFactors.includes('Tuition')).length }
         ];

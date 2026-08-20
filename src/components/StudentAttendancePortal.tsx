@@ -91,6 +91,9 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
   });
   const [excuseSubmittedToast, setExcuseSubmittedToast] = useState(false);
 
+  // Tab Segmented Control state
+  const [activePortalTab, setActivePortalTab] = useState<'overview' | 'log' | 'modules'>('overview');
+
   useEffect(() => {
     if (student?.photoUrl) {
       setCurrentPhoto(student.photoUrl);
@@ -263,269 +266,314 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
         </div>
       )}
 
-      {/* Weekly Tuesday Live Zoom Class Notice Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
-              <Video className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-mono font-semibold uppercase rounded-full">
-                  Weekly Live Schedule
-                </span>
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                  Every Tuesday @ 7:00 PM EST
-                </span>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Classes Go Live via Zoom Every Tuesday (Unless Notified Otherwise)
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Official School of Ministry live lectures take place every Tuesday evening at 7:00 PM EST. Check announcements for any schedule updates.
-              </p>
-            </div>
-          </div>
+      {/* Segmented Navigation Tab Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl shadow-xs flex items-center gap-1 overflow-x-auto custom-scrollbar">
+        <button
+          onClick={() => setActivePortalTab('overview')}
+          className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap touch-min-44 ${
+            activePortalTab === 'overview'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Overview & Live Zoom</span>
+        </button>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto flex-shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-200 dark:border-slate-700">
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
-              <div>
-                <p className="text-[9px] uppercase font-semibold text-slate-400">Meeting ID</p>
-                <p className="font-semibold text-slate-800 dark:text-slate-200">815 0537 7396</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCopyText('815 0537 7396', 'meetingId')}
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors cursor-pointer touch-min-44"
-                title="Copy Meeting ID"
-                aria-label="Copy Zoom Meeting ID"
-              >
-                {copiedField === 'meetingId' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-              </button>
-            </div>
+        <button
+          onClick={() => setActivePortalTab('log')}
+          className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap touch-min-44 ${
+            activePortalTab === 'log'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Attendance Session Log ({classDays.length})</span>
+        </button>
 
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
-              <div>
-                <p className="text-[9px] uppercase font-semibold text-slate-400">Passcode</p>
-                <p className="font-semibold text-slate-800 dark:text-slate-200">163738</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCopyText('163738', 'passcode')}
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors cursor-pointer touch-min-44"
-                title="Copy Passcode"
-                aria-label="Copy Zoom Passcode"
-              >
-                {copiedField === 'passcode' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleAddZoomToCalendar}
-                className="px-3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                title="Download .ics event to sync to Google Calendar / iCal"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Add to Calendar</span>
-              </button>
-
-              <a
-                href="https://zoom.us/j/81505377396"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
-              >
-                <span>Join Tuesday Live Zoom</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
-        </div>
+        <button
+          onClick={() => setActivePortalTab('modules')}
+          className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap touch-min-44 ${
+            activePortalTab === 'modules'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Module Breakdown (6)</span>
+        </button>
       </div>
 
-      {/* Student Welcome & Status Hero Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 md:p-8 border border-slate-200 dark:border-slate-700 relative">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-4">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handleFileChange} 
-            />
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 flex-shrink-0 group cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-2xl flex items-center justify-center uppercase"
-              title="Click to upload profile photo"
-            >
-              {currentPhoto ? (
-                <img 
-                  src={currentPhoto} 
-                  alt={safeName} 
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+      {/* Overview Tab Content */}
+      {activePortalTab === 'overview' && (
+        <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+          {/* Weekly Tuesday Live Zoom Class Notice Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
+                  <Video className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-mono font-semibold uppercase rounded-full">
+                      Weekly Live Schedule
+                    </span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                      Every Tuesday @ 7:00 PM EST
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Classes Go Live via Zoom Every Tuesday (Unless Notified Otherwise)
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Official School of Ministry live lectures take place every Tuesday evening at 7:00 PM EST. Check announcements for any schedule updates.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto flex-shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-200 dark:border-slate-700">
+                <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
+                  <div>
+                    <p className="text-[9px] uppercase font-semibold text-slate-400">Meeting ID</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">815 0537 7396</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText('815 0537 7396', 'meetingId')}
+                    className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors cursor-pointer touch-min-44"
+                    title="Copy Meeting ID"
+                    aria-label="Copy Zoom Meeting ID"
+                  >
+                    {copiedField === 'meetingId' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs font-mono">
+                  <div>
+                    <p className="text-[9px] uppercase font-semibold text-slate-400">Passcode</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">163738</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText('163738', 'passcode')}
+                    className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors cursor-pointer touch-min-44"
+                    title="Copy Passcode"
+                    aria-label="Copy Zoom Passcode"
+                  >
+                    {copiedField === 'passcode' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleAddZoomToCalendar}
+                    className="px-3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                    title="Download .ics event to sync to Google Calendar / iCal"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Add to Calendar</span>
+                  </button>
+
+                  <a
+                    href="https://zoom.us/j/81505377396"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 min-h-[44px]"
+                  >
+                    <span>Join Tuesday Live Zoom</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Student Welcome & Status Hero Banner */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 md:p-8 border border-slate-200 dark:border-slate-700 relative">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+              <div className="flex items-center gap-4">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleFileChange} 
                 />
-              ) : (
-                <span>{safeName.charAt(0)}{safeName.split(' ')[1] ? safeName.split(' ')[1].charAt(0) : ''}</span>
-              )}
-
-              {/* Upload overlay on hover */}
-              <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1">
-                <Camera className="w-5 h-5" />
-                <span className="text-[8px] font-semibold uppercase tracking-wider mt-0.5">Upload</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white break-words">{safeName}</h2>
-                <span className="px-3 py-0.5 text-xs font-semibold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" /> Student Portal
-                </span>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>{currentPhoto ? 'Change Photo' : 'Upload Photo'}</span>
-                </button>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap font-medium">
-                <span>HTEIM Ministry Candidate</span>
-                <span>•</span>
-                <span className="font-mono">ID: HTEIM-2026-{Math.abs(safeName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}</span>
-              </p>
-            </div>
-          </div>
-
-
-        </div>
-
-        {/* Graduation Readiness Visual Bar */}
-        <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
-            <span className="flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4" /> Graduation Requirement Attendance Threshold (75%)
-            </span>
-            <span className="font-mono">{Math.round(safeRate)}% Current</span>
-          </div>
-
-          <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
-            <div 
-              className={`h-full rounded-full transition-all duration-1000 ${
-                safeRate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'
-              }`}
-              style={{ width: `${Math.min(100, safeRate)}%` }}
-            />
-            {/* Target Marker at 75% */}
-            <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-amber-400"
-              style={{ left: '75%' }}
-              title="75% Graduation Target"
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
-            <span>0%</span>
-            <span className="font-semibold text-amber-600 dark:text-amber-400">★ 75% Minimum Required</span>
-            <span>100% Perfect</span>
-          </div>
-        </div>
-
-        {/* 4 Summary Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Attendance Rate</p>
-            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{Math.round(safeRate)}%</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{safeAttended} of {safeTotalDays} sessions attended</p>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Streak</p>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{streakCount}</span>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-0.5">
-                <Flame className="w-4 h-4" /> Sessions
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Consecutive classes present</p>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Academic Standing</p>
-            <div className="mt-1">
-              {safeRate >= 100 ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400 text-sm">
-                  <Trophy className="w-4 h-4" /> Perfect Standing
-                </span>
-              ) : safeRate >= 75 ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 text-sm">
-                  <CheckCircle2 className="w-4 h-4" /> Good Standing
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 text-sm">
-                  <AlertCircle className="w-4 h-4" /> Attendance Advisory
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Required for graduation: ≥ 75%</p>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Absences Recorded</p>
-            <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{Math.max(0, safeTotalDays - safeAttended)}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Missed Sessions</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Module-Wise Attendance Breakdown */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div>
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Module Attendance Progress Breakdown</span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Track your attendance rate across all 6 core curriculum modules.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {moduleBreakdown.map((mod) => (
-            <div key={mod.code} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 rounded text-[9px] font-mono font-bold">
-                  {mod.code}
-                </span>
-                <span className="text-[10px] font-bold text-slate-500 font-mono">
-                  {mod.attended}/{mod.total}
-                </span>
-              </div>
-
-              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{mod.name}</h4>
-
-              <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full rounded-full ${mod.rate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                  style={{ width: `${mod.rate}%` }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 flex-shrink-0 group cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-2xl flex items-center justify-center uppercase"
+                  title="Click to upload profile photo"
+                >
+                  {currentPhoto ? (
+                    <img 
+                      src={currentPhoto} 
+                      alt={safeName} 
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                    />
+                  ) : (
+                    <span>{safeName.charAt(0)}{safeName.split(' ')[1] ? safeName.split(' ')[1].charAt(0) : ''}</span>
+                  )}
+
+                  {/* Upload overlay on hover */}
+                  <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1">
+                    <Camera className="w-5 h-5" />
+                    <span className="text-[8px] font-semibold uppercase tracking-wider mt-0.5">Upload</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white break-words">{safeName}</h2>
+                    <span className="px-3 py-0.5 text-xs font-semibold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" /> Student Portal
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition-colors cursor-pointer min-h-[36px]"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{currentPhoto ? 'Change Photo' : 'Upload Photo'}</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                    <span>HTEIM Ministry Candidate</span>
+                    <span>•</span>
+                    <span className="font-mono">ID: HTEIM-2026-{Math.abs(safeName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Graduation Readiness Visual Bar */}
+            <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4" /> Graduation Requirement Attendance Threshold (75%)
+                </span>
+                <span className="font-mono">{Math.round(safeRate)}% Current</span>
+              </div>
+
+              <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 ${
+                    safeRate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}
+                  style={{ width: `${Math.min(100, safeRate)}%` }}
+                />
+                {/* Target Marker at 75% */}
+                <div 
+                  className="absolute top-0 bottom-0 w-0.5 bg-amber-400"
+                  style={{ left: '75%' }}
+                  title="75% Graduation Target"
                 />
               </div>
 
-              <p className="text-[10px] font-bold text-slate-500 font-mono text-right">{mod.rate}%</p>
+              <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                <span>0%</span>
+                <span className="font-semibold text-amber-600 dark:text-amber-400">★ 75% Minimum Required</span>
+                <span>100% Perfect</span>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Class Attendance History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-4">
+            {/* 4 Summary Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Attendance Rate</p>
+                <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{Math.round(safeRate)}%</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{safeAttended} of {safeTotalDays} sessions attended</p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Streak</p>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{streakCount}</span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-0.5">
+                    <Flame className="w-4 h-4" /> Sessions
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Consecutive classes present</p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Academic Standing</p>
+                <div className="mt-1">
+                  {safeRate >= 100 ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400 text-sm">
+                      <Trophy className="w-4 h-4" /> Perfect Standing
+                    </span>
+                  ) : safeRate >= 75 ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 text-sm">
+                      <CheckCircle2 className="w-4 h-4" /> Good Standing
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 text-sm">
+                      <AlertCircle className="w-4 h-4" /> Attendance Advisory
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Required for graduation: ≥ 75%</p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Absences Recorded</p>
+                <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{Math.max(0, safeTotalDays - safeAttended)}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Missed Sessions</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Module Breakdown Tab Content */}
+      {activePortalTab === 'modules' && (
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-2xs space-y-4 animate-fadeIn">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Module Attendance Progress Breakdown</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Track your attendance rate across all 6 core curriculum modules.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {moduleBreakdown.map((mod) => (
+              <div key={mod.code} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 rounded text-[9px] font-mono font-bold">
+                    {mod.code}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500 font-mono">
+                    {mod.attended}/{mod.total}
+                  </span>
+                </div>
+
+                <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{mod.name}</h4>
+
+                <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${mod.rate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                    style={{ width: `${mod.rate}%` }}
+                  />
+                </div>
+
+                <p className="text-[10px] font-bold text-slate-500 font-mono text-right">{mod.rate}%</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Class Attendance History Log Tab Content */}
+      {activePortalTab === 'log' && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-4 animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -704,6 +752,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           </table>
         </div>
       </div>
+      )}
 
       {/* Advisory & Faculty Comment Box */}
       {student?.note && (

@@ -88,7 +88,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onPhotosMigrated
 }) => {
   const dialogRef = useAccessibleModal(isOpen, onClose);
-  const [activeTab, setActiveTab] = useState<'appearance' | 'academic' | 'sync' | 'about'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'sync' | 'about'>('appearance');
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importErrorMessage, setImportErrorMessage] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -267,7 +267,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-slate-400">Configure app preferences, thresholds, sync & institutional profile</p>
+              <p className="text-[10px] text-slate-400">Configure app preferences, sync & institutional profile</p>
             </div>
           </div>
           <button 
@@ -292,43 +292,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span>Appearance</span>
           </button>
 
-          {isAdmin ? (
-            <>
-              <button
-                onClick={() => setActiveTab('academic')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'academic'
-                    ? 'bg-white text-emerald-700 shadow-2xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Academic Thresholds</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('sync')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'sync'
-                    ? 'bg-white text-amber-700 shadow-2xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Database className="w-3.5 h-3.5" />
-                <span>Sync & Backup</span>
-              </button>
-            </>
-          ) : (
+          {isAdmin && (
             <button
-              onClick={() => setActiveTab('academic')}
+              onClick={() => setActiveTab('sync')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeTab === 'academic'
-                  ? 'bg-white text-emerald-700 shadow-2xs font-black'
+                activeTab === 'sync'
+                  ? 'bg-white text-amber-700 shadow-2xs font-black'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Lock className="w-3.5 h-3.5 text-amber-600" />
-              <span>Academic Policy (Read-Only)</span>
+              <Database className="w-3.5 h-3.5" />
+              <span>Sync & Backup</span>
             </button>
           )}
 
@@ -463,105 +437,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* 2. ACADEMIC THRESHOLDS TAB */}
-          {activeTab === 'academic' && (
+          {/* 3. SYNC & BACKUP TAB */}
+          {activeTab === 'sync' && (
             <div className="space-y-4">
-              <div>
-                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px]">
-                  <Sliders className="w-4 h-4 text-emerald-600" />
-                  Custom Performance & Attendance Thresholds
-                </h3>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Define the attendance boundary percentages used across matrices, student cards, and transcript generators.
-                </p>
-
-                {isLocked && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium mb-3">
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                      <span>Read-Only Mode: Academic performance thresholds can only be modified by an Administrator.</span>
-                    </div>
-                    <span className="text-[10px] font-mono uppercase bg-amber-200/70 px-2 py-0.5 rounded font-bold text-amber-900 flex-shrink-0">
-                      Admin Only
-                    </span>
-                  </div>
-                )}
-
-                <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  {/* At-Risk Slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="font-bold text-rose-700">At-Risk Standing Threshold (&lt; {atRiskThreshold}%)</label>
-                      <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">{atRiskThreshold}%</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="10" 
-                      max="75" 
-                      step="5"
-                      disabled={isLocked}
-                      value={atRiskThreshold} 
-                      onChange={(e) => setAtRiskThreshold(parseInt(e.target.value, 10))}
-                      className={`w-full accent-rose-600 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                    />
-                    <p className="text-[10px] text-slate-400 mt-0.5">Students with attendance below this rate are flagged in batch email notices & statistics.</p>
-                  </div>
-
-                  {/* Satisfactory Slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="font-bold text-emerald-700">Satisfactory Standing Threshold (&ge; {satisfactoryThreshold}%)</label>
-                      <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">{satisfactoryThreshold}%</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="60" 
-                      max="100" 
-                      step="5"
-                      disabled={isLocked}
-                      value={satisfactoryThreshold} 
-                      onChange={(e) => setSatisfactoryThreshold(parseInt(e.target.value, 10))}
-                      className={`w-full accent-emerald-600 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                    />
-                    <p className="text-[10px] text-slate-400 mt-0.5">Students meeting or exceeding this rate are highlighted green as satisfactory.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Default Rubric Weighting Reference */}
-              <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5">
-                <h4 className="font-extrabold text-indigo-950 flex items-center gap-1.5 text-xs">
-                  <GraduationCap className="w-4 h-4 text-indigo-600" />
-                  Standard Evaluation Rubric Weighting
-                </h4>
-                <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                  <div className="p-2 bg-white rounded-lg border border-indigo-100">
-                    <span className="text-[10px] text-slate-500 font-bold block uppercase">Participation</span>
-                    <span className="font-mono font-extrabold text-emerald-700">30%</span>
-                  </div>
-                  <div className="p-2 bg-white rounded-lg border border-indigo-100">
-                    <span className="text-[10px] text-slate-500 font-bold block uppercase">Reading</span>
-                    <span className="font-mono font-extrabold text-indigo-700">30%</span>
-                  </div>
-                  <div className="p-2 bg-white rounded-lg border border-indigo-100">
-                    <span className="text-[10px] text-slate-500 font-bold block uppercase">Exams & Essays</span>
-                    <span className="font-mono font-extrabold text-purple-700">40%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recommended: Course, Passing Grade & Permission Settings */}
-              <div>
-                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px] mt-4">
+              {/* Course Credits & Operations Controls */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 text-[11px]">
                   <BookOpen className="w-4 h-4 text-emerald-600" />
-                  Academic Policies & Credits Setup
+                  Academic Policies & Operations Controls
                 </h3>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Configure default course credit metrics and grade boundaries for assignment evaluations.
-                </p>
 
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  {/* Default Credits */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Course Credit Hours Default</label>
                     <select
@@ -579,79 +465,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <p className="text-[10px] text-slate-400 mt-0.5">Used for calculating GPA index and student graduation progress.</p>
                   </div>
 
-                  {/* Passing Grade Score Slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="font-bold text-slate-700">Passing Grade Score Threshold</label>
-                      <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">{passingScore}%</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="50" 
-                      max="90" 
-                      step="5"
-                      disabled={isLocked}
-                      value={passingScore} 
-                      onChange={(e) => setPassingScore(parseInt(e.target.value, 10))}
-                      className={`w-full accent-emerald-600 mt-1 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                    />
-                    <p className="text-[10px] text-slate-400 mt-0.5">Assignments scoring below this threshold are marked as "Fail / Needs Revision".</p>
+                  <div className="space-y-2 pt-1">
+                    <label className={`flex items-start gap-2.5 font-bold text-slate-700 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                      <input 
+                        type="checkbox"
+                        disabled={isLocked}
+                        checked={allowStudentAttendanceSelfReport}
+                        onChange={(e) => setAllowStudentAttendanceSelfReport(e.target.checked)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
+                      />
+                      <div>
+                        <span className="text-xs">Allow Student Self-Reporting</span>
+                        <p className="text-[10px] text-slate-400 font-normal mt-0.5">
+                          Students can mark presence for active lecture sessions.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-start gap-2.5 font-bold text-slate-700 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                      <input 
+                        type="checkbox"
+                        disabled={isLocked}
+                        checked={developerMode}
+                        onChange={(e) => setDeveloperMode(e.target.checked)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
+                      />
+                      <div>
+                        <span className="text-xs">Developer Diagnostic Mode</span>
+                        <p className="text-[10px] text-slate-400 font-normal mt-0.5">
+                          Exposes raw payload sizes and developer utilities.
+                        </p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               </div>
 
-              {/* Advanced Permission Toggles */}
-              <div>
-                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5 text-[11px] mt-4">
-                  <UserCheck className="w-4 h-4 text-emerald-600" />
-                  Portal Access & Operations Controls
-                </h3>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Configure permission parameters for self-reporting and system diagnostics.
-                </p>
-
-                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <label className={`flex items-start gap-2.5 font-bold text-slate-700 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
-                    <input 
-                      type="checkbox"
-                      disabled={isLocked}
-                      checked={allowStudentAttendanceSelfReport}
-                      onChange={(e) => setAllowStudentAttendanceSelfReport(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
-                    />
-                    <div>
-                      <span>Allow Student Attendance Self-Reporting</span>
-                      <p className="text-[10px] text-slate-400 font-normal mt-0.5">
-                        If enabled, students can mark their own presence for active lecture sessions directly from their candidate dashboard.
-                      </p>
-                    </div>
-                  </label>
-
-                  <hr className="border-slate-200" />
-
-                  <label className={`flex items-start gap-2.5 font-bold text-slate-700 ${isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
-                    <input 
-                      type="checkbox"
-                      disabled={isLocked}
-                      checked={developerMode}
-                      onChange={(e) => setDeveloperMode(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
-                    />
-                    <div>
-                      <span>Enable Developer Diagnostic Mode</span>
-                      <p className="text-[10px] text-slate-400 font-normal mt-0.5">
-                        Exposes raw payload sizes, local database JSON structures, and developer utilities in settings and admin panels.
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 3. SYNC & BACKUP TAB */}
-          {activeTab === 'sync' && (
-            <div className="space-y-4">
               {isStudent ? (
                 <div className="p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-4 text-center shadow-xl">
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-inner">
