@@ -41,11 +41,11 @@ import { Modal } from './Modal';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 
 // Import Generated Authentic Graduation Assets
-import gradStageAsset from '../assets/images/grad_stage_celebration_1787231699782.jpg';
-import gradDiplomaAsset from '../assets/images/grad_diploma_handover_1787231710835.jpg';
-import gradCelebrateAsset from '../assets/images/grad_cohort_celebrate_1787231720861.jpg';
-import gradPrayerAsset from '../assets/images/grad_anointing_prayer_1787231730111.jpg';
-import gradFellowshipAsset from '../assets/images/grad_fellowship_portraits_1787231740610.jpg';
+import gradStageAsset from '../assets/images/645517144_1339672958204643_7091755527786435853_n.jpg';
+import gradDiplomaAsset from '../assets/images/645546959_1339673388204600_3014549459957888322_n.jpg';
+import gradCelebrateAsset from '../assets/images/646386921_1339673564871249_5223398103669922178_n.jpg';
+import gradPrayerAsset from '../assets/images/646495875_1339674291537843_5023237460630996624_n.jpg';
+import gradFellowshipAsset from '../assets/images/646578740_1339674121537860_5263687295641272570_n.jpg';
 
 export interface GraduationShowcaseConfig {
   showcaseTitle: string;
