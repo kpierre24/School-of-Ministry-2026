@@ -238,26 +238,92 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
     }
   }, [filteredPhotos.length, currentIndex]);
 
-  // Roving Carousel Auto-play Timer (customizable from config)
+  // Slide progress percentage state (0 to 100) for smooth countdown visual
+  const [slideProgress, setSlideProgress] = useState(0);
+
+  // Touch swipe support
+  const touchStartXRef = useRef<number | null>(null);
+  const touchEndXRef = useRef<number | null>(null);
+
+  // Roving Carousel Auto-play Timer with Smooth Tick Progress
   useEffect(() => {
+    setSlideProgress(0);
     if (!isPlaying || isHovered || filteredPhotos.length <= 1) return;
 
     const speedMs = (showcaseConfig.autoplaySpeedSeconds || 5) * 1000;
-    const timer = setInterval(() => {
-      setCurrentIndex(prev => (prev + 1) % filteredPhotos.length);
-    }, speedMs);
+    const intervalTickMs = 50;
+    const increment = (intervalTickMs / speedMs) * 100;
 
-    return () => clearInterval(timer);
-  }, [isPlaying, isHovered, filteredPhotos.length, showcaseConfig.autoplaySpeedSeconds]);
+    const progressInterval = setInterval(() => {
+      setSlideProgress(prev => {
+        if (prev >= 100) {
+          setCurrentIndex(current => (current + 1) % filteredPhotos.length);
+          return 0;
+        }
+        return prev + increment;
+      });
+    }, intervalTickMs);
+
+    return () => clearInterval(progressInterval);
+  }, [isPlaying, isHovered, filteredPhotos.length, showcaseConfig.autoplaySpeedSeconds, currentIndex]);
 
   const handleNext = () => {
     if (filteredPhotos.length === 0) return;
+    setSlideProgress(0);
     setCurrentIndex(prev => (prev + 1) % filteredPhotos.length);
   };
 
   const handlePrev = () => {
     if (filteredPhotos.length === 0) return;
+    setSlideProgress(0);
     setCurrentIndex(prev => (prev - 1 + filteredPhotos.length) % filteredPhotos.length);
+  };
+
+  // Keyboard navigation for carousel & lightbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in an input or textarea
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+
+      if (e.key === 'ArrowRight') {
+        handleNext();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      } else if (e.key === ' ' && !isManageModalOpen) {
+        // Spacebar toggle pause/play if lightbox is closed
+        if (!lightboxPhoto) {
+          e.preventDefault();
+          setIsPlaying(prev => !prev);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredPhotos.length, isManageModalOpen, lightboxPhoto]);
+
+  // Touch Swipe Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchEndXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartXRef.current === null || touchEndXRef.current === null) return;
+    const diff = touchStartXRef.current - touchEndXRef.current;
+    const threshold = 40; // minimum swipe distance px
+    if (diff > threshold) {
+      handleNext(); // swipe left -> next
+    } else if (diff < -threshold) {
+      handlePrev(); // swipe right -> prev
+    }
+    touchStartXRef.current = null;
+    touchEndXRef.current = null;
   };
 
   const activePhoto = filteredPhotos[currentIndex] || filteredPhotos[0] || DEFAULT_GRADUATION_PHOTOS[0];
@@ -594,15 +660,15 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
       {/* Category Filter Pills */}
       <div className="relative z-10 flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
         <span className="text-[11px] font-bold text-[#bae6fd] mr-1 flex items-center gap-1 shrink-0">
-          <Filter className="w-3 h-3" /> View:
+          <Filter className="w-3 h-3 text-[#dfc18b]" /> View:
         </span>
         {[
-          { id: 'all', label: 'All Highlights' },
-          { id: 'commencement', label: 'Commencement Stage' },
-          { id: 'diploma', label: 'Diploma Honors' },
-          { id: 'prayer', label: 'Anointing & Prayer' },
-          { id: 'celebration', label: 'Victory Celebration' },
-          { id: 'fellowship', label: 'Family & Fellowship' }
+          { id: 'all', label: 'All Highlights', count: photos.length },
+          { id: 'commencement', label: 'Commencement', count: photos.filter(p => p.category === 'commencement').length },
+          { id: 'diploma', label: 'Diploma Honors', count: photos.filter(p => p.category === 'diploma').length },
+          { id: 'prayer', label: 'Anointing & Prayer', count: photos.filter(p => p.category === 'prayer').length },
+          { id: 'celebration', label: 'Victory Celebration', count: photos.filter(p => p.category === 'celebration').length },
+          { id: 'fellowship', label: 'Fellowship', count: photos.filter(p => p.category === 'fellowship').length }
         ].map(cat => (
           <button
             key={cat.id}
@@ -610,19 +676,39 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
               setSelectedCategory(cat.id);
               setCurrentIndex(0);
             }}
-            className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 border ${
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
               selectedCategory === cat.id
-                ? 'bg-[#b38f53] text-[#022044] border-[#dfc18b] shadow-sm'
-                : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                ? 'bg-[#b38f53] text-[#022044] border-[#dfc18b] shadow-md ring-1 ring-[#dfc18b]'
+                : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10 hover:border-white/20'
             }`}
           >
-            {cat.label}
+            <span>{cat.label}</span>
+            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+              selectedCategory === cat.id ? 'bg-[#022044] text-[#dfc18b]' : 'bg-white/10 text-slate-300'
+            }`}>
+              {cat.count}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* Main Roving Display Carousel Stage */}
-      <div className="relative z-10">
+      {/* Main Roving Display Carousel Stage with Touch Swipes & Dynamic Countdown Progress */}
+      <div 
+        className="relative z-10"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Dynamic Countdown Slide Progress Ticker */}
+        {isPlaying && !isHovered && filteredPhotos.length > 1 && (
+          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2">
+            <div 
+              className="h-full bg-gradient-to-r from-[#dfc18b] via-[#b38f53] to-[#86efac] transition-all duration-75 ease-linear rounded-full shadow-sm"
+              style={{ width: `${slideProgress}%` }}
+            />
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {activePhoto && (
             <motion.div

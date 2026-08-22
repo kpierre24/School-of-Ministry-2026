@@ -212,6 +212,58 @@ export function AttendanceTab({
   setRecords,
   setExcusedAbsences,
 }: AttendanceTabProps) {
+  // Batch mark all displayed / selected students present for a specific class day
+  const handleMarkAllPresentForDay = (dayId: string) => {
+    const targetStudents = selectedStudentNames.length > 0
+      ? filteredAndSortedStudents.filter(s => selectedStudentNames.includes(s.name))
+      : filteredAndSortedStudents;
+
+    targetStudents.forEach(student => {
+      const currentStatus = student.attendanceByDay[dayId];
+      if (!currentStatus?.present) {
+        handleToggleStudentAttendance(student.name, dayId, 'present');
+      }
+    });
+  };
+
+  // Keyboard shortcuts for rapid faculty attendance grading
+  React.useEffect(() => {
+    if (appUser?.role === 'student') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is currently typing in an input, textarea or select
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
+        return;
+      }
+
+      const activeDay = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : null);
+      if (!activeDay) return;
+
+      if ((e.key === 'p' || e.key === 'P') && selectedStudentNames.length > 0) {
+        e.preventDefault();
+        selectedStudentNames.forEach(name => {
+          handleToggleStudentAttendance(name, activeDay, 'present');
+        });
+      } else if ((e.key === 'a' || e.key === 'A') && selectedStudentNames.length > 0) {
+        e.preventDefault();
+        selectedStudentNames.forEach(name => {
+          handleToggleStudentAttendance(name, activeDay, 'absent');
+        });
+      } else if ((e.key === 'e' || e.key === 'E') && selectedStudentNames.length > 0) {
+        e.preventDefault();
+        selectedStudentNames.forEach(name => {
+          handleToggleStudentAttendance(name, activeDay, 'excused');
+        });
+      } else if (e.key === 'Escape' && selectedStudentNames.length > 0) {
+        e.preventDefault();
+        clearBatchSelection();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [appUser, selectedStudentNames, liveCheckinDayId, effectiveClassDays, handleToggleStudentAttendance, clearBatchSelection]);
+
   return (
     <Fragment>
       {appUser?.role === 'student' ? (
@@ -693,18 +745,32 @@ export function AttendanceTab({
                                   <span className="text-emerald-600 dark:text-emerald-400">({Math.round(stats.percentage)}%)</span>
                                 </div>
                                 {(appUser?.role as string) !== 'student' && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      alert(`Admin Quick Override: Unlocked 24h attendance editing window for session "${day.name}". Records can now be modified.`);
-                                    }}
-                                    className="p-0.5 px-1.5 text-[9px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 cursor-pointer shadow-2xs"
-                                    title="Admin Quick Override: Click to unlock 24h editing window for this session"
-                                  >
-                                    <Lock className="w-2.5 h-2.5" />
-                                    <span className="font-extrabold text-[8px] uppercase">Unlock</span>
-                                  </button>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMarkAllPresentForDay(day.id);
+                                      }}
+                                      className="p-0.5 px-1.5 text-[9px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 rounded border border-emerald-300 dark:border-emerald-800 flex items-center gap-0.5 cursor-pointer shadow-2xs font-extrabold"
+                                      title={`Mark all ${selectedStudentNames.length > 0 ? `${selectedStudentNames.length} selected` : 'displayed'} students present for "${day.name}"`}
+                                    >
+                                      <CheckCheck className="w-2.5 h-2.5" />
+                                      <span className="text-[8px] uppercase">All Present</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        alert(`Admin Quick Override: Unlocked 24h attendance editing window for session "${day.name}". Records can now be modified.`);
+                                      }}
+                                      className="p-0.5 px-1.5 text-[9px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                                      title="Admin Quick Override: Click to unlock 24h editing window for this session"
+                                    >
+                                      <Lock className="w-2.5 h-2.5" />
+                                      <span className="font-extrabold text-[8px] uppercase">Unlock</span>
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -877,7 +943,7 @@ export function AttendanceTab({
           {/* Batch Selection Faculty Action Bar */}
           {selectedStudentNames.length > 0 && (
             <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-xl animate-slideUp z-30">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="px-3 py-1 bg-amber-500 text-slate-950 font-black text-xs rounded-full shadow-xs">
                   {selectedStudentNames.length} Student{selectedStudentNames.length > 1 ? 's' : ''} Selected
                 </span>
@@ -887,6 +953,17 @@ export function AttendanceTab({
                 >
                   Select All At-Risk (&lt;{atRiskThreshold}%)
                 </button>
+                <div className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/90 text-slate-300 rounded-lg text-[10px] font-mono border border-slate-700">
+                  <span className="text-slate-400 font-bold uppercase">Keys:</span>
+                  <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-emerald-300 font-black text-[9px]">P</kbd>
+                  <span>Present</span>
+                  <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-rose-300 font-black text-[9px]">A</kbd>
+                  <span>Absent</span>
+                  <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-amber-300 font-black text-[9px]">E</kbd>
+                  <span>Excused</span>
+                  <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-200 font-black text-[9px]">Esc</kbd>
+                  <span>Deselect</span>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">

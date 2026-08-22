@@ -58,8 +58,13 @@ async function startServer() {
   app.use("/api/ai", aiRouter);
   app.use("/api/drive-proxy", driveProxyRouter);
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Determine production mode: either explicit NODE_ENV or presence of built dist directory
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    fs.existsSync(path.join(process.cwd(), "dist", "index.html")) ||
+    fs.existsSync(path.join(__dirname, "index.html"));
+
+  if (!isProduction) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -68,9 +73,11 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Production static serving
-    const distPath = fs.existsSync(path.join(process.cwd(), "dist"))
+    const distPath = fs.existsSync(path.join(process.cwd(), "dist", "index.html"))
       ? path.join(process.cwd(), "dist")
-      : path.join(__dirname);
+      : fs.existsSync(path.join(__dirname, "index.html"))
+      ? __dirname
+      : path.join(process.cwd(), "dist");
 
     app.use(
       express.static(distPath, {
@@ -87,15 +94,41 @@ async function startServer() {
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
-        res.status(200).send("<html><head><title>HTEIM School of Ministry</title></head><body>HTEIM Portal Service Running</body></html>");
+        res.status(200).send("<!DOCTYPE html><html><head><title>HTEIM School of Ministry</title></head><body>HTEIM Portal Service Running</body></html>");
       }
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // Global Express Error Handler
+  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    logger.error("Unhandled server error:", err);
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: err?.message || "An unexpected error occurred."
+    });
+  });
+
+  const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`HTEIM School of Ministry server running on http://0.0.0.0:${PORT}`);
   });
+
+  // Graceful shutdown handling
+  process.on("SIGTERM", () => {
+    logger.info("SIGTERM signal received: closing HTTP server");
+    server.close(() => {
+      logger.info("HTTP server closed");
+    });
+  });
 }
+
+// Catch uncaught exceptions to prevent silent container crashes
+process.on("uncaughtException", (err) => {
+  logger.error("Uncaught exception in server process:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled rejection in server process:", reason);
+});
 
 startServer();
 

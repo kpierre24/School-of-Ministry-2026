@@ -214,6 +214,40 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const isAdminOrTeacher = appUser?.role === 'admin' || appUser?.role === 'teacher';
   const isAdmin = appUser?.role === 'admin';
 
+  // Current logged in student metrics (if student role)
+  const currentStudent = useMemo(() => {
+    if (!appUser || !students || students.length === 0) return null;
+    const nameToMatch = appUser.name.toLowerCase().trim();
+    return students.find(s => s.name.toLowerCase().trim() === nameToMatch) || null;
+  }, [appUser, students]);
+
+  // Attendance metrics calculation for current student
+  const studentMetrics = useMemo(() => {
+    if (!currentStudent) return null;
+    const rate = currentStudent.rate ?? 0;
+    const totalDays = classDays?.length || currentStudent.totalDays || 1;
+    const attended = currentStudent.attended ?? 0;
+    const isHonor = rate >= 85 || (currentStudent.avgScore !== null && currentStudent.avgScore >= 85);
+    const isSat = rate >= atRiskThreshold;
+    const isRisk = rate < atRiskThreshold;
+    
+    // Max allowable total absences to stay at or above atRiskThreshold (e.g. 75%)
+    const maxAllowedAbsences = Math.floor(totalDays * (1 - atRiskThreshold / 100));
+    const currentAbsences = Math.max(0, totalDays - attended);
+    const remainingAbsences = Math.max(0, maxAllowedAbsences - currentAbsences);
+
+    return {
+      rate,
+      totalDays,
+      attended,
+      isHonor,
+      isSat,
+      isRisk,
+      remainingAbsences,
+      avgScore: currentStudent.avgScore
+    };
+  }, [currentStudent, classDays, atRiskThreshold]);
+
   // Active Quiz Link Copy Toast State
   const [copiedQuizLink, setCopiedQuizLink] = useState<string | null>(null);
 
@@ -1031,73 +1065,182 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {/* 4. MAIN STRUCTURAL LAYOUT: Portal Access, Broadcast & Covenant Mandate */}
       {appUser ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Portal Access Card */}
+          {/* Portal Access & Student Milestone Progress Card */}
           <section className="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Academic Portal Account</h3>
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                    {isStudent ? 'Student Academic Dashboard & Graduation Status' : 'Academic Portal Account'}
+                  </h3>
+                </div>
+                {studentMetrics && (
+                  <div className="flex items-center gap-1.5">
+                    {studentMetrics.isHonor && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40 text-[10px] font-black flex items-center gap-1">
+                        <Trophy className="w-3 h-3 text-amber-500" />
+                        Honor Roll
+                      </span>
+                    )}
+                    {studentMetrics.isRisk ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/40 text-[10px] font-black flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-rose-500" />
+                        At-Risk (&lt;{atRiskThreshold}%)
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 text-[10px] font-black flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        Satisfactory
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-150 dark:border-slate-700/85 rounded-xl flex items-center justify-between gap-3">
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center font-bold text-sm">
+                    <div className="w-11 h-11 bg-gradient-to-br from-[#023264] to-[#025798] text-[#dfc18b] border border-[#b38f53]/30 rounded-xl flex items-center justify-center font-black text-base shadow-sm">
                       {appUser.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{appUser.name}</p>
-                      <p className="text-[9px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">{appUser.role} Account</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{appUser.name}</p>
+                        <span className="px-2 py-0.5 text-[9px] font-mono font-black uppercase rounded bg-[#023264]/10 text-[#025798] dark:bg-[#023264]/50 dark:text-[#7dd3fc] border border-[#025798]/30">
+                          {appUser.role}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        School of Ministry • Class of 2025
+                      </p>
                     </div>
                   </div>
                   {onLogout && (
                     <button
                       onClick={onLogout}
-                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-md text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 self-start sm:self-auto shrink-0 shadow-xs"
                       title="Sign Out"
                     >
-                      <LogOut className="w-3 h-3" />
+                      <LogOut className="w-3.5 h-3.5" />
                       <span>Sign Out</span>
                     </button>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-prose">
-                  Signed in to HTEIM Academic Portal. Check attendance, take scripture quizzes, download handouts, and view tuition balances.
-                </p>
+                {/* If Logged in as Student: Detailed Attendance & Graduation Readiness Bar */}
+                {studentMetrics && (
+                  <div className="p-4 bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-800/40 dark:to-indigo-950/20 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Attendance & Commissioning Threshold
+                        </span>
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="text-2xl font-black text-slate-900 dark:text-white">
+                            {studentMetrics.rate}%
+                          </span>
+                          <span className="text-xs text-slate-500 font-medium">
+                            ({studentMetrics.attended} of {studentMetrics.totalDays} sessions attended)
+                          </span>
+                        </div>
+                      </div>
 
-                <div className="space-y-2 pt-1">
+                      {/* Absences Alert / Safe Status Chip */}
+                      <div className="text-right">
+                        {studentMetrics.isRisk ? (
+                          <div className="text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Action Required</span>
+                          </div>
+                        ) : (
+                          <div className="text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>{studentMetrics.remainingAbsences} absence(s) allowed</span>
+                          </div>
+                        )}
+                        <span className="text-[10px] text-slate-400">
+                          {atRiskThreshold}% required for graduation
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Visual Progress Bar with Threshold Marker */}
+                    <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          studentMetrics.rate >= 85
+                            ? 'bg-gradient-to-r from-amber-500 to-[#b38f53]'
+                            : studentMetrics.rate >= atRiskThreshold
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                            : 'bg-gradient-to-r from-rose-500 to-amber-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(5, studentMetrics.rate))}%` }}
+                      />
+                      {/* Threshold Tick at 75% */}
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-slate-900/60 dark:bg-white/80 z-10"
+                        style={{ left: `${atRiskThreshold}%` }}
+                        title={`${atRiskThreshold}% Passing Threshold`}
+                      />
+                    </div>
+
+                    {/* 6-Module Milestone Step Indicators */}
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                        <span className="flex items-center gap-1">
+                          <Layers className="w-3 h-3 text-[#dfc18b]" />
+                          6 Core Modules Equipping Progress:
+                        </span>
+                        <span className="text-[#025798] dark:text-[#7dd3fc]">
+                          {Math.round((studentMetrics.attended / Math.max(1, studentMetrics.totalDays)) * 6)} / 6 Modules Active
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {['MOD 1', 'MOD 2', 'MOD 3', 'MOD 4', 'MOD 5', 'MOD 6'].map((mod, idx) => {
+                          const isComplete = (idx + 1) <= Math.round((studentMetrics.attended / Math.max(1, studentMetrics.totalDays)) * 6);
+                          return (
+                            <div
+                              key={mod}
+                              className={`py-1 text-center rounded text-[9px] font-mono font-bold border transition-all ${
+                                isComplete
+                                  ? 'bg-[#023264] text-[#dfc18b] border-[#b38f53]/50'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
+                              }`}
+                            >
+                              {mod}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   <button
                     onClick={() => onNavigate('attendance')}
-                    className="w-full py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm active:scale-95"
                   >
-                    <span>Attendance Portal</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <UserCheck className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+                    <span>Open Attendance Portal</span>
                   </button>
 
                   {isStudent ? (
                     <button
                       onClick={() => onNavigate('payments')}
-                      className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                      className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
                     >
-                      Tuition Statement
+                      <DollarSign className="w-4 h-4 text-amber-500" />
+                      <span>Tuition Statement</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => onNavigate('students')}
-                      className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                      className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
                     >
-                      Student Roster Directory
-                    </button>
-                  )}
-
-                  {onLogout && (
-                    <button
-                      onClick={onLogout}
-                      className="w-full py-2 px-3 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Log Out Account</span>
+                      <Users className="w-4 h-4 text-indigo-500" />
+                      <span>Student Roster Directory</span>
                     </button>
                   )}
                 </div>
@@ -1110,29 +1253,33 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Radio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 animate-pulse text-indigo-600" /> Live Class Schedule
+                  <Radio className="w-3.5 h-3.5 text-rose-500 animate-pulse" /> Live Class Schedule
                 </span>
                 <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   Next: {nextClassTitle}
                 </span>
               </div>
 
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/45 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/45 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-2">
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-900 dark:text-white">
                   <span>Tuesday & Thursday Session</span>
-                  <span className="text-slate-600 dark:text-slate-300 font-mono">7:00 PM EST</span>
+                  <span className="text-[#025798] dark:text-[#7dd3fc] font-mono font-black">7:00 PM EST</span>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Live online broadcast & in-person lecture hall check-in.
                 </p>
+                <div className="pt-1 flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Zoom link active in Library tab</span>
+                </div>
               </div>
             </div>
 
             <button
               onClick={() => onNavigate('schedule')}
-              className="w-full py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-300 text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-auto"
+              className="w-full py-2.5 bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs rounded-xl border border-[#0277b8]/40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-auto shadow-xs active:scale-95"
             >
-              <Calendar className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5 text-[#dfc18b]" />
               <span>View All Class Sessions</span>
             </button>
           </section>
@@ -1226,6 +1373,51 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           onResetToDefault={handleResetFacultyList}
         />
       )}
+
+      {/* Mobile Floating Quick Action Dock (Visible only on small screens) */}
+      <div className="md:hidden fixed bottom-3 inset-x-3 z-40 bg-slate-950/90 backdrop-blur-md border border-white/20 rounded-2xl p-2 shadow-2xl flex items-center justify-around gap-1">
+        <button
+          onClick={() => onNavigate('attendance')}
+          className="flex-1 py-2 px-1 rounded-xl bg-white/5 hover:bg-white/10 text-white flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold active:scale-95 transition-all"
+        >
+          <UserCheck className="w-4 h-4 text-emerald-400" />
+          <span>Attendance</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate('courses')}
+          className="flex-1 py-2 px-1 rounded-xl bg-white/5 hover:bg-white/10 text-white flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold active:scale-95 transition-all"
+        >
+          <BookOpen className="w-4 h-4 text-[#dfc18b]" />
+          <span>6 Modules</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate('library')}
+          className="flex-1 py-2 px-1 rounded-xl bg-white/5 hover:bg-white/10 text-white flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold active:scale-95 transition-all"
+        >
+          <Radio className="w-4 h-4 text-rose-400" />
+          <span>Media</span>
+        </button>
+
+        {!appUser ? (
+          <button
+            onClick={() => setIsEnrollmentModalOpen(true)}
+            className="flex-1 py-2 px-1 rounded-xl bg-[#b38f53] text-[#022044] flex flex-col items-center justify-center gap-0.5 text-[10px] font-black active:scale-95 transition-all shadow-sm"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Apply Now</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => onNavigate(isStudent ? 'payments' : 'students')}
+            className="flex-1 py-2 px-1 rounded-xl bg-[#023264] text-[#bae6fd] border border-[#025798] flex flex-col items-center justify-center gap-0.5 text-[10px] font-black active:scale-95 transition-all"
+          >
+            {isStudent ? <DollarSign className="w-4 h-4 text-amber-300" /> : <Users className="w-4 h-4 text-indigo-300" />}
+            <span>{isStudent ? 'Tuition' : 'Roster'}</span>
+          </button>
+        )}
+      </div>
 
     </div>
   );

@@ -273,11 +273,14 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
             {/* If it's a Video track, render the high-impact large screen */}
             {currentTrack.type === 'video' && (
               <div className="w-full flex flex-col space-y-2">
-                <div className="w-full h-72 md:h-[380px] bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
+                <div className="w-full h-72 md:h-[380px] bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl group">
+                  {/* Ambient Glow Backdrop under video */}
+                  <div className="absolute -inset-4 bg-indigo-500/15 blur-2xl pointer-events-none rounded-2xl" />
+
                   {parsedMedia.isYouTube || parsedMedia.isVimeo || parsedMedia.isLoom ? (
                     <iframe
                       src={parsedMedia.embedUrl}
-                      className="w-full h-full border-0 rounded-xl"
+                      className="w-full h-full border-0 rounded-xl relative z-10"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       title={currentTrack.title}
@@ -285,7 +288,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                   ) : (isDriveVideo && !useDirectStream) ? (
                     <iframe
                       src={parsedMedia.embedUrl}
-                      className="w-full h-full border-0 rounded-xl"
+                      className="w-full h-full border-0 rounded-xl relative z-10"
                       allow="autoplay; encrypted-media; picture-in-picture"
                       allowFullScreen
                       title={currentTrack.title}
@@ -294,7 +297,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                     <video
                       ref={videoRef}
                       src={isDriveVideo ? (parsedMedia.proxyStreamUrl || `/api/drive-proxy/stream/${parsedMedia.fileId}`) : currentTrack.url}
-                      className="w-full h-full rounded-xl bg-black object-contain"
+                      className="w-full h-full rounded-xl bg-black object-contain relative z-10"
                       controls
                       onTimeUpdate={handleTimeUpdate}
                       onEnded={() => setIsPlaying(false)}
