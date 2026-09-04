@@ -9,6 +9,9 @@ import {
   XCircle, 
   Sliders, 
   Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Sparkles,
   AlertCircle,
   FileText,
@@ -474,6 +477,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [directStudentFileUrl, setDirectStudentFileUrl] = useState('');
   const [directStudentFiles, setDirectStudentFiles] = useState<{ name: string; url: string; type?: string }[]>([]);
   const [directStudentNotes, setDirectStudentNotes] = useState('');
+  const [studentSortOrder, setStudentSortOrder] = useState<'name_asc' | 'name_desc' | 'score_desc' | 'score_asc'>('name_asc');
 
   // Identify Student Profile
   const studentRecord = students.find(s => {
@@ -509,8 +513,25 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     } else if (gradeFilter === 'failed') {
       list = list.filter(s => (s.percentage || 0) < 70);
     }
-    return list;
-  }, [isStudent, studentRecord, students, searchQuery, gradeFilter]);
+
+    return [...list].sort((a, b) => {
+      const nameA = (a?.name || '').trim();
+      const nameB = (b?.name || '').trim();
+      if (studentSortOrder === 'name_asc') {
+        return nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (studentSortOrder === 'name_desc') {
+        return nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (studentSortOrder === 'score_desc') {
+        return ((b?.percentage ?? -1) - (a?.percentage ?? -1)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (studentSortOrder === 'score_asc') {
+        return ((a?.percentage ?? 101) - (b?.percentage ?? 101)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      return 0;
+    });
+  }, [isStudent, studentRecord, students, searchQuery, gradeFilter, studentSortOrder]);
 
   const getGradeLetter = (pct: number | null) => {
     if (pct === null) return 'N/A';
@@ -1765,10 +1786,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
                         <th className="p-3 pl-3 sm:pl-4 min-w-[120px] max-w-[130px] sm:min-w-[170px] sm:max-w-none sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
-                          <div className="flex items-center gap-1.5 truncate">
+                          <button
+                            type="button"
+                            onClick={() => setStudentSortOrder(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc')}
+                            className="flex items-center gap-1.5 truncate cursor-pointer hover:text-indigo-600 transition-colors uppercase font-bold text-[10px] tracking-wider text-slate-700"
+                            title="Click to toggle sorting student names in Ascending (A-Z) or Descending (Z-A) order"
+                          >
                             <User className="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" />
                             <span>Student Name</span>
-                          </div>
+                            {studentSortOrder === 'name_asc' ? (
+                              <ArrowUp className="w-3 h-3 text-indigo-600 stroke-[2.5]" />
+                            ) : studentSortOrder === 'name_desc' ? (
+                              <ArrowDown className="w-3 h-3 text-indigo-600 stroke-[2.5]" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                            )}
+                          </button>
                         </th>
                         <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[180px]">Assignment Title</th>
                         <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs min-w-[130px]">Submission Status</th>
@@ -2311,10 +2344,22 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
                     <th className="p-3 pl-3 sm:pl-4 min-w-[140px] sm:min-w-[180px] max-w-[160px] sm:max-w-none sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
-                      <div className="flex items-center gap-1.5 truncate">
+                      <button
+                        type="button"
+                        onClick={() => setStudentSortOrder(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc')}
+                        className="flex items-center gap-1.5 truncate cursor-pointer hover:text-indigo-600 transition-colors uppercase font-bold text-[10px] tracking-wider text-slate-700"
+                        title="Click to toggle sorting student names in Ascending (A-Z) or Descending (Z-A) order"
+                      >
                         <User className="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" />
                         <span>Student Candidate</span>
-                      </div>
+                        {studentSortOrder === 'name_asc' ? (
+                          <ArrowUp className="w-3 h-3 text-indigo-600 stroke-[2.5]" />
+                        ) : studentSortOrder === 'name_desc' ? (
+                          <ArrowDown className="w-3 h-3 text-indigo-600 stroke-[2.5]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60" />
+                        )}
+                      </button>
                     </th>
                     {allQuizSheets.map((qs, qIdx) => (
                       <th key={`qs-head-${qs}-${qIdx}`} className="p-3 text-center min-w-[120px] sm:min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>

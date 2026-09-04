@@ -15,7 +15,7 @@ export default defineConfig(() => {
       dedupe: ['react', 'react-dom'],
     },
     server: {
-      hmr: process.env.DISABLE_HMR === 'true' ? false : { overlay: false },
+      hmr: false,
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       headers: {
         'X-Content-Type-Options': 'nosniff',

@@ -8,7 +8,32 @@ export function getInvoices(paymentRecords: PaymentRecord[] = []): Invoice[] {
   const saved = localStorage.getItem('hteim_student_invoices');
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Deduplicate invoices by ID and normalize student names
+        const seenIds = new Set<string>();
+        const seenNames = new Set<string>();
+        const deduped: Invoice[] = [];
+        parsed.forEach((inv: any) => {
+          if (!inv) return;
+          const sName = (inv.studentName || '').toLowerCase().trim();
+          const normName = (sName === 'shellon massiah' || sName === 'shellon liddell') ? 'Shellon Liddel' : inv.studentName;
+          const invId = inv.id || `INV-2026-${Math.random().toString(36).substring(2, 7)}`;
+          const key = (normName || '').toLowerCase().trim();
+          
+          if (!seenIds.has(invId) && !seenNames.has(key)) {
+            seenIds.add(invId);
+            if (key) seenNames.add(key);
+            deduped.push({
+              ...inv,
+              id: invId,
+              studentName: normName
+            });
+          }
+        });
+        saveInvoices(deduped);
+        return deduped;
+      }
     } catch (e) {
       // fallback
     }
@@ -37,7 +62,20 @@ export function getTransactions(): PaymentTransaction[] {
   const saved = localStorage.getItem('hteim_student_transactions');
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        const seenIds = new Set<string>();
+        const deduped: PaymentTransaction[] = [];
+        parsed.forEach((tx: any) => {
+          if (!tx) return;
+          const txId = tx.id || `TXN-2026-${Math.random().toString(36).substring(2, 7)}`;
+          if (!seenIds.has(txId)) {
+            seenIds.add(txId);
+            deduped.push({ ...tx, id: txId });
+          }
+        });
+        return deduped;
+      }
     } catch (e) {
       // fallback
     }
@@ -59,7 +97,20 @@ export function getReceipts(): Receipt[] {
   const saved = localStorage.getItem('hteim_student_receipts');
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        const seenIds = new Set<string>();
+        const deduped: Receipt[] = [];
+        parsed.forEach((rec: any) => {
+          if (!rec) return;
+          const recId = rec.id || `REC-2026-${Math.random().toString(36).substring(2, 7)}`;
+          if (!seenIds.has(recId)) {
+            seenIds.add(recId);
+            deduped.push({ ...rec, id: recId });
+          }
+        });
+        return deduped;
+      }
     } catch (e) {
       // fallback
     }
@@ -112,8 +163,12 @@ export function bootstrapFromPaymentRecords(records: PaymentRecord[]): {
       status = 'Past Due';
     }
 
-    const cleanId = p.id.replace('pay-sheet-', '');
-    const invoiceId = `INV-2026-${cleanId.padStart(4, '0')}`;
+    const cleanId = (p.id ? p.id.replace('pay-sheet-', '') : Math.random().toString(36).substring(2, 7)).trim();
+    let invoiceId = `INV-2026-${cleanId.padStart(4, '0')}`;
+    let collisionCounter = 1;
+    while (invoices.some(inv => inv.id === invoiceId)) {
+      invoiceId = `INV-2026-${cleanId.padStart(4, '0')}-${collisionCounter++}`;
+    }
 
     // 1. Create Invoice
     const invoice: Invoice = {
@@ -139,7 +194,12 @@ export function bootstrapFromPaymentRecords(records: PaymentRecord[]): {
 
     // 2. Create Payment Transaction and Receipt if payments were made
     if (amountPaid > 0) {
-      const transactionId = `TXN-2026-${cleanId.padStart(4, '0')}`;
+      let transactionId = `TXN-2026-${cleanId.padStart(4, '0')}`;
+      let txCounter = 1;
+      while (transactions.some(tx => tx.id === transactionId)) {
+        transactionId = `TXN-2026-${cleanId.padStart(4, '0')}-${txCounter++}`;
+      }
+      
       const receiptNumber = p.receiptNumber || `REC-2026-${cleanId.padStart(4, '0')}`;
       const paymentDate = p.lastPaymentDate && p.lastPaymentDate !== 'N/A' ? formatBootstrapDate(p.lastPaymentDate) : '2026-04-15';
 
@@ -157,8 +217,14 @@ export function bootstrapFromPaymentRecords(records: PaymentRecord[]): {
       };
       transactions.push(transaction);
 
+      let receiptId = `REC-2026-${cleanId.padStart(4, '0')}`;
+      let recCounter = 1;
+      while (receipts.some(rec => rec.id === receiptId)) {
+        receiptId = `REC-2026-${cleanId.padStart(4, '0')}-${recCounter++}`;
+      }
+
       const receipt: Receipt = {
-        id: `REC-2026-${cleanId.padStart(4, '0')}`,
+        id: receiptId,
         receiptNumber,
         paymentId: transaction.id,
         invoiceId: invoice.id,

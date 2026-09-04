@@ -118,6 +118,22 @@ export const isMatchingCredential = (cred: UserCredential, query: string | AppUs
 
     const genFacEmail = getFacultyEmailFromName(displayName, cred.email).toLowerCase();
     if (genFacEmail && genFacEmail === cleanInput) return true;
+
+    // Support known student aliases (e.g. Shellon Massiah / Shellon Liddell -> Shellon Liddel)
+    const aliases: Record<string, string> = {
+      'shellon massiah': 'shellon liddel',
+      'shellon liddell': 'shellon liddel',
+      'shellon liddel': 'shellon liddel',
+      'shellon.massiah': 'shellon liddel',
+      'shellon.liddell': 'shellon liddel',
+      'shellon.liddel': 'shellon liddel',
+      'massiahshellon@gmail.com': 'shellon liddel',
+      'uvanie@yahoo.com': 'shellon liddel',
+    };
+    const mappedAlias = aliases[cleanInput];
+    if (mappedAlias && displayName.toLowerCase().trim() === mappedAlias) {
+      return true;
+    }
   }
 
   return false;

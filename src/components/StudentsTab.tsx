@@ -12,6 +12,9 @@ import {
   Sliders,
   Sparkles,
   Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Lock,
   Camera,
   Trash2,
@@ -95,7 +98,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'perfect' | 'satisfactory' | 'at_risk' | 'fifty_percent'>('all');
-  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc' | 'score_asc'>('name_asc');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'last_name_asc' | 'last_name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc' | 'score_asc'>('name_asc');
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState('');
   const [confirmingDeleteFor, setConfirmingDeleteFor] = useState<string | null>(null);
@@ -228,12 +231,40 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     });
 
     return [...filtered].sort((a, b) => {
-      if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
-      if (sortBy === 'name_desc') return b.name.localeCompare(a.name);
-      if (sortBy === 'rate_desc') return b.rate - a.rate;
-      if (sortBy === 'rate_asc') return a.rate - b.rate;
-      if (sortBy === 'score_desc') return (b.avgScore || 0) - (a.avgScore || 0);
-      if (sortBy === 'score_asc') return (a.avgScore || 0) - (b.avgScore || 0);
+      const nameA = (a?.name || '').trim();
+      const nameB = (b?.name || '').trim();
+
+      const getLastName = (fullName: string) => {
+        const parts = fullName.trim().split(/\s+/);
+        return parts.length > 1 ? parts[parts.length - 1] : fullName;
+      };
+
+      if (sortBy === 'name_asc') {
+        return nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'name_desc') {
+        return nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'last_name_asc') {
+        const lastCmp = getLastName(nameA).localeCompare(getLastName(nameB), undefined, { sensitivity: 'base', numeric: true });
+        return lastCmp !== 0 ? lastCmp : nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'last_name_desc') {
+        const lastCmp = getLastName(nameB).localeCompare(getLastName(nameA), undefined, { sensitivity: 'base', numeric: true });
+        return lastCmp !== 0 ? lastCmp : nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'rate_desc') {
+        return b.rate - a.rate || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'rate_asc') {
+        return a.rate - b.rate || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'score_desc') {
+        return ((b.avgScore || 0) - (a.avgScore || 0)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
+      if (sortBy === 'score_asc') {
+        return ((a.avgScore || 0) - (b.avgScore || 0)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      }
       return 0;
     });
   }, [students, searchQuery, statusFilter, satisfactoryThreshold, atRiskThreshold, sortBy]);
@@ -364,7 +395,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
               </button>
             </div>
 
-            {/* Sorting Dropdown */}
+            {/* Sorting Dropdown & Quick Toggle */}
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-xs font-extrabold text-slate-600 flex items-center gap-1">
                 <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Sort:
@@ -374,13 +405,39 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs"
               >
-                <option value="name_asc">Name (A &rarr; Z)</option>
-                <option value="name_desc">Name (Z &rarr; A)</option>
-                <option value="rate_desc">Attendance (High &rarr; Low)</option>
-                <option value="rate_asc">Attendance (Low &rarr; High)</option>
-                <option value="score_desc">Avg Score (High &rarr; Low)</option>
-                <option value="score_asc">Avg Score (Low &rarr; High)</option>
+                <option value="name_asc">Name (A → Z)</option>
+                <option value="name_desc">Name (Z → A)</option>
+                <option value="last_name_asc">Last Name (A → Z)</option>
+                <option value="last_name_desc">Last Name (Z → A)</option>
+                <option value="rate_desc">Attendance (High → Low)</option>
+                <option value="rate_asc">Attendance (Low → High)</option>
+                <option value="score_desc">Avg Score (High → Low)</option>
+                <option value="score_asc">Avg Score (Low → High)</option>
               </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSortBy(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc');
+                }}
+                className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                  sortBy === 'name_asc' || sortBy === 'name_desc'
+                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-2xs'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+                title={sortBy === 'name_asc' ? 'Currently sorted A to Z. Click for Z to A.' : 'Click to toggle Name Ascending (A-Z) / Descending (Z-A)'}
+              >
+                {sortBy === 'name_asc' ? (
+                  <ArrowUp className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                ) : sortBy === 'name_desc' ? (
+                  <ArrowDown className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                ) : (
+                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                )}
+                <span className="hidden sm:inline font-bold">
+                  {sortBy === 'name_desc' ? 'Z-A' : 'A-Z'}
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -571,7 +628,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           {/* Photo Gallery Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             <AnimatePresence mode="popLayout">
-              {filteredAndSortedStudents.map((s) => {
+              {filteredAndSortedStudents.map((s, idx) => {
                 const studentKey = (s.name || '').toLowerCase().trim();
                 const photoUrl = studentPhotos[studentKey] || s.photoUrl;
                 const isExcused = !!(excusedAbsences?.[studentKey]?.[activeGalleryDayId]);
@@ -584,7 +641,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
                 return (
                   <motion.div
-                    key={s.name}
+                    key={`gallery-${s.name || idx}`}
                     layout
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -795,7 +852,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         /* Detailed Student Profile Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <AnimatePresence mode="popLayout">
-          {filteredAndSortedStudents.map((s) => {
+          {filteredAndSortedStudents.map((s, idx) => {
             const studentKey = (s.name || '').toLowerCase().trim();
             const photoUrl = studentPhotos[studentKey] || s.photoUrl;
             const currentNote = studentNotes[studentKey] || s.note || '';
@@ -803,7 +860,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
             return (
               <motion.div 
-                key={s.name}
+                key={`card-${s.name || idx}`}
                 layout
                 initial={{ opacity: 0, scale: 0.92, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1009,7 +1066,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                             ) : (
                               timelineItems.slice(0, 10).map((item, idx) => (
                                 <div
-                                  key={item.id || idx}
+                                  key={`dot-${item.id || idx}-${idx}`}
                                   onClick={() => setExpandedTimelineStudent(isExpanded ? null : s.name)}
                                   className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all hover:scale-125 cursor-pointer ${
                                     item.present ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-rose-500 ring-2 ring-rose-100'
@@ -1098,7 +1155,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                     />
                                   ) : (
                                     filteredItems.map((item, idx) => (
-                                      <div key={item.id || idx} className="relative group/timeline">
+                                      <div key={`tl-item-${item.id || idx}-${idx}`} className="relative group/timeline">
                                         {/* Node Icon on Timeline Line */}
                                         <div 
                                           className={`absolute -left-[27px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900 ${

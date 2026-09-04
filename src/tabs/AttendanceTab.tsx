@@ -7,6 +7,8 @@ import {
   Loader2,
   Search,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   CheckCircle2,
   XCircle,
   X,
@@ -339,10 +341,14 @@ export function AttendanceTab({
                     onChange={(e: any) => setSortBy(e.target.value)}
                     className="bg-transparent focus:outline-none font-bold text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
                   >
-                    <option value="name_asc">Name (A-Z)</option>
-                    <option value="name_desc">Name (Z-A)</option>
-                    <option value="rate_desc">Rate (Highest)</option>
-                    <option value="rate_asc">Rate (Lowest)</option>
+                    <option value="name_asc">Name (A → Z)</option>
+                    <option value="name_desc">Name (Z → A)</option>
+                    <option value="last_name_asc">Last Name (A → Z)</option>
+                    <option value="last_name_desc">Last Name (Z → A)</option>
+                    <option value="rate_desc">Attendance (High → Low)</option>
+                    <option value="rate_asc">Attendance (Low → High)</option>
+                    <option value="score_desc">Avg Score (High → Low)</option>
+                    <option value="score_asc">Avg Score (Low → High)</option>
                   </select>
                 </div>
 
@@ -520,7 +526,7 @@ export function AttendanceTab({
               {filteredAndSortedStudents.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   <AnimatePresence mode="popLayout">
-                    {filteredAndSortedStudents.map((student) => {
+                    {filteredAndSortedStudents.map((student, idx) => {
                       const studentKey = student.name.toLowerCase().trim();
                       const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
                       const note = studentNotes[studentKey] || student.note;
@@ -528,7 +534,7 @@ export function AttendanceTab({
 
                       return (
                         <motion.div
-                          key={student.name}
+                          key={`att-card-${student.name || idx}-${idx}`}
                           layout
                           initial={{ opacity: 0, scale: 0.92, y: 12 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -571,8 +577,8 @@ export function AttendanceTab({
                             {/* Student Badges / Milestones */}
                             {studentBadges.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-2">
-                                {studentBadges.map(b => (
-                                  <span key={b.id} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
+                                {studentBadges.map((b, bIdx) => (
+                                  <span key={`badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
                                     {b.icon}
                                     <span>{b.label}</span>
                                   </span>
@@ -622,9 +628,9 @@ export function AttendanceTab({
               <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
                 {filteredAndSortedStudents.length > 0 ? (
                   <AnimatePresence mode="popLayout">
-                    {filteredAndSortedStudents.map((student) => (
+                    {filteredAndSortedStudents.map((student, idx) => (
                       <motion.div
-                        key={student.name}
+                        key={`att-swipe-${student.name || idx}-${idx}`}
                         layout
                         initial={{ opacity: 0, scale: 0.95, y: 8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -679,7 +685,23 @@ export function AttendanceTab({
                               className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer"
                               title="Select / Deselect all displayed students for batch operations"
                             />
-                            <span>Student Name</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSortBy((prev: any) => prev === 'name_asc' ? 'name_desc' : 'name_asc');
+                              }}
+                              className="flex items-center gap-1.5 cursor-pointer select-none hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors uppercase font-black text-slate-700 dark:text-slate-200 tracking-wider group/sort"
+                              title="Click to toggle sorting student names in Ascending (A-Z) or Descending (Z-A) order"
+                            >
+                              <span>Student Name</span>
+                              {sortBy === 'name_asc' ? (
+                                <ArrowUp className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                              ) : sortBy === 'name_desc' ? (
+                                <ArrowDown className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                              ) : (
+                                <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60 group-hover/sort:opacity-100" />
+                              )}
+                            </button>
                           </div>
                           <span className="text-[10px] font-semibold text-slate-400 normal-case">({filteredAndSortedStudents.length} shown)</span>
                         </div>
@@ -816,8 +838,8 @@ export function AttendanceTab({
                                 </div>
 
                                 <div className="flex items-center gap-1 flex-shrink-0">
-                                  {studentBadges.map(b => (
-                                    <span key={b.id} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
+                                  {studentBadges.map((b, bIdx) => (
+                                    <span key={`row-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
                                       {b.icon}
                                     </span>
                                   ))}

@@ -16,6 +16,8 @@ import {
   Search,
   Download,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   ArrowRight,
   CheckCircle2,
   XCircle,
@@ -102,8 +104,8 @@ import {
 } from 'recharts';
 import { subscribeToOAuthState as initAuth, loginWithGoogleOAuth as googleSignIn, logoutUserSession as logout, logoutUserSession as supabaseLogout } from './services/authService';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
-import { getDemoAttendance } from './data';
-import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord } from './types';
+import { getDemoAttendance, CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS } from './data';
+import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord, Cohort, DEFAULT_COHORTS } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword, isMatchingCredential, mergeUserCredentials, DEFAULT_USER_PASSWORD } from './lib/userAuth';
 import { updatePasswordInSupabase } from './lib/supabaseAuth';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -112,6 +114,7 @@ import { CentralNotificationService } from './services/notification/CentralNotif
 import { LoginModal } from './components/LoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
+import { CohortManagementModal } from './components/CohortManagementModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
 import { HomeTab, DEFAULT_FACULTY_TEACHERS } from './components/HomeTab';
 import { StudentsTab } from './components/StudentsTab';
@@ -170,51 +173,227 @@ const isExcludedStudent = (name?: string) => {
 };
 
 const MANUAL_ALIASES: Record<string, string> = {
+  // Shellon Liddel (synced with Shellon Massiah)
+  'shellon liddel': 'Shellon Liddel',
+  'shellon liddell': 'Shellon Liddel',
+  'shellon  liddel': 'Shellon Liddel',
+  'shellon  liddell': 'Shellon Liddel',
+  'shellon liddel-selby': 'Shellon Liddel',
+  'shellon liddell-selby': 'Shellon Liddel',
+  'shellon liddel selby': 'Shellon Liddel',
+  'shellon liddell selby': 'Shellon Liddel',
+  's liddel': 'Shellon Liddel',
+  's. liddel': 'Shellon Liddel',
+  's liddell': 'Shellon Liddel',
+  's. liddell': 'Shellon Liddel',
+  'uvanie@yahoo.com': 'Shellon Liddel',
+  'shellon massiah': 'Shellon Liddel',
+  'shellon  massiah': 'Shellon Liddel',
+  'shellon messiah': 'Shellon Liddel',
+  's massiah': 'Shellon Liddel',
+  's. massiah': 'Shellon Liddel',
+  'massiahshellon@gmail.com': 'Shellon Liddel',
+
+  // Niomi Loverne Joseph Marksman
+  'niomi': 'Niomi Loverne Joseph Marksman',
+  'niomi.': 'Niomi Loverne Joseph Marksman',
+  'niomi marksman': 'Niomi Loverne Joseph Marksman',
+  'niomi joseph': 'Niomi Loverne Joseph Marksman',
+  'niomi loverne': 'Niomi Loverne Joseph Marksman',
+  'niomi laverne': 'Niomi Loverne Joseph Marksman',
+  'loverne joseph': 'Niomi Loverne Joseph Marksman',
+  'laverne joseph marksman': 'Niomi Loverne Joseph Marksman',
+  'niomi loverne joseph': 'Niomi Loverne Joseph Marksman',
+  'niomi laverne joseph': 'Niomi Loverne Joseph Marksman',
+  'niomi loverne joseph marksman': 'Niomi Loverne Joseph Marksman',
+  'niomi laverne joseph marksman': 'Niomi Loverne Joseph Marksman',
+  'niomi. laverne joseph marksman': 'Niomi Loverne Joseph Marksman',
+  'lovernejosephempress@gmail.com': 'Niomi Loverne Joseph Marksman',
+
+  // Krystal Mohammed
+  'krystal mohammed': 'Krystal Mohammed',
+  'krystal mohamed': 'Krystal Mohammed',
+  'k mohammed': 'Krystal Mohammed',
+  'k. mohammed': 'Krystal Mohammed',
+  'krystal': 'Krystal Mohammed',
+  'krystalmoh02@gmail.com': 'Krystal Mohammed',
+  'krystalmoh2@gmail.com': 'Krystal Mohammed',
+
+  // Vanessa Mohammed (distinct student)
+  'vanessa': 'Vanessa Mohammed',
+  'vanessa mohammed': 'Vanessa Mohammed',
+  'vanessa  mohammed': 'Vanessa Mohammed',
+  'v mohammed': 'Vanessa Mohammed',
+  'v. mohammed': 'Vanessa Mohammed',
+
+  // Denise Edwards
   'denise edwards': 'Denise Edwards',
   'deniseedwards6561@gmail.com': 'Denise Edwards',
   'deniseedwards6561@gmeil.com': 'Denise Edwards',
   'denise edwards6561@gmail.com': 'Denise Edwards',
   'denise edwards 6561@gmail.com': 'Denise Edwards',
-  'kabrina morris jack': 'Kabrina Morris Jack',
-  'kabrinamorrisjack': 'Kabrina Morris Jack',
+  'd edwards': 'Denise Edwards',
+  'd. edwards': 'Denise Edwards',
+
+  // Kabrina Morris-Jack
+  'kabrina': 'Kabrina Morris-Jack',
+  'kabrina jack': 'Kabrina Morris-Jack',
+  'kabrina morris jack': 'Kabrina Morris-Jack',
+  'kabrina morris-jack': 'Kabrina Morris-Jack',
+  'kabrinamorrisjack': 'Kabrina Morris-Jack',
+
+  // Mishael Daniel
   'mishael daniel': 'Mishael Daniel',
   'mishaeldaniel06@gmail.com': 'Mishael Daniel',
   'mishaeldaniel06@gmeil.com': 'Mishael Daniel',
   'mishael daniel06@gmail.com': 'Mishael Daniel',
   'mishael daniel06@gmeil.com': 'Mishael Daniel',
-  'niomi loverne joseph': 'Niomi Loverne Joseph Marksman',
-  'laverne joseph marksman': 'Niomi Loverne Joseph Marksman',
-  'niomi loverne joseph marksman': 'Niomi Loverne Joseph Marksman',
-  'vanessa mohammed': 'Vanessa Mohammed',
-  'v mohammed': 'Vanessa Mohammed',
-  'v. mohammed': 'Vanessa Mohammed',
+
+  // Colette Blackburne Joseph
   'colette blackburn joseph': 'Colette Blackburne Joseph',
   'colette blackburne joseph': 'Colette Blackburne Joseph',
   'colette blackburne joseph ': 'Colette Blackburne Joseph',
   'colette blackburn': 'Colette Blackburne Joseph',
   'colette blackburne': 'Colette Blackburne Joseph',
+  'colette blackburne-joseph': 'Colette Blackburne Joseph',
+  'colette blackburne -joseph': 'Colette Blackburne Joseph',
+
+  // Ingrid Bonval-Butcher
+  'ingrid': 'Ingrid Bonval-Butcher',
+  'ingrid butcher': 'Ingrid Bonval-Butcher',
+  'ingrid bonval butcher': 'Ingrid Bonval-Butcher',
+  'ingrid bonval-butcher': 'Ingrid Bonval-Butcher',
+  'ingrid bonval-butcher k': 'Ingrid Bonval-Butcher',
+
+  // Julie-Ann Fernandes-Charles
+  'julie charles': 'Julie-Ann Fernandes-Charles',
+  'julie-ann charles': 'Julie-Ann Fernandes-Charles',
+  'julie ann fernandes charles': 'Julie-Ann Fernandes-Charles',
+  'julie-ann fernandes-charles': 'Julie-Ann Fernandes-Charles',
+
+  // Marlene Walker-Castle
+  'marlene walker': 'Marlene Walker-Castle',
+  'marlene walker castle': 'Marlene Walker-Castle',
+  'marlene walker-castle': 'Marlene Walker-Castle',
+
+  // Regina Joseph-Gonzales
+  'regina joseph-gonzales': 'Regina Joseph-Gonzales',
+  'regina joseph gonzales': 'Regina Joseph-Gonzales',
+  'regina gonzales': 'Regina Joseph-Gonzales',
+  'regina joseph': 'Regina Joseph-Gonzales',
+  'regina joseph- gonzales': 'Regina Joseph-Gonzales',
+  'regina joseph - gonzales': 'Regina Joseph-Gonzales',
+
+  // Whitney Tracey Seelochan
+  'whitney tracey seelochan': 'Whitney Tracey Seelochan',
+  'whitney seelochan': 'Whitney Tracey Seelochan',
+
+  // Racine Roy
+  'racian': 'Racine Roy',
+  'racian roy': 'Racine Roy',
+  'racine roy': 'Racine Roy',
+
+  // Kemrolene Opadeyi
+  'kemrolene opadeyi': 'Kemrolene Opadeyi',
+  'kemrolene bowens-opadeyi': 'Kemrolene Opadeyi',
+
+  // Keyshana Gomes
+  'keyshana gomes': 'Keyshana Gomes',
+  'ice4evah@gmail.com': 'Keyshana Gomes',
+
+  // Jenetta Pierre
+  'jenetta pierre': 'Jenetta Pierre',
+  'jenetta.pierre04@gmail.com': 'Jenetta Pierre',
+
+  // Nevillean Dundas
+  'nevillean dundas': 'Nevillean Dundas',
+  'nevellean dundas': 'Nevillean Dundas',
+
+  // Alicia Noray Bowles
+  'alicia noray bowles': 'Alicia Noray Bowles',
+  'alicia bowles': 'Alicia Noray Bowles',
+
+  // Anne-Marie Davis
+  'anne marie davis': 'Anne-Marie Davis',
+  'anne-marie davis': 'Anne-Marie Davis',
+
+  // Susan Spark
+  'susan spark': 'Susan Spark',
+  'susan sparks': 'Susan Spark',
+
+  // Wendy Woodruffe
+  'wendy woodruffe': 'Wendy Woodruffe',
+  'wendy wondruffe': 'Wendy Woodruffe',
+
+  // Racquel Gumbs
+  'racquel gumbs': 'Racquel Gumbs',
+  'raquel gumbs': 'Racquel Gumbs',
+
+  // Kathleen Joseph-Sandy
+  'kathleen joseph-sandy': 'Kathleen Joseph-Sandy',
+  'kathleen  joseph-sandy': 'Kathleen Joseph-Sandy',
+
+  // Richard Roberts
+  'richard roberts': 'Richard Roberts',
+  'richard  roberts': 'Richard Roberts',
+
+  // Tessa Phipps
+  'tessa phipps': 'Tessa Phipps',
+  'tessa  phipps': 'Tessa Phipps',
+
+  // Afeshia Burke
+  'afeshia': 'Afeshia Burke',
+  'afeshia burke': 'Afeshia Burke',
+
+  // Rennie Bowles
+  'rennie': 'Rennie Bowles',
+  'rennie bowles': 'Rennie Bowles',
+
+  // Roxanne Sealey
+  'roxanne': 'Roxanne Sealey',
+  'roxanne sealey': 'Roxanne Sealey',
+
+  // Diana Selkridge & Beverly Selkridge
+  'diana selkridge': 'Diana Selkridge',
+  'beverly selkridge': 'Beverly Selkridge',
+  'vikash ramnarace': 'Vikash Ramnarace',
+  'francisca swift': 'Francisca Swift',
 };
 
 const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
   const nameGroups: string[][] = [];
   const canonicalNames = new Map<string, string>();
 
+  // Helper to normalize strings for comparison
+  const normalize = (str: string) => (str || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+
   rawNames.forEach((rawName: string) => {
     if (!rawName) return;
-    let foundGroup = false;
-    const lowerRaw = (rawName || '').toLowerCase().trim();
+    const lowerRaw = normalize(rawName);
     const explicitCanonical = MANUAL_ALIASES[lowerRaw];
     const normalizedRaw = lowerRaw.replace(/[^a-z0-9 ]/g, ' ').trim();
-    
+
+    let foundGroup = false;
     for (const group of nameGroups) {
       const representative = group[0];
-      const lowerRep = (representative || '').toLowerCase().trim();
+      const lowerRep = normalize(representative);
       const explicitRepCanonical = MANUAL_ALIASES[lowerRep];
 
-      if (explicitCanonical && (explicitCanonical === explicitRepCanonical || group.some((n: string) => MANUAL_ALIASES[(n || '').toLowerCase().trim()] === explicitCanonical))) {
+      // If both map to the same manual alias, group together immediately
+      if (explicitCanonical && explicitRepCanonical && explicitCanonical === explicitRepCanonical) {
         group.push(rawName);
         foundGroup = true;
         break;
+      }
+      if (explicitCanonical && group.some((n: string) => MANUAL_ALIASES[normalize(n)] === explicitCanonical)) {
+        group.push(rawName);
+        foundGroup = true;
+        break;
+      }
+
+      // If both have different explicit canonical names, do NOT merge
+      if (explicitCanonical && explicitRepCanonical && explicitCanonical !== explicitRepCanonical) {
+        continue;
       }
 
       const normalizedRep = lowerRep.replace(/[^a-z0-9 ]/g, ' ').trim();
@@ -232,11 +411,20 @@ const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
       const rawParts = normalizedRaw.split(/\s+/).filter(Boolean);
       const repParts = normalizedRep.split(/\s+/).filter(Boolean);
 
+      // Prevent merging distinct students with different last names
       if (rawParts.length >= 2 && repParts.length >= 2) {
         const rawFirst = rawParts[0];
         const rawLast = rawParts[rawParts.length - 1];
         const repFirst = repParts[0];
         const repLast = repParts[repParts.length - 1];
+
+        // If last names are different and not initials or compound, keep separate
+        if (rawLast !== repLast && rawLast.length > 2 && repLast.length > 2) {
+          const isCompoundSurname = rawLast.includes(repLast) || repLast.includes(rawLast);
+          if (!isCompoundSurname && rawFirst !== rawLast) {
+            continue;
+          }
+        }
 
         if (rawLast === repLast && rawFirst[0] === repFirst[0] && (rawFirst.length === 1 || repFirst.length === 1)) {
           group.push(rawName);
@@ -285,7 +473,7 @@ const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
   nameGroups.forEach((group: string[]) => {
     let canonical = group[0];
     for (const name of group) {
-      const alias = MANUAL_ALIASES[(name || '').toLowerCase().trim()];
+      const alias = MANUAL_ALIASES[normalize(name)];
       if (alias) {
         canonical = alias;
         break;
@@ -759,7 +947,47 @@ export default function App() {
   });
   const [payments, setPayments] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('hteim_student_payments');
-    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Normalize names using MANUAL_ALIASES (specifically Shellon Massiah / Shellon Liddell -> Shellon Liddel)
+          const normalized = parsed.map((p: any) => {
+            if (!p || !p.studentName) return p;
+            const pLower = p.studentName.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[pLower];
+            if (alias && alias !== p.studentName) {
+              return { ...p, studentName: alias };
+            }
+            return p;
+          });
+          // De-duplicate if multiple records exist for the same student (e.g. Shellon Liddel)
+          const seen = new Set<string>();
+          const deduped: PaymentRecord[] = [];
+          normalized.forEach((p: any) => {
+            const key = (p?.studentName || '').toLowerCase().trim();
+            if (key) {
+              if (seen.has(key)) {
+                const existing = deduped.find(d => (d?.studentName || '').toLowerCase().trim() === key);
+                if (existing) {
+                  existing.amountPaid = (Number(existing.amountPaid) || 0) + (Number(p.amountPaid) || 0);
+                  if (existing.amountPaid >= (existing.totalTuition || 1200)) existing.status = 'Paid In Full';
+                  else if (existing.amountPaid > 0) existing.status = 'Partial';
+                }
+                return;
+              }
+              seen.add(key);
+            }
+            deduped.push(p);
+          });
+          // Merge INITIAL_PAYMENTS to guarantee every enrolled student is present
+          const existingNames = new Set(deduped.map((p: any) => (p?.studentName || '').toLowerCase().trim()));
+          const missing = INITIAL_PAYMENTS.filter(p => !existingNames.has((p.studentName || '').toLowerCase().trim()));
+          return [...deduped, ...missing];
+        }
+      } catch (e) {}
+    }
+    return INITIAL_PAYMENTS;
   });
   const [facultyTeachers, setFacultyTeachers] = useState<any[]>(() => {
     const saved = localStorage.getItem('hteim_faculty_teachers_v1');
@@ -779,31 +1007,17 @@ export default function App() {
   });
   
   // Permanent Default Class Days
-  const defaultPermanentClassDays: ClassDay[] = useMemo(() => [
-    { id: 'Day 1', name: 'Class Day 1 - Pneumatology & Holy Spirit' },
-    { id: 'Day 2', name: 'Class Day 2 - Hermeneutics & Exegesis' },
-    { id: 'Day 3', name: 'Class Day 3 - Ministerial Ethics' },
-    { id: 'Day 4', name: 'Class Day 4 - Homiletics & Preaching' },
-    { id: 'Day 5', name: 'Class Day 5 - Pastoral Care & Leadership' },
-    { id: 'Day 6', name: 'Class Day 6 - Church History & Doctrine' },
-  ], []);
+  const defaultPermanentClassDays: ClassDay[] = useMemo(() => CURRICULUM_CLASS_DAYS, []);
 
   const [classDays, setClassDays] = useState<ClassDay[]>(() => {
     const saved = localStorage.getItem('classDays');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= 14) return parsed;
       } catch (e) {}
     }
-    return [
-      { id: 'Day 1', name: 'Class Day 1 - Pneumatology & Holy Spirit' },
-      { id: 'Day 2', name: 'Class Day 2 - Hermeneutics & Exegesis' },
-      { id: 'Day 3', name: 'Class Day 3 - Ministerial Ethics' },
-      { id: 'Day 4', name: 'Class Day 4 - Homiletics & Preaching' },
-      { id: 'Day 5', name: 'Class Day 5 - Pastoral Care & Leadership' },
-      { id: 'Day 6', name: 'Class Day 6 - Church History & Doctrine' },
-    ];
+    return CURRICULUM_CLASS_DAYS;
   });
 
   const [records, setRecords] = useState<AttendanceRecord[]>(() => {
@@ -816,7 +1030,7 @@ export default function App() {
     if (saved) {
       try {
         const loaded: AttendanceRecord[] = JSON.parse(saved);
-        if (Array.isArray(loaded) && loaded.length > 0) {
+        if (Array.isArray(loaded) && loaded.length >= 50) {
           return loaded.filter(r => {
             if (!r || !r.name) return false;
             const nameLower = (r?.name || '').toLowerCase().trim();
@@ -828,29 +1042,8 @@ export default function App() {
       } catch (e) {}
     }
 
-    // Default permanent attendance records for enrolled students
-    const initialStudentNames = Array.from(
-      new Set(INITIAL_PAYMENTS.map(p => p.studentName.trim()))
-    );
-    const defaultDays = [
-      { id: 'Day 1' }, { id: 'Day 2' }, { id: 'Day 3' },
-      { id: 'Day 4' }, { id: 'Day 5' }, { id: 'Day 6' }
-    ];
-    const defaultRecs: AttendanceRecord[] = [];
-    initialStudentNames.forEach((studentName, idx) => {
-      defaultDays.forEach((day, dayIdx) => {
-        const isPresent = (idx + dayIdx) % 7 !== 0;
-        defaultRecs.push({
-          name: studentName,
-          classDay: day.id,
-          present: isPresent,
-          timestamp: new Date().toLocaleDateString(),
-          score: isPresent ? String(80 + ((idx * 3 + dayIdx * 5) % 20)) : '0',
-          manualOverride: true
-        });
-      });
-    });
-    return defaultRecs;
+    // Default permanent attendance records for all 14 curriculum classes
+    return RAW_CURRICULUM_RECORDS.filter(r => !isExcludedStudent(r.name));
   });
   const [deletedClassDayIds, setDeletedClassDayIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('deletedClassDayIds');
@@ -881,7 +1074,7 @@ export default function App() {
   // Search, Filter & Sort State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'at_risk' | 'moderate' | 'perfect' | 'fifty_percent' | 'unpaid' | 'honor_roll'>('all');
-  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'rate_desc' | 'rate_asc'>('name_asc');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'last_name_asc' | 'last_name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc' | 'score_asc'>('name_asc');
   
   // Selected Student for Detail Modal
   const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
@@ -990,9 +1183,63 @@ export default function App() {
   // Printable Report & Settings Modal State
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showCohortModal, setShowCohortModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showMobileDownloadModal, setShowMobileDownloadModal] = useState(false);
   const [showClassDaysModal, setShowClassDaysModal] = useState(false);
+
+  // Cohort Management State
+  const [cohorts, setCohorts] = useState<Cohort[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_cohorts');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_COHORTS;
+  });
+
+  const [activeCohortId, setActiveCohortId] = useState<string>(() => {
+    return localStorage.getItem('hteim_active_cohort_id') || 'cohort_2026';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_cohorts', JSON.stringify(cohorts));
+  }, [cohorts]);
+
+  useEffect(() => {
+    localStorage.setItem('hteim_active_cohort_id', activeCohortId);
+  }, [activeCohortId]);
+
+  const activeCohort = useMemo(() => {
+    return cohorts.find(c => c.id === activeCohortId) || cohorts[0] || DEFAULT_COHORTS[0];
+  }, [cohorts, activeCohortId]);
+
+  const handleSaveCohort = (cohort: Cohort) => {
+    setCohorts(prev => {
+      const idx = prev.findIndex(c => c.id === cohort.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = cohort;
+        return copy;
+      }
+      return [...prev, cohort];
+    });
+  };
+
+  const handleDeleteCohort = (cohortId: string) => {
+    setCohorts(prev => prev.filter(c => c.id !== cohortId));
+    if (activeCohortId === cohortId) {
+      setActiveCohortId('cohort_2026');
+    }
+  };
+
+  const handleArchiveToggleCohort = (cohortId: string) => {
+    setCohorts(prev => prev.map(c => c.id === cohortId ? { ...c, isArchived: !c.isArchived } : c));
+  };
+
+  const handleAssignStudentCohort = (studentName: string, cohortId: string) => {
+    const key = `hteim_student_cohort_${studentName.toLowerCase().trim()}`;
+    localStorage.setItem(key, cohortId);
+  };
 
   // Mobile PWA Installation Hook
   const pwaHook = usePWAInstall();
@@ -2368,36 +2615,8 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getDemoAttendance();
-      if (data.length === 0) throw new Error("Demo data is empty");
-      
-      const headers = Object.keys(data[0]);
-      const rows = data.map(item => headers.map(h => item[h]));
-      
-      const classDayName = 'Lesson 2 Assignment';
-      setClassDays([{ id: classDayName, name: `${classDayName} (05/05/2026)` }]);
-
-      let nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('first and last name'));
-      if (nameIndex === -1) nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('name'));
-      if (nameIndex === -1) nameIndex = 2;
-
-      let timestampIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('timestamp'));
-      let scoreIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('score'));
-      if (timestampIndex === -1) timestampIndex = 0;
-      if (scoreIndex === -1) scoreIndex = 1;
-
-      const processed: AttendanceRecord[] = rows.map(row => {
-        const rawName = row[nameIndex] || 'Unknown';
-        const cleanName = rawName.trim().replace(/[\r\n]+/g, ' ');
-        return {
-          name: cleanName,
-          timestamp: row[timestampIndex] || '',
-          score: row[scoreIndex] || '',
-          classDay: classDayName,
-          present: true,
-        };
-      }).filter(r => r.name && r.name !== '' && r.name !== 'Unknown' && !/^[\d\s\/]+$/.test(r.name) && !isExcludedStudent(r.name));
-      
+      setClassDays(CURRICULUM_CLASS_DAYS);
+      const processed: AttendanceRecord[] = RAW_CURRICULUM_RECORDS.filter(r => !isExcludedStudent(r.name));
       setRecords(processed);
       setDataSource('demo');
     } catch (err: any) {
@@ -2410,7 +2629,7 @@ export default function App() {
   const handleLoadSheets = async (e?: React.FormEvent, customUrl?: string) => {
     if (e) e.preventDefault();
 
-    const targetUrl = customUrl || sheetUrl;
+    const targetUrl = customUrl || activeCohort?.sheetUrl || sheetUrl;
     if (customUrl) {
       setSheetUrl(customUrl);
     }
@@ -2489,6 +2708,17 @@ export default function App() {
             ? rangeName.split('!')[0].replace(/^'|'$/g, '') 
             : `Sheet${index + 1}`;
 
+          // Auto-categorization check for cohort matching sheet tab pattern or title
+          const matchedCohortForTab = cohorts.find(c => {
+            if (c.sheetTabPattern && c.sheetTabPattern.trim() !== '') {
+              const pattern = c.sheetTabPattern.toLowerCase().trim();
+              const titleLower = sheetTitle.toLowerCase().trim();
+              return titleLower.includes(pattern) || pattern.includes(titleLower);
+            }
+            const yearStr = c.academicYear ? c.academicYear.toString() : '';
+            return (yearStr && sheetTitle.toLowerCase().includes(yearStr)) || sheetTitle.toLowerCase().includes(c.name.toLowerCase());
+          });
+
           if (!rangeData.values || rangeData.values.length === 0) {
             parsedSheetDataByClassDay.set(sheetTitle, {
               displayDate: sheetTitle,
@@ -2535,6 +2765,14 @@ export default function App() {
             if (isExcludedStudent(name)) return;
 
             allRawNames.add(name);
+
+            // If a tab matched a cohort, auto-tag the student's cohort
+            if (matchedCohortForTab) {
+              const studentKey = name.toLowerCase().trim();
+              if (!localStorage.getItem(`hteim_student_cohort_${studentKey}`)) {
+                localStorage.setItem(`hteim_student_cohort_${studentKey}`, matchedCohortForTab.id);
+              }
+            }
 
             const rowScore = row[scoreIndex] || '';
             const rowTimestamp = row[timestampIndex] || '';
@@ -2716,19 +2954,20 @@ export default function App() {
 
   // Auto-sync Google Sheets when the user loads the app or navigates to 'exams' or 'home' tab (Attendance is permanent manual)
   useEffect(() => {
-    if ((activeErpTab === 'exams' || activeErpTab === 'home') && sheetUrl) {
-      handleLoadSheets(undefined, sheetUrl).catch(err => {
+    const currentUrl = activeCohort?.sheetUrl || sheetUrl;
+    if ((activeErpTab === 'exams' || activeErpTab === 'home') && currentUrl) {
+      handleLoadSheets(undefined, currentUrl).catch(err => {
         console.warn("Auto-sync of public sheets failed:", err);
       });
     }
-  }, [activeErpTab, sheetUrl]);
+  }, [activeErpTab, sheetUrl, activeCohortId, activeCohort?.sheetUrl]);
 
   const { uniqueStudents, avgAttendance, avgScoreOverall, classDayStats } = useMemo(() => {
     const recordNames = records.filter(r => r && (r.name || r.studentName)).map(r => (r.name || r.studentName || '').toString().trim());
     const paymentNames = payments.filter(p => p && p.studentName).map(p => p.studentName.trim());
     const userNames = userCredentials.filter(c => c && c.name && c.role === 'student').map(c => c.name.trim());
 
-    const combinedRawNames = Array.from(new Set([...recordNames, ...paymentNames, ...userNames]))
+    const combinedRawNames = Array.from(new Set([...recordNames, ...paymentNames, ...userNames, ...MASTER_ENROLLED_STUDENTS]))
       .filter((name: string) => name && !isExcludedStudent(name));
 
     const canonicalNames = getCanonicalNamesMap(combinedRawNames);
@@ -2750,7 +2989,8 @@ export default function App() {
             totalDays: 0,
             avgScore: null,
             note: studentNotes[key] || '',
-            levelId: studentLevels[key] || getDefaultLevelForStudent(canonicalName, 0)
+            levelId: studentLevels[key] || getDefaultLevelForStudent(canonicalName, 0),
+            cohortId: localStorage.getItem(`hteim_student_cohort_${key}`) || activeCohortId || 'cohort_2026'
           });
         }
       }
@@ -2853,7 +3093,7 @@ export default function App() {
     });
 
     return { uniqueStudents: students, avgAttendance: avg, avgScoreOverall, classDayStats };
-  }, [records, classDays, deletedStudentNames, studentNotes, studentPhotos, studentLevels, customAssignments, submissions, excusedAbsences]);
+  }, [records, classDays, payments, userCredentials, deletedStudentNames, studentNotes, studentPhotos, studentLevels, customAssignments, submissions, excusedAbsences]);
 
   // Synchronize credentials database when student directory is loaded/updated
   useEffect(() => {
@@ -2869,6 +3109,15 @@ export default function App() {
         }
       });
     }
+    payments.forEach(p => {
+      if (p && p.studentName && p.email) {
+        const pLower = p.studentName.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+        const canonical = (MANUAL_ALIASES[pLower] || p.studentName).toLowerCase().trim();
+        if (!studentEmailMap[canonical]) {
+          studentEmailMap[canonical] = p.email.trim();
+        }
+      }
+    });
     const { updatedCredentials, changed } = ensureUserCredentials(userCredentials, studentNames, facultyTeachers, studentEmailMap);
     if (changed) {
       setUserCredentials(updatedCredentials);
@@ -2882,8 +3131,15 @@ export default function App() {
   const loggedInStudentData = useMemo(() => {
     if (appUser && appUser.role === 'student') {
       const rawName = appUser.studentName || appUser.name || '';
-      const studentNameLower = (rawName || '').toLowerCase().trim();
-      return uniqueStudents.find(st => st && st.name && (st?.name || '').toLowerCase().trim() === studentNameLower);
+      const studentNameLower = (rawName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+      const mappedCanonical = (MANUAL_ALIASES[studentNameLower] || rawName).toLowerCase().trim();
+
+      return uniqueStudents.find(st => {
+        if (!st || !st.name) return false;
+        const stLower = st.name.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+        const stCanonical = (MANUAL_ALIASES[stLower] || st.name).toLowerCase().trim();
+        return stLower === studentNameLower || stLower === mappedCanonical || stCanonical === mappedCanonical || stCanonical === studentNameLower;
+      });
     }
     return null;
   }, [appUser, uniqueStudents]);
@@ -3447,10 +3703,40 @@ export default function App() {
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
-        if (sortBy === 'name_desc') return b.name.localeCompare(a.name);
-        if (sortBy === 'rate_desc') return b.rate - a.rate || a.name.localeCompare(b.name);
-        if (sortBy === 'rate_asc') return a.rate - b.rate || a.name.localeCompare(b.name);
+        const nameA = (a?.name || '').trim();
+        const nameB = (b?.name || '').trim();
+
+        const getLastName = (fullName: string) => {
+          const parts = fullName.trim().split(/\s+/);
+          return parts.length > 1 ? parts[parts.length - 1] : fullName;
+        };
+
+        if (sortBy === 'name_asc') {
+          return nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'name_desc') {
+          return nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'last_name_asc') {
+          const lastCmp = getLastName(nameA).localeCompare(getLastName(nameB), undefined, { sensitivity: 'base', numeric: true });
+          return lastCmp !== 0 ? lastCmp : nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'last_name_desc') {
+          const lastCmp = getLastName(nameB).localeCompare(getLastName(nameA), undefined, { sensitivity: 'base', numeric: true });
+          return lastCmp !== 0 ? lastCmp : nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'rate_desc') {
+          return b.rate - a.rate || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'rate_asc') {
+          return a.rate - b.rate || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'score_desc') {
+          return ((b.avgScore ?? 0) - (a.avgScore ?? 0)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'score_asc') {
+          return ((a.avgScore ?? 0) - (b.avgScore ?? 0)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
         return 0;
       });
   }, [uniqueStudents, searchQuery, statusFilter, sortBy, atRiskThreshold, satisfactoryThreshold]);
@@ -3656,13 +3942,22 @@ create policy "Allow public update" on app_states for update using (true) with c
               className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
             />
             <div className="min-w-0 shrink flex items-center gap-2">
-              <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[280px]">
+              <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[240px]">
                 HTEIM School of Ministry
               </h1>
-              <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#0e2540] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1a385c]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#01883c] animate-pulse"></span>
-                Spring 2026 • Term 2
-              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCohortModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer shadow-2xs shrink-0"
+                title="Click to switch or manage academic cohorts (Class of 2026, 2027, etc.)"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>{activeCohort?.name || 'Class of 2026'}</span>
+                <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
+              </button>
             </div>
           </div>
 
@@ -4120,10 +4415,17 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <ErrorBoundary label="Exams Tab">
                   <LazyExamsTab
                 students={uniqueStudents.map(s => {
-                  const rawRec = records.find(r => r && (r.name || r.studentName || '').toLowerCase().trim() === (s.name || '').toLowerCase().trim() && r.score);
+                  const sLower = (s.name || '').toLowerCase().trim();
+                  const rawRec = records.find(r => {
+                    if (!r || !r.score) return false;
+                    const rName = (r.name || r.studentName || '').toString().trim();
+                    const rLower = rName.toLowerCase().trim();
+                    const rCanonical = (MANUAL_ALIASES[rLower] || rName).toLowerCase().trim();
+                    return rLower === sLower || rCanonical === sLower;
+                  });
                   return {
                     name: s.name,
-                    scoreStr: rawRec?.score || '',
+                    scoreStr: rawRec?.score || (s.avgScore !== null ? `${Math.round(s.avgScore)}%` : ''),
                     percentage: s.avgScore,
                     attendedSessions: s.attended,
                     totalSessions: s.totalDays,
@@ -4447,10 +4749,14 @@ onRequestTranscript={(s) => {
                       onChange={(e: any) => setSortBy(e.target.value)}
                       className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
                     >
-                      <option value="name_asc">Name (A-Z)</option>
-                      <option value="name_desc">Name (Z-A)</option>
-                      <option value="rate_desc">Rate (Highest)</option>
-                      <option value="rate_asc">Rate (Lowest)</option>
+                      <option value="name_asc">Name (A → Z)</option>
+                      <option value="name_desc">Name (Z → A)</option>
+                      <option value="last_name_asc">Last Name (A → Z)</option>
+                      <option value="last_name_desc">Last Name (Z → A)</option>
+                      <option value="rate_desc">Attendance (High → Low)</option>
+                      <option value="rate_asc">Attendance (Low → High)</option>
+                      <option value="score_desc">Avg Score (High → Low)</option>
+                      <option value="score_asc">Avg Score (Low → High)</option>
                     </select>
                   </div>
                 </div>
@@ -4463,7 +4769,7 @@ onRequestTranscript={(s) => {
                   {filteredAndSortedStudents.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       <AnimatePresence mode="popLayout">
-                        {filteredAndSortedStudents.map((student) => {
+                        {filteredAndSortedStudents.map((student, idx) => {
                           const studentKey = (student?.name || '').toLowerCase().trim();
                           const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
                           const note = studentNotes[studentKey] || student.note;
@@ -4471,7 +4777,7 @@ onRequestTranscript={(s) => {
 
                           return (
                             <motion.div 
-                              key={student.name}
+                              key={`student-card-${student.name || idx}-${idx}`}
                               layout
                               initial={{ opacity: 0, scale: 0.92, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -4514,8 +4820,8 @@ onRequestTranscript={(s) => {
                                 {/* Student Badges / Milestones */}
                                 {studentBadges.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mb-2">
-                                    {studentBadges.map(b => (
-                                      <span key={b.id} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
+                                    {studentBadges.map((b, bIdx) => (
+                                      <span key={`card-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
                                         {b.icon}
                                         <span>{b.label}</span>
                                       </span>
@@ -4655,9 +4961,9 @@ onRequestTranscript={(s) => {
                     {filteredAndSortedStudents.length > 0 ? (
                       mobileRollCallMode === 'cards' ? (
                         <AnimatePresence mode="popLayout">
-                          {filteredAndSortedStudents.map((student) => (
+                          {filteredAndSortedStudents.map((student, idx) => (
                             <motion.div
-                              key={student.name}
+                              key={`swipe-card-${student.name || idx}-${idx}`}
                               layout
                               initial={{ opacity: 0, scale: 0.95, y: 8 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -4691,7 +4997,7 @@ onRequestTranscript={(s) => {
                       ) : (
                         /* Rapid Roll Call Mode: Super Compact 1-Line Row per Student */
                         <div className="space-y-2">
-                          {filteredAndSortedStudents.map((student) => {
+                          {filteredAndSortedStudents.map((student, idx) => {
                             const studentKey = (student?.name || '').toLowerCase().trim();
                             const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
                             const activeDayId = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
@@ -4702,7 +5008,7 @@ onRequestTranscript={(s) => {
 
                             return (
                               <div
-                                key={student.name}
+                                key={`rapid-row-${student.name || idx}-${idx}`}
                                 className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2"
                               >
                                 <div 
@@ -4806,7 +5112,23 @@ onRequestTranscript={(s) => {
                                   className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer"
                                   title="Select / Deselect all displayed students for batch operations"
                                 />
-                                <span>Student Name</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSortBy(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc');
+                                  }}
+                                  className="flex items-center gap-1.5 cursor-pointer select-none hover:text-indigo-600 transition-colors uppercase font-black text-slate-700 tracking-wider group/sort"
+                                  title="Click to toggle sorting student names in Ascending (A-Z) or Descending (Z-A) order"
+                                >
+                                  <span>Student Name</span>
+                                  {sortBy === 'name_asc' ? (
+                                    <ArrowUp className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                                  ) : sortBy === 'name_desc' ? (
+                                    <ArrowDown className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                                  ) : (
+                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60 group-hover/sort:opacity-100" />
+                                  )}
+                                </button>
                               </div>
                               <span className="text-[10px] font-semibold text-slate-400 normal-case">({filteredAndSortedStudents.length} shown)</span>
                             </div>
@@ -4891,7 +5213,7 @@ onRequestTranscript={(s) => {
 
                             return (
                               <tr 
-                                key={idx} 
+                                key={`matrix-row-${student.name || idx}-${idx}`} 
                                 onClick={() => setSelectedStudent(student)}
                                 className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
                               >
@@ -4913,8 +5235,8 @@ onRequestTranscript={(s) => {
                                     </div>
                                     
                                     <div className="flex items-center gap-1 flex-shrink-0">
-                                      {studentBadges.map(b => (
-                                        <span key={b.id} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
+                                      {studentBadges.map((b, bIdx) => (
+                                        <span key={`matrix-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
                                           {b.icon}
                                         </span>
                                       ))}
@@ -6028,7 +6350,27 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           setShowSettingsModal(false);
           setShowAdminAuditModal(true);
         }}
+        onOpenCohortManager={() => setShowCohortModal(true)}
         onPhotosMigrated={handlePushToCloud}
+      />
+
+      {/* Cohort Management Modal */}
+      <CohortManagementModal
+        isOpen={showCohortModal}
+        onClose={() => setShowCohortModal(false)}
+        cohorts={cohorts}
+        activeCohortId={activeCohortId}
+        onSelectActiveCohort={(id) => {
+          setActiveCohortId(id);
+          setShowCohortModal(false);
+        }}
+        onSaveCohort={handleSaveCohort}
+        onDeleteCohort={handleDeleteCohort}
+        onArchiveToggle={handleArchiveToggleCohort}
+        students={uniqueStudents}
+        courses={courses}
+        userRole={appUser?.role || 'admin'}
+        onAssignStudentCohort={handleAssignStudentCohort}
       />
 
       {/* Admin Audit Trail & Data Tools Modal */}

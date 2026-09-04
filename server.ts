@@ -1,6 +1,8 @@
 import express from "express";
+import http from "http";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 import { githubRouter } from "./src/server/routes/github";
@@ -11,38 +13,45 @@ import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middlew
 
 dotenv.config();
 
+const currentFilename = typeof __filename !== "undefined"
+  ? __filename
+  : fileURLToPath(import.meta.url);
+const currentDirname = typeof __dirname !== "undefined"
+  ? __dirname
+  : path.dirname(currentFilename);
+
 async function startServer() {
   const app = express();
-  // DO NOT read process.env.PORT. AI Studio infrastructure requires strictly 3000.
-  const PORT = 3000;
+  const isDev =
+    process.env.NODE_ENV !== "production" &&
+    !currentFilename.endsWith(".cjs") &&
+    !currentDirname.includes("dist");
+
+  // Port 3000 is strictly required for the container reverse proxy.
+  const PRIMARY_PORT = 3000;
+  // Cloud Run or external environments may pass PORT (e.g. 8080).
+  const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
+  const secondaryPort = envPort && !isNaN(envPort) && envPort !== PRIMARY_PORT ? envPort : null;
 
   // Apply security response headers globally
   app.use(securityHeaders);
 
-  // Health check routes first (unrate-limited for container probes)
-  app.get("/api/health", (_req, res) => {
+  // Health check routes first (unrate-limited for deployment platforms and container probes)
+  const healthResponse = (_req: express.Request, res: express.Response) => {
     res.status(200).json({
       status: "ok",
       service: "hteim-school-of-ministry",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-  });
+  };
 
-  app.get("/health", (_req, res) => {
-    res.status(200).json({
-      status: "ok",
-      service: "hteim-school-of-ministry",
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  app.get("/_health", (_req, res) => {
-    res.status(200).json({
-      status: "ok",
-      service: "hteim-school-of-ministry",
-      timestamp: new Date().toISOString()
-    });
-  });
+  app.get("/api/health", healthResponse);
+  app.get("/health", healthResponse);
+  app.get("/healthz", healthResponse);
+  app.get("/_health", healthResponse);
+  app.get("/livez", healthResponse);
+  app.get("/readyz", healthResponse);
+  app.get("/ping", (_req, res) => res.status(200).send("pong"));
 
   // Limit payload size to prevent payload bombing attacks
   app.use(express.json({ limit: "10mb" }));
@@ -58,16 +67,14 @@ async function startServer() {
   app.use("/api/ai", aiRouter);
   app.use("/api/drive-proxy", driveProxyRouter);
 
-  // Determine production mode: either explicit NODE_ENV or presence of built dist directory
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    fs.existsSync(path.join(process.cwd(), "dist", "index.html")) ||
-    fs.existsSync(path.join(__dirname, "index.html"));
-
-  if (!isProduction) {
+  // Vite middleware for development vs static asset serving in production
+  if (isDev) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -75,9 +82,7 @@ async function startServer() {
     // Production static serving
     const distPath = fs.existsSync(path.join(process.cwd(), "dist", "index.html"))
       ? path.join(process.cwd(), "dist")
-      : fs.existsSync(path.join(__dirname, "index.html"))
-      ? __dirname
-      : path.join(process.cwd(), "dist");
+      : currentDirname;
 
     app.use(
       express.static(distPath, {
@@ -94,41 +99,69 @@ async function startServer() {
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
-        res.status(200).send("<!DOCTYPE html><html><head><title>HTEIM School of Ministry</title></head><body>HTEIM Portal Service Running</body></html>");
+        res.status(200).send("<html><head><title>HTEIM School of Ministry</title></head><body>HTEIM Portal Service Running</body></html>");
       }
     });
   }
 
-  // Global Express Error Handler
-  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    logger.error("Unhandled server error:", err);
-    res.status(500).json({
-      error: "Internal Server Error",
-      message: err?.message || "An unexpected error occurred."
-    });
+  const activeServers: http.Server[] = [];
+
+  // Start primary server on port 3000 (required for AI Studio reverse proxy routing)
+  const primaryServer = app.listen(PRIMARY_PORT, "0.0.0.0", () => {
+    logger.info(`HTEIM School of Ministry primary server running on http://0.0.0.0:${PRIMARY_PORT}`);
+  });
+  activeServers.push(primaryServer);
+
+  primaryServer.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      logger.error(`Port ${PRIMARY_PORT} is already in use. Exiting process cleanly to allow dev supervisor restart.`);
+      process.exit(1);
+    } else {
+      logger.error(`Primary server on port ${PRIMARY_PORT} encountered an error:`, err);
+    }
   });
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    logger.info(`HTEIM School of Ministry server running on http://0.0.0.0:${PORT}`);
-  });
+  // If Cloud Run or an external container specifies a different PORT (e.g. 8080),
+  // attempt to also listen on that port for direct container ingress if not already bound by a reverse proxy.
+  if (secondaryPort) {
+    try {
+      const secondaryServer = app.listen(secondaryPort, "0.0.0.0", () => {
+        logger.info(`HTEIM School of Ministry secondary ingress active on http://0.0.0.0:${secondaryPort}`);
+      });
+      activeServers.push(secondaryServer);
 
-  // Graceful shutdown handling
-  process.on("SIGTERM", () => {
-    logger.info("SIGTERM signal received: closing HTTP server");
-    server.close(() => {
-      logger.info("HTTP server closed");
-    });
-  });
+      secondaryServer.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "EADDRINUSE") {
+          logger.info(`Port ${secondaryPort} is handled by the platform reverse proxy; internal routing active on port ${PRIMARY_PORT}.`);
+        } else {
+          logger.warn(`Secondary ingress on port ${secondaryPort} encountered error:`, err.message);
+        }
+      });
+    } catch (err: any) {
+      logger.info(`Secondary port ${secondaryPort} listener skipped:`, err?.message || err);
+    }
+  }
+
+  const shutdown = () => {
+    logger.info("Server shutting down gracefully...");
+    let remaining = activeServers.length;
+    if (remaining === 0) {
+      process.exit(0);
+    }
+    for (const s of activeServers) {
+      s.close(() => {
+        remaining--;
+        if (remaining <= 0) {
+          logger.info("All server listeners closed gracefully.");
+          process.exit(0);
+        }
+      });
+    }
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
-
-// Catch uncaught exceptions to prevent silent container crashes
-process.on("uncaughtException", (err) => {
-  logger.error("Uncaught exception in server process:", err);
-});
-
-process.on("unhandledRejection", (reason) => {
-  logger.error("Unhandled rejection in server process:", reason);
-});
 
 startServer();
 

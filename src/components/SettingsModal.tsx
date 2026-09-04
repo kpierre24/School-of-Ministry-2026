@@ -60,6 +60,7 @@ interface SettingsModalProps {
   onOpenGuide?: () => void;
   onOpenMobileDownloadCenter?: () => void;
   onOpenAdminTools?: () => void;
+  onOpenCohortManager?: () => void;
   onPhotosMigrated?: () => void;
 }
 
@@ -85,6 +86,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenGuide,
   onOpenMobileDownloadCenter,
   onOpenAdminTools,
+  onOpenCohortManager,
   onPhotosMigrated
 }) => {
   const dialogRef = useAccessibleModal(isOpen, onClose);
@@ -702,6 +704,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </button>
                         </div>
                       )}
+
+                      {/* Cohort & Academic Year Management */}
+                      {onOpenCohortManager && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-indigo-50/80 rounded-xl border border-indigo-200">
+                          <div>
+                            <h4 className="font-bold text-indigo-950 text-xs flex items-center gap-1.5">
+                              <GraduationCap className="w-4 h-4 text-indigo-600" />
+                              Cohorts & Academic Years (2026, 2027+)
+                            </h4>
+                            <p className="text-[10px] text-indigo-700 mt-0.5">
+                              Manage graduating classes, roster allocations, and curriculum rollover for future cohorts.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenCohortManager();
+                            }}
+                            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5" /> Manage Cohorts
+                          </button>
+                        </div>
+                      )}
+
+                      <hr className="border-slate-200" />
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>

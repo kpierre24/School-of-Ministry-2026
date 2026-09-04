@@ -270,7 +270,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
     "status": "Pending Review",
     "lastPaymentDate": "N/A",
     "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #17. Country: Guyana. Role: Student. Enrollment Status: Inactive."
+    "notes": "Google Sheet Records #17 & #52 (synced with jovanwilliams@hotmail.com). Country: Guyana. Role: Student. Enrollment Status: Inactive."
   },
   {
     "id": "pay-sheet-18",
@@ -400,7 +400,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
     "status": "Pending Review",
     "lastPaymentDate": "N/A",
     "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #28. Country: Guyana. Role: Student. Enrollment Status: Inactive."
+    "notes": "Google Sheet Records #28 & #53. Country: Guyana. Role: Student. Enrollment Status: Inactive."
   },
   {
     "id": "pay-sheet-29",
@@ -456,7 +456,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-33",
-    "studentName": "Shellon Liddell",
+    "studentName": "Shellon Liddel",
     "studentId": "HTEIM-2026-1455",
     "email": "uvanie@yahoo.com",
     "moduleTrack": "General Ministry Studies (On Hold)",
@@ -465,7 +465,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
     "status": "Pending Review",
     "lastPaymentDate": "N/A",
     "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #33. Country: Guyana. Role: Student. Enrollment Status: Inactive."
+    "notes": "Google Sheet Records #33 & #56 (synced with Shellon Massiah, massiahshellon@gmail.com). Country: Guyana. Role: Student. Enrollment Status: Inactive."
   },
   {
     "id": "pay-sheet-34",
@@ -586,7 +586,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-43",
-    "studentName": "Niomi. Laverne Joseph Marksman",
+    "studentName": "Niomi Loverne Joseph Marksman",
     "studentId": "HTEIM-2026-2810",
     "email": "lovernejosephempress@gmail.com",
     "moduleTrack": "Active Ministry Module",
@@ -702,32 +702,6 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
     "notes": "Google Sheet Record #51. Country: Trinidad. Role: Student. Enrollment Status: Inactive."
   },
   {
-    "id": "pay-sheet-52",
-    "studentName": "Jovanka Williams",
-    "studentId": "HTEIM-2026-1580",
-    "email": "jovanwilliams@hotmail.com",
-    "moduleTrack": "General Ministry Studies (On Hold)",
-    "totalTuition": 1200,
-    "amountPaid": 0,
-    "status": "Pending Review",
-    "lastPaymentDate": "N/A",
-    "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #52. Country: Guyana. Role: Student. Enrollment Status: Inactive."
-  },
-  {
-    "id": "pay-sheet-53",
-    "studentName": "Paula Massiah Blount",
-    "studentId": "HTEIM-2026-1901",
-    "email": "Blountpaula@rocketmail.com",
-    "moduleTrack": "General Ministry Studies (On Hold)",
-    "totalTuition": 1200,
-    "amountPaid": 0,
-    "status": "Pending Review",
-    "lastPaymentDate": "N/A",
-    "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #53. Country: Guyana. Role: Student. Enrollment Status: Inactive."
-  },
-  {
     "id": "pay-sheet-54",
     "studentName": "Jenetta Pierre",
     "studentId": "HTEIM-2026-1362",
@@ -752,19 +726,6 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
     "lastPaymentDate": "N/A",
     "paymentMethod": "Bank Transfer",
     "notes": "Google Sheet Record #55. Country: Guyana. Role: Student. Enrollment Status: Inactive."
-  },
-  {
-    "id": "pay-sheet-56",
-    "studentName": "Shellon Massiah",
-    "studentId": "HTEIM-2026-1467",
-    "email": "massiahshellon@gmail.com",
-    "moduleTrack": "General Ministry Studies (On Hold)",
-    "totalTuition": 1200,
-    "amountPaid": 0,
-    "status": "Pending Review",
-    "lastPaymentDate": "N/A",
-    "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #56. Country: Guyana. Role: Student. Enrollment Status: Inactive."
   },
   {
     "id": "pay-sheet-57",
@@ -921,6 +882,36 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               }
               return p;
             });
+          }
+        }
+
+        // Self-heal: Merge "Shellon Massiah" and "Shellon Liddell" to "Shellon Liddel"
+        const shellonMatches = parsed.filter((p: any) => {
+          if (!p || !p.studentName) return false;
+          const s = p.studentName.toLowerCase().trim();
+          return s === 'shellon massiah' || s === 'shellon liddell' || s === 'shellon liddel';
+        });
+        if (shellonMatches.length > 0) {
+          const needsHealing = shellonMatches.length > 1 || shellonMatches[0].studentName !== 'Shellon Liddel';
+          if (needsHealing) {
+            modified = true;
+            const totalPaid = shellonMatches.reduce((sum: number, r: any) => sum + (Number(r.amountPaid) || 0), 0);
+            const baseRec = shellonMatches.find((r: any) => r.id === 'pay-sheet-33') || shellonMatches[0];
+            const mergedShellon = {
+              ...baseRec,
+              id: 'pay-sheet-33',
+              studentName: 'Shellon Liddel',
+              email: 'uvanie@yahoo.com',
+              amountPaid: totalPaid,
+              status: totalPaid >= (baseRec.totalTuition || 1200) ? 'Paid In Full' : (totalPaid > 0 ? 'Partial' : 'Pending Review'),
+              notes: "Google Sheet Records #33 & #56 (synced with Shellon Massiah, massiahshellon@gmail.com). Country: Guyana. Role: Student. Enrollment Status: Inactive."
+            };
+            parsed = parsed.filter((p: any) => {
+              if (!p || !p.studentName) return false;
+              const s = p.studentName.toLowerCase().trim();
+              return s !== 'shellon massiah' && s !== 'shellon liddell' && s !== 'shellon liddel';
+            });
+            parsed.push(mergedShellon);
           }
         }
 
@@ -1505,7 +1496,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     return [...filtered].sort((a, b) => {
       let cmp = 0;
       if (sortField === 'studentName') {
-        cmp = (a.studentName || '').localeCompare(b.studentName || '');
+        cmp = (a.studentName || '').trim().localeCompare((b.studentName || '').trim(), undefined, { sensitivity: 'base', numeric: true });
       } else if (sortField === 'studentId') {
         cmp = (a.studentId || '').localeCompare(b.studentId || '');
       } else if (sortField === 'moduleTrack') {

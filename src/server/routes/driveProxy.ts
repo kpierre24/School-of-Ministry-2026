@@ -3,6 +3,103 @@ import { Readable } from "stream";
 
 export const driveProxyRouter = Router();
 
+/**
+ * Proxy to fetch public spreadsheet sheet/tab names and GIDs server-side,
+ * completely bypassing browser CORS restrictions on /htmlview.
+ */
+driveProxyRouter.get("/spreadsheet/:spreadsheetId/sheets", async (req, res) => {
+  const { spreadsheetId } = req.params;
+  if (!spreadsheetId || !/^[a-zA-Z0-9_-]{15,80}$/.test(spreadsheetId)) {
+    return res.status(400).json({ error: "Invalid Google Spreadsheet ID" });
+  }
+
+  try {
+    const htmlUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/htmlview`;
+    const response = await fetch(htmlUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `Google Sheets returned status ${response.status}` });
+    }
+
+    const html = await response.text();
+    const sheets: Array<{ name: string; gid: string }> = [];
+
+    // Match items.push({name: "...", pageUrl: "...", gid: "..."})
+    const regexItems = /items\.push\(\s*\{\s*name:\s*"([^"\\]*(?:\\.[^"\\]*)*)"[^}]*?gid:\s*"([0-9]+)"/g;
+    let match;
+    while ((match = regexItems.exec(html)) !== null) {
+      const rawName = match[1];
+      const gid = match[2];
+      try {
+        const decoded = JSON.parse(`"${rawName}"`);
+        sheets.push({ name: decoded.trim(), gid });
+      } catch {
+        sheets.push({ name: rawName.trim(), gid });
+      }
+    }
+
+    // Fallback: match any "name": "...", "sheetId": ...
+    if (sheets.length === 0) {
+      const regexConfig = /"name"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"\s*,\s*"sheetId"\s*:\s*([0-9]+)/g;
+      while ((match = regexConfig.exec(html)) !== null) {
+        sheets.push({ name: match[1].trim(), gid: match[2] });
+      }
+    }
+
+    return res.json({ spreadsheetId, sheets });
+  } catch (err: any) {
+    console.error(`Error fetching spreadsheet sheets for ${spreadsheetId}:`, err);
+    return res.status(500).json({ error: "Failed to extract spreadsheet sheets", details: err?.message });
+  }
+});
+
+/**
+ * Proxy to fetch GViz JSON data for a specific sheet or GID server-side.
+ */
+driveProxyRouter.get("/spreadsheet/:spreadsheetId/data", async (req, res) => {
+  const { spreadsheetId } = req.params;
+  const gid = req.query.gid as string | undefined;
+  const sheet = req.query.sheet as string | undefined;
+
+  if (!spreadsheetId || !/^[a-zA-Z0-9_-]{15,80}$/.test(spreadsheetId)) {
+    return res.status(400).json({ error: "Invalid Google Spreadsheet ID" });
+  }
+
+  let param = "";
+  if (gid) {
+    param = `&gid=${encodeURIComponent(gid)}`;
+  } else if (sheet) {
+    param = `&sheet=${encodeURIComponent(sheet)}`;
+  }
+
+  try {
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json${param}`;
+    const response = await fetch(gvizUrl);
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `GViz returned status ${response.status}` });
+    }
+
+    const gvizText = await response.text();
+    const startIdx = gvizText.indexOf("{");
+    const endIdx = gvizText.lastIndexOf("}");
+    if (startIdx === -1 || endIdx === -1) {
+      return res.status(502).json({ error: "Malformed GViz response" });
+    }
+
+    const jsonStr = gvizText.substring(startIdx, endIdx + 1);
+    const data = JSON.parse(jsonStr);
+    return res.json(data);
+  } catch (err: any) {
+    console.error(`Error fetching spreadsheet data for ${spreadsheetId}:`, err);
+    return res.status(500).json({ error: "Failed to fetch spreadsheet data", details: err?.message });
+  }
+});
+
 driveProxyRouter.get("/stream/:fileId", async (req, res) => {
   const { fileId } = req.params;
   if (!fileId || !/^[a-zA-Z0-9_-]{15,80}$/.test(fileId)) {

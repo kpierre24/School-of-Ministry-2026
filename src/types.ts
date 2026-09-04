@@ -88,6 +88,7 @@ export type PaymentRecord = {
   id: string;
   studentName: string;
   studentId: string;
+  cohortId?: string;
   email?: string;
   phone?: string;
   moduleTrack: string;
@@ -184,6 +185,7 @@ export type Course = {
   enrolledCount: number;
   mediaResources?: MediaResource[];
   expiryDate?: string; // YYYY-MM-DD
+  cohortId?: string;
 };
 
 export type QuizQuestionOption = {
@@ -256,6 +258,7 @@ export type ExamItem = {
 export type ScheduleItem = {
   id: string;
   classDayId?: string;
+  cohortId?: string;
   title: string;
   courseCode: string;
   moduleName?: string;
@@ -308,6 +311,7 @@ export type CustomAssignment = {
   title: string;
   courseCode?: string;
   moduleTrack?: string;
+  cohortId?: string;
   description: string;
   startDate?: string;
   dueDate: string;
@@ -372,11 +376,14 @@ export type AttendanceRecord = {
   present: boolean;
   manualOverride?: boolean;
   locked?: boolean;
+  cohortId?: string;
 };
 
 export type ClassDay = {
   id: string;
   name: string;
+  cohortId?: string;
+  academicYear?: number;
 };
 
 export type StudentSummary = {
@@ -392,6 +399,7 @@ export type StudentSummary = {
   email?: string;
   phone?: string;
   enrolledModule?: string;
+  cohortId?: string;
 };
 
 export type MessagePriority = 'normal' | 'important' | 'urgent';
@@ -544,4 +552,50 @@ export type CertificateRecord = {
   signedBy: string;
   pdfUrl?: string;
 };
+
+export interface Cohort {
+  id: string; // e.g., 'cohort_2026', 'cohort_2027'
+  name: string; // 'Class of 2026'
+  academicYear: number; // 2026
+  term?: string; // 'Spring / Term 2'
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  isArchived: boolean;
+  isCurrent: boolean;
+  description?: string;
+  sheetUrl?: string; // Optional custom sheet URL for this cohort
+  sheetTabPattern?: string; // e.g., '2026', 'Attendance_2026', 'Class of 2026'
+  studentCount?: number;
+  targetTuition?: number;
+  themeColor?: string;
+}
+
+export const DEFAULT_COHORTS: Cohort[] = [
+  {
+    id: 'cohort_2026',
+    name: 'Class of 2026',
+    academicYear: 2026,
+    term: 'Spring 2026 • Term 2',
+    startDate: '2026-01-10',
+    endDate: '2026-12-15',
+    isArchived: false,
+    isCurrent: true,
+    description: 'Current active ministerial diploma & certificate cohort (Foundation to Executive Leadership).',
+    themeColor: 'indigo',
+    sheetTabPattern: '2026'
+  },
+  {
+    id: 'cohort_2027',
+    name: 'Class of 2027',
+    academicYear: 2027,
+    term: 'Fall 2026 / Spring 2027',
+    startDate: '2027-01-09',
+    endDate: '2027-12-14',
+    isArchived: false,
+    isCurrent: false,
+    description: 'Upcoming academic year cohort for prospective & enrolled ministry students.',
+    themeColor: 'emerald',
+    sheetTabPattern: '2027'
+  }
+];
 
