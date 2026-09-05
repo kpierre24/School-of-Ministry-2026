@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogoImage } from './LogoImage';
 import { logActivity } from '../lib/auditLogger';

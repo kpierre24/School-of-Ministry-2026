@@ -1107,3 +1107,81 @@ button, a, input, select, textarea {
 .rotate-x-180 {
   transform: rotateX(180deg);
 }
+
+/* ==========================================================================
+   Print & PDF Export Styles
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: letter;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide navigation, buttons, footers, sidebars during print */
+  header, footer, nav, button, .no-print, .mobile-nav-glass {
+    display: none !important;
+  }
+
+  /* Ensure containers use full width */
+  main, .app-ambient-shell, #root, body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Specific styles for transcripts and certificates */
+  .print-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 2cm;
+    border: 2px solid #023264 !important;
+    outline: 8px solid #dfc18b !important;
+    outline-offset: -12px;
+    background-color: white !important;
+    page-break-after: always;
+  }
+
+  .print-header {
+    text-align: center;
+    border-bottom: 2px solid #023264;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .print-header h1 {
+    font-family: 'Playfair Display', serif !important;
+    color: #023264 !important;
+    font-size: 28pt !important;
+    margin: 0 !important;
+  }
+  
+  .print-header p {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    color: #555 !important;
+    font-size: 12pt !important;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  
+  .print-table th, .print-table td {
+    border: 1px solid #ddd !important;
+    padding: 10px !important;
+    text-align: left !important;
+  }
+  
+  .print-table th {
+    background-color: #f8fafc !important;
+    font-weight: bold !important;
+    color: #023264 !important;
+  }
+}

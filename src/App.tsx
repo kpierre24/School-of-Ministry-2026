@@ -1,3 +1,4 @@
+import { PWAInstallButton } from "./components/PWAInstallButton";
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { LogoImage } from './components/LogoImage';
 import { motion, AnimatePresence } from 'motion/react';
@@ -3965,6 +3966,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           {/* MD3 AppBar Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
             {/* Only show Messages and Notifications when user is logged in */}
+            <div className="hidden sm:block"><PWAInstallButton /></div>
             {appUser && (
               <>
                 {/* Messages */}
@@ -4120,6 +4122,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                       <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                       <span>Switch Role</span>
                     </button>
+            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && (
                       <button
                         onClick={() => {
@@ -4199,6 +4202,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       </div>
 
       {/* Desktop Navigation */}
+            <div className="hidden sm:block"><PWAInstallButton /></div>
       {appUser && (
         <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
           <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-[#08182c]/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-[#1a385c]">
@@ -6092,7 +6096,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               </div>
 
               {/* Report Document Body */}
-              <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-slate-800" id="printable-report">
+              <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-slate-800 print-container" id="printable-report">
                 {/* Document Header with HTEIM Logo & Ministry Letterhead */}
                 <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
                   <div className="flex items-center gap-4">
@@ -6592,7 +6596,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             </div>
 
             {/* Transcript Document Printable Canvas */}
-            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-slate-800" id="printable-student-transcript">
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-slate-800 print-container" id="printable-student-transcript">
               {/* Document Letterhead */}
               <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
                 <div className="flex items-center gap-4">
@@ -7166,6 +7170,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
+            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && (appUser?.role as string) !== 'student' && (
                       <button
                         onClick={() => {
@@ -7186,6 +7191,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
+            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && ((appUser?.role as string) === 'admin' || (appUser?.role as string) === 'teacher') && (
                       <button
                         onClick={() => {
@@ -7206,6 +7212,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
+            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && (
                       <button
                         onClick={() => {

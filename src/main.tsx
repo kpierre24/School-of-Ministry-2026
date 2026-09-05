@@ -2,20 +2,19 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { Toaster } from 'sonner';
 
-// Register Service Worker for Mobile PWA & Offline Support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((registration) => {
-      console.log('HTEIM ERP PWA ServiceWorker active with scope:', registration.scope);
-    }).catch((err) => {
-      console.log('PWA ServiceWorker registration note:', err);
-    });
-  });
-}
+// The VitePWA plugin will automatically register the service worker
+// when registerType: 'autoUpdate' is set in vite.config.ts
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <Toaster 
+      position="bottom-right" 
+      toastOptions={{
+        className: 'font-sans font-bold shadow-2xl rounded-xl border border-slate-200 dark:border-slate-800',
+      }} 
+    />
   </StrictMode>,
 );

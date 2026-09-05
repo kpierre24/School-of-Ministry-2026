@@ -778,6 +778,16 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={coursePerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gradeHighGlow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10B981" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#047857" stopOpacity={1}/>
+                      </linearGradient>
+                      <linearGradient id="gradeNormalGlow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366F1" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#4338CA" stopOpacity={1}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
                     <XAxis dataKey="module" tick={{ fontSize: 11, fontWeight: 700 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11, fontWeight: 700 }} unit="%" />
@@ -807,29 +817,41 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80">
-                    <p className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase">Total Expected</p>
-                    <p className="text-lg font-black text-slate-900 dark:text-white mt-0.5">${totalExpectedTuition.toLocaleString()}</p>
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mt-4">
+                  <div className="w-full sm:w-1/2">
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: "Collected", value: totalCollectedTuition },
+                            { name: "Outstanding", value: outstandingBalanceTotal }
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={65}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          <Cell fill="#10B981" />
+                          <Cell fill="#F59E0B" />
+                        </Pie>
+                        <Tooltip formatter={(value) => "$" + Number(value).toLocaleString()} />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
-                    <p className="text-[10px] font-mono font-bold text-emerald-800 dark:text-emerald-400 uppercase">Total Collected</p>
-                    <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">${totalCollectedTuition.toLocaleString()}</p>
+                  <div className="w-full sm:w-1/2 space-y-3">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+                      <p className="text-[10px] font-mono font-bold text-emerald-800 dark:text-emerald-400 uppercase">Collected</p>
+                      <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">${totalCollectedTuition.toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800/60">
+                      <p className="text-[10px] font-mono font-bold text-amber-900 dark:text-amber-300 uppercase">Outstanding</p>
+                      <p className="text-lg font-black text-amber-900 dark:text-amber-200 mt-0.5">${outstandingBalanceTotal.toLocaleString()}</p>
+                    </div>
                   </div>
                 </div>
-
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800/60 mt-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-mono font-bold text-amber-900 dark:text-amber-300 uppercase">Outstanding Balance</p>
-                    <p className="text-xl font-black text-amber-900 dark:text-amber-200">${outstandingBalanceTotal.toLocaleString()}</p>
-                  </div>
-                  <span className="px-2.5 py-1 bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-100 rounded-lg text-xs font-bold font-mono">
-                    {overdueAccounts.length} Overdue Accounts
-                  </span>
-                </div>
-              </div>
-
+                            </div>
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
                 <span>Tuition Clearance Rate: <strong>{totalExpectedTuition > 0 ? Math.round((totalCollectedTuition / totalExpectedTuition) * 100) : 100}%</strong></span>
                 <button
