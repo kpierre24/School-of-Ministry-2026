@@ -49,7 +49,7 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-center relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md w-full p-6 shadow-xl space-y-5 text-center relative overflow-hidden">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer touch-min-44"
@@ -71,7 +71,7 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
         </div>
 
         {/* Big PIN Box */}
-        <div className="p-6 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-2xl border border-indigo-500/30 space-y-3 relative shadow-lg">
+        <div className="p-6 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-xl border border-indigo-500/30 space-y-3 relative shadow-lg">
           <p className="text-[10px] uppercase tracking-widest text-indigo-300 font-extrabold">
             TIME-EXPIRING PIN CODE
           </p>
@@ -94,7 +94,7 @@ export const PINCheckinQRModal: React.FC<PINCheckinQRModalProps> = ({
         </div>
 
         {/* QR Code Graphic Mockup */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center space-y-2">
+        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center space-y-2">
           <div className="w-36 h-36 bg-white p-2 rounded-xl shadow-xs border border-slate-200 flex items-center justify-center">
             {/* SVG QR Code pattern mockup */}
             <svg viewBox="0 0 100 100" className="w-full h-full text-slate-950 fill-current">

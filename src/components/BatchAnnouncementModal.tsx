@@ -176,7 +176,7 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label="Batch Email & SMS Announcement Broadcast"
-        className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-scaleUp flex flex-col max-h-[90vh] modal-material-dialog"
+        className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-3xl overflow-hidden animate-scaleUp flex flex-col max-h-[90vh] modal-material-dialog"
       >
         {/* Header */}
         <div className="p-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
@@ -203,7 +203,7 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-3">
+        <div className="flex border-b border-slate-200 bg-slate-50 px-5 pt-3 gap-3">
           <button
             onClick={() => setActiveTab('compose')}
             className={`pb-3 text-xs font-black transition-all flex items-center gap-2 cursor-pointer border-b-2 ${
@@ -231,7 +231,7 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
           {activeTab === 'compose' ? (
             <form onSubmit={handleSend} className="space-y-5">
               {sendSuccess && (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-900 text-xs font-bold animate-fadeIn">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-900 text-xs font-bold animate-fadeIn">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                   <span>Batch announcement successfully queued and broadcasted to {targetStudents.length || availableStudents.length} student recipients!</span>
                 </div>
@@ -364,13 +364,13 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
                   onChange={(e) => setMessage(e.target.value)}
                   rows={5}
                   placeholder="Write your announcement message here..."
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-900 focus:bg-white focus:border-indigo-500 leading-relaxed"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:border-indigo-500 leading-relaxed"
                   required
                 />
               </div>
 
               {/* Audience Preview Summary Box */}
-              <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-2xl flex items-center justify-between text-xs">
+              <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 text-indigo-900 font-bold">
                   <CheckCheck className="w-4 h-4 text-indigo-600" />
                   <span>Targeted Student Recipients: <strong>{targetStudents.length || availableStudents.length} Students</strong></span>
@@ -392,11 +392,11 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSending || !subject.trim() || !message.trim()}
-                  className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 active:scale-95"
+                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 active:opacity-80"
                 >
                   {isSending ? (
                     <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border border-white border-t-transparent rounded-full animate-spin" />
                       <span>Broadcasting Message...</span>
                     </>
                   ) : (
@@ -413,7 +413,7 @@ export const BatchAnnouncementModal: React.FC<BatchAnnouncementModalProps> = ({
               <h4 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Past Broadcast Delivery Logs</h4>
               <div className="space-y-3">
                 {history.map(item => (
-                  <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500" />

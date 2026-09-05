@@ -409,7 +409,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
           <button
             type="button"
             onClick={onComplete}
-            className={`px-4 py-1.5 rounded-full flex items-center gap-1 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95 ${
+            className={`px-4 py-1.5 rounded-full flex items-center gap-1 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs active:opacity-80 ${
               stage === 'motto'
                 ? 'bg-slate-900/10 hover:bg-slate-900/20 text-slate-700 hover:text-slate-950 border border-slate-300'
                 : 'bg-white/10 hover:bg-white/20 text-slate-200 hover:text-amber-300 border border-white/20'

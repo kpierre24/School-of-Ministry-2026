@@ -100,7 +100,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
 
   return (
     <div className="modal-material-scrim fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 md:p-6 overflow-y-auto">
-      <div className="modal-material-dialog relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto text-slate-100 max-h-[92vh]">
+      <div className="modal-material-dialog relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-xl md:rounded-xl shadow-xl overflow-hidden flex flex-col my-auto text-slate-100 max-h-[92vh]">
         {/* Header Bar */}
         <div className="modal-material-header bg-slate-950/90 border-b border-slate-800 p-4 sm:p-5 flex items-center justify-between gap-4 sticky top-0 z-20">
           <div className="flex items-center gap-3">
@@ -139,12 +139,12 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
         )}
 
         {/* Tab Selection Navigation */}
-        <div className="bg-slate-950/50 border-b border-slate-800 px-4 sm:px-6 pt-3 flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
+        <div className="bg-slate-950/50 border-b border-slate-800 px-4 sm:px-5 pt-3 flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('apk')}
             className={`px-3.5 sm:px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'apk'
-                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-sm'
+                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
             }`}
           >
@@ -159,7 +159,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
             onClick={() => setActiveTab('pwa')}
             className={`px-3.5 sm:px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'pwa'
-                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-sm'
+                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
             }`}
           >
@@ -176,7 +176,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
             onClick={() => setActiveTab('qr')}
             className={`px-3.5 sm:px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'qr'
-                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-sm'
+                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
             }`}
           >
@@ -188,7 +188,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
             onClick={() => setActiveTab('builder')}
             className={`px-3.5 sm:px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'builder'
-                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-sm'
+                ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
             }`}
           >
@@ -203,7 +203,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
           {activeTab === 'apk' && (
             <div className="space-y-6">
               {/* Main APK Download Card */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/30 border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-lg">
+              <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/30 border border-slate-800/80 rounded-xl p-5 sm:p-6 shadow-lg">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                   <div className="space-y-3 max-w-xl">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -250,7 +250,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     <button
                       onClick={() => handleDownloadAPK()}
                       disabled={downloadingApk}
-                      className="w-full sm:w-auto px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                      className="w-full sm:w-auto px-5 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base rounded-xl shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
                       {downloadingApk ? (
                         <>
@@ -289,7 +289,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
               </div>
 
               {/* Sideloading Installation Steps */}
-              <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-4">
                 <div className="flex items-center gap-2 text-white font-bold text-sm">
                   <Terminal className="w-4 h-4 text-amber-400" />
                   <span>How to Install APK on Android (Sideload Guide)</span>
@@ -330,7 +330,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
 
               {/* Native Features Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl flex items-start gap-3.5">
+                <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
                     <WifiOff className="w-5 h-5" />
                   </div>
@@ -342,7 +342,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                   </div>
                 </div>
 
-                <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl flex items-start gap-3.5">
+                <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
@@ -360,7 +360,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
           {/* ================= TAB 2: PWA WEB INSTANT INSTALL ================= */}
           {activeTab === 'pwa' && (
             <div className="space-y-6">
-              <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+              <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-xl space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     ) : isInstallable ? (
                       <button
                         onClick={() => triggerInstall()}
-                        className="px-5 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                        className="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
                       >
                         <Globe className="w-4 h-4" />
                         <span>Install PWA Web App Now</span>
@@ -425,7 +425,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
               </div>
 
               {/* Comparison Matrix Table */}
-              <div className="bg-slate-950/60 border border-slate-800 rounded-2xl overflow-hidden p-4 sm:p-5">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl overflow-hidden p-4 sm:p-5">
                 <h4 className="font-bold text-slate-200 text-sm mb-3">Feature Comparison: Android APK vs PWA Web App</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
@@ -467,7 +467,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
           {/* ================= TAB 3: QR CODE PAIRING ================= */}
           {activeTab === 'qr' && (
             <div className="space-y-6">
-              <div className="bg-slate-950/60 border border-slate-800 p-6 rounded-2xl text-center space-y-5">
+              <div className="bg-slate-950/60 border border-slate-800 p-6 rounded-xl text-center space-y-5">
                 <div>
                   <h3 className="font-bold text-white text-base sm:text-lg">Scan QR Code with Smartphone Camera</h3>
                   <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
@@ -475,7 +475,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                   </p>
                 </div>
 
-                <div className="p-4 bg-white rounded-2xl max-w-xs mx-auto shadow-xl border border-slate-700">
+                <div className="p-4 bg-white rounded-xl max-w-xs mx-auto shadow-xl border border-slate-700">
                   {generateInlineSvgQR()}
                   <div className="mt-3 text-[11px] font-mono text-slate-800 font-bold truncate px-2">
                     {appUrl}
@@ -517,7 +517,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
           {/* ================= TAB 4: CUSTOM APK BUILDER ================= */}
           {activeTab === 'builder' && (
             <div className="space-y-6">
-              <div className="bg-slate-950/60 border border-slate-800 p-5 sm:p-6 rounded-2xl space-y-5">
+              <div className="bg-slate-950/60 border border-slate-800 p-5 sm:p-6 rounded-xl space-y-5">
                 <div>
                   <div className="flex items-center gap-2">
                     <Settings className="w-5 h-5 text-purple-400" />
@@ -579,7 +579,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => handleDownloadAPK(`${customAppName.replace(/\s+/g, '-')}-v2.4.0`)}
-                    className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-purple-600/20 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-purple-600/20 transition-all flex items-center gap-2 cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Compile & Download Custom APK</span>
@@ -591,7 +591,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
         </div>
 
         {/* Footer info bar */}
-        <div className="bg-slate-950 border-t border-slate-800 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="bg-slate-950 border-t border-slate-800 px-5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Verified APK Signature • Powered by Rockproxy Technologies</span>

@@ -74,7 +74,7 @@ export const ExcusedAbsenceModal: React.FC<ExcusedAbsenceModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 overflow-hidden relative">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-2xl w-full p-6 shadow-xl space-y-5 overflow-hidden relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
@@ -83,7 +83,7 @@ export const ExcusedAbsenceModal: React.FC<ExcusedAbsenceModalProps> = ({
         </button>
 
         <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
@@ -98,7 +98,7 @@ export const ExcusedAbsenceModal: React.FC<ExcusedAbsenceModalProps> = ({
 
         {/* Student Submit Form */}
         {!isStaff && (
-          <form onSubmit={handleSubmit} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+          <form onSubmit={handleSubmit} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
               Submit New Excused Absence Request
             </h3>
@@ -155,7 +155,7 @@ export const ExcusedAbsenceModal: React.FC<ExcusedAbsenceModalProps> = ({
           </h3>
 
           {requests.map(r => (
-            <div key={r.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div key={r.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-extrabold text-xs text-slate-900 dark:text-white">{r.studentName}</span>

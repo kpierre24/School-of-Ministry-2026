@@ -160,7 +160,7 @@ export const EnrollmentInquiryModal: React.FC<EnrollmentInquiryModalProps> = ({
             </p>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 text-left space-y-3 text-xs max-w-lg mx-auto">
+          <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-5 border border-slate-200 dark:border-slate-700 text-left space-y-3 text-xs max-w-lg mx-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
               <span className="text-slate-500 font-medium">Inquiry Reference</span>
               <span className="font-mono font-bold text-[#023264] dark:text-[#bae6fd]">{submittedData.id}</span>
@@ -194,7 +194,7 @@ export const EnrollmentInquiryModal: React.FC<EnrollmentInquiryModalProps> = ({
             <button
               type="button"
               onClick={handleReset}
-              className="px-6 py-2.5 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer border border-[#b38f53]/30"
+              className="px-5 py-2.5 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer border border-[#b38f53]/30"
             >
               Done & Return to Portal
             </button>
@@ -303,7 +303,7 @@ export const EnrollmentInquiryModal: React.FC<EnrollmentInquiryModalProps> = ({
 
                 {/* Title & Caption at Bottom of Photo */}
                 <div className="absolute bottom-2 left-2 right-2 space-y-0.5">
-                  <p className="text-xs font-black text-white truncate drop-shadow-sm">
+                  <p className="text-xs font-black text-white truncate drop-shadow-xs">
                     {currentPhoto.title}
                   </p>
                   <p className="text-[10px] text-slate-300 line-clamp-1">
@@ -529,11 +529,11 @@ export const EnrollmentInquiryModal: React.FC<EnrollmentInquiryModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting || !fullName.trim() || !email.trim()}
-                  className="px-5 py-2.5 bg-gradient-to-r from-[#023264] via-[#025798] to-[#01883c] hover:from-[#022044] hover:to-[#01682e] text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed border border-[#b38f53]/30 active:scale-95"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#023264] via-[#025798] to-[#01883c] hover:from-[#022044] hover:to-[#01682e] text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed border border-[#b38f53]/30 active:opacity-80"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border border-white border-t-transparent rounded-full animate-spin" />
                       <span>Submitting...</span>
                     </>
                   ) : (

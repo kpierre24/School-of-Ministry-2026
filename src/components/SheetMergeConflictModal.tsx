@@ -60,7 +60,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn modal-material-scrim" id="sheets-conflict-modal">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="sheets-conflict-title" className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-material-dialog">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="sheets-conflict-title" className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-material-dialog">
         
         {/* Header section */}
         <div className="p-6 bg-amber-50 border-b border-amber-100 flex items-start gap-4">
@@ -79,7 +79,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
         </div>
 
         {/* Bulk Action Controls */}
-        <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 modal-material-header">
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 modal-material-header">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quick Actions</span>
           <div className="flex gap-2">
             <button
@@ -106,7 +106,7 @@ export const SheetMergeConflictModal: React.FC<SheetMergeConflictModalProps> = (
             return (
               <div 
                 key={key}
-                className={`p-4 bg-white border rounded-2xl transition-all shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                className={`p-4 bg-white border rounded-xl transition-all shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                   selected === 'local' ? 'border-amber-400/60 ring-2 ring-amber-400/5 bg-amber-50/5' : 'border-indigo-400/60 ring-2 ring-indigo-400/5 bg-indigo-50/5'
                 }`}
               >

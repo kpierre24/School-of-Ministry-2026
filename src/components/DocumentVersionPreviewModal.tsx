@@ -37,7 +37,7 @@ export const DocumentVersionPreviewModal: React.FC<DocumentVersionPreviewModalPr
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full p-6 shadow-2xl space-y-5 overflow-hidden relative max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-3xl w-full p-6 shadow-xl space-y-5 overflow-hidden relative max-h-[90vh] flex flex-col">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
@@ -47,7 +47,7 @@ export const DocumentVersionPreviewModal: React.FC<DocumentVersionPreviewModalPr
 
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
             {resource.format === 'Audio' ? <Music className="w-6 h-6" /> :
              resource.format === 'Video' ? <Film className="w-6 h-6" /> :
              <FileText className="w-6 h-6" />}
@@ -90,7 +90,7 @@ export const DocumentVersionPreviewModal: React.FC<DocumentVersionPreviewModalPr
           </div>
 
           {/* Embedded Previewer Simulation */}
-          <div className="p-6 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 space-y-3 font-mono text-xs">
+          <div className="p-6 bg-slate-950 text-slate-100 rounded-xl border border-slate-800 space-y-3 font-mono text-xs">
             <div className="flex items-center justify-between text-slate-400 text-[11px] pb-2 border-b border-slate-800">
               <span className="flex items-center gap-1.5">
                 <Eye className="w-4 h-4 text-amber-400" /> Embedded Interactive Document Preview
@@ -112,7 +112,7 @@ export const DocumentVersionPreviewModal: React.FC<DocumentVersionPreviewModalPr
           </div>
 
           {/* Version History Toggle */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                 <History className="w-4 h-4 text-indigo-500" /> Document Version Control
@@ -171,7 +171,7 @@ export const DocumentVersionPreviewModal: React.FC<DocumentVersionPreviewModalPr
 
           <button
             onClick={handleDownload}
-            className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Download Handout Material ({resource.size})</span>

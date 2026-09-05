@@ -255,7 +255,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       
       {/* Toast Notification */}
       {excuseSubmittedToast && (
-        <div className="p-3 bg-emerald-600 text-white font-bold text-xs rounded-2xl shadow-lg flex items-center justify-between gap-2 animate-bounce">
+        <div className="p-3 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-between gap-2 animate-bounce">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-200" />
             <span>Absence excuse submitted successfully to HTEIM Faculty!</span>
@@ -267,12 +267,12 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       )}
 
       {/* Segmented Navigation Tab Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl shadow-xs flex items-center gap-1 overflow-x-auto custom-scrollbar">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl shadow-xs flex items-center gap-1 overflow-x-auto custom-scrollbar">
         <button
           onClick={() => setActivePortalTab('overview')}
           className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap touch-min-44 ${
             activePortalTab === 'overview'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-indigo-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
@@ -284,7 +284,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           onClick={() => setActivePortalTab('log')}
           className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap touch-min-44 ${
             activePortalTab === 'log'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-indigo-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
@@ -296,7 +296,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           onClick={() => setActivePortalTab('modules')}
           className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap touch-min-44 ${
             activePortalTab === 'modules'
-              ? 'bg-indigo-600 text-white shadow-sm'
+              ? 'bg-indigo-600 text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
@@ -370,7 +370,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                   <button
                     type="button"
                     onClick={handleAddZoomToCalendar}
-                    className="px-3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
                     title="Download .ics event to sync to Google Calendar / iCal"
                   >
                     <Calendar className="w-3.5 h-3.5" />
@@ -381,7 +381,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                     href="https://zoom.us/j/81505377396"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 min-h-[44px]"
+                    className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 min-h-[44px]"
                   >
                     <span>Join Tuesday Live Zoom</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -404,14 +404,14 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 />
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 flex-shrink-0 group cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-2xl flex items-center justify-center uppercase"
+                  className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 flex-shrink-0 group cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-2xl flex items-center justify-center uppercase"
                   title="Click to upload profile photo"
                 >
                   {currentPhoto ? (
                     <img 
                       src={currentPhoto} 
                       alt={safeName} 
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                      className="w-full h-full object-cover transition-transform group-hover:bg-slate-100 dark:hover:bg-slate-700" 
                     />
                   ) : (
                     <span>{safeName.charAt(0)}{safeName.split(' ')[1] ? safeName.split(' ')[1].charAt(0) : ''}</span>
@@ -530,7 +530,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
       {/* Module Breakdown Tab Content */}
       {activePortalTab === 'modules' && (
-        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-2xs space-y-4 animate-fadeIn">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xs space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -545,7 +545,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {moduleBreakdown.map((mod) => (
-              <div key={mod.code} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-3 space-y-2">
+              <div key={mod.code} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 rounded text-[9px] font-mono font-bold">
                     {mod.code}
@@ -573,7 +573,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
       {/* Class Attendance History Log Tab Content */}
       {activePortalTab === 'log' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-4 animate-fadeIn">
+        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 shadow-2xs space-y-4 animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -631,7 +631,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
             return (
               <div 
                 key={day.id} 
-                className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-3 space-y-2 shadow-2xs"
+                className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 space-y-2 shadow-2xs"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -756,7 +756,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
       {/* Advisory & Faculty Comment Box */}
       {student?.note && (
-        <div className="p-5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-2xl space-y-1">
+        <div className="p-5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-xl space-y-1">
           <p className="text-xs font-black uppercase text-amber-900 dark:text-amber-400 tracking-wider">Faculty Advisory Note for You:</p>
           <p className="text-xs text-amber-950 dark:text-amber-200 font-medium leading-relaxed italic">"{student.note}"</p>
         </div>
@@ -765,7 +765,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       {/* Submit Excuse Reason Modal */}
       {excuseModalDay && (
         <div className="modal-material-scrim fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="modal-material-dialog bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleUp">
+          <div className="modal-material-dialog bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4 shadow-xl animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-indigo-600" />

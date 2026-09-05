@@ -213,13 +213,13 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-fadeIn modal-material-scrim">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden modal-material-dialog">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden modal-material-dialog">
         
         {/* Header Bar with Google Forms style accent */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 text-white p-5 sm:p-6 relative flex-shrink-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-xl text-white shadow-inner">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-xl text-white shadow-inner">
                 ?
               </div>
               <div>
@@ -256,7 +256,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
               <button
                 type="button"
                 onClick={handleCopyShareLink}
-                className="px-3 py-1.5 bg-white text-purple-900 hover:bg-purple-50 font-bold rounded-xl flex items-center gap-1.5 text-xs shadow-md transition-all active:scale-95"
+                className="px-3 py-1.5 bg-white text-purple-900 hover:bg-purple-50 font-bold rounded-xl flex items-center gap-1.5 text-xs shadow-md transition-all active:opacity-80"
               >
                 {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-purple-700" />}
                 <span>{copiedLink ? 'Link Copied!' : 'Copy Share Link'}</span>
@@ -283,7 +283,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
           
           {/* Section 1: Quiz Settings */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700/80 space-y-4">
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700/80 space-y-4">
             <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span>General Quiz Information</span>
@@ -447,7 +447,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
               {questions.map((q, qIndex) => (
                 <div 
                   key={q.id}
-                  className="bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 border-slate-200 dark:border-slate-700 shadow-sm relative space-y-4 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
+                  className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs relative space-y-4 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
                 >
                   {/* Top Bar for Question */}
                   <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60 -mx-5 -mt-5 p-3.5 px-5 rounded-t-2xl border-b border-slate-200 dark:border-slate-700 modal-material-header">
@@ -617,7 +617,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddQuestion}
-                className="w-full py-3 border-2 border-dashed border-purple-300 dark:border-purple-800 hover:border-purple-500 dark:hover:border-purple-500 rounded-2xl text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-2 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-all"
+                className="w-full py-2 border border-dashed border-purple-300 dark:border-purple-800 hover:border-purple-500 dark:hover:border-purple-500 rounded-xl text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-2 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Another Question (Total Currently: {questions.length})</span>
@@ -657,7 +657,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
             <button
               type="button"
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all active:scale-95"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all active:opacity-80"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Save & Publish Quiz ({totalPoints} pts)</span>

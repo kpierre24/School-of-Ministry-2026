@@ -393,7 +393,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label="Universal Search & Navigation Command Palette"
-        className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] z-10 animate-scaleUp modal-material-dialog"
+        className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[82vh] z-10 animate-scaleUp modal-material-dialog"
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
@@ -435,7 +435,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4 bg-slate-50">
           {filtered.length === 0 ? (
             <div className="py-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center mx-auto">
                 <Search className="w-6 h-6" />
               </div>
               <p className="text-sm font-extrabold text-slate-800">No results found for "{query}"</p>
@@ -468,7 +468,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                             key={item.id}
                             onClick={() => item.action()}
                             onMouseEnter={() => setSelectedIndex(itemIndex)}
-                            className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                               isSelected
                                 ? 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-500/30'
                                 : 'bg-white hover:bg-slate-100/80 text-slate-800 border-slate-200/80 shadow-3xs'
@@ -514,7 +514,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         </div>
 
         {/* Footer Navigation Hints */}
-        <div className="px-4 py-3 bg-slate-900 border-t border-slate-800 text-slate-400 text-[10px] flex items-center justify-between">
+        <div className="px-4 py-2 bg-slate-900 border-t border-slate-800 text-slate-400 text-[10px] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded font-mono border border-slate-700">↑↓</kbd>

@@ -80,8 +80,8 @@ export const SupabaseDiagnosticModal: React.FC<SupabaseDiagnosticModalProps> = (
   if (userRole && userRole !== 'admin') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 modal-material-scrim">
-        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="supabase-access-title" className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full text-center space-y-4 modal-material-dialog">
-          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="supabase-access-title" className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full text-center space-y-4 modal-material-dialog">
+          <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <h3 id="supabase-access-title" className="text-base font-extrabold text-slate-900 dark:text-white">Admin Restricted Diagnostics</h3>
@@ -242,10 +242,10 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto modal-material-scrim">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="supabase-diagnostic-title" className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in duration-200 modal-material-dialog">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="supabase-diagnostic-title" className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in duration-200 modal-material-dialog">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 modal-material-header">
+        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 modal-material-header">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400">
               <Database className="w-6 h-6" />
@@ -268,10 +268,10 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50/80 px-6 gap-2 text-sm font-medium overflow-x-auto">
+        <div className="flex border-b border-slate-200 bg-slate-50/80 px-5 gap-2 text-sm font-medium overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
+            className={`py-2 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'overview'
                 ? 'border-indigo-600 text-indigo-600 bg-white font-semibold shadow-xs'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -282,7 +282,7 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
           </button>
           <button
             onClick={() => setActiveTab('media_photos')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
+            className={`py-2 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'media_photos'
                 ? 'border-indigo-600 text-indigo-600 bg-white font-semibold shadow-xs'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -293,7 +293,7 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
           </button>
           <button
             onClick={() => setActiveTab('library')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
+            className={`py-2 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'library'
                 ? 'border-indigo-600 text-indigo-600 bg-white font-semibold shadow-xs'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -304,7 +304,7 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
           </button>
           <button
             onClick={() => setActiveTab('assignments')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
+            className={`py-2 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'assignments'
                 ? 'border-indigo-600 text-indigo-600 bg-white font-semibold shadow-xs'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -315,7 +315,7 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
           </button>
           <button
             onClick={() => setActiveTab('sql_guide')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
+            className={`py-2 px-4 border-b-2 flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'sql_guide'
                 ? 'border-indigo-600 text-indigo-600 bg-white font-semibold shadow-xs'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -750,26 +750,26 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <th className="py-3 px-4">File Name</th>
-                            <th className="py-3 px-4">Created At</th>
-                            <th className="py-3 px-4">Size</th>
-                            <th className="py-3 px-4 text-right">Actions</th>
+                            <th className="py-2 px-4">File Name</th>
+                            <th className="py-2 px-4">Created At</th>
+                            <th className="py-2 px-4">Size</th>
+                            <th className="py-2 px-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                           {filterFiles(report.libraryFiles).map((file, i) => (
                             <tr key={i} className="hover:bg-slate-50/80 transition">
-                              <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-2">
+                              <td className="py-2 px-4 font-semibold text-slate-900 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                                 <span className="truncate max-w-xs">{file.name}</span>
                               </td>
-                              <td className="py-3 px-4 text-slate-500">
+                              <td className="py-2 px-4 text-slate-500">
                                 {file.created_at ? new Date(file.created_at).toLocaleString() : 'N/A'}
                               </td>
-                              <td className="py-3 px-4 text-slate-500 font-mono">
+                              <td className="py-2 px-4 text-slate-500 font-mono">
                                 {file.sizeBytes ? `${(file.sizeBytes / 1024).toFixed(1)} KB` : 'N/A'}
                               </td>
-                              <td className="py-3 px-4 text-right">
+                              <td className="py-2 px-4 text-right">
                                 {file.publicUrl && (
                                   <a
                                     href={file.publicUrl}
@@ -825,26 +825,26 @@ CREATE POLICY "Assignments Admin Control" ON storage.objects
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <th className="py-3 px-4">File Name</th>
-                            <th className="py-3 px-4">Created At</th>
-                            <th className="py-3 px-4">Size</th>
-                            <th className="py-3 px-4 text-right">Actions</th>
+                            <th className="py-2 px-4">File Name</th>
+                            <th className="py-2 px-4">Created At</th>
+                            <th className="py-2 px-4">Size</th>
+                            <th className="py-2 px-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                           {filterFiles(report.assignmentsFiles).map((file, i) => (
                             <tr key={i} className="hover:bg-slate-50/80 transition">
-                              <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-2">
+                              <td className="py-2 px-4 font-semibold text-slate-900 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                                 <span className="truncate max-w-xs">{file.name}</span>
                               </td>
-                              <td className="py-3 px-4 text-slate-500">
+                              <td className="py-2 px-4 text-slate-500">
                                 {file.created_at ? new Date(file.created_at).toLocaleString() : 'N/A'}
                               </td>
-                              <td className="py-3 px-4 text-slate-500 font-mono">
+                              <td className="py-2 px-4 text-slate-500 font-mono">
                                 {file.sizeBytes ? `${(file.sizeBytes / 1024).toFixed(1)} KB` : 'N/A'}
                               </td>
-                              <td className="py-3 px-4 text-right">
+                              <td className="py-2 px-4 text-right">
                                 {file.publicUrl && (
                                   <a
                                     href={file.publicUrl}
@@ -939,7 +939,7 @@ CREATE POLICY "Student Assignment Upload" ON storage.objects
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between modal-material-footer">
+        <div className="px-5 py-4 bg-white border-t border-slate-200 flex items-center justify-between modal-material-footer">
           <div className="text-xs text-slate-500">
             Last evaluated: {report ? new Date(report.timestamp).toLocaleTimeString() : 'Never'}
           </div>

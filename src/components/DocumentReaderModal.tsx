@@ -397,7 +397,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
       aria-modal="true"
     >
       <div
-        className={`w-full flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-slate-700/60 bg-slate-900 transition-all duration-200 ${
+        className={`w-full flex flex-col rounded-xl shadow-xl overflow-hidden border border-slate-700/60 bg-slate-900 transition-all duration-200 ${
           isFullscreen
             ? 'fixed inset-0 z-50 rounded-none h-screen'
             : 'max-w-6xl max-h-[94vh] h-[90vh]'
@@ -406,7 +406,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
         {/* ========================================================= */}
         {/* HEADER TOOLBAR */}
         {/* ========================================================= */}
-        <div className="bg-slate-950 border-b border-slate-800 p-3 sm:px-6 flex items-center justify-between gap-3 text-white shrink-0">
+        <div className="bg-slate-950 border-b border-slate-800 p-3 sm:px-5 flex items-center justify-between gap-3 text-white shrink-0">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="p-2 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl shrink-0">
               {isPdf ? (
@@ -721,7 +721,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                   {pdfViewMode === 'canvas' ? (
                     <div className="flex flex-col items-center space-y-4">
                       {/* Canvas Container */}
-                      <div className="w-full flex justify-center bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-2xl overflow-x-auto min-h-[500px] relative">
+                      <div className="w-full flex justify-center bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-xl overflow-x-auto min-h-[500px] relative">
                         {isRenderingPdf && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/75 z-10 text-white gap-2">
                             <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
@@ -765,7 +765,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                           </button>
                           <button
                             onClick={(e) => onDownload(resource, e)}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1 cursor-pointer shadow-sm"
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1 cursor-pointer shadow-xs"
                           >
                             <Download className="w-3.5 h-3.5" /> Download PDF
                           </button>
@@ -780,7 +780,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                           {renderHighlightedText(pdfExtractedText)}
                         </div>
                       ) : (
-                        <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                        <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                           <FileText className="w-10 h-10 mx-auto text-indigo-500" />
                           <h3 className="text-base font-bold">PDF Document Ready</h3>
                           <p className="text-xs text-slate-500 max-w-md mx-auto">
@@ -800,7 +800,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
               ) : isAudio ? (
                 /* AUDIO LESSON PLAYER & TRANSCRIPT */
                 <div className="space-y-6">
-                  <div className="p-6 bg-gradient-to-br from-indigo-900 to-slate-950 text-white rounded-2xl shadow-xl border border-indigo-800/80 space-y-4">
+                  <div className="p-6 bg-gradient-to-br from-indigo-900 to-slate-950 text-white rounded-xl shadow-xl border border-indigo-800/80 space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg">
@@ -870,7 +870,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
 
                       <button
                         onClick={togglePlayAudio}
-                        className="w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transition-all cursor-pointer transform hover:scale-105"
+                        className="w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transition-all cursor-pointer transform hover:bg-slate-100 dark:hover:bg-slate-700"
                         title={isPlayingAudio ? "Pause" : "Play"}
                       >
                         {isPlayingAudio ? <Pause className="w-7 h-7 fill-white" /> : <Play className="w-7 h-7 fill-white ml-0.5" />}
@@ -895,7 +895,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
                       <FileText className="w-4 h-4 text-indigo-500" /> Lecture Notes & Transcripts
                     </h3>
-                    <div className={`p-6 rounded-2xl border ${activeTheme.border} ${FONT_SIZE_MAP[fontSize].tailwind} leading-relaxed whitespace-pre-wrap`}>
+                    <div className={`p-6 rounded-xl border ${activeTheme.border} ${FONT_SIZE_MAP[fontSize].tailwind} leading-relaxed whitespace-pre-wrap`}>
                       {parsedRawText || resource.fullContent || (
                         <p className="italic opacity-60">No transcript provided for this audio lecture. AI executive summary is available in the right sidebar.</p>
                       )}
@@ -907,7 +907,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                 <div className="space-y-4">
                   {videoDetails.isDrive ? (
                     <div className="space-y-3">
-                      <div className="p-8 bg-slate-950 text-white rounded-2xl border border-slate-800 text-center space-y-4">
+                      <div className="p-8 bg-slate-950 text-white rounded-xl border border-slate-800 text-center space-y-4">
                         <Play className="w-12 h-12 mx-auto text-rose-500" />
                         <h3 className="text-base font-bold">{resource.title}</h3>
                         <p className="text-xs text-slate-400 max-w-md mx-auto">
@@ -929,7 +929,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                     <video
                       controls
                       src={resource.downloadUrl || resource.fileDataUrl}
-                      className="w-full h-[65vh] rounded-2xl bg-slate-950 object-contain shadow-2xl border border-slate-800"
+                      className="w-full h-[65vh] rounded-xl bg-slate-950 object-contain shadow-xl border border-slate-800"
                     />
                   )}
 
@@ -939,7 +939,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                         Lesson Notes & Reference Study Text
                       </h3>
-                      <div className={`p-6 rounded-2xl border ${activeTheme.border} ${FONT_SIZE_MAP[fontSize].tailwind} leading-relaxed whitespace-pre-wrap`}>
+                      <div className={`p-6 rounded-xl border ${activeTheme.border} ${FONT_SIZE_MAP[fontSize].tailwind} leading-relaxed whitespace-pre-wrap`}>
                         {parsedRawText || resource.fullContent}
                       </div>
                     </div>
@@ -959,7 +959,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                       {renderHighlightedText(parsedRawText || resource.fullContent || '')}
                     </div>
                   ) : (
-                    <div className="p-8 text-center space-y-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div className="p-8 text-center space-y-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700">
                       <BookOpen className="w-10 h-10 mx-auto text-indigo-500 opacity-60" />
                       <p className="text-sm font-semibold">
                         This document file is stored in native format.
@@ -1121,7 +1121,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
         {/* ========================================================= */}
         {/* FOOTER BAR */}
         {/* ========================================================= */}
-        <div className="bg-slate-950 border-t border-slate-800 px-4 py-3 flex items-center justify-between gap-3 text-xs shrink-0 text-slate-400">
+        <div className="bg-slate-950 border-t border-slate-800 px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0 text-slate-400">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-300">HTEIM School of Ministry</span>
             <span>•</span>

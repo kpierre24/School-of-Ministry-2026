@@ -242,7 +242,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-hidden modal-material-scrim">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog">
         
         {/* Header */}
         <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0 border-b border-slate-800 modal-material-header">
@@ -504,8 +504,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {isStudent ? (
-                <div className="p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-4 text-center shadow-xl">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-inner">
+                <div className="p-6 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-4 text-center shadow-xl">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-inner">
                     <ShieldAlert className="w-6 h-6 text-amber-400" />
                   </div>
                   <div className="space-y-1.5">
@@ -878,7 +878,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {activeTab === 'about' && (
             <div className="space-y-4">
               {/* Institution Hero */}
-              <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-100/30 to-indigo-50 border border-amber-200 rounded-2xl flex items-center gap-4">
+              <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-100/30 to-indigo-50 border border-amber-200 rounded-xl flex items-center gap-4">
                 <LogoImage className="w-16 h-16 shrink-0" />
                 <div>
                   <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">
@@ -1063,9 +1063,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Mobile App & APK Download Hub Card */}
               {onOpenMobileDownloadCenter && (
-                <div className="p-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-50 border border-amber-300/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="p-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-50 border border-amber-300/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-xs">
                       <Smartphone className="w-5 h-5" />
                     </div>
                     <div>
@@ -1122,7 +1122,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           <button 
             onClick={onClose}
-            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-sm"
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-xs"
           >
             Save & Close Settings
           </button>

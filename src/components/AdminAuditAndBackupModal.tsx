@@ -151,8 +151,8 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   if (currentUserRole === 'student') {
     return (
       <div className="modal-material-scrim fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
-        <div className="modal-material-dialog bg-slate-900 text-white border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
+        <div className="modal-material-dialog bg-slate-900 text-white border border-slate-800 rounded-xl shadow-xl w-full max-w-md p-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div className="space-y-1">
@@ -336,8 +336,8 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   if (currentUserRole !== 'admin') {
     return (
       <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-800">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-md w-full text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-800">
             <Lock className="w-6 h-6" />
           </div>
           <h3 className="text-lg font-black text-slate-900 dark:text-white">Admin Restricted Area</h3>
@@ -359,7 +359,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
     <div className="modal-material-scrim fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fadeIn">
       <div 
         ref={dialogRef}
-        className="modal-material-dialog bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp text-slate-900 dark:text-slate-100"
+        className="modal-material-dialog bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp text-slate-900 dark:text-slate-100"
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-tools-modal-title"
@@ -400,7 +400,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               onClick={() => setActiveTab('audit')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 activeTab === 'audit'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -415,7 +415,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               onClick={() => setActiveTab('backup')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 activeTab === 'backup'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -427,7 +427,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               onClick={() => setActiveTab('operations')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 activeTab === 'operations'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -439,7 +439,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               onClick={() => setActiveTab('credentials')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 activeTab === 'credentials'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -462,7 +462,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
             <div className="space-y-5 animate-fadeIn">
               
               {/* Header Description & Controls */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80">
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -563,7 +563,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               </div>
 
               {/* Logs Table */}
-              <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-2xs">
+              <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto custom-scrollbar max-h-[480px]">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
@@ -661,7 +661,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                   <button
                     onClick={handleExportZip}
                     disabled={isExportingZip}
-                    className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2.5 text-xs cursor-pointer border border-emerald-600/40 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2.5 text-xs cursor-pointer border border-emerald-600/40 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   >
                     <FileSpreadsheet className="w-5 h-5" />
                     <span>{isExportingZip ? 'Generating Archive...' : 'Download Complete Backup Suite (.ZIP)'}</span>
@@ -692,7 +692,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 
                 {/* Standalone JSON Backup */}
-                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <FileJson className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -707,7 +707,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
 
                   <button
                     onClick={handleExportJSON}
-                    className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Download className="w-4 h-4 text-indigo-200" />
                     <span>Export Database JSON File</span>
@@ -715,7 +715,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                 </div>
 
                 {/* Restore Backup File */}
-                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Upload className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -728,7 +728,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                     </p>
                   </div>
 
-                  <label className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm">
+                  <label className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs">
                     <Upload className="w-4 h-4" />
                     <span>Upload & Restore JSON File</span>
                     <input 
@@ -741,7 +741,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                 </div>
 
                 {/* Pull from GitHub */}
-                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <RefreshCw className={`w-5 h-5 text-indigo-600 dark:text-indigo-400 ${isPullingGithub ? 'animate-spin' : ''}`} />
@@ -758,7 +758,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                     <button
                       onClick={handlePullFromGithub}
                       disabled={isPullingGithub}
-                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className={`w-4 h-4 ${isPullingGithub ? 'animate-spin' : ''}`} />
                       <span>{isPullingGithub ? 'Synchronizing...' : 'Pull Updates from GitHub'}</span>
@@ -783,21 +783,21 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
 
               {/* Status Banner */}
               {importStatus === 'success' && (
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                   <span>Database backup successfully restored! All records, grade matrices, and tuition statements have been updated.</span>
                 </div>
               )}
 
               {importStatus === 'error' && (
-                <div className="p-4 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-2xl text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
                   <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
                   <span>Restore failed: {importErrorMessage}</span>
                 </div>
               )}
 
               {/* Institutional Notice */}
-              <div className="flex items-start gap-3 p-4 bg-slate-100/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-start gap-3 p-4 bg-slate-100/80 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
                 <Info className="w-5 h-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-extrabold text-slate-900 dark:text-slate-100">Institutional Backup Compliance Policy</p>
@@ -814,14 +814,14 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
             <div className="space-y-6">
               {/* Op Status Notification */}
               {opStatusMessage && (
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
                   <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                   <span>{opStatusMessage}</span>
                 </div>
               )}
 
               {/* Firestore Safety Monitor & Diagnostic Card */}
-              <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
+              <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl space-y-4">
                 <div className="flex items-center gap-2">
                   <Sliders className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   <div>
@@ -865,7 +865,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               {/* Advanced Operations Tools Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Tuition Late Fee Card */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -886,7 +886,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                 </div>
 
                 {/* Grade Standardization Card */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <GraduationCap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -907,7 +907,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                 </div>
 
                 {/* Secure Demonstration / Screen Share Mask Card */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between md:col-span-2">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between md:col-span-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -922,7 +922,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                       onClick={handleToggleAnonymize}
                       className={`px-4 py-2 font-black text-xs rounded-xl cursor-pointer shadow-2xs transition-colors whitespace-nowrap ${
                         anonymizeMode 
-                          ? 'bg-amber-500 text-slate-950 hover:bg-amber-600 shadow-sm'
+                          ? 'bg-amber-500 text-slate-950 hover:bg-amber-600 shadow-xs'
                           : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200'
                       }`}
                     >
@@ -933,7 +933,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               </div>
 
               {/* Informational Warning */}
-              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900 text-xs text-slate-700 dark:text-slate-300">
+              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900 text-xs text-slate-700 dark:text-slate-300">
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-extrabold text-amber-900 dark:text-amber-200">Governance Precautionary Disclaimer</p>
@@ -951,14 +951,14 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               
               {/* PIN Reset Feedback Banner */}
               {pinResetMessage && (
-                <div role="status" aria-live="polite" className="flex items-center justify-between gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-fadeIn">
+                <div role="status" aria-live="polite" className="flex items-center justify-between gap-3 px-4 py-2 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-fadeIn">
                   <span>✓ {pinResetMessage}</span>
                   <button onClick={() => setPinResetMessage(null)} className="shrink-0 opacity-60 hover:opacity-100 text-emerald-600" aria-label="Dismiss">✕</button>
                 </div>
               )}
 
               {/* Header Description */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80">
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <ShieldCheck className="w-4.5 h-4.5 text-rose-500" /> Dynamic User Accounts & PIN Security Console
@@ -994,16 +994,16 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
               </div>
 
               {/* Accounts Directory List */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
-                        <th className="py-3 px-4">User Details</th>
-                        <th className="py-3 px-4">Username</th>
-                        <th className="py-3 px-4">Role</th>
-                        <th className="py-3 px-4">PIN Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-2 px-4">User Details</th>
+                        <th className="py-2 px-4">Username</th>
+                        <th className="py-2 px-4">Role</th>
+                        <th className="py-2 px-4">PIN Status</th>
+                        <th className="py-2 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1018,13 +1018,13 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                           const defaultPin = c.role === 'student' ? '1234' : '12345';
                           return (
                             <tr key={c.username} className="hover:bg-white/50 dark:hover:bg-slate-800/30 transition-colors">
-                              <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
                                 {c.name}
                               </td>
-                              <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
+                              <td className="py-2.5 px-4 font-mono font-extrabold text-indigo-600 dark:text-indigo-400">
                                 {c.username}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-2.5 px-4">
                                 <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
                                   c.role === 'admin'
                                     ? 'bg-amber-100 text-amber-800 border border-amber-200'
@@ -1035,7 +1035,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                                   {c.role}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-2.5 px-4">
                                 {c.mustChangePassword ? (
                                   <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-extrabold text-[10px]">
                                     <AlertTriangle className="w-3.5 h-3.5" /> PIN Reset Required
@@ -1046,7 +1046,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                                   </span>
                                 )}
                               </td>
-                              <td className="py-3.5 px-4 text-right">
+                              <td className="py-2.5 px-4 text-right">
                                 <button
                                   onClick={() => {
                                     const customPin = window.prompt(`Enter a new custom password/PIN for ${c.name} (Leave empty to reset to default ${defaultPin}):`);

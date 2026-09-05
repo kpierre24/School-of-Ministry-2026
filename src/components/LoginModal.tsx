@@ -243,7 +243,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label="HTEIM School of Ministry Portal Authentication"
-        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog"
+        className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden flex flex-col relative my-8 modal-material-dialog"
       >
         
         {/* Header Banner */}
@@ -261,7 +261,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="flex items-center gap-3 mb-2">
             <LogoImage 
               alt="HTEIM Logo" 
-              className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-600 object-contain bg-white p-0.5"
+              className="w-12 h-12 rounded-full border border-slate-200 dark:border-slate-600 object-contain bg-white p-0.5"
             />
             <div>
               <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">HTEIM School of Ministry</h2>
@@ -485,7 +485,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <button
               type="submit"
               disabled={!isLoginFormValid() || isVerifying}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isVerifying ? (
                 <>

@@ -26,7 +26,7 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
       <div 
-        className="relative bg-white dark:bg-slate-900 border border-amber-300/80 dark:border-amber-500/40 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-scaleUp text-slate-900 dark:text-slate-100"
+        className="relative bg-white dark:bg-slate-900 border border-amber-300/80 dark:border-amber-500/40 rounded-xl shadow-xl max-w-lg w-full overflow-hidden animate-scaleUp text-slate-900 dark:text-slate-100"
         role="dialog"
         aria-modal="true"
         aria-labelledby="payment-banner-title"
@@ -60,7 +60,7 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
         {/* Content Body */}
         <div className="p-6 space-y-5">
           {/* Student Account ID Banner */}
-          <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
+          <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
             <div className="space-y-0.5">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Logged-in Student</p>
               <p className="font-black text-slate-900 dark:text-slate-100 text-sm">{summary.studentName}</p>
@@ -72,7 +72,7 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
           </div>
 
           {/* Highlighted Big Balance Box */}
-          <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-rose-500/10 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-rose-950/30 border-2 border-amber-500/40 rounded-2xl p-5 text-center space-y-1.5 shadow-xs">
+          <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-rose-500/10 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-rose-950/30 border border-amber-500/40 rounded-xl p-5 text-center space-y-1.5 shadow-xs">
             <div className="flex items-center justify-center gap-1.5 text-amber-800 dark:text-amber-300 font-extrabold text-xs uppercase tracking-wider">
               <DollarSign className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Outstanding Balance Due
             </div>
@@ -116,14 +116,14 @@ export const OutstandingPaymentBanner: React.FC<OutstandingPaymentBannerProps> =
               onViewStatement();
               onClose();
             }}
-            className="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold py-2 px-4 rounded-xl shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <Receipt className="w-4 h-4" />
             <span>View My Payment Statement</span>
           </button>
           <button
             onClick={onClose}
-            className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold py-3 px-5 rounded-xl transition-all text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold py-2 px-5 rounded-xl transition-all text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-400"
           >
             I Acknowledge & Continue
           </button>

@@ -37,7 +37,7 @@ export const EnrollmentCtaSection: React.FC<{
   onPlayIntro?: () => void;
 }> = ({ onOpenEnrollmentModal, onNavigate, onPlayIntro }) => {
   return (
-    <section className="bg-gradient-to-br from-[#022044] via-[#023264] to-[#011b38] text-white rounded-3xl p-6 sm:p-8 border border-[#b38f53]/30 shadow-2xl relative overflow-hidden space-y-6">
+    <section className="bg-gradient-to-br from-[#022044] via-[#023264] to-[#011b38] text-white rounded-xl p-6 sm:p-8 border border-[#b38f53]/30 shadow-xl relative overflow-hidden space-y-6">
       {/* Decorative ambient background glows */}
       <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-[#0277b8]/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-[#b38f53]/20 rounded-full blur-3xl pointer-events-none" />
@@ -92,7 +92,7 @@ export const EnrollmentCtaSection: React.FC<{
         </div>
 
         {/* Right Col: Call-to-Action Card */}
-        <div className="lg:col-span-5 bg-white/10 backdrop-blur-md rounded-2xl p-5 sm:p-6 border border-white/20 space-y-4 shadow-xl">
+        <div className="lg:col-span-5 bg-white/10 backdrop-blur-md rounded-xl p-5 sm:p-6 border border-white/20 space-y-4 shadow-xl">
           <div className="space-y-1">
             <span className="text-[10px] font-mono font-bold uppercase text-[#dfc18b] tracking-wider">
               Admissions & Inquiries
@@ -109,7 +109,7 @@ export const EnrollmentCtaSection: React.FC<{
             <button
               type="button"
               onClick={onOpenEnrollmentModal}
-              className="w-full py-3 px-4 bg-gradient-to-r from-[#b38f53] via-[#c4a166] to-[#b38f53] hover:from-[#c4a166] hover:to-[#dfc18b] text-[#022044] font-black text-xs uppercase tracking-wider rounded-xl shadow-lg hover:shadow-[#b38f53]/30 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#dfc18b]/40"
+              className="w-full py-2 px-4 bg-gradient-to-r from-[#b38f53] via-[#c4a166] to-[#b38f53] hover:from-[#c4a166] hover:to-[#dfc18b] text-[#022044] font-black text-xs uppercase tracking-wider rounded-xl shadow-lg hover:shadow-[#b38f53]/30 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#dfc18b]/40"
             >
               <GraduationCap className="w-4 h-4 text-[#022044]" />
               <span>Apply for Next Cohort</span>
@@ -195,7 +195,7 @@ export const StudentStoriesSection: React.FC = () => {
   const [activeTestimony, setActiveTestimony] = useState(0);
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-sm">
+    <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-xs">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export const StudentStoriesSection: React.FC = () => {
             <div
               key={item.id}
               onClick={() => setActiveTestimony(idx)}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
+              className={`p-5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between space-y-4 ${
                 isSelected
                   ? 'bg-slate-50 dark:bg-slate-800/80 border-[#025798]/60 shadow-md ring-1 ring-[#025798]/20'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 opacity-80 hover:opacity-100'
@@ -336,7 +336,7 @@ export const FaqSection: React.FC<{
   });
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-sm">
+    <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-xs">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -399,7 +399,7 @@ export const FaqSection: React.FC<{
             return (
               <div
                 key={idx}
-                className={`rounded-2xl border transition-all overflow-hidden ${
+                className={`rounded-xl border transition-all overflow-hidden ${
                   isOpen
                     ? 'bg-slate-50 dark:bg-slate-800/70 border-[#025798]/40 dark:border-[#025798]/60 shadow-xs'
                     : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -443,7 +443,7 @@ export const FaqSection: React.FC<{
       </div>
 
       {/* Still have questions footer banner */}
-      <div className="p-4 bg-gradient-to-r from-slate-50 to-[#023264]/10 dark:from-slate-800 dark:to-[#023264]/30 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div className="p-4 bg-gradient-to-r from-slate-50 to-[#023264]/10 dark:from-slate-800 dark:to-[#023264]/30 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
         <div className="space-y-0.5 text-center sm:text-left">
           <p className="font-bold text-slate-900 dark:text-white">Have a specific question about your enrollment?</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">Our faculty and admissions advisors are ready to assist you.</p>

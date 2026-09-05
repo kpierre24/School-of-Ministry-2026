@@ -76,9 +76,9 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in modal-material-scrim">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] modal-material-dialog">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] modal-material-dialog">
         {/* Header */}
-        <div className="px-6 py-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
+        <div className="px-5 py-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg">
               <Calendar className="w-6 h-6 text-slate-600 dark:text-slate-300" />
@@ -139,7 +139,7 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
           </div>
 
           {classDays.length === 0 ? (
-            <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+            <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
               <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
               <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No class days configured yet</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
@@ -155,7 +155,7 @@ export const ManageClassDaysModal: React.FC<ManageClassDaysModalProps> = ({
                 return (
                   <div
                     key={day.id}
-                    className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+                    className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/60 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-mono font-bold flex items-center justify-center flex-shrink-0">

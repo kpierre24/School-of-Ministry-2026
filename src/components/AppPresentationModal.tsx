@@ -255,7 +255,7 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
     <div className="modal-material-scrim fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-fadeIn">
       <div 
         ref={modalContainerRef}
-        className={`modal-material-dialog w-full max-w-4xl bg-slate-900 border border-indigo-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col ${
+        className={`modal-material-dialog w-full max-w-4xl bg-slate-900 border border-indigo-500/30 rounded-xl shadow-xl overflow-hidden flex flex-col ${
           isFullscreen ? 'fixed inset-0 max-w-none rounded-none z-50' : 'max-h-[92vh]'
         }`}
       >
@@ -322,12 +322,12 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
           </div>
 
           {/* Current Scene Display Card */}
-          <div className="relative z-10 w-full max-w-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/95 border border-indigo-500/30 rounded-2xl p-5 sm:p-8 shadow-2xl backdrop-blur-md transition-all duration-500 animate-fadeIn space-y-6">
+          <div className="relative z-10 w-full max-w-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/95 border border-indigo-500/30 rounded-xl p-5 sm:p-8 shadow-xl backdrop-blur-md transition-all duration-500 animate-fadeIn space-y-6">
             
             {/* Scene Header & Badge */}
             <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-indigo-600 to-amber-500 text-slate-950 rounded-2xl shadow-lg shrink-0">
+                <div className="p-3 bg-gradient-to-br from-indigo-600 to-amber-500 text-slate-950 rounded-xl shadow-lg shrink-0">
                   <currentScene.icon className="w-6 h-6 text-slate-950 font-black" />
                 </div>
                 <div>
@@ -463,7 +463,7 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
                     onNavigateTab(currentScene.targetTab);
                     onClose();
                   }}
-                  className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                  className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 active:opacity-80"
                 >
                   <span>Explore {currentScene.title.split(' ')[0]} Feature in App</span>
                   <ArrowRight className="w-4 h-4 text-slate-950" />
@@ -505,7 +505,7 @@ export const AppPresentationModal: React.FC<AppPresentationModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePlayPause}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:scale-95"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:opacity-80"
               >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
                 <span>{isPlaying ? 'Pause' : currentTime >= TOTAL_DURATION ? 'Replay Demo' : 'Play'}</span>

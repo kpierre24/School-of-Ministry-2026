@@ -229,7 +229,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   const isIframeVideo = isYouTubeVideo || (isDriveVideo && !useDirectStream);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white shadow-2xl space-y-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-white shadow-xl space-y-4">
       {/* Top Header Bar */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
         <div className="flex items-center gap-2.5">
@@ -257,7 +257,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:scale-95"
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:opacity-80"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Recording</span>
@@ -273,9 +273,9 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
             {/* If it's a Video track, render the high-impact large screen */}
             {currentTrack.type === 'video' && (
               <div className="w-full flex flex-col space-y-2">
-                <div className="w-full h-72 md:h-[380px] bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl group">
+                <div className="w-full h-72 md:h-[380px] bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-xl group">
                   {/* Ambient Glow Backdrop under video */}
-                  <div className="absolute -inset-4 bg-indigo-500/15 blur-2xl pointer-events-none rounded-2xl" />
+                  <div className="absolute -inset-4 bg-indigo-500/15 blur-2xl pointer-events-none rounded-xl" />
 
                   {parsedMedia.isYouTube || parsedMedia.isVimeo || parsedMedia.isLoom ? (
                     <iframe
@@ -381,7 +381,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
             {/* If it's an Audio track, show the beautiful visual spectrum split block */}
             {currentTrack.type === 'audio' && (
               <div className="flex flex-col md:flex-row items-center gap-4">
-                <div className="w-full md:w-44 h-32 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 rounded-2xl border border-indigo-500/40 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 relative overflow-hidden group shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                <div className="w-full md:w-44 h-32 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 rounded-xl border border-indigo-500/40 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 relative overflow-hidden group shadow-[0_0_20px_rgba(99,102,241,0.2)]">
                   <audio
                     ref={audioRef}
                     src={currentTrack.url}
@@ -511,7 +511,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                     <button
                       type="button"
                       onClick={togglePlay}
-                      className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 animate-fadeIn"
+                      className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black flex items-center justify-center transition-all cursor-pointer shadow-lg shadow-amber-500/20 active:opacity-80 animate-fadeIn"
                     >
                       {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
                     </button>
@@ -652,7 +652,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
       {/* Add Media Modal */}
       {showAddModal && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <form onSubmit={handleAddSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-slate-100 animate-scaleIn">
+          <form onSubmit={handleAddSubmit} className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden text-slate-100 animate-scaleIn">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
               <h4 className="text-xs font-extrabold text-white flex items-center gap-2">
                 <Radio className="w-4 h-4 text-amber-400" /> Add Livestream Recording / Audio Media
@@ -799,7 +799,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
       {/* Edit Media Modal */}
       {editingTrack && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <form onSubmit={handleSaveEditSubmit} className="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden text-slate-100 animate-scaleIn">
+          <form onSubmit={handleSaveEditSubmit} className="bg-slate-900 border border-amber-500/40 rounded-xl shadow-xl w-full max-w-lg overflow-hidden text-slate-100 animate-scaleIn">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -1018,7 +1018,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:scale-95"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:opacity-80"
                 >
                   <Check className="w-4 h-4" /> Save Changes
                 </button>

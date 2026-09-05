@@ -46,7 +46,8 @@ import {
   UploadCloud,
   ArrowLeft,
   LayoutGrid,
-  List
+  List,
+  BrainCircuit
 } from 'lucide-react';
 
 import { EmptyState } from './UXPrimitives';
@@ -56,6 +57,7 @@ import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 import { QuizCreatorModal } from './QuizCreatorModal';
 import { QuizTakerView } from './QuizTakerView';
+import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
 import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
@@ -156,6 +158,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showFlashcards, setShowFlashcards] = useState(false);
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -1050,7 +1053,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         <div
           role="status"
           aria-live="polite"
-          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-medium shadow-sm animate-fadeIn ${
+          className={`flex items-center justify-between gap-3 px-4 py-2 rounded-xl text-sm font-medium shadow-xs animate-fadeIn ${
             syncBannerMessage.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300' :
             syncBannerMessage.type === 'error' ? 'bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/60 dark:border-rose-700 dark:text-rose-300' :
             'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/60 dark:border-blue-700 dark:text-blue-300'
@@ -1101,6 +1104,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 )}
               </>
             )}
+            
+            <button
+              onClick={() => setShowFlashcards(true)}
+              className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <BrainCircuit className="w-4 h-4 shrink-0" />
+              <span>Study Flashcards</span>
+            </button>
 
 
 
@@ -1120,7 +1131,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             onClick={() => setSubTab('assignments')}
             className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'assignments'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
@@ -1136,7 +1147,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             onClick={() => setSubTab('quizzes')}
             className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
               subTab === 'quizzes'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
@@ -1153,7 +1164,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               onClick={() => setSubTab('admin_dashboard')}
               className={`min-h-11 px-1 py-1.5 sm:px-3 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-colors cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center whitespace-normal sm:whitespace-nowrap shrink-0 ${
                 subTab === 'admin_dashboard'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
@@ -1173,7 +1184,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           
           {/* TEACHER / ADMIN QUICK ACTION BAR */}
           {isTeacherOrAdmin && (
-            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 min-w-0">
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 min-w-0">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
                 <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 shrink-0">
                   <Filter className="w-4 h-4 text-indigo-600 shrink-0" /> Filter Assignment:
@@ -1373,7 +1384,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 const countdown = getCountdown(asg.dueDate);
 
                 return (
-                  <div key={asg.id} className={`bg-white border rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between hover:shadow-md transition-all ${
+                  <div key={asg.id} className={`bg-white border rounded-xl p-5 shadow-2xs space-y-4 flex flex-col justify-between hover:shadow-md transition-all ${
                     isPastDue && !isGraded ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
                   }`}>
                     
@@ -1543,7 +1554,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           ) : (
                             <button
                               onClick={() => handleOpenStudentUpload(asg)}
-                              className={`w-full py-2.5 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              className={`w-full py-2.5 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
                                 isPastDue ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'
                               }`}
                             >
@@ -1574,7 +1585,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           {/* TEACHER / ADMIN SUBMISSIONS MATRIX */}
           {isTeacherOrAdmin && (
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden space-y-0">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden space-y-0">
               {/* Card / Table Control Header */}
               <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -1644,7 +1655,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       const isGraded = sub?.status === 'Graded' || sub?.status === 'Correction Returned';
 
                       return (
-                        <div key={`sub-card-${std.name || sIdx}-${asg.id}`} className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-2xs space-y-3 hover:border-indigo-200 transition-all">
+                        <div key={`sub-card-${std.name || sIdx}-${asg.id}`} className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-3 hover:border-indigo-200 transition-all">
                           {/* Card Header: Student & Assignment */}
                           <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
                             <div className="min-w-0">
@@ -1760,7 +1771,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           <div className="flex items-center gap-2 pt-1">
                             <button
                               onClick={() => handleOpenCorrection(asg, std.name)}
-                              className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95"
+                              className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:opacity-80"
                             >
                               <Edit3 className="w-3.5 h-3.5" /> {sub?.score !== undefined ? 'Edit Grade' : 'Grade & Correct'}
                             </button>
@@ -1781,7 +1792,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 </div>
               ) : (
                 /* VIEW MODE 2: TABLE MATRIX VIEW */
-                <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 touch-pan-x overscroll-x-contain">
+                <div className="overflow-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 overscroll-x-contain">
                   <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[900px]">
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
@@ -1973,7 +1984,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
           {/* Toast Notification Banner */}
           {copiedLinkToast && (
-            <div className="p-3 bg-amber-400 text-slate-950 font-bold text-xs rounded-2xl shadow-lg border border-amber-500 flex items-center justify-between animate-fadeIn">
+            <div className="p-3 bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg border border-amber-500 flex items-center justify-between animate-fadeIn">
               <span className="flex items-center gap-2">
                 <Share2 className="w-4 h-4 text-slate-900" />
                 <span>{copiedLinkToast}</span>
@@ -1983,7 +1994,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           )}
 
           {/* CLASS DAY INTERACTIVE QUIZ MANAGEMENT DECK */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -2035,7 +2046,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   return (
                     <div 
                       key={asg.id} 
-                      className="bg-slate-50/80 border border-slate-200 hover:border-indigo-300 rounded-2xl p-5 shadow-2xs space-y-3.5 transition-all flex flex-col justify-between"
+                      className="bg-slate-50/80 border border-slate-200 hover:border-indigo-300 rounded-xl p-5 shadow-2xs space-y-3.5 transition-all flex flex-col justify-between"
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
@@ -2131,7 +2142,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           
           {/* Google Sheets Connection / Sync Card */}
           {isTeacherOrAdmin && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
@@ -2167,7 +2178,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   <button 
                     onClick={onGoogleLogin}
                     disabled={isLoggingIn}
-                    className="flex items-center justify-center gap-2 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all uppercase disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                    className="flex items-center justify-center gap-2 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all uppercase disabled:opacity-50 cursor-pointer whitespace-nowrap"
                   >
                     {isLoggingIn ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
                     Sign in with Google
@@ -2208,7 +2219,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       placeholder="https://docs.google.com/spreadsheets/d/..."
                       value={sheetUrl}
                       onChange={(e) => setSheetUrl && setSheetUrl(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400 font-medium"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400 font-medium"
                     />
                   </div>
 
@@ -2216,7 +2227,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     <button 
                       type="submit"
                       disabled={isLoadingSheets || !sheetUrl}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all uppercase disabled:opacity-50 cursor-pointer h-[38px]"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all uppercase disabled:opacity-50 cursor-pointer h-[38px]"
                     >
                       {isLoadingSheets ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                       Sync Quiz Scores
@@ -2290,7 +2301,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -2323,7 +2334,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           </div>
 
           {/* Main Quiz Table */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
             <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -2339,7 +2350,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto overflow-y-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 touch-pan-x overscroll-x-contain">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar max-h-[600px] relative border-t border-slate-200 overscroll-x-contain">
               <table className="w-full text-left border-separate border-spacing-0 text-xs min-w-[1000px] sm:min-w-[1200px]">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
@@ -2669,20 +2680,20 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       });
                     }
                   }}
-                  className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
+                  className={`border border-dashed rounded-xl p-4 text-center transition-all ${
                     isDraggingUpload
                       ? 'border-indigo-500 bg-indigo-50/80 scale-[1.01]'
                       : 'border-slate-200 hover:border-indigo-300 bg-slate-50/50'
                   }`}
                 >
                   {isUploadingFile ? (
-                    <div className="flex flex-col items-center justify-center py-3 space-y-2 text-indigo-700">
+                    <div className="flex flex-col items-center justify-center py-2 space-y-2 text-indigo-700">
                       <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
                       <p className="text-xs font-bold">Uploading assignment documents to portal storage...</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
                         <UploadCloud className="w-5 h-5" />
                       </div>
                       <div>
@@ -3133,7 +3144,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         >
           <div className="space-y-4">
               {previewFile.content && (
-                <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                   <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                     <Edit3 className="w-4 h-4 text-indigo-600 shrink-0" /> Student Typed Response Content
                   </p>
@@ -3146,7 +3157,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               {previewFile.url && (() => {
                 const isImage = previewFile.url?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(previewFile.name);
                 return isImage ? (
-                  <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                     <p className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                       <Image className="w-4 h-4 text-indigo-600 shrink-0" /> Image Submission Preview
                     </p>
@@ -3160,7 +3171,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                     <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <FileText className="w-4 h-4 text-indigo-600 shrink-0" /> Document Stream Ready
                     </p>
@@ -3174,7 +3185,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
             {previewFile.url && (
               <div className="p-4 sm:p-6 pt-0 shrink-0">
-                <div className="text-center py-4 sm:py-5 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-2.5">
+                <div className="text-center py-4 sm:py-5 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 space-y-2.5">
                   <FolderOpen className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-400 mx-auto" />
                   <p className="text-xs text-slate-700 font-bold truncate max-w-xs mx-auto">{previewFile.name}</p>
                   <a
@@ -3281,7 +3292,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     const correctPct = quizSubs.length > 0 ? Math.round((correctCount / quizSubs.length) * 100) : 0;
 
                     return (
-                      <div key={q.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                      <div key={q.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-extrabold text-slate-900">Q{idx + 1}. Weight: {q.weight} pts</span>
                           <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-extrabold ${
@@ -3305,7 +3316,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     ← Swipe matrix →
                   </span>
                 </div>
-                <div className="border border-slate-200 rounded-2xl overflow-x-auto custom-scrollbar shadow-2xs touch-pan-x max-h-[450px]">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto custom-scrollbar shadow-2xs max-h-[450px]">
                   <table className="w-full text-left text-xs min-w-[700px] border-separate border-spacing-0">
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-extrabold text-[10px] uppercase">
@@ -3392,6 +3403,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         </Modal>
       )}
 
+      {showFlashcards && (
+        <InteractiveFlashcards onClose={() => setShowFlashcards(false)} />
+      )}
     </div>
   );
 };

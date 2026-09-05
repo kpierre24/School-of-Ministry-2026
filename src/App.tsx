@@ -3807,10 +3807,10 @@ export default function App() {
       </AnimatePresence>
 
       <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
-      <div className="flex flex-col min-h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 touch-pan-y select-text">
+      <div className="flex flex-col min-h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 select-text">
       {/* Offline Banner */}
       {isOffline && (
-        <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between shadow-xs animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
           <div className="flex items-center gap-2">
             <WifiOff className="w-4 h-4 text-amber-600" />
             <span className="font-medium">Working offline — changes are saved locally and will sync when connection restores.</span>
@@ -3822,7 +3822,7 @@ export default function App() {
 
 
       {cloudSyncError && !isOffline && (
-        <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-2.5 rounded-2xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-sm" role="alert">
+        <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-2.5 rounded-xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-xs" role="alert">
           <div className="flex items-center gap-2 min-w-0">
             <CloudOff className="w-4 h-4 shrink-0 text-red-600" aria-hidden="true" />
             <span className="font-medium">{cloudSyncError}</span>
@@ -3839,7 +3839,7 @@ export default function App() {
       )}
 
       {pendingConflicts.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 text-orange-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-sm" role="alert">
+        <div className="bg-orange-50 border border-orange-200 text-orange-900 text-xs px-4 py-2.5 rounded-xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-xs" role="alert">
           <div className="flex items-center gap-2 min-w-0">
             <AlertCircle className="w-4 h-4 shrink-0 text-orange-600" aria-hidden="true" />
             <span className="font-medium">{pendingConflicts.length} attendance sync conflict{pendingConflicts.length === 1 ? '' : 's'} need review.</span>
@@ -3849,7 +3849,7 @@ export default function App() {
       )}
 
       {supabaseTableMissing && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-slate-800 animate-fade-slide-up flex-shrink-0">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-3 text-slate-800 animate-fade-slide-up flex-shrink-0">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-red-100 text-red-700 rounded-xl shrink-0">
               <Database className="w-5 h-5" />
@@ -3896,7 +3896,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {syncedBannerMessage && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between shadow-sm animate-fade-slide-up flex-shrink-0">
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between shadow-xs animate-fade-slide-up flex-shrink-0">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span className="font-medium">{syncedBannerMessage}</span>
@@ -3909,7 +3909,7 @@ create policy "Allow public update" on app_states for update using (true) with c
 
       {/* PWA Install Banner */}
       {pwaHook.isInstallable && (
-        <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs px-4 py-2.5 rounded-2xl mb-3 flex items-center justify-between gap-3 shadow-sm animate-fade-slide-up flex-shrink-0">
+        <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between gap-3 shadow-xs animate-fade-slide-up flex-shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <Smartphone className="w-4 h-4 text-indigo-600 shrink-0" />
             <span className="truncate font-medium">Install HTEIM as a standalone app for quick access.</span>
@@ -3932,7 +3932,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       )}
 
       {/* MD3 AppBar */}
-      <header className="relative bg-white/85 dark:bg-[#08182c]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-[#1a385c] px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-40 max-w-full overflow-visible transition-all rounded-2xl">
+      <header className="relative bg-white/85 dark:bg-[#08182c]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-[#1a385c] px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-40 max-w-full overflow-visible transition-all rounded-xl">
         {/* Subtle Brand Accent Line (HTEIM Royal Navy & Ministry Gold) */}
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-[#023264]/0 via-[#025798]/60 via-[#b38f53]/70 to-[#0277b8]/0 pointer-events-none" />
         <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
@@ -4226,9 +4226,9 @@ create policy "Allow public update" on app_states for update using (true) with c
                   type="button"
                   onClick={() => handleNavigate(tab as TabType)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer active:scale-95 ${
+                  className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer active:opacity-80 ${
                     isActive
-                      ? 'bg-white dark:bg-[#0e2540] text-[#023264] dark:text-white shadow-sm font-bold border border-[#025798]/20 dark:border-[#0277b8]/30'
+                      ? 'bg-white dark:bg-[#0e2540] text-[#023264] dark:text-white shadow-xs font-bold border border-[#025798]/20 dark:border-[#0277b8]/30'
                       : 'text-slate-600 dark:text-slate-300 hover:text-[#023264] dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#0e2540]/50'
                   }`}
                 >
@@ -4257,7 +4257,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       />
 
       {/* Main Workspace */}
-      <main id="main-workspace" tabIndex={-1} className="flex flex-col flex-1 gap-6 relative touch-pan-y min-h-[calc(100vh-220px)] sm:min-h-[calc(100vh-240px)] pb-24 md:pb-8">
+      <main id="main-workspace" tabIndex={-1} className="flex flex-col flex-1 gap-6 relative min-h-[calc(100vh-220px)] sm:min-h-[calc(100vh-240px)] pb-24 md:pb-8">
         <AnimatePresence mode="wait">
           {activeErpTab === 'home' && (
             <motion.div
@@ -4267,7 +4267,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate="animate"
               exit="exit"
               transition={pageFadeTransition}
-              className="flex-1 touch-pan-y w-full"
+              className="flex-1 w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Home Tab">
@@ -4628,7 +4628,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               animate="animate"
               exit="exit"
               transition={pageFadeTransition}
-              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col touch-pan-y w-full"
+              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs flex flex-col w-full"
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Attendance Tab">
@@ -4709,7 +4709,7 @@ onRequestTranscript={(s) => {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleAddClassDay()}
-                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
                           title="Add a new class session"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -4729,7 +4729,7 @@ onRequestTranscript={(s) => {
                 </div>
 
                 {/* Mobile Touch-Scrollable Dropdowns & Filter Chips Row */}
-                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar touch-pan-x py-0.5 max-w-full">
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 max-w-full">
                   {/* Date Range Filter */}
                   <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300 shrink-0">
                     <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
@@ -4890,7 +4890,7 @@ onRequestTranscript={(s) => {
                   <div className="md:hidden flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
                     {/* Mobile Active Check-in Session Quick Controller Bar */}
                     {(appUser?.role as string) !== 'student' && effectiveClassDays.length > 0 && (
-                      <div className="sticky top-0 z-10 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md space-y-2.5">
+                      <div className="sticky top-0 z-10 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800 shadow-md space-y-2.5">
                         {/* Session Header & Mode Selector */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -4968,7 +4968,7 @@ onRequestTranscript={(s) => {
                               });
                               if (navigator.vibrate) navigator.vibrate([20, 50, 20]);
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black shrink-0 active:scale-95 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[36px]"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black shrink-0 active:opacity-80 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[36px]"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Mark Unmarked Present</span>
@@ -5028,7 +5028,7 @@ onRequestTranscript={(s) => {
                             return (
                               <div
                                 key={`rapid-row-${student.name || idx}-${idx}`}
-                                className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2"
+                                className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2"
                               >
                                 <div 
                                   onClick={() => setSelectedStudent(student)}
@@ -5059,9 +5059,9 @@ onRequestTranscript={(s) => {
                                         handleToggleStudentAttendance(student.name, activeDayId, 'present');
                                         if (navigator.vibrate) navigator.vibrate(20);
                                       }}
-                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-44 ${
+                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:opacity-80 touch-min-44 ${
                                         isPresent 
-                                          ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400' 
+                                          ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-400' 
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
                                       }`}
                                       title="Mark Present"
@@ -5075,9 +5075,9 @@ onRequestTranscript={(s) => {
                                         handleToggleStudentAttendance(student.name, activeDayId, 'excused');
                                         if (navigator.vibrate) navigator.vibrate(20);
                                       }}
-                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-44 ${
+                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:opacity-80 touch-min-44 ${
                                         isExcused 
-                                          ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-300' 
+                                          ? 'bg-amber-500 text-slate-950 shadow-xs ring-2 ring-amber-300' 
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
                                       }`}
                                       title="Mark Excused"
@@ -5091,9 +5091,9 @@ onRequestTranscript={(s) => {
                                         handleToggleStudentAttendance(student.name, activeDayId, 'absent');
                                         if (navigator.vibrate) navigator.vibrate(20);
                                       }}
-                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-min-44 ${
+                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:opacity-80 touch-min-44 ${
                                         isAbsent 
-                                          ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400' 
+                                          ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-400' 
                                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40'
                                       }`}
                                       title="Mark Absent"
@@ -5119,7 +5119,7 @@ onRequestTranscript={(s) => {
                   <div className="hidden md:block flex-1 overflow-auto custom-scrollbar relative">
                     <table className="w-full text-left border-collapse min-w-max">
                       {/* Table Sticky Header */}
-                      <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
+                      <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-xs">
                         <tr>
                           <th className={`sticky left-0 z-30 bg-slate-100 border-r border-slate-200 ${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} font-black uppercase text-slate-700 tracking-wider w-64 min-w-[256px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]`}>
                             <div className="flex items-center justify-between gap-2">
@@ -5390,7 +5390,7 @@ onRequestTranscript={(s) => {
                           });
                         }
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs"
                       title="Clear attendance history for all selected students"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -5399,7 +5399,7 @@ onRequestTranscript={(s) => {
 
                     <button
                       onClick={() => setShowBatchEmailModal(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs"
                     >
                       <Mail className="w-3.5 h-3.5" />
                       Batch At-Risk Email Notice
@@ -5423,7 +5423,7 @@ onRequestTranscript={(s) => {
                 action={
                   <button
                     onClick={() => handleAddClassDay()}
-                    className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 cursor-pointer"
+                    className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Class Day
                   </button>
@@ -5559,7 +5559,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 16 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                className="relative z-10 bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
+                className="relative z-10 bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
               >
               {/* Modal Header */}
               <div className="p-5 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
@@ -5972,7 +5972,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
               {/* Report Header Toolbar */}
               <div className="p-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
                 <div className="flex items-center gap-2">
@@ -5989,7 +5989,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   <button
                     onClick={() => handleExportPDF('printable-report', `HTEIM_Attendance_Report_${selectedReportAttendanceFilter}.pdf`)}
                     disabled={isGeneratingPDF}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                     title="Export high-definition PDF document for selected filters"
                   >
                     <Download className={`w-3.5 h-3.5 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
@@ -6013,7 +6013,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               </div>
 
               {/* Advanced Filter & Search Sub-Bar */}
-              <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+              <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
                 {/* Attendance Criteria Row */}
                 <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
                   <span className="text-[10px] font-extrabold uppercase text-slate-500 mr-1.5 flex items-center gap-1 flex-shrink-0">
@@ -6023,7 +6023,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     onClick={() => setSelectedReportAttendanceFilter('all')}
                     className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       selectedReportAttendanceFilter === 'all'
-                        ? 'bg-indigo-600 text-white shadow-sm'
+                        ? 'bg-indigo-600 text-white shadow-xs'
                         : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
                     }`}
                   >
@@ -6033,7 +6033,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     onClick={() => setSelectedReportAttendanceFilter('fifty_percent')}
                     className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                       selectedReportAttendanceFilter === 'fifty_percent'
-                        ? 'bg-purple-600 text-white shadow-sm'
+                        ? 'bg-purple-600 text-white shadow-xs'
                         : 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-200'
                     }`}
                   >
@@ -6046,7 +6046,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     onClick={() => setSelectedReportAttendanceFilter('at_risk')}
                     className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                       selectedReportAttendanceFilter === 'at_risk'
-                        ? 'bg-rose-600 text-white shadow-sm'
+                        ? 'bg-rose-600 text-white shadow-xs'
                         : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
                     }`}
                   >
@@ -6059,7 +6059,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                     onClick={() => setSelectedReportAttendanceFilter('satisfactory')}
                     className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                       selectedReportAttendanceFilter === 'satisfactory'
-                        ? 'bg-emerald-600 text-white shadow-sm'
+                        ? 'bg-emerald-600 text-white shadow-xs'
                         : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
                     }`}
                   >
@@ -6098,7 +6098,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   <div className="flex items-center gap-4">
                     <LogoImage 
                       alt="HTEIM School of Ministry Logo" 
-                      className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
+                      className="w-16 h-16 rounded-full border border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
                     />
                     <div>
                       <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
@@ -6450,7 +6450,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       {/* Guide & Access Modal */}
       {showGuideModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scaleUp">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-scaleUp">
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-amber-400" />
@@ -6557,7 +6557,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative z-10 bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden"
+              className="relative z-10 bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden"
             >
             {/* Modal Toolbar */}
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
@@ -6569,7 +6569,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 <button
                   onClick={() => handleExportPDF('printable-student-transcript', `HTEIM_Academic_Transcript_${selectedStudent.name.replace(/\s+/g, '_')}.pdf`)}
                   disabled={isGeneratingPDF}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                   title="Directly download high-definition PDF transcript"
                 >
                   <Download className={`w-3.5 h-3.5 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
@@ -6598,7 +6598,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 <div className="flex items-center gap-4">
                   <LogoImage 
                     alt="HTEIM Logo" 
-                    className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
+                    className="w-16 h-16 rounded-full border border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
                   />
                   <div>
                     <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
@@ -6785,12 +6785,12 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             }
           }}
         >
-          <div className="bg-white border-8 border-double border-amber-600 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden my-auto animate-scaleUp p-8 text-center relative text-slate-900 print:border-8 print:shadow-none print:m-0" id="printable-certificate">
+          <div className="bg-white border-8 border-double border-amber-600 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden my-auto animate-scaleUp p-8 text-center relative text-slate-900 print:border-8 print:shadow-none print:m-0" id="printable-certificate">
             {/* Top Certificate Header */}
             <div className="flex flex-col items-center justify-center mb-6">
               <LogoImage 
                 alt="HTEIM School of Ministry Logo" 
-                className="w-20 h-20 rounded-full border-2 border-amber-500 shadow-md object-contain bg-white p-1 mb-2"
+                className="w-20 h-20 rounded-full border border-amber-500 shadow-md object-contain bg-white p-1 mb-2"
               />
               <h1 className="text-2xl font-black tracking-wider text-slate-900 uppercase">HTEIM SCHOOL OF MINISTRY</h1>
               <p className="text-xs font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
@@ -6838,14 +6838,14 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               <button 
                 onClick={() => handleExportPDF('printable-certificate', `HTEIM_Certificate_${certificateData.studentName.replace(/\s+/g, '_')}.pdf`)}
                 disabled={isGeneratingPDF}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50"
               >
                 <Download className={`w-3.5 h-3.5 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
                 {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF Certificate'}
               </button>
               <button 
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Browser Print
@@ -6895,7 +6895,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-xl overflow-hidden animate-scaleUp">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-xl overflow-hidden animate-scaleUp">
               <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Mail className="w-5 h-5 text-rose-400" />
@@ -7081,7 +7081,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 250 }}
-              className="relative z-10 w-full bg-slate-900 border-t-2 border-indigo-500/40 rounded-t-3xl shadow-2xl p-4 text-white max-h-[85dvh] overflow-y-auto custom-scrollbar pb-safe"
+              className="relative z-10 w-full bg-slate-900 border-t-2 border-indigo-500/40 rounded-t-3xl shadow-xl p-4 text-white max-h-[85dvh] overflow-y-auto custom-scrollbar pb-safe"
             >
               {/* Drawer Drag Handle / Header */}
               <div className="flex flex-col items-center mb-3">
@@ -7420,7 +7420,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Portal Footer */}
-      <footer id="portal-footer" className="mt-auto md:mt-8 mb-16 md:mb-0 px-3 sm:px-6 py-2.5 sm:py-3 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl flex flex-col md:flex-row items-center justify-between gap-2.5 sm:gap-3 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative shrink-0 shadow-xs">
+      <footer id="portal-footer" className="mt-auto md:mt-8 mb-16 md:mb-0 px-3 sm:px-5 py-2.5 sm:py-2 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-xl flex flex-col md:flex-row items-center justify-between gap-2.5 sm:gap-3 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative shrink-0 shadow-xs">
         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" title="System Operational"></span>
@@ -7494,7 +7494,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             borderColor: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' },
             boxShadow: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' }
           }}
-          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-80 bg-slate-900/95 dark:bg-purple-950/95 backdrop-blur-md text-white p-4 rounded-2xl border-2 shadow-2xl flex flex-col gap-2.5"
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-80 bg-slate-900/95 dark:bg-purple-950/95 backdrop-blur-md text-white p-4 rounded-xl border shadow-xl flex flex-col gap-2.5"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
@@ -7527,7 +7527,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             onClick={() => {
               setActiveErpTab('exams');
             }}
-            className="w-full mt-0.5 px-3.5 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+            className="w-full mt-0.5 px-3.5 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:opacity-80"
           >
             <BookOpen className="w-4 h-4 text-slate-950 shrink-0" />
             <span>Take Active Quiz Now</span>
@@ -7537,7 +7537,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       )}
 
       {/* Mobile Bottom Navigation Dock */}
-      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#08182c]/95 border-t border-slate-200/90 dark:border-[#1a385c] backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
+      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#08182c]/95 border-t border-slate-200/90 dark:border-[#1a385c] backdrop-blur-xl shadow-xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
         {(appUser ? (
           appUser.role === 'student' ? [
             { tab: 'home', Icon: Sparkles, label: 'Home' },
@@ -7564,7 +7564,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
               onClick={() => handleNavigate(tab as TabType)}
               aria-label={`Open ${label}`}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+              className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 touch-min-44 ${
                 isActive
                   ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -7585,7 +7585,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
           type="button"
           onClick={() => setShowMobileMoreMenu(true)}
           aria-label="Open more portal sections"
-          className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+          className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 touch-min-44 ${
             showMobileMoreMenu
               ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

@@ -84,7 +84,7 @@ export const ScheduledAnnouncementsModal: React.FC<ScheduledAnnouncementsModalPr
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full p-6 shadow-2xl space-y-5 overflow-hidden relative max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-3xl w-full p-6 shadow-xl space-y-5 overflow-hidden relative max-h-[90vh] flex flex-col">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
@@ -93,7 +93,7 @@ export const ScheduledAnnouncementsModal: React.FC<ScheduledAnnouncementsModalPr
         </button>
 
         <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
             <Bell className="w-6 h-6" />
           </div>
           <div>
@@ -136,7 +136,7 @@ export const ScheduledAnnouncementsModal: React.FC<ScheduledAnnouncementsModalPr
             </div>
           </div>
 
-          <form onSubmit={handleSend} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+          <form onSubmit={handleSend} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             {/* Target Audience Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
@@ -245,7 +245,7 @@ export const ScheduledAnnouncementsModal: React.FC<ScheduledAnnouncementsModalPr
             </h3>
 
             {announcements.map(ann => (
-              <div key={ann.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div key={ann.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">{ann.title}</h4>

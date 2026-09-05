@@ -342,7 +342,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
         role="dialog"
         aria-modal="true"
         aria-label="Bulk Tuition Payment & Statement Reminder Suite"
-        className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog"
+        className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp modal-material-dialog"
       >
         
         {/* Modal Header */}
@@ -373,7 +373,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
         </div>
 
         {/* Tab Headers */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 pt-3">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 pt-3">
           <div className="flex gap-4">
             <button
               onClick={() => setActiveTab('compose')}
@@ -412,7 +412,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {dispatchSuccess && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-900 text-xs font-bold animate-fadeIn">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-900 text-xs font-bold animate-fadeIn">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               <span>{dispatchSuccess}</span>
             </div>
@@ -505,7 +505,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
               </div>
 
               {/* Message Composer Box */}
-              <div className="bg-slate-50 p-4 border border-slate-200 rounded-2xl space-y-3">
+              <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-3">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -585,7 +585,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
                     type="button"
                     disabled={isDispatching || selectedPayments.length === 0}
                     onClick={handleExecuteBulkDispatch}
-                    className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                    className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 active:opacity-80"
                   >
                     {isDispatching ? (
                       <>
@@ -601,7 +601,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
               </div>
 
               {/* Student Recipient List Table */}
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden space-y-3">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden space-y-3">
                 <div className="p-3 bg-slate-100 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <input
@@ -769,7 +769,7 @@ export const BulkPaymentReminderModal: React.FC<BulkPaymentReminderModalProps> =
                 {reminderLogs.map((log) => (
                   <div 
                     key={log.id} 
-                    className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 hover:border-slate-300 transition-all"
+                    className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 hover:border-slate-300 transition-all"
                   >
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
                       <div className="flex items-center gap-2">

@@ -460,7 +460,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   return (
     <div className="material-screen min-w-0 space-y-6 animate-fadeIn text-slate-100 pb-28 sm:pb-24 md:pb-8">
       {/* Sleek Dark Header Bar matching uploaded mockup */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
@@ -502,7 +502,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           {/* iCal / Google Calendar Sync Export Button */}
           <button
             onClick={handleExportAllToICS}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-11 bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-800 shadow-3xs transition-all cursor-pointer active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-11 bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-800 shadow-3xs transition-all cursor-pointer active:opacity-80"
             title="Export all lectures to Apple Calendar, Outlook, or iCal (.ics file)"
           >
             <Download className="w-3.5 h-3.5 text-amber-400" />
@@ -549,7 +549,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           {!isStudent && (
             <button
               onClick={() => handleOpenAddModal()}
-              className="flex items-center justify-center gap-2 px-4 py-2 min-h-11 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:scale-95"
+              className="flex items-center justify-center gap-2 px-4 py-2 min-h-11 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer active:opacity-80"
             >
               <Plus className="w-4 h-4" />
               <span>Schedule Lecture</span>
@@ -657,7 +657,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
       {/* VIEW 1: MONTHLY CALENDAR VIEW (MOBILE OPTIMIZED) */}
       {viewMode === 'calendar' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden p-3.5 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden p-3.5 sm:p-6 space-y-4 sm:space-y-6">
           {/* Month Header Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -738,7 +738,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs font-black font-mono px-2 py-0.5 rounded-lg ${
                           isToday 
-                            ? 'bg-indigo-600 text-white shadow-sm' 
+                            ? 'bg-indigo-600 text-white shadow-xs' 
                             : 'text-slate-300 group-hover:text-indigo-400'
                         }`}>
                           {dayNum}
@@ -831,7 +831,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           {/* MOBILE OPTIMIZED CALENDAR VIEW (Visible on screens smaller than md) */}
           <div className="block md:hidden space-y-4">
             {/* 1. Mobile Calendar Date Picker Grid */}
-            <div className="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
               <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-400 pb-2 mb-1 border-b border-slate-800">
                 <div>Su</div>
                 <div>Mo</div>
@@ -899,7 +899,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
             </div>
 
             {/* 2. Selected Date Class Panel (Expanded readable card view) */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block">
@@ -958,7 +958,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                     {dayClasses.map(cls => (
                       <div
                         key={cls.id}
-                        className={`p-3.5 rounded-2xl border flex flex-col gap-2.5 transition-all shadow-md ${getModuleBadgeStyle(cls.courseCode)}`}
+                        className={`p-3.5 rounded-xl border flex flex-col gap-2.5 transition-all shadow-md ${getModuleBadgeStyle(cls.courseCode)}`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-950/70 border border-white/20 text-white font-mono">
@@ -1003,7 +1003,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                             href="https://zoom.us/j/81505377396"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer"
                           >
                             <Video className="w-3.5 h-3.5" />
                             <span>Join Zoom</span>
@@ -1046,7 +1046,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
             </div>
 
             {/* 3. Monthly Agenda Overview (All classes list for the month) */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs font-bold text-slate-300">
                 <span className="flex items-center gap-1.5 uppercase font-mono text-indigo-400 text-[10px]">
                   <List className="w-3.5 h-3.5" /> All Scheduled Classes in {monthName} ({filteredSchedules.length})
@@ -1088,7 +1088,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
       {/* VIEW 2: WEEKLY TIMETABLE MATRIX GRID VIEW (Matches Uploaded Mockup Screenshot) */}
       {viewMode === 'timetable' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
           <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
@@ -1146,7 +1146,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                           }}
                         >
                           {classInSlot ? (
-                            <div className={`p-2.5 rounded-xl border text-left shadow-sm relative group/cell ${getModuleBadgeStyle(classInSlot.courseCode)}`}>
+                            <div className={`p-2.5 rounded-xl border text-left shadow-xs relative group/cell ${getModuleBadgeStyle(classInSlot.courseCode)}`}>
                               <div className="flex items-center justify-between gap-1 mb-1">
                                 <span className="text-[10px] font-black font-mono uppercase">
                                   {classInSlot.courseCode}
@@ -1205,7 +1205,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
       {/* VIEW 3: AGENDA LIST VIEW */}
       {viewMode === 'agenda' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <h3 className="text-base font-black text-white flex items-center gap-2">
               <List className="w-4 h-4 text-indigo-400" />
@@ -1370,7 +1370,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
           <form onSubmit={handleSaveSchedule} className="space-y-5">
               {/* Duplication Notice Banner */}
               {isCopyingMode && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 text-xs flex items-start gap-2.5">
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs flex items-start gap-2.5">
                   <Copy className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-extrabold text-amber-300">Duplicating Class to Target Date</p>
@@ -1382,7 +1382,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
               )}
 
               {/* LIVE CARD PREVIEW BANNER */}
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2">
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2">
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
                   <span className="flex items-center gap-1.5 uppercase tracking-wider text-[10px] text-indigo-400">
                     <Eye className="w-3.5 h-3.5" /> Live Student Preview
@@ -1567,7 +1567,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                         }}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                           isSelected 
-                            ? 'bg-amber-500 text-slate-950 font-black shadow-sm' 
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-xs' 
                             : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
                         }`}
                       >
@@ -1614,7 +1614,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                     onClick={() => setFormDeliveryMode('in_person')}
                     className={`p-2 rounded-xl border text-center transition-all cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold ${
                       formDeliveryMode === 'in_person'
-                        ? 'bg-rose-600 border-rose-400 text-white font-black shadow-sm'
+                        ? 'bg-rose-600 border-rose-400 text-white font-black shadow-xs'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
                     }`}
                   >
@@ -1627,7 +1627,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                     onClick={() => setFormDeliveryMode('virtual')}
                     className={`p-2 rounded-xl border text-center transition-all cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold ${
                       formDeliveryMode === 'virtual'
-                        ? 'bg-indigo-600 border-indigo-400 text-white font-black shadow-sm'
+                        ? 'bg-indigo-600 border-indigo-400 text-white font-black shadow-xs'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
                     }`}
                   >
@@ -1640,7 +1640,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                     onClick={() => setFormDeliveryMode('hybrid')}
                     className={`p-2 rounded-xl border text-center transition-all cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold ${
                       formDeliveryMode === 'hybrid'
-                        ? 'bg-teal-600 border-teal-400 text-white font-black shadow-sm'
+                        ? 'bg-teal-600 border-teal-400 text-white font-black shadow-xs'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
                     }`}
                   >

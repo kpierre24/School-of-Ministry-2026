@@ -539,7 +539,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
 
   return (
     <section 
-      className="bg-gradient-to-br from-[#022044] via-[#023264] to-[#011b38] text-white rounded-3xl p-4 sm:p-7 border border-[#b38f53]/30 shadow-2xl relative overflow-hidden space-y-5"
+      className="bg-gradient-to-br from-[#022044] via-[#023264] to-[#011b38] text-white rounded-xl p-4 sm:p-7 border border-[#b38f53]/30 shadow-xl relative overflow-hidden space-y-5"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -556,7 +556,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
               <button
                 type="button"
                 onClick={onOpenEnrollmentModal}
-                className="px-3 py-1 rounded-full bg-gradient-to-r from-[#b38f53] via-[#c4a166] to-[#b38f53] text-[#022044] font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-md border border-[#dfc18b]/60 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                className="px-3 py-1 rounded-full bg-gradient-to-r from-[#b38f53] via-[#c4a166] to-[#b38f53] text-[#022044] font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-md border border-[#dfc18b]/60 hover:brightness-110 active:opacity-80 transition-all cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#022044]" />
                 <span>{showcaseConfig.admissionsBadgeText}</span>
@@ -585,7 +585,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
           {onOpenEnrollmentModal && (
             <button
               onClick={onOpenEnrollmentModal}
-              className="px-3 py-1.5 bg-[#01883c] hover:bg-[#01682e] text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 border border-[#86efac]/30"
+              className="px-3 py-1.5 bg-[#01883c] hover:bg-[#01682e] text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:opacity-80 border border-[#86efac]/30"
               title="Apply for Next Cohort"
             >
               <GraduationCap className="w-3.5 h-3.5 text-[#86efac]" />
@@ -597,7 +597,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => openShowcaseManager('details')}
-                className="px-3 py-1.5 bg-[#b38f53] hover:bg-[#c4a166] text-[#022044] font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 border border-[#dfc18b]/40"
+                className="px-3 py-1.5 bg-[#b38f53] hover:bg-[#c4a166] text-[#022044] font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:opacity-80 border border-[#dfc18b]/40"
                 title="Edit Showcase Title, Subtitle, Stats & Photos"
               >
                 <Sliders className="w-3.5 h-3.5" />
@@ -703,7 +703,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
         {isPlaying && !isHovered && filteredPhotos.length > 1 && (
           <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-2">
             <div 
-              className="h-full bg-gradient-to-r from-[#dfc18b] via-[#b38f53] to-[#86efac] transition-all duration-75 ease-linear rounded-full shadow-sm"
+              className="h-full bg-gradient-to-r from-[#dfc18b] via-[#b38f53] to-[#86efac] transition-all duration-75 ease-linear rounded-full shadow-xs"
               style={{ width: `${slideProgress}%` }}
             />
           </div>
@@ -717,10 +717,10 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: -8 }}
               transition={{ duration: 0.45, ease: 'easeInOut' }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch bg-slate-950/60 backdrop-blur-md rounded-2xl border border-white/15 p-4 sm:p-5 shadow-2xl overflow-hidden"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch bg-slate-950/60 backdrop-blur-md rounded-xl border border-white/15 p-4 sm:p-5 shadow-xl overflow-hidden"
             >
               {/* Photo Showcase Display with Dual-Layer Ambient Stage & Framing Controls */}
-              <div className="lg:col-span-7 relative group rounded-2xl overflow-hidden bg-slate-950 border border-white/15 min-h-[280px] sm:min-h-[380px] lg:min-h-[430px] flex items-center justify-center shadow-2xl">
+              <div className="lg:col-span-7 relative group rounded-xl overflow-hidden bg-slate-950 border border-white/15 min-h-[280px] sm:min-h-[380px] lg:min-h-[430px] flex items-center justify-center shadow-xl">
                 {/* Ambient Blurred Underlay - Gives glowing theater backdrop so no harsh empty bars */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                   <img
@@ -747,10 +747,10 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                         referrerPolicy="no-referrer"
                         className={`transition-all duration-500 ${
                           effectiveFit === 'contain'
-                            ? 'w-auto max-w-full h-auto max-h-[300px] sm:max-h-[370px] lg:max-h-[410px] object-contain rounded-xl shadow-2xl ring-1 ring-white/15 drop-shadow-2xl group-hover:scale-[1.01]'
+                            ? 'w-auto max-w-full h-auto max-h-[300px] sm:max-h-[370px] lg:max-h-[410px] object-contain rounded-xl shadow-xl ring-1 ring-white/15 drop-shadow-xl group-hover:scale-[1.01]'
                             : effectiveFit === 'top'
-                            ? 'w-full h-full max-h-[420px] object-cover object-top rounded-xl shadow-2xl ring-1 ring-white/15'
-                            : 'w-full h-full max-h-[420px] object-cover object-center rounded-xl shadow-2xl ring-1 ring-white/15 group-hover:scale-105'
+                            ? 'w-full h-full max-h-[420px] object-cover object-top rounded-xl shadow-xl ring-1 ring-white/15'
+                            : 'w-full h-full max-h-[420px] object-cover object-center rounded-xl shadow-xl ring-1 ring-white/15 group-hover:bg-slate-100 dark:hover:bg-slate-700'
                         }`}
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = gradStageAsset;
@@ -782,7 +782,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                           const nextFit = effectiveFit === 'contain' ? 'top' : effectiveFit === 'top' ? 'cover' : 'contain';
                           setUserFitOverride(nextFit);
                         }}
-                        className="px-2.5 py-1.5 bg-black/70 hover:bg-[#b38f53] text-white hover:text-[#022044] rounded-xl backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1.5 text-[10px] font-bold"
+                        className="px-2.5 py-1.5 bg-black/70 hover:bg-[#b38f53] text-white hover:text-[#022044] rounded-xl backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg active:opacity-80 flex items-center gap-1.5 text-[10px] font-bold"
                         title={`Framing: ${
                           effectiveFit === 'contain'
                             ? 'Smart Fit (Full Photo Uncropped)'
@@ -801,7 +801,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
 
                   <button
                     onClick={() => setLightboxPhoto(activePhoto)}
-                    className="p-1.5 sm:px-2.5 sm:py-1.5 bg-black/70 hover:bg-[#b38f53] text-white hover:text-[#022044] rounded-xl backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1 text-[10px] font-bold"
+                    className="p-1.5 sm:px-2.5 sm:py-1.5 bg-black/70 hover:bg-[#b38f53] text-white hover:text-[#022044] rounded-xl backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg active:opacity-80 flex items-center gap-1 text-[10px] font-bold"
                     title="Expand to Fullscreen View"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
@@ -919,7 +919,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                   {!appUser ? (
                     <button
                       onClick={onOpenEnrollmentModal}
-                      className="py-2.5 px-4 bg-[#b38f53] hover:bg-[#c4a166] text-[#022044] font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#dfc18b]/50 active:scale-95"
+                      className="py-2.5 px-4 bg-[#b38f53] hover:bg-[#c4a166] text-[#022044] font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#dfc18b]/50 active:opacity-80"
                     >
                       <Sparkles className="w-4 h-4 text-[#022044]" />
                       <span>Join Next Cohort</span>
@@ -927,7 +927,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                   ) : (
                     <button
                       onClick={onNavigateToCourses}
-                      className="py-2.5 px-4 bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#0277b8]/40 active:scale-95"
+                      className="py-2.5 px-4 bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#0277b8]/40 active:opacity-80"
                     >
                       <BookOpen className="w-4 h-4 text-[#dfc18b]" />
                       <span>View 6 Core Modules</span>
@@ -985,7 +985,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
           onClick={() => setLightboxPhoto(null)}
         >
           <div 
-            className="bg-slate-950 border border-white/20 rounded-3xl max-w-5xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            className="bg-slate-950 border border-white/20 rounded-xl max-w-5xl w-full overflow-hidden shadow-xl flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Lightbox Header */}
@@ -1056,7 +1056,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                 src={lightboxPhoto.imageUrl}
                 alt={lightboxPhoto.title}
                 referrerPolicy="no-referrer"
-                className="relative z-10 max-h-[72vh] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-white/20 drop-shadow-2xl"
+                className="relative z-10 max-h-[72vh] w-auto max-w-full object-contain rounded-xl shadow-xl border border-white/20 drop-shadow-xl"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = gradStageAsset;
                 }}
@@ -1102,7 +1102,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                 onClick={() => setActiveAdminTab('details')}
                 className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   activeAdminTab === 'details'
-                    ? 'bg-[#023264] text-white shadow-sm'
+                    ? 'bg-[#023264] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
@@ -1115,7 +1115,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                 onClick={() => setActiveAdminTab('photos')}
                 className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   activeAdminTab === 'photos'
-                    ? 'bg-[#023264] text-white shadow-sm'
+                    ? 'bg-[#023264] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
@@ -1128,7 +1128,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                 onClick={openAddPhotoModal}
                 className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   activeAdminTab === 'edit_form'
-                    ? 'bg-[#023264] text-white shadow-sm'
+                    ? 'bg-[#023264] text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
@@ -1300,7 +1300,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                       <button
                         type="button"
                         onClick={handleResetToDefault}
-                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-sm"
+                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-xs"
                       >
                         Yes, Reset
                       </button>
@@ -1339,7 +1339,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
               <div className="space-y-3">
                 {/* Active Photo Deletion Confirmation Banner */}
                 {photoToDelete && (
-                  <div className="p-3 bg-rose-50 dark:bg-rose-950/80 border-2 border-rose-400 dark:border-rose-700 rounded-xl flex items-center justify-between gap-3 text-xs animate-fadeIn shadow-sm">
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/80 border border-rose-400 dark:border-rose-700 rounded-xl flex items-center justify-between gap-3 text-xs animate-fadeIn shadow-xs">
                     <div className="flex items-center gap-2.5 text-rose-900 dark:text-rose-200 font-bold min-w-0">
                       <div className="p-1.5 bg-rose-100 dark:bg-rose-900 rounded-lg text-rose-600 dark:text-rose-200 shrink-0">
                         <Trash2 className="w-4 h-4" />
@@ -1364,7 +1364,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                       <button
                         type="button"
                         onClick={() => executeDeletePhoto(photoToDelete.id)}
-                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-lg cursor-pointer text-xs shadow flex items-center gap-1 active:scale-95"
+                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-lg cursor-pointer text-xs shadow flex items-center gap-1 active:opacity-80"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Confirm Delete</span>
@@ -1385,7 +1385,7 @@ export const GraduationCarousel: React.FC<GraduationCarouselProps> = ({
                   <button
                     type="button"
                     onClick={openAddPhotoModal}
-                    className="px-3 py-1.5 bg-[#023264] hover:bg-[#025798] text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer text-xs shadow-sm"
+                    className="px-3 py-1.5 bg-[#023264] hover:bg-[#025798] text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer text-xs shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5 text-[#dfc18b]" />
                     <span>Add New Photo</span>

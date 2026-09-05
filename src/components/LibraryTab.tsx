@@ -777,7 +777,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         <div
           role="status"
           aria-live="polite"
-          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs font-bold animate-fadeIn shadow-sm ${
+          className={`flex items-center justify-between gap-3 px-4 py-2 rounded-xl border text-xs font-bold animate-fadeIn shadow-xs ${
             aiSummaryFeedback.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800'
               : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-800'
@@ -881,7 +881,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
       />
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -993,7 +993,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             return (
               <div 
                 key={res.id} 
-                className="bg-slate-900 border-2 border-amber-500 rounded-2xl p-5 shadow-xl transition-all space-y-3.5 relative text-white animate-fadeIn"
+                className="bg-slate-900 border border-amber-500 rounded-xl p-5 shadow-xl transition-all space-y-3.5 relative text-white animate-fadeIn"
               >
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
@@ -1130,7 +1130,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           return (
             <div 
               key={res.id} 
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
+              className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
             >
               <div>
                 {/* Header Badge & Action Buttons */}
@@ -1269,7 +1269,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     </p>
                   </div>
                 ) : (
-                  <div className="p-3 bg-gradient-to-br from-indigo-50/80 via-purple-50/60 to-amber-50/60 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-amber-950/30 border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 rounded-xl mb-2 space-y-2">
+                  <div className="p-3 bg-gradient-to-br from-indigo-50/80 via-purple-50/60 to-amber-50/60 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-amber-950/30 border border-dashed border-indigo-200 dark:border-indigo-800/80 rounded-xl mb-2 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-black uppercase text-indigo-900 dark:text-indigo-300 flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" /> No Summary Yet
@@ -1283,7 +1283,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                       type="button"
                       onClick={(e) => handleGenerateAiSummary(res, e)}
                       disabled={generatingSummaryId === res.id}
-                      className="w-full py-1.5 px-2.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 text-white font-extrabold text-xs rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 active:scale-98"
+                      className="w-full py-1.5 px-2.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 text-white font-extrabold text-xs rounded-lg shadow-xs hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 active:scale-98"
                       title="Generate AI Lesson Summary for this lesson"
                     >
                       {generatingSummaryId === res.id ? (
@@ -1349,7 +1349,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     <button
                       type="button"
                       onClick={() => setPlayingVideoModalResource(res)}
-                      className="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-sm animate-pulse hover:animate-none"
+                      className="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs animate-pulse hover:animate-none"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" /> Play Video
                     </button>
@@ -1535,7 +1535,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Select Lesson Files</label>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 p-6 rounded-2xl text-center cursor-pointer transition-all space-y-2"
+                    className="border border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 p-6 rounded-xl text-center cursor-pointer transition-all space-y-2"
                   >
                     <Upload className="w-8 h-8 text-indigo-600 mx-auto" />
                     <div>
@@ -1699,7 +1699,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   type="button"
                   onClick={(e) => handleGenerateAiSummary(selectedSummaryLesson, e)}
                   disabled={generatingSummaryId === selectedSummaryLesson.id}
-                  className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs rounded-lg flex items-center gap-1 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                  className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs rounded-lg flex items-center gap-1 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                   title="Regenerate summary using Gemini 3.7 Flash"
                 >
                   {generatingSummaryId === selectedSummaryLesson.id ? (
@@ -1718,7 +1718,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             </div>
 
             {/* AI Summary Content Card */}
-            <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/70 rounded-2xl space-y-3">
+            <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/70 rounded-xl space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5 text-sm">
                   <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Executive Lesson Summary
@@ -1749,7 +1749,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
             {/* Key Learning Takeaways */}
             {selectedSummaryLesson.keyTakeaways && selectedSummaryLesson.keyTakeaways.length > 0 && (
-              <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2.5">
+              <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
                 <span className="font-black text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
                   <BookMarked className="w-4 h-4 text-emerald-600" /> Ministerial & Academic Takeaways
                 </span>
@@ -1781,7 +1781,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               <button
                 type="button"
                 onClick={() => setSelectedSummaryLesson(null)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-extrabold text-xs rounded-xl cursor-pointer transition-colors shadow-sm"
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-extrabold text-xs rounded-xl cursor-pointer transition-colors shadow-xs"
               >
                 Close
               </button>
@@ -1966,14 +1966,14 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           >
             <div className="space-y-4">
               {/* Video Player Frame */}
-              <div className="p-4 bg-black flex flex-col justify-center items-center overflow-hidden rounded-2xl">
+              <div className="p-4 bg-black flex flex-col justify-center items-center overflow-hidden rounded-xl">
                 {parsed.isDrive ? (
                   <div className="w-full space-y-3">
                     <video
                       controls
                       autoPlay
                       src={parsed.proxyStreamUrl || `/api/drive-proxy/stream/${parsed.fileId}`}
-                      className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-2xl bg-slate-950 object-contain shadow-2xl"
+                      className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-xl bg-slate-950 object-contain shadow-xl"
                     >
                       Your browser does not support the video tag.
                     </video>
@@ -1997,7 +1997,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   <iframe
                     src={parsed.embedUrl}
                     title={playingVideoModalResource.title}
-                    className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-2xl shadow-2xl bg-slate-950"
+                    className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-xl shadow-xl bg-slate-950"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
@@ -2006,7 +2006,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     controls
                     autoPlay
                     src={playingVideoModalResource.downloadUrl || playingVideoModalResource.fileDataUrl}
-                    className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-2xl bg-slate-950 object-contain"
+                    className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-xl bg-slate-950 object-contain"
                   >
                     Your browser does not support the video tag.
                   </video>

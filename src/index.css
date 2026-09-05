@@ -35,6 +35,11 @@
 
 html { background: var(--md-surface); }
 
+h1, h2, h3, h4, h5, h6, .font-serif, .serif-heading {
+  font-family: 'Playfair Display', serif !important;
+}
+
+
 html, body, #root { min-height: 100%; }
 
 body { overflow-x: hidden; overscroll-behavior-x: none; }
@@ -44,7 +49,7 @@ body {
   min-width: 320px;
   background: var(--md-surface);
   color: var(--md-on-surface);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 0.9375rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -180,23 +185,16 @@ main:focus-visible { outline: none; }
   .custom-scrollbar,
   [class*="overflow-y-"] {
     -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-y;
-    overscroll-behavior-y: contain;
   }
 
   .overflow-x-auto,
   .overflow-x-scroll,
   [class*="overflow-x-"] {
     -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-x;
-    overscroll-behavior-x: contain;
   }
 
   .overflow-auto {
     -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-x pan-y;
-    overscroll-behavior-y: contain;
-    overscroll-behavior-x: contain;
   }
 
   .custom-scrollbar {
@@ -980,7 +978,6 @@ button, a, input, select, textarea {
   .modal-material-dialog > form,
   .modal-material-dialog > .overflow-y-auto {
     overscroll-behavior-y: contain;
-    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -988,7 +985,6 @@ button, a, input, select, textarea {
 
   .material-screen {
     min-width: 0;
-    overflow-x: clip;
   }
 }
 
@@ -1096,3 +1092,18 @@ button, a, input, select, textarea {
 }
 
 
+
+/* 3D Flip Utilities for Flashcards */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-x-180 {
+  transform: rotateX(180deg);
+}

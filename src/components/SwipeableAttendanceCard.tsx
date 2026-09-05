@@ -142,7 +142,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 bg-slate-900 shadow-xs hover:shadow-lg transition-all duration-200 hover:scale-[1.012] hover:-translate-y-0.5 group">
+    <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 bg-slate-900 shadow-xs hover:shadow-lg transition-all duration-200 hover:scale-[1.012] hover:-translate-y-0.5 group">
       {/* Behind Card Background Action Feedback */}
       <div 
         className={`absolute inset-0 flex items-center justify-between px-3 sm:px-5 font-black text-xs text-white transition-colors ${
@@ -277,9 +277,9 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   onToggleAttendance(student.name, targetDayId, 'present');
                   if (navigator.vibrate) navigator.vibrate(25);
                 }}
-                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:scale-95 touch-min-44 ${
+                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:opacity-80 touch-min-44 ${
                   isPresent 
-                    ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' 
+                    ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400' 
                     : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
                 } ${isTargetLocked ? 'opacity-85' : ''}`}
                 title={isTargetLocked ? '🔒 Record Locked (>24h since capture)' : 'Mark Present'}
@@ -296,9 +296,9 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   onToggleAttendance(student.name, targetDayId, 'excused');
                   if (navigator.vibrate) navigator.vibrate(25);
                 }}
-                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:scale-95 touch-min-44 ${
+                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:opacity-80 touch-min-44 ${
                   isExcused 
-                    ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-300' 
+                    ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300' 
                     : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/40'
                 } ${isTargetLocked ? 'opacity-85' : ''}`}
                 title={isTargetLocked ? '🔒 Record Locked (>24h since capture)' : 'Mark Excused'}
@@ -315,9 +315,9 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                   onToggleAttendance(student.name, targetDayId, 'absent');
                   if (navigator.vibrate) navigator.vibrate(25);
                 }}
-                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:scale-95 touch-min-44 ${
+                className={`px-2.5 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all min-h-[44px] cursor-pointer active:opacity-80 touch-min-44 ${
                   !isPresent && !isExcused && currentAttendance?.present === false
-                    ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400' 
+                    ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-400' 
                     : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/40'
                 } ${isTargetLocked ? 'opacity-85' : ''}`}
                 title={isTargetLocked ? '🔒 Record Locked (>24h since capture)' : 'Mark Absent'}
@@ -350,7 +350,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
             </div>
 
             <div 
-              className="overflow-x-auto custom-scrollbar flex gap-1.5 sm:gap-2 pb-1 pt-0.5 touch-pan-x"
+              className="overflow-x-auto custom-scrollbar flex gap-1.5 sm:gap-2 pb-1 pt-0.5"
               onTouchStart={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
               onTouchEnd={(e) => e.stopPropagation()}
@@ -383,7 +383,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                         : dayExcused 
                         ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50' 
                         : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60'
-                    } ${isDayLocked ? 'opacity-90' : ''} ${appRole !== 'student' ? 'cursor-pointer active:scale-95' : ''}`}
+                    } ${isDayLocked ? 'opacity-90' : ''} ${appRole !== 'student' ? 'cursor-pointer active:opacity-80' : ''}`}
                     title={
                       isDayLocked
                         ? `🔒 Record Locked: Captured >24h ago`
@@ -436,7 +436,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
                 e.stopPropagation();
                 setShowHistory(!showHistory);
               }}
-              className="w-full text-[10px] font-bold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 py-1 px-3 bg-slate-50 dark:bg-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 border border-slate-200/60 dark:border-slate-800/60 rounded-xl transition-all cursor-pointer select-none active:scale-95"
+              className="w-full text-[10px] font-bold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-1.5 py-1 px-3 bg-slate-50 dark:bg-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 border border-slate-200/60 dark:border-slate-800/60 rounded-xl transition-all cursor-pointer select-none active:opacity-80"
             >
               <History className="w-3 h-3 text-slate-400 shrink-0" />
               <span>{showHistory ? 'Hide Previous Sessions' : `Show Previous Sessions (${effectiveClassDays.length})`}</span>

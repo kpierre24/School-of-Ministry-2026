@@ -96,7 +96,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
         role="dialog"
         aria-modal="true"
         aria-label="Automated At-Risk Alert System"
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 overflow-hidden relative"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-2xl w-full p-6 shadow-xl space-y-5 overflow-hidden relative"
       >
         <button
           onClick={onClose}
@@ -106,7 +106,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
         </button>
 
         <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
@@ -120,7 +120,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
         </div>
 
         {isSent ? (
-          <div className="p-8 text-center bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-2xl space-y-2 animate-fadeIn">
+          <div className="p-8 text-center bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-2 animate-fadeIn">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
             <h3 className="text-base font-black text-emerald-900 dark:text-emerald-200">
               At-Risk Alert Successfully Dispatched!
@@ -175,7 +175,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
                     }}
                     className={`py-2 px-3 rounded-xl text-xs font-extrabold cursor-pointer transition-all border ${
                       alertType === cat.id
-                        ? 'bg-rose-500 text-white border-rose-600 shadow-sm'
+                        ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >

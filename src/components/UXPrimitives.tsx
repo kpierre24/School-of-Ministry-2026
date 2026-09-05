@@ -35,7 +35,7 @@ export function PageHeader({
 
 export function LoadingState({ label = 'Loading content…' }: { label?: string }) {
   return (
-    <div className="material-feedback flex min-h-40 items-center justify-center rounded-2xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-8" role="status" aria-live="polite">
+    <div className="material-feedback flex min-h-40 items-center justify-center rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-8" role="status" aria-live="polite">
       <div className="flex items-center gap-3 text-sm font-semibold text-[var(--md-on-surface-variant)]">
         <Loader2 className="h-5 w-5 animate-spin text-[var(--md-primary)]" aria-hidden="true" />
         <span>{label}</span>
@@ -56,8 +56,8 @@ export function EmptyState({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="material-feedback flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-8 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--md-primary-container)] text-[var(--md-primary)]" aria-hidden="true">
+    <div className="material-feedback flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-8 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--md-primary-container)] text-[var(--md-primary)]" aria-hidden="true">
         {icon || <Inbox className="h-6 w-6" />}
       </div>
       <h2 className="text-base font-bold text-[var(--md-on-surface)]">{title}</h2>
@@ -77,7 +77,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="material-feedback flex min-h-40 flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950/30" role="alert">
+    <div className="material-feedback flex min-h-40 flex-col items-center justify-center rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950/30" role="alert">
       <AlertCircle className="mb-3 h-7 w-7 text-[var(--md-danger)]" aria-hidden="true" />
       <h2 className="text-base font-bold text-[var(--md-on-surface)]">{title}</h2>
       {description && <p className="mt-1 max-w-md text-sm text-[var(--md-on-surface-variant)]">{description}</p>}
@@ -105,7 +105,7 @@ export function SkeletonBlock({ className = '' }: { className?: string }) {
 /** Skeleton for a student profile card (used in StudentsTab / AttendanceTab) */
 export function StudentCardSkeleton() {
   return (
-    <div aria-hidden="true" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 animate-pulse">
+    <div aria-hidden="true" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3 animate-pulse">
       <div className="flex items-center gap-3">
         <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
         <div className="flex-1 space-y-1.5">
@@ -145,7 +145,7 @@ export function PaymentRowSkeleton() {
   return (
     <tr aria-hidden="true" className="animate-pulse border-b border-slate-100 dark:border-slate-800">
       {[40, 20, 15, 12, 12, 10, 10, 8].map((w, i) => (
-        <td key={i} className="px-3 py-3">
+        <td key={i} className="px-3 py-2">
           <div className={`h-3 bg-slate-200 dark:bg-slate-700 rounded w-${w === 40 ? 'full' : `${w}/20`}`} />
         </td>
       ))}

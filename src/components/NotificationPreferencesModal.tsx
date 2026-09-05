@@ -115,7 +115,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
       <div
         ref={dialogRef}
-        className="relative w-full max-w-3xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-3xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl flex flex-col overflow-hidden"
       >
         {/* Modal Header */}
         <div className="p-5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
@@ -204,7 +204,7 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
             return (
               <div
                 key={category}
-                className="grid grid-cols-12 gap-2 p-3 bg-slate-50/60 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 items-center hover:bg-slate-100/60 dark:hover:bg-slate-800/80 transition-colors"
+                className="grid grid-cols-12 gap-2 p-3 bg-slate-50/60 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-800/80 items-center hover:bg-slate-100/60 dark:hover:bg-slate-800/80 transition-colors"
               >
                 {/* Category Info */}
                 <div className="col-span-6 sm:col-span-6 flex items-start gap-2.5">

@@ -68,7 +68,7 @@ export const OnlinePaymentModal: React.FC<OnlinePaymentModalProps> = ({
       isDraggable={true}
     >
       {completedRecord ? (
-        <div className="p-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-center space-y-4 animate-fadeIn">
+        <div className="p-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl text-center space-y-4 animate-fadeIn">
           <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
           <div className="space-y-1">
             <h3 className="text-lg font-black text-emerald-950 dark:text-emerald-100 font-syne">
@@ -117,7 +117,7 @@ export const OnlinePaymentModal: React.FC<OnlinePaymentModalProps> = ({
       ) : (
         <form onSubmit={handlePay} className="space-y-4">
           {/* Student & Amount Summary */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <div>
               <p className="text-[10px] text-slate-400 uppercase font-black">Student Account</p>
               <p className="text-xs font-black text-slate-900 dark:text-white">{studentName}</p>
@@ -146,7 +146,7 @@ export const OnlinePaymentModal: React.FC<OnlinePaymentModalProps> = ({
                   onClick={() => setMethod(m.id as any)}
                   className={`py-2 px-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all border ${
                     method === m.id
-                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                   }`}
                 >
@@ -172,7 +172,7 @@ export const OnlinePaymentModal: React.FC<OnlinePaymentModalProps> = ({
           </div>
 
           {/* Simulated Card Details */}
-          <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
             <label className="block text-[10px] font-black uppercase text-slate-400">Card Details</label>
             <input
               type="text"
@@ -206,7 +206,7 @@ export const OnlinePaymentModal: React.FC<OnlinePaymentModalProps> = ({
             <button
               type="submit"
               disabled={isProcessing}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isProcessing ? (
                 <span>Processing Payment...</span>

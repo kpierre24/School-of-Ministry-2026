@@ -326,12 +326,12 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden relative my-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden relative my-auto">
         
         {/* Header Bar */}
         <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 font-black flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-black flex items-center justify-center shadow-lg">
               <Users className="w-5 h-5 text-slate-950" />
             </div>
             <div>
@@ -416,7 +416,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                     onClick={() => {
                       if (fileInputRef.current) fileInputRef.current.click();
                     }}
-                    className={`relative rounded-2xl overflow-hidden border-2 cursor-pointer transition-all aspect-[3/4] w-full max-w-[240px] mx-auto shadow-xl group ${
+                    className={`relative rounded-xl overflow-hidden border cursor-pointer transition-all aspect-[3/4] w-full max-w-[240px] mx-auto shadow-xl group ${
                       isDraggingOver
                         ? 'border-amber-400 bg-amber-950/40 ring-4 ring-amber-400/40 scale-105'
                         : 'border-slate-300 dark:border-slate-700 bg-slate-950 hover:border-purple-500'
@@ -428,7 +428,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                         src={formData.image}
                         alt="Preview"
                         onError={() => setImageError(true)}
-                        className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:bg-slate-100 dark:hover:bg-slate-700"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 text-center bg-slate-900">
@@ -500,7 +500,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                     {/* Tab 1: Upload from Device */}
                     {imageTab === 'upload' && (
                       <div className="space-y-2">
-                        <label className="flex flex-col items-center justify-center px-4 py-3 border-2 border-dashed border-purple-300 dark:border-purple-800 hover:border-purple-500 rounded-xl transition-all cursor-pointer bg-purple-50/50 dark:bg-purple-950/20 text-center group">
+                        <label className="flex flex-col items-center justify-center px-4 py-2 border border-dashed border-purple-300 dark:border-purple-800 hover:border-purple-500 rounded-xl transition-all cursor-pointer bg-purple-50/50 dark:bg-purple-950/20 text-center group">
                           <Upload className="w-5 h-5 text-purple-600 dark:text-purple-400 mb-1 group-hover:scale-110 transition-transform" />
                           <span className="text-xs font-extrabold text-purple-900 dark:text-purple-200">
                             Choose Image from Device
@@ -690,7 +690,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-amber-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-amber-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-purple-600/30 flex items-center gap-2 transition-all cursor-pointer active:opacity-80"
                     >
                       <Check className="w-4 h-4" />
                       <span>{isAddingNew ? 'Add to Faculty' : 'Save Instructor Changes'}</span>
@@ -715,7 +715,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                 <button
                   type="button"
                   onClick={handleStartAdd}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:opacity-80"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>Add New Instructor</span>
@@ -727,7 +727,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                 {teachers.map((teacher, index) => (
                   <div
                     key={teacher.id}
-                    className="p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 shadow-xs flex items-center justify-between gap-3 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+                    className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 shadow-xs flex items-center justify-between gap-3 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
                   >
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
                       {/* Avatar */}
@@ -834,7 +834,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer"
+            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer"
           >
             Done
           </button>

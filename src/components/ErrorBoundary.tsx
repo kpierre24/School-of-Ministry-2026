@@ -97,7 +97,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return (
       <div
         role="alert"
-        className={`flex flex-col items-center justify-center min-h-[280px] gap-4 p-8 text-center rounded-2xl border ${visual.bg} m-4 animate-fadeIn`}
+        className={`flex flex-col items-center justify-center min-h-[280px] gap-4 p-8 text-center rounded-xl border ${visual.bg} m-4 animate-fadeIn`}
       >
         <div className={`w-12 h-12 rounded-full ${visual.badge} flex items-center justify-center`}>
           <Icon className={`w-6 h-6 ${visual.color}`} />
@@ -116,7 +116,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <button
           type="button"
           onClick={this.handleReset}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-indigo-600/10 active:scale-95 cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-indigo-600/10 active:opacity-80 cursor-pointer"
         >
           <RefreshCw className="w-4 h-4" />
           Reload Section

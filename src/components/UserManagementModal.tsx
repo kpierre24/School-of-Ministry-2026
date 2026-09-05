@@ -359,7 +359,7 @@ Access Portal: ${window.location.origin}
         role="dialog"
         aria-modal="true"
         aria-label="User Account Management and Access Control"
-        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-5xl w-full max-h-[92vh] flex flex-col relative overflow-hidden"
+        className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-5xl w-full max-h-[92vh] flex flex-col relative overflow-hidden"
       >
         {/* Header */}
         <div className="p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between relative flex-shrink-0">
@@ -415,7 +415,7 @@ Access Portal: ${window.location.origin}
 
         {/* Success Toast */}
         {successToast && (
-          <div className="mx-6 mt-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between gap-2 animate-fadeIn flex-shrink-0">
+          <div className="mx-6 mt-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between gap-2 animate-fadeIn flex-shrink-0">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
               <span>{successToast}</span>
@@ -465,7 +465,7 @@ Access Portal: ${window.location.origin}
                   setFormError(null);
                   setShowCreateModal(true);
                 }}
-                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Create User</span>
@@ -555,18 +555,18 @@ Access Portal: ${window.location.origin}
         </div>
 
         {/* User Directory Table / List */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6">
-          <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-5 pb-6">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-100 dark:bg-slate-800/80 text-[10px] uppercase font-black tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                    <th className="py-3 px-4">User Details</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Login Email</th>
-                    <th className="py-3 px-4">Password Status</th>
-                    <th className="py-3 px-4">Account Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-2 px-4">User Details</th>
+                    <th className="py-2 px-4">Role</th>
+                    <th className="py-2 px-4">Login Email</th>
+                    <th className="py-2 px-4">Password Status</th>
+                    <th className="py-2 px-4">Account Status</th>
+                    <th className="py-2 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -588,7 +588,7 @@ Access Portal: ${window.location.origin}
                           className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                         >
                           {/* User Details */}
-                          <td className="py-3 px-4">
+                          <td className="py-2 px-4">
                             <div className="flex items-center gap-2.5">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white flex-shrink-0 ${
                                 user.role === 'admin' ? 'bg-purple-600' : user.role === 'teacher' ? 'bg-indigo-600' : 'bg-emerald-600'
@@ -614,7 +614,7 @@ Access Portal: ${window.location.origin}
                           </td>
 
                           {/* Role */}
-                          <td className="py-3 px-4">
+                          <td className="py-2 px-4">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                               user.role === 'admin'
                                 ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
@@ -630,7 +630,7 @@ Access Portal: ${window.location.origin}
                           </td>
 
                           {/* Login Email */}
-                          <td className="py-3 px-4">
+                          <td className="py-2 px-4">
                             <div className="flex items-center gap-1 font-mono text-[11px] text-slate-700 dark:text-slate-300">
                               <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                               <span>{user.email}</span>
@@ -638,7 +638,7 @@ Access Portal: ${window.location.origin}
                           </td>
 
                           {/* Password Status */}
-                          <td className="py-3 px-4">
+                          <td className="py-2 px-4">
                             {user.mustChangePassword ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-bold">
                                 <Lock className="w-3 h-3" />
@@ -653,7 +653,7 @@ Access Portal: ${window.location.origin}
                           </td>
 
                           {/* Account Status */}
-                          <td className="py-3 px-4">
+                          <td className="py-2 px-4">
                             <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
                               user.status === 'suspended' ? 'text-rose-600' : 'text-emerald-600'
                             }`}>
@@ -663,7 +663,7 @@ Access Portal: ${window.location.origin}
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-2 px-4 text-right">
                             <div className="flex items-center justify-end gap-1">
                               {/* Copy Invite Credentials */}
                               <button
@@ -751,7 +751,7 @@ Access Portal: ${window.location.origin}
         {/* Modal Dialog for Create / Edit User */}
         {showCreateModal && (
           <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden animate-scaleUp">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden animate-scaleUp">
               <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
                 <h3 className="text-sm font-black flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-indigo-400" />

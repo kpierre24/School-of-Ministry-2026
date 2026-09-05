@@ -290,13 +290,13 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
 
   return (
     <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-6 animate-fadeIn">
-      <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col overflow-hidden relative z-[100000]">
+      <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col overflow-hidden relative z-[100000]">
         
         {/* Google Forms Purple Header Accent */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-900 text-white p-6 sm:p-8 relative flex-shrink-0 shadow-lg">
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black transition-all flex items-center gap-1.5 border border-white/25 shadow-md cursor-pointer active:scale-95 z-20"
+            className="absolute top-4 right-4 px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black transition-all flex items-center gap-1.5 border border-white/25 shadow-md cursor-pointer active:opacity-80 z-20"
             aria-label="Exit Quiz">
             <X className="w-4 h-4" />
             <span>Exit Quiz</span>
@@ -337,7 +337,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               </div>
 
               {secondsRemaining !== null && !isSubmitted && (
-                <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono font-black text-sm border shadow-sm ${
+                <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono font-black text-sm border shadow-xs ${
                   secondsRemaining < 60 ? 'bg-rose-600 text-white border-rose-400 animate-pulse' : 'bg-white/15 text-white border-purple-300/30'
                 }`}>
                   <Clock className="w-4 h-4" />
@@ -355,7 +355,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
           {isSubmitted && submissionResult ? (
             <div className="space-y-6 animate-fadeIn">
               {previousSubmission && (
-                <div className="bg-amber-50 dark:bg-amber-950/80 border-2 border-amber-300 dark:border-amber-700 rounded-2xl p-4 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs font-bold shadow-2xs">
+                <div className="bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 rounded-xl p-4 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs font-bold shadow-2xs">
                   <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                   <div>
                     <p className="font-extrabold text-xs">🔒 Quiz Retake Restricted</p>
@@ -365,7 +365,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               )}
 
               {/* Score Header */}
-              <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border-2 border-purple-200 dark:border-purple-900/60 shadow-xl text-center space-y-4">
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-6 sm:p-8 border border-purple-200 dark:border-purple-900/60 shadow-xl text-center space-y-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 shadow-inner">
                   {submissionResult.scorePercentage >= 70 ? (
                     <Award className="w-9 h-9 text-amber-500" />
@@ -384,14 +384,14 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
-                  <div className="bg-slate-50 dark:bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <div className="bg-slate-50 dark:bg-slate-900/80 px-5 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
                     <p className="text-[10px] font-extrabold uppercase text-slate-400">Total Score</p>
                     <p className="text-2xl font-black font-mono text-purple-600 dark:text-purple-400">
                       {submissionResult.totalScore} / {submissionResult.maxPoints} pts
                     </p>
                   </div>
 
-                  <div className="bg-slate-50 dark:bg-slate-900/80 px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <div className="bg-slate-50 dark:bg-slate-900/80 px-5 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
                     <p className="text-[10px] font-extrabold uppercase text-slate-400">Percentage</p>
                     <p className={`text-2xl font-black font-mono ${
                       submissionResult.scorePercentage >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
@@ -422,7 +422,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                   return (
                     <div 
                       key={q.id}
-                      className={`bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 shadow-sm space-y-3 transition-all ${
+                      className={`bg-white dark:bg-slate-800 rounded-xl p-5 border shadow-xs space-y-3 transition-all ${
                         isCorrect ? 'border-emerald-200 dark:border-emerald-900/50' : 'border-rose-200 dark:border-rose-900/50'
                       }`}
                     >
@@ -499,7 +499,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs rounded-2xl shadow-xl hover:opacity-90 transition-all"
+                  className="px-8 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs rounded-xl shadow-xl hover:opacity-90 transition-all"
                 >
                   Return to Portal Matrix
                 </button>
@@ -511,7 +511,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               
               {/* RESTORED SESSION DRAFT BANNER */}
               {restoredFromDraft && (
-                <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200 font-bold shadow-xs animate-fadeIn">
+                <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 rounded-xl flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200 font-bold shadow-xs animate-fadeIn">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
                     <span>Resumed quiz progress from your previous auto-saved draft.</span>
@@ -528,16 +528,16 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               )}
 
               {/* Student Identification Card */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 border-purple-200 dark:border-purple-900/60 shadow-sm space-y-3">
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-purple-200 dark:border-purple-900/60 shadow-xs space-y-3">
                 <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <User className="w-4 h-4 text-purple-600" />
                   <span>Student Identification <span className="text-rose-500">*</span></span>
                 </label>
 
                 {loggedInStudentName ? (
-                  <div className="bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-4 flex items-center justify-between gap-3 shadow-2xs">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-extrabold flex items-center justify-center text-sm shadow-xs shrink-0">
                         {loggedInStudentName.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -620,7 +620,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
 
               {/* PROGRESS BAR & QUESTION NAVIGATOR */}
               {totalQuestionsCount > 0 && (
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 border-2 border-purple-200 dark:border-purple-900/60 shadow-sm space-y-3.5 sticky top-0 z-20 backdrop-blur-md bg-white/95 dark:bg-slate-800/95">
+                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 border border-purple-200 dark:border-purple-900/60 shadow-xs space-y-3.5 sticky top-0 z-20 backdrop-blur-md bg-white/95 dark:bg-slate-800/95">
                   {/* Progress Header & Stats */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -683,7 +683,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                             key={q.id}
                             type="button"
                             onClick={() => scrollToQuestion(q.id)}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer flex items-center gap-1 active:opacity-80 ${
                               isAnswered
                                 ? 'bg-purple-600 dark:bg-purple-500 text-white shadow-xs hover:bg-purple-700 dark:hover:bg-purple-600'
                                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-purple-400'
@@ -709,11 +709,11 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     <div 
                       key={q.id}
                       id={`q-card-${q.id}`}
-                      className="bg-white dark:bg-slate-800 rounded-3xl p-6 border-2 border-slate-200 dark:border-slate-700/80 shadow-md space-y-4 hover:border-purple-300 transition-all scroll-mt-24"
+                      className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700/80 shadow-md space-y-4 hover:border-purple-300 transition-all scroll-mt-24"
                     >
                       <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-700/60 pb-3">
                         <div className="flex items-start gap-3">
-                          <span className="w-8 h-8 rounded-2xl bg-purple-600 text-white font-black text-sm flex items-center justify-center font-mono shadow-md shadow-purple-600/20 flex-shrink-0">
+                          <span className="w-8 h-8 rounded-xl bg-purple-600 text-white font-black text-sm flex items-center justify-center font-mono shadow-md shadow-purple-600/20 flex-shrink-0">
                             {idx + 1}
                           </span>
                           <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
@@ -736,13 +736,13 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                             <label
                               key={opt.id}
                               onClick={() => handleSelectOption(q.id, opt.id)}
-                              className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all cursor-pointer select-none ${
+                              className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
                                 isSelected
                                   ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-600 dark:border-purple-500 shadow-md'
                                   : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
                               }`}
                             >
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                              <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
                                 isSelected ? 'border-purple-600 bg-purple-600' : 'border-slate-300 dark:border-slate-600'
                               }`}>
                                 {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -769,7 +769,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               {/* Submit Action */}
               <div className="pt-4 text-center space-y-3">
                 {submitError && (
-                  <div role="alert" className="flex items-center gap-2 px-4 py-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-medium animate-fadeIn text-left">
+                  <div role="alert" className="flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-medium animate-fadeIn text-left">
                     <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
                     <span>{submitError}</span>
                     <button onClick={() => setSubmitError(null)} className="ml-auto text-rose-400 hover:text-rose-600" aria-label="Dismiss error">
@@ -781,7 +781,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     type="submit"
-                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2.5 transition-all active:scale-95 cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2.5 transition-all active:opacity-80 cursor-pointer"
                   >
                     <CheckCircle2 className="w-5 h-5 shrink-0" />
                     <span>Submit Quiz Answers for Tallying</span>
@@ -790,7 +790,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-full sm:w-auto px-6 py-3.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs rounded-2xl border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                    className="w-full sm:w-auto px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs rounded-xl border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-2 transition-all active:opacity-80 cursor-pointer"
                   >
                     <X className="w-4 h-4 shrink-0" />
                     <span>Exit Quiz & Save Draft</span>

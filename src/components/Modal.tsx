@@ -162,13 +162,13 @@ export const Modal: React.FC<ModalProps> = ({
           transform: (position.x !== 0 || position.y !== 0) ? `translate3d(${position.x}px, ${position.y}px, 0)` : undefined,
           transition: isDragging ? 'none' : undefined,
         }}
-        className={`bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full ${sizeClass} max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn modal-material-dialog my-auto ${className}`}
+        className={`bg-white dark:bg-slate-900 rounded-xl md:rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full ${sizeClass} max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn modal-material-dialog my-auto ${className}`}
       >
         {/* Modal Header (if title or close button provided) */}
         {(title || showCloseButton) && (
           <div
             onPointerDown={handleHeaderPointerDown}
-            className={`px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 select-none ${
+            className={`px-5 py-4 sm:px-5 sm:py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 select-none ${
               isDraggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''
             }`}
           >
@@ -224,7 +224,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Optional Footer */}
         {footer && (
-          <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+          <div className="px-5 py-2.5 sm:px-5 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
             {footer}
           </div>
         )}

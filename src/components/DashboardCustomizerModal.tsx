@@ -167,7 +167,7 @@ export const DashboardCustomizerModal: React.FC<DashboardCustomizerModalProps> =
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn modal-material-scrim">
       <div className="fixed inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] z-10 animate-scaleUp modal-material-dialog">
+      <div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[88vh] z-10 animate-scaleUp modal-material-dialog">
         
         {/* Header */}
         <div className="p-5 bg-slate-50 dark:bg-slate-800 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 modal-material-header">
@@ -211,7 +211,7 @@ export const DashboardCustomizerModal: React.FC<DashboardCustomizerModalProps> =
               return (
                 <div
                   key={wId}
-                  className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                  className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     isEnabled
                       ? 'bg-white border-slate-200 shadow-2xs'
                       : 'bg-slate-100/70 border-slate-200/60 opacity-60'
@@ -285,7 +285,7 @@ export const DashboardCustomizerModal: React.FC<DashboardCustomizerModalProps> =
 
             <button
               onClick={handleSave}
-              className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:opacity-80"
             >
               <Check className="w-4 h-4" />
               Save Layout

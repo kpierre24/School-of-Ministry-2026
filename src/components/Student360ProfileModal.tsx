@@ -187,7 +187,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label={`360 Degree Academic & Financial Profile: ${student.name}`}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-5xl w-full my-auto shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-5xl w-full my-auto shadow-xl overflow-hidden flex flex-col max-h-[92vh]"
       >
         
         {/* 1. Profile Top Banner & Header */}
@@ -202,9 +202,9 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               {student.photoUrl ? (
-                <img src={student.photoUrl} alt={student.name} className="w-16 h-16 rounded-2xl object-cover ring-2 ring-amber-400/80 shadow-lg" />
+                <img src={student.photoUrl} alt={student.name} className="w-16 h-16 rounded-xl object-cover ring-2 ring-amber-400/80 shadow-lg" />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg uppercase">
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg uppercase">
                   {student.name.slice(0, 2)}
                 </div>
               )}
@@ -305,7 +305,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
           {activeTab === 'academic' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Overall Completion Bar */}
-              <div className="p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+              <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-slate-900 dark:text-white font-syne flex items-center gap-2">
@@ -330,7 +330,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
               {/* Module-by-Module Progress Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {moduleCompletions.map((mod, idx) => (
-                  <div key={idx} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2.5">
+                  <div key={idx} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-[10px] rounded">
                         {mod.code}
@@ -364,7 +364,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
 
               {/* Academic Metrics Triad */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                     <span>Attendance Benchmark</span>
                     <span className="text-emerald-600 font-extrabold">Min. 75% Target</span>
@@ -382,7 +382,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                   </p>
                 </div>
 
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                     <span>Scripture Quiz Average</span>
                     <span className="text-amber-600 font-extrabold">Pass = 75%+</span>
@@ -396,7 +396,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                   </p>
                 </div>
 
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                     <span>Graduation Readiness</span>
                     <span className="text-indigo-600 font-extrabold">Status</span>
@@ -428,7 +428,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                 {timelineEvents.map((evt) => (
                   <div key={evt.id} className="relative group">
                     <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full ${evt.badgeColor || 'bg-indigo-500'} ring-4 ring-white dark:ring-slate-900`} />
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-1">
+                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-black text-slate-900 dark:text-white">{evt.title}</h4>
                         <span className="text-[10px] font-mono text-slate-400">{evt.date}</span>
@@ -444,7 +444,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
           {/* TAB 3: ATTENDANCE & PIN/QR */}
           {activeTab === 'attendance' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center justify-between">
+              <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 dark:text-white font-syne">Attendance History & Audit</h3>
                   <p className="text-xs text-slate-500">Canonical tracking with 75% threshold enforcement and PIN check-in audit.</p>
@@ -455,7 +455,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-extrabold uppercase text-[10px]">
                     <tr>
@@ -502,7 +502,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
               </div>
 
               {studentSubmissions.length === 0 ? (
-                <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
+                <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
                   <FileCheck className="w-8 h-8 text-slate-400 mx-auto" />
                   <p className="text-xs font-bold text-slate-600 dark:text-slate-300">No custom document submissions yet.</p>
                   <p className="text-[11px] text-slate-400">When student uploads homework, status changes from Draft to Submitted / Graded.</p>
@@ -510,7 +510,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
               ) : (
                 <div className="space-y-3">
                   {studentSubmissions.map(sub => (
-                    <div key={sub.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                    <div key={sub.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 font-black text-[10px] rounded uppercase">
@@ -541,7 +541,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
           {/* TAB 5: TUITION & BILLING */}
           {activeTab === 'finance' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+              <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-slate-900 dark:text-white font-syne">Tuition Statement & Payment Plan</h3>
@@ -577,7 +577,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
           {/* TAB 6: NOTES & PRIVATE STAFF LOG */}
           {activeTab === 'notes' && (
             <div className="space-y-4 animate-fadeIn">
-              <form onSubmit={handleAddNoteSubmit} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+              <form onSubmit={handleAddNoteSubmit} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
                 <h3 className="text-sm font-black text-slate-900 dark:text-white font-syne flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-indigo-500" />
                   Add Instructor / Pastoral Note
@@ -615,7 +615,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
 
               <div className="space-y-2">
                 {notes.map(n => (
-                  <div key={n.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-1">
+                  <div key={n.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-xs text-slate-900 dark:text-white">{n.author}</span>
@@ -637,7 +637,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
           {/* TAB 7: CERTIFICATE & GRADUATION READINESS */}
           {activeTab === 'certificate' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-indigo-500/10 border border-amber-400/30 rounded-2xl space-y-4">
+              <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-indigo-500/10 border border-amber-400/30 rounded-xl space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Award className="w-6 h-6 text-amber-500" />
@@ -647,7 +647,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                   </div>
 
                   <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
-                    graduationChecklist.isReadyForGraduation ? 'bg-emerald-500 text-white shadow-sm' : 'bg-amber-400 text-slate-950'
+                    graduationChecklist.isReadyForGraduation ? 'bg-emerald-500 text-white shadow-xs' : 'bg-amber-400 text-slate-950'
                   }`}>
                     {graduationChecklist.isReadyForGraduation ? 'Graduation Verified ✓' : 'Requirements Pending'}
                   </span>
@@ -685,7 +685,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                 <div className="pt-2 flex items-center justify-end gap-3">
                   <button
                     onClick={() => setShowCertPrintModal(true)}
-                    className="px-5 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md hover:from-amber-300 hover:to-amber-500 transition-all cursor-pointer flex items-center gap-2 active:scale-95 border border-amber-200"
+                    className="px-5 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md hover:from-amber-300 hover:to-amber-500 transition-all cursor-pointer flex items-center gap-2 active:opacity-80 border border-amber-200"
                   >
                     <Printer className="w-4 h-4" />
                     <span>Generate & Print Certificate of Completion</span>
@@ -715,7 +715,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
       {/* Official Certificate Printable Modal Preview */}
       {showCertPrintModal && (
         <div className="fixed inset-0 z-60 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-          <div className="bg-amber-50 text-slate-900 border-8 border-amber-500 rounded-3xl max-w-3xl w-full p-8 shadow-2xl space-y-6 text-center relative font-serif">
+          <div className="bg-amber-50 text-slate-900 border-8 border-amber-500 rounded-xl max-w-3xl w-full p-8 shadow-xl space-y-6 text-center relative font-serif">
             <button
               onClick={() => setShowCertPrintModal(false)}
               className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-200 text-slate-800 font-sans font-bold flex items-center justify-center transition-colors cursor-pointer"
@@ -776,7 +776,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                 onClick={() => {
                   window.print();
                 }}
-                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2"
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2"
               >
                 <Printer className="w-4 h-4" /> Print / Save PDF
               </button>

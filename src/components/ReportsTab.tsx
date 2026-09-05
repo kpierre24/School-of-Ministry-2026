@@ -575,7 +575,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
 
           <button
             onClick={handleExportCSV}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center gap-1.5 shadow-xs"
           >
             <Download className="w-3.5 h-3.5" />
             Export CSV
@@ -583,7 +583,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
 
           <button
             onClick={handleExportPDF}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1.5 shadow-xs"
           >
             <FileText className="w-3.5 h-3.5" />
             Download PDF
@@ -591,7 +591,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
 
           <button
             onClick={handlePrint}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white transition-colors flex items-center gap-1.5 shadow-xs"
           >
             <Printer className="w-3.5 h-3.5" />
             Print
@@ -610,7 +610,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
               onClick={() => setActiveReport(cat.id as ReportType)}
               className={`p-3 rounded-xl border text-left transition-all ${
                 isActive
-                  ? 'bg-amber-500/10 border-amber-500/50 text-amber-900 dark:text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+                  ? 'bg-amber-500/10 border-amber-500/50 text-amber-900 dark:text-amber-300 shadow-xs ring-1 ring-amber-500/30'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
               }`}
             >
@@ -629,7 +629,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-3 print:hidden">
+      <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs space-y-3 print:hidden">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800/80 pb-2">
           <Filter className="w-3.5 h-3.5" />
           Report Parameters & Universal Filters
@@ -729,7 +729,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
           {activeReportData.summaryMetrics.map((m, idx) => (
             <div
               key={idx}
-              className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm"
+              className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs"
             >
               <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {m.label}
@@ -748,7 +748,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
       )}
 
       {/* Printable Report View Container */}
-      <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4 print:p-0 print:border-none print:shadow-none">
+      <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs space-y-4 print:p-0 print:border-none print:shadow-none">
         {/* Printable Official Header */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>

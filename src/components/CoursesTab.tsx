@@ -21,9 +21,11 @@ import {
   Save,
   Tag,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  BrainCircuit
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
+import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { Course } from '../types';
 import { UserRole } from '../lib/userAuth';
 
@@ -147,6 +149,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
   }, [courses]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFlashcards, setShowFlashcards] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   // Modal States
@@ -349,18 +352,27 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
           </p>
         </div>
 
-        {!isStudent && (
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
           <button
-            onClick={handleOpenAddModal}
-            className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0 border border-[#b38f53]/30 shadow-xs active:scale-95"
+            onClick={() => setShowFlashcards(true)}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-2 border border-indigo-500/30 shadow-xs active:opacity-80"
           >
-            <Plus className="w-4 h-4 text-[#dfc18b]" /> Add New Course
+            <BrainCircuit className="w-4 h-4 text-indigo-200" /> Study Flashcards
           </button>
-        )}
+
+          {!isStudent && (
+            <button
+              onClick={handleOpenAddModal}
+              className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0 border border-[#b38f53]/30 shadow-xs active:opacity-80"
+            >
+              <Plus className="w-4 h-4 text-[#dfc18b]" /> Add New Course
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search Bar & Counter & Status Filter */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -422,7 +434,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
           return (
             <div 
               key={course.id} 
-              className={`bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group ${
+              className={`bg-white dark:bg-slate-900 border rounded-xl p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group ${
                 isExpired ? 'border-rose-300 bg-rose-50/10' : 'border-slate-200 dark:border-slate-800'
               }`}
             >
@@ -566,7 +578,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       {/* Course Detail Syllabus Modal */}
       {selectedCourse && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scaleUp">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-scaleUp">
             <div className="p-5 bg-[#023264] text-white flex items-center justify-between border-b border-[#b38f53]/30">
               <div>
                 <span className="text-[10px] font-mono font-bold text-[#dfc18b] bg-[#b38f53]/20 px-2 py-0.5 rounded border border-[#b38f53]/40">
@@ -692,7 +704,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       {/* Add / Edit Course Modal */}
       {!isStudent && showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleSaveCourse} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-scaleUp">
+          <form onSubmit={handleSaveCourse} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-xl overflow-hidden animate-scaleUp">
             <div className="p-4 bg-[#023264] text-white flex items-center justify-between border-b border-[#b38f53]/30">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-[#dfc18b]" />
@@ -890,6 +902,10 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
             </div>
           </form>
         </div>
+      )}
+
+      {showFlashcards && (
+        <InteractiveFlashcards onClose={() => setShowFlashcards(false)} />
       )}
     </div>
   );
