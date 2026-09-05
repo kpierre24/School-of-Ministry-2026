@@ -105,7 +105,9 @@ async function startServer() {
 
   // Start single unified server on PORT (bound to 0.0.0.0 for container ingress)
   const server = app.listen(PORT, "0.0.0.0", () => {
-    logger.info(`HTEIM School of Ministry server running on http://0.0.0.0:${PORT}`);
+    logger.info(`HTEIM School of Ministry server running:`);
+    logger.info(`  > Local:   http://localhost:${PORT}`);
+    logger.info(`  > Network: http://0.0.0.0:${PORT}`);
   });
 
   server.on("error", (err: NodeJS.ErrnoException) => {

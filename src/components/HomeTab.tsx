@@ -18,6 +18,7 @@ import {
   ShieldCheck, 
   Sparkles, 
   Trophy, 
+  Crown,
   TrendingUp, 
   BookMarked,
   Clock,
@@ -471,6 +472,199 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
+      
+      {/* ─── Role-Specific Jumpstart Banners (#2) ─────────────────────────── */}
+      {/* Student Jumpstart Strip */}
+      {isStudent && (
+        <section 
+          aria-label="Student Jumpstart Dashboard"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#022044] via-[#023264] to-[#041a33] text-white p-4 sm:p-6 shadow-xl border border-[#025798]/40"
+        >
+          {/* Subtle gold accent ring glow */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full bg-[#b38f53]/15 blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* Student Welcome & Standing Badges */}
+            <div className="space-y-2 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 inline-flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+                  Student Portal
+                </span>
+                {studentMetrics && (
+                  <>
+                    {studentMetrics.isHonor ? (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/50 inline-flex items-center gap-1 shadow-xs">
+                        <Crown className="w-3 h-3 text-amber-300" />
+                        Honor Roll ({studentMetrics.rate}%)
+                      </span>
+                    ) : studentMetrics.isSat ? (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                        Satisfactory ({studentMetrics.rate}%)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/25 text-rose-200 border border-rose-400/50 inline-flex items-center gap-1 animate-pulse">
+                        <AlertTriangle className="w-3 h-3 text-rose-300" />
+                        At-Risk Notice ({studentMetrics.rate}%)
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <h2 className="font-display text-lg sm:text-2xl font-black tracking-tight text-white">
+                Welcome back, {appUser?.name?.split(' ')[0] || 'Student'}!
+              </h2>
+              <p className="text-xs text-sky-100/80 max-w-xl">
+                Next Session: <span className="font-bold text-amber-300">{nextClassTitle}</span>. Stay faithful to your calling and coursework.
+              </p>
+            </div>
+
+            {/* Quick Action Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => onNavigate('attendance')}
+                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between">
+                  <UserCheck className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
+                  <span className="font-tabular text-[10px] font-bold text-emerald-300">{studentMetrics ? `${studentMetrics.attended}/${studentMetrics.totalDays}` : 'Check-In'}</span>
+                </div>
+                <span className="text-[11px] font-bold text-white mt-1">My Attendance</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('exams')}
+                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between">
+                  <Award className="w-4 h-4 text-amber-300 group-hover:scale-110 transition-transform" />
+                  <span className="font-tabular text-[10px] font-bold text-amber-300">{pendingAssignmentsCount > 0 ? `${pendingAssignmentsCount} Due` : 'Ready'}</span>
+                </div>
+                <span className="text-[11px] font-bold text-white mt-1">Assignments</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('payments')}
+                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between">
+                  <DollarSign className="w-4 h-4 text-amber-200 group-hover:scale-110 transition-transform" />
+                  <span className="font-tabular text-[10px] font-bold text-amber-200">
+                    {loggedInStudentPayment ? (
+                      loggedInStudentPayment.status === 'Paid In Full' || (loggedInStudentPayment.totalTuition - loggedInStudentPayment.amountPaid) <= 0
+                        ? 'Paid'
+                        : `$${loggedInStudentPayment.totalTuition - loggedInStudentPayment.amountPaid}`
+                    ) : 'Statement'}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-white mt-1">Tuition</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('courses')}
+                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between">
+                  <BookOpen className="w-4 h-4 text-indigo-300 group-hover:scale-110 transition-transform" />
+                  <span className="font-tabular text-[10px] font-bold text-indigo-300">6 Modules</span>
+                </div>
+                <span className="text-[11px] font-bold text-white mt-1">Curriculum</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Admin / Teacher Quick Operations Toolbar */}
+      {isAdminOrTeacher && (
+        <section 
+          aria-label="Teacher and Admin Quick Operations"
+          className="glass-card p-3 sm:p-4 shadow-sm"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                ⚡
+              </div>
+              <div>
+                <h3 className="font-display text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
+                  Quick Operations & Shortcuts
+                </h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Direct actions for daily class management and student oversight
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => onNavigate('attendance')}
+                className="px-3 py-1.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Mark Attendance</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('exams')}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Award className="w-3.5 h-3.5 text-amber-500" />
+                <span>Grade Submissions</span>
+                {pendingAssignmentsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[9px] font-bold">
+                    {pendingAssignmentsCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('students')}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Users className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Roster ({studentsCount})</span>
+              </button>
+
+              {rawAtRiskStudents.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('at-risk-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer hover:bg-amber-100 active:scale-95"
+                  title="Click to jump to At-Risk Students list"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                  <span>{rawAtRiskStudents.length} At-Risk (&lt;75%)</span>
+                </button>
+              )}
+
+              {isAdmin && onPushToCloud && (
+                <button
+                  type="button"
+                  onClick={onPushToCloud}
+                  disabled={isCloudSyncing}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Push local data to cloud backup"
+                >
+                  {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-sky-500" />}
+                  <span>Sync Cloud</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
       
       {/* Course Faculty & Opening Intro Revolving Showcase Banner */}
       <section 
@@ -1374,50 +1568,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         />
       )}
 
-      {/* Mobile Floating Quick Action Dock (Visible only on small screens) */}
-      <div className="md:hidden fixed bottom-3 inset-x-3 z-40 bg-slate-950/90 backdrop-blur-md border border-white/20 rounded-2xl p-2 shadow-2xl flex items-center justify-around gap-1">
-        <button
-          onClick={() => onNavigate('attendance')}
-          className="flex-1 py-2 px-1 rounded-xl bg-white/5 hover:bg-white/10 text-white flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold active:scale-95 transition-all"
-        >
-          <UserCheck className="w-4 h-4 text-emerald-400" />
-          <span>Attendance</span>
-        </button>
 
-        <button
-          onClick={() => onNavigate('courses')}
-          className="flex-1 py-2 px-1 rounded-xl bg-white/5 hover:bg-white/10 text-white flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold active:scale-95 transition-all"
-        >
-          <BookOpen className="w-4 h-4 text-[#dfc18b]" />
-          <span>6 Modules</span>
-        </button>
-
-        <button
-          onClick={() => onNavigate('library')}
-          className="flex-1 py-2 px-1 rounded-xl bg-white/5 hover:bg-white/10 text-white flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold active:scale-95 transition-all"
-        >
-          <Radio className="w-4 h-4 text-rose-400" />
-          <span>Media</span>
-        </button>
-
-        {!appUser ? (
-          <button
-            onClick={() => setIsEnrollmentModalOpen(true)}
-            className="flex-1 py-2 px-1 rounded-xl bg-[#b38f53] text-[#022044] flex flex-col items-center justify-center gap-0.5 text-[10px] font-black active:scale-95 transition-all shadow-sm"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Apply Now</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => onNavigate(isStudent ? 'payments' : 'students')}
-            className="flex-1 py-2 px-1 rounded-xl bg-[#023264] text-[#bae6fd] border border-[#025798] flex flex-col items-center justify-center gap-0.5 text-[10px] font-black active:scale-95 transition-all"
-          >
-            {isStudent ? <DollarSign className="w-4 h-4 text-amber-300" /> : <Users className="w-4 h-4 text-indigo-300" />}
-            <span>{isStudent ? 'Tuition' : 'Roster'}</span>
-          </button>
-        )}
-      </div>
 
     </div>
   );

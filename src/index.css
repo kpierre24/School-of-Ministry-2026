@@ -334,8 +334,73 @@ main:focus-visible { outline: none; }
     color: #dfc18b;
     border: 1px solid rgba(179, 143, 83, 0.40);
   }
-  .font-syne {
-    font-family: 'Syne', sans-serif;
+  .font-syne,
+  .font-display {
+    font-family: 'Syne', sans-serif !important;
+  }
+
+  .font-tabular {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Frosted Glass Cards with Inner Light Reflection */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    box-shadow: 0 4px 20px -2px rgba(2, 50, 100, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+    border-radius: 1.25rem;
+  }
+
+  .dark .glass-card {
+    background: rgba(12, 33, 58, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(2, 87, 152, 0.28);
+    box-shadow: 0 8px 32px -4px rgba(1, 26, 54, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+    border-radius: 1.25rem;
+  }
+
+  /* Tactile Lift for Interactive Cards */
+  .tactile-card {
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  }
+  .tactile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -6px rgba(2, 50, 100, 0.16);
+  }
+  .dark .tactile-card:hover {
+    box-shadow: 0 14px 32px -6px rgba(1, 26, 54, 0.6);
+  }
+
+  /* Sacred Ministry Gold Foils */
+  .gold-foil-badge {
+    background: linear-gradient(135deg, rgba(179, 143, 83, 0.15) 0%, rgba(223, 193, 139, 0.28) 50%, rgba(179, 143, 83, 0.18) 100%);
+    border: 1px solid rgba(223, 193, 139, 0.5);
+    color: #8c6a32;
+    box-shadow: 0 1px 4px rgba(179, 143, 83, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  .dark .gold-foil-badge {
+    color: #dfc18b;
+    border-color: rgba(223, 193, 139, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .gold-gradient-text {
+    background: linear-gradient(135deg, #dfc18b 0%, #f6e6c8 50%, #b38f53 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Sacred Scripture Ribbon */
+  .scripture-ribbon {
+    font-style: italic;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, rgba(2, 87, 152, 0.08) 0%, rgba(179, 143, 83, 0.12) 50%, rgba(2, 87, 152, 0.08) 100%);
+    border-top: 1px solid rgba(179, 143, 83, 0.25);
+    border-bottom: 1px solid rgba(179, 143, 83, 0.25);
   }
 
   .font-jetbrains {

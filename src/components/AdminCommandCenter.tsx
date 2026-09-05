@@ -504,7 +504,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 1: Enrollment */}
           <div 
             onClick={() => setActiveTab('enrollment')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
               activeTab === 'enrollment' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -514,7 +514,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Enrollment</span>
               <Users className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-2xl font-black text-white tracking-tight">{activeStudentsCount}</p>
+            <p className="text-2xl font-display font-black text-white tracking-tight">{activeStudentsCount}</p>
             <div className="flex items-center justify-between text-[11px] mt-1">
               <span className="text-slate-400 font-medium">Active Students</span>
               {pendingApplications.length > 0 && (
@@ -528,7 +528,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 2: Academic */}
           <div 
             onClick={() => setActiveTab('academic')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
               activeTab === 'academic' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -538,7 +538,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Academic</span>
               <GraduationCap className="w-4 h-4 text-indigo-400" />
             </div>
-            <p className="text-2xl font-black text-white tracking-tight">{averageGradeOverall}%</p>
+            <p className="text-2xl font-display font-black text-white tracking-tight">{averageGradeOverall}%</p>
             <div className="flex items-center justify-between text-[11px] mt-1">
               <span className="text-slate-400 font-medium">Average Grade</span>
               {unmarkedSubmissions.length > 0 && (
@@ -552,7 +552,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 3: Attendance */}
           <div 
             onClick={() => setActiveTab('attendance')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
               activeTab === 'attendance' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -562,7 +562,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Attendance</span>
               <Activity className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-2xl font-black text-white tracking-tight">{overallAttendanceRate}%</p>
+            <p className="text-2xl font-display font-black text-white tracking-tight">{overallAttendanceRate}%</p>
             <div className="flex items-center justify-between text-[11px] mt-1">
               <span className="text-slate-400 font-medium">Class Overall</span>
               {studentsBelowThreshold.length > 0 ? (
@@ -578,17 +578,17 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 4: Finance */}
           <div 
             onClick={() => setActiveTab('finance')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
               activeTab === 'finance' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
             }`}
           >
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Tuition & Revenue</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Finance</span>
               <DollarSign className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-2xl font-black text-white tracking-tight">${totalCollectedTuition.toLocaleString()}</p>
+            <p className="text-2xl font-display font-black text-white tracking-tight">${totalCollectedTuition.toLocaleString()}</p>
             <div className="flex items-center justify-between text-[11px] mt-1">
               <span className="text-slate-400 font-medium">Collected Total</span>
               {outstandingBalanceTotal > 0 && (
@@ -602,7 +602,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 5: Actionable Alerts */}
           <div 
             onClick={() => setActiveTab('alerts')}
-            className={`col-span-2 lg:col-span-1 p-4 rounded-2xl border transition-all cursor-pointer ${
+            className={`col-span-2 lg:col-span-1 p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
               activeTab === 'alerts' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -612,7 +612,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Action Alerts</span>
               <Bell className="w-4 h-4 text-rose-400 animate-pulse" />
             </div>
-            <p className="text-2xl font-black text-rose-400 tracking-tight">{actionableAlertsCount}</p>
+            <p className="text-2xl font-display font-black text-rose-400 tracking-tight">{actionableAlertsCount}</p>
             <div className="flex items-center justify-between text-[11px] mt-1">
               <span className="text-slate-400 font-medium">Requires Action</span>
               <span className="text-rose-400 font-bold text-[9px] uppercase">Review Now</span>

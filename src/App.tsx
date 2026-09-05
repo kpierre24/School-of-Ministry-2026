@@ -148,6 +148,7 @@ import { AppPresentationModal } from './components/AppPresentationModal';
 import { EmptyState } from './components/UXPrimitives';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { displayErrorToUser } from './lib/errorHandler';
+import { BackToTopButton } from './components/BackToTopButton';
 import { logActivity } from './lib/auditLogger';
 import { exportFullBackupJSON } from './lib/backupSuite';
 import { trackUxEvent } from './lib/uxTelemetry';
@@ -3942,7 +3943,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
             />
             <div className="min-w-0 shrink flex items-center gap-2">
-              <h1 className="text-xs sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[240px]">
+              <h1 className="font-display text-xs sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[240px]">
                 HTEIM School of Ministry
               </h1>
               <button
@@ -4176,9 +4177,26 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <span>Sign In</span>
               </button>
             )}
+            {/* Mobile Drawer Navigation Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowMobileMoreMenu(prev => !prev)}
+              aria-label="Toggle navigation drawer"
+              title="Open Navigation Menu"
+              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden shrink-0 cursor-pointer transition-colors"
+            >
+              <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Sacred Scripture Motto Ribbon */}
+      <div className="scripture-ribbon px-3 py-1.5 text-center text-[10px] sm:text-[11px] text-slate-700 dark:text-[#dfc18b] font-medium tracking-wide flex items-center justify-center gap-2 rounded-xl mb-3 shadow-2xs">
+        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+        <span>"Study to shew thyself approved unto God, a workman that needeth not to be ashamed" — 2 Timothy 2:15</span>
+        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 hidden sm:inline" />
+      </div>
 
       {/* Desktop Navigation */}
       {appUser && (
@@ -4239,7 +4257,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       />
 
       {/* Main Workspace */}
-      <main id="main-workspace" tabIndex={-1} className="flex flex-col flex-1 gap-6 relative touch-pan-y min-h-[calc(100vh-220px)] sm:min-h-[calc(100vh-240px)]">
+      <main id="main-workspace" tabIndex={-1} className="flex flex-col flex-1 gap-6 relative touch-pan-y min-h-[calc(100vh-220px)] sm:min-h-[calc(100vh-240px)] pb-24 md:pb-8">
         <AnimatePresence mode="wait">
           {activeErpTab === 'home' && (
             <motion.div
@@ -7048,7 +7066,7 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
       {/* Mobile Slide-Up "More" Options Drawer */}
       <AnimatePresence>
-        {showMobileMoreMenu && appUser && (
+        {showMobileMoreMenu && (
           <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -7105,11 +7123,34 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </div>
                     </button>
 
-                    {(appUser?.role === 'admin' || appUser?.role === 'student') && (
+                    <button
+                      onClick={() => {
+                        setActiveErpTab('schedule');
+                        setShowMobileMoreMenu(false);
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                        activeErpTab === 'schedule'
+                          ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <div>
+                        <p className="text-xs font-semibold">Schedule</p>
+                        <p className="text-[9px] text-slate-400">Class Dates</p>
+                      </div>
+                    </button>
+
+                    {(!appUser || appUser?.role === 'admin' || appUser?.role === 'student') && (
                       <button
                         onClick={() => {
-                          setActiveErpTab('payments');
-                          setShowMobileMoreMenu(false);
+                          if (!appUser) {
+                            setShowMobileMoreMenu(false);
+                            setShowLoginModal(true);
+                          } else {
+                            setActiveErpTab('payments');
+                            setShowMobileMoreMenu(false);
+                          }
                         }}
                         className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
                           activeErpTab === 'payments'
@@ -7119,13 +7160,13 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       >
                         <DollarSign className="w-4 h-4" />
                         <div>
-                          <p className="text-xs font-semibold">Payments</p>
-                          <p className="text-[9px] text-slate-400">Tuition</p>
+                          <p className="text-xs font-semibold">Tuition</p>
+                          <p className="text-[9px] text-slate-400">{appUser ? 'Payment Ledger' : 'Tuition Info'}</p>
                         </div>
                       </button>
                     )}
 
-                    {(appUser?.role as string) !== 'student' && (
+                    {appUser && (appUser?.role as string) !== 'student' && (
                       <button
                         onClick={() => {
                           setActiveErpTab('students');
@@ -7145,34 +7186,56 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
-                    <button
-                      onClick={() => {
-                        setActiveErpTab('messages');
-                        setShowMobileMoreMenu(false);
-                      }}
-                      className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all col-span-2 ${
-                        activeErpTab === 'messages'
-                          ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <MessageSquare className="w-4 h-4" />
+                    {appUser && ((appUser?.role as string) === 'admin' || (appUser?.role as string) === 'teacher') && (
+                      <button
+                        onClick={() => {
+                          setActiveErpTab('reports');
+                          setShowMobileMoreMenu(false);
+                        }}
+                        className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                          activeErpTab === 'reports'
+                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <FileText className="w-4 h-4" />
                         <div>
-                          <p className="text-xs font-semibold">Messaging</p>
-                          <p className="text-[9px] text-slate-400">Direct Messages</p>
+                          <p className="text-xs font-semibold">Reports</p>
+                          <p className="text-[9px] text-slate-400">Analytics & PDF</p>
                         </div>
-                      </div>
-                      {unreadMessagesCount > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold">
-                          {unreadMessagesCount} New
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-mono">
-                          Open
-                        </span>
-                      )}
-                    </button>
+                      </button>
+                    )}
+
+                    {appUser && (
+                      <button
+                        onClick={() => {
+                          setActiveErpTab('messages');
+                          setShowMobileMoreMenu(false);
+                        }}
+                        className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all col-span-2 ${
+                          activeErpTab === 'messages'
+                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <MessageSquare className="w-4 h-4" />
+                          <div>
+                            <p className="text-xs font-semibold">Messaging</p>
+                            <p className="text-[9px] text-slate-400">Direct Messages</p>
+                          </div>
+                        </div>
+                        {unreadMessagesCount > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold">
+                            {unreadMessagesCount} New
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-mono">
+                            Open
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -7473,66 +7536,79 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
         </motion.div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      {appUser && (
-        <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#08182c]/95 border-t border-slate-200/90 dark:border-[#1a385c] backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
-          {[
+      {/* Mobile Bottom Navigation Dock */}
+      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#08182c]/95 border-t border-slate-200/90 dark:border-[#1a385c] backdrop-blur-xl shadow-2xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
+        {(appUser ? (
+          appUser.role === 'student' ? [
             { tab: 'home', Icon: Sparkles, label: 'Home' },
             { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
             { tab: 'courses', Icon: BookOpen, label: 'Courses' },
+            { tab: 'payments', Icon: DollarSign, label: 'Tuition' },
+          ] : [
+            { tab: 'home', Icon: Sparkles, label: 'Home' },
+            { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
+            { tab: 'students', Icon: GraduationCap, label: 'Students' },
             { tab: 'exams', Icon: Award, label: 'Exams' },
-          ].map(({ tab, Icon, label }: any) => {
-            const isActive = activeErpTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => handleNavigate(tab as TabType)}
-                aria-label={`Open ${label}`}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
-                  isActive
-                    ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <div className="relative">
-                  <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'}`} />
-                </div>
-                <span className={`text-[10px] tracking-tight truncate max-w-full ${
-                  isActive ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
-                }`}>{label}</span>
-              </button>
-            );
-          })}
+          ]
+        ) : [
+          { tab: 'home', Icon: Sparkles, label: 'Home' },
+          { tab: 'courses', Icon: BookOpen, label: '6 Modules' },
+          { tab: 'library', Icon: Bookmark, label: 'Media' },
+          { tab: 'schedule', Icon: Calendar, label: 'Schedule' },
+        ]).map(({ tab, Icon, label }: any) => {
+          const isActive = activeErpTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => handleNavigate(tab as TabType)}
+              aria-label={`Open ${label}`}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+                isActive
+                  ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <div className="relative">
+                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'}`} />
+              </div>
+              <span className={`text-[10px] tracking-tight truncate max-w-full ${
+                isActive ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+              }`}>{label}</span>
+            </button>
+          );
+        })}
 
-          {/* More button */}
-          <button
-            type="button"
-            onClick={() => setShowMobileMoreMenu(true)}
-            aria-label="Open more portal sections"
-            className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
-              showMobileMoreMenu
-                ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="relative">
-              <Menu className={`w-5 h-5 transition-transform ${
-                showMobileMoreMenu ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'
-              }`} />
-              {unreadMessagesCount > 0 && (
-                <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-[#b38f53] text-white font-bold text-[8px] flex items-center justify-center px-0.5">
-                  {unreadMessagesCount}
-                </span>
-              )}
-            </div>
-            <span className={`text-[10px] tracking-tight ${
-              showMobileMoreMenu ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
-            }`}>More</span>
-          </button>
-        </nav>
-      )}
+        {/* More / Menu button */}
+        <button
+          type="button"
+          onClick={() => setShowMobileMoreMenu(true)}
+          aria-label="Open more portal sections"
+          className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:scale-95 touch-min-44 ${
+            showMobileMoreMenu
+              ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <div className="relative">
+            <Menu className={`w-5 h-5 transition-transform ${
+              showMobileMoreMenu ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'
+            }`} />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-[#b38f53] text-white font-bold text-[8px] flex items-center justify-center px-0.5">
+                {unreadMessagesCount}
+              </span>
+            )}
+          </div>
+          <span className={`text-[10px] tracking-tight ${
+            showMobileMoreMenu ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
+          }`}>{appUser ? 'More' : 'Menu'}</span>
+        </button>
+      </nav>
+
+      {/* Floating Back-To-Top Button (#4) */}
+      <BackToTopButton />
     </div>
     </>
   );

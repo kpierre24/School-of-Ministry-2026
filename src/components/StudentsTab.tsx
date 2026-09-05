@@ -314,46 +314,46 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-slate-600 dark:text-slate-300 shrink-0" />
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Student Enrolment Directory</h2>
+              <GraduationCap className="w-6 h-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <h2 className="font-display text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">Student Enrolment Directory</h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
               Centralized management of student profiles, attendance records, academic standing, and official transcripts.
             </p>
           </div>
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <Sparkles className="w-4 h-4 text-slate-500" />
-            <span>HTEIM Ministry Cohort 2026</span>
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span className="font-display font-bold">HTEIM Ministry Cohort 2026</span>
           </div>
         </div>
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Enrolled</p>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">{totalStudents}</p>
+            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">{totalStudents}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Ministry Candidates</p>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Satisfactory Standing</p>
-            <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{satisfactoryStudents}</p>
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-emerald-200/60 dark:border-emerald-800/50 rounded-2xl p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Satisfactory Standing</p>
+            <p className="font-display text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{satisfactoryStudents}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">&ge; {satisfactoryThreshold}% Attendance</p>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Perfect Attendance</p>
-            <p className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1">{perfectStudents}</p>
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Perfect Attendance</p>
+            <p className="font-display text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">{perfectStudents}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">100% Session Commendation</p>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">At-Risk Alert</p>
-            <p className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 mt-1">{atRiskStudents}</p>
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-rose-200/60 dark:border-rose-800/50 rounded-2xl p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">At-Risk Alert</p>
+            <p className="font-display text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-1">{atRiskStudents}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">&lt; {atRiskThreshold}% Attendance</p>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col space-y-3 material-surface">
+      {/* Filter and Search Bar (Sticky for smooth scroll ergonomics) */}
+      <div className="sticky top-2 sm:top-3 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-md flex flex-col space-y-3 material-surface transition-all">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />

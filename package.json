@@ -38,7 +38,7 @@
     "recharts": "^3.10.0",
     "string-similarity": "^4.0.4",
     "typescript": "~5.8.2",
-    "vercel": "^58.9.1",
+    "vercel": "^54.17.3",
     "vite": "^6.2.3"
   },
   "devDependencies": {
