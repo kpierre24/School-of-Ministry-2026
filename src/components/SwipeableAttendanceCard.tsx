@@ -142,7 +142,7 @@ export const SwipeableAttendanceCard: React.FC<SwipeableAttendanceCardProps> = (
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-900 shadow-xs group">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 bg-slate-900 shadow-xs hover:shadow-lg transition-all duration-200 hover:scale-[1.012] hover:-translate-y-0.5 group">
       {/* Behind Card Background Action Feedback */}
       <div 
         className={`absolute inset-0 flex items-center justify-between px-3 sm:px-5 font-black text-xs text-white transition-colors ${

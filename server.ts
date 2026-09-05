@@ -27,11 +27,8 @@ async function startServer() {
     !currentFilename.endsWith(".cjs") &&
     !currentDirname.includes("dist");
 
-  // Port 3000 is strictly required for the container reverse proxy.
-  const PRIMARY_PORT = 3000;
-  // Cloud Run or external environments may pass PORT (e.g. 8080).
-  const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
-  const secondaryPort = envPort && !isNaN(envPort) && envPort !== PRIMARY_PORT ? envPort : null;
+  // Cloud Run or container environment assigns PORT (e.g. 8080 or 3000).
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Apply security response headers globally
   app.use(securityHeaders);
@@ -82,7 +79,9 @@ async function startServer() {
     // Production static serving
     const distPath = fs.existsSync(path.join(process.cwd(), "dist", "index.html"))
       ? path.join(process.cwd(), "dist")
-      : currentDirname;
+      : fs.existsSync(path.join(currentDirname, "index.html"))
+      ? currentDirname
+      : path.join(process.cwd(), "dist");
 
     app.use(
       express.static(distPath, {
@@ -99,64 +98,32 @@ async function startServer() {
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
-        res.status(200).send("<html><head><title>HTEIM School of Ministry</title></head><body>HTEIM Portal Service Running</body></html>");
+        res.status(200).send("<!DOCTYPE html><html><head><title>HTEIM School of Ministry</title></head><body><div id='root'>HTEIM Portal Service Running</div></body></html>");
       }
     });
   }
 
-  const activeServers: http.Server[] = [];
-
-  // Start primary server on port 3000 (required for AI Studio reverse proxy routing)
-  const primaryServer = app.listen(PRIMARY_PORT, "0.0.0.0", () => {
-    logger.info(`HTEIM School of Ministry primary server running on http://0.0.0.0:${PRIMARY_PORT}`);
+  // Start single unified server on PORT (bound to 0.0.0.0 for container ingress)
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    logger.info(`HTEIM School of Ministry server running on http://0.0.0.0:${PORT}`);
   });
-  activeServers.push(primaryServer);
 
-  primaryServer.on("error", (err: NodeJS.ErrnoException) => {
+  server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
-      logger.error(`Port ${PRIMARY_PORT} is already in use. Exiting process cleanly to allow dev supervisor restart.`);
+      logger.error(`Port ${PORT} is already in use.`);
       process.exit(1);
     } else {
-      logger.error(`Primary server on port ${PRIMARY_PORT} encountered an error:`, err);
+      logger.error(`Server on port ${PORT} encountered an error:`, err);
+      process.exit(1);
     }
   });
-
-  // If Cloud Run or an external container specifies a different PORT (e.g. 8080),
-  // attempt to also listen on that port for direct container ingress if not already bound by a reverse proxy.
-  if (secondaryPort) {
-    try {
-      const secondaryServer = app.listen(secondaryPort, "0.0.0.0", () => {
-        logger.info(`HTEIM School of Ministry secondary ingress active on http://0.0.0.0:${secondaryPort}`);
-      });
-      activeServers.push(secondaryServer);
-
-      secondaryServer.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
-          logger.info(`Port ${secondaryPort} is handled by the platform reverse proxy; internal routing active on port ${PRIMARY_PORT}.`);
-        } else {
-          logger.warn(`Secondary ingress on port ${secondaryPort} encountered error:`, err.message);
-        }
-      });
-    } catch (err: any) {
-      logger.info(`Secondary port ${secondaryPort} listener skipped:`, err?.message || err);
-    }
-  }
 
   const shutdown = () => {
     logger.info("Server shutting down gracefully...");
-    let remaining = activeServers.length;
-    if (remaining === 0) {
+    server.close(() => {
+      logger.info("Server listener closed gracefully.");
       process.exit(0);
-    }
-    for (const s of activeServers) {
-      s.close(() => {
-        remaining--;
-        if (remaining <= 0) {
-          logger.info("All server listeners closed gracefully.");
-          process.exit(0);
-        }
-      });
-    }
+    });
   };
 
   process.on("SIGINT", shutdown);

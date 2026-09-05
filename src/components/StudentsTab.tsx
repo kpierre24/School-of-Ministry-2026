@@ -646,12 +646,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.85 }}
+                    whileHover={{ scale: 1.025, y: -3 }}
                     transition={{
                       layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
                       opacity: { duration: 0.18 },
-                      scale: { duration: 0.18 }
+                      scale: { duration: 0.18 },
+                      y: { duration: 0.18 }
                     }}
-                    className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between group/photoCard relative"
+                    className="bg-white border border-slate-200 hover:border-indigo-300 dark:hover:border-indigo-600 rounded-2xl p-3 shadow-2xs hover:shadow-xl transition-shadow flex flex-col justify-between group/photoCard relative cursor-pointer"
                   >
                     {/* Thumbnail Container */}
                     <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 text-white font-black text-xl flex items-center justify-center border border-slate-200 shadow-inner group/thumb">
@@ -865,13 +867,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 initial={{ opacity: 0, scale: 0.92, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.88, y: -12 }}
+                whileHover={{ scale: 1.015, y: -3 }}
                 transition={{
                   layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
                   opacity: { duration: 0.2 },
                   scale: { duration: 0.2 },
                   y: { duration: 0.2 }
                 }}
-                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-4 relative group"
+                className="bg-white border border-slate-200 hover:border-indigo-300 dark:hover:border-indigo-600 rounded-2xl p-5 shadow-2xs hover:shadow-xl transition-shadow flex flex-col justify-between space-y-4 relative group"
               >
                 {/* Delete Confirmation Overlay */}
                 {confirmingDeleteFor === s.name && (

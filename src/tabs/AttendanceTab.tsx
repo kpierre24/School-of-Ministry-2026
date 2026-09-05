@@ -539,6 +539,7 @@ export function AttendanceTab({
                           initial={{ opacity: 0, scale: 0.92, y: 12 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.88, y: -12 }}
+                          whileHover={{ scale: 1.015, y: -2 }}
                           transition={{
                             layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
                             opacity: { duration: 0.2 },
@@ -546,7 +547,7 @@ export function AttendanceTab({
                             y: { duration: 0.2 }
                           }}
                           onClick={() => setSelectedStudent(student)}
-                          className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-shadow cursor-pointer flex flex-col justify-between group"
+                          className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-lg hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between group"
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2 mb-2">
