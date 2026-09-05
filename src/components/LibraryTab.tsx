@@ -55,6 +55,7 @@ interface LibraryTabProps {
   classroomMedia?: MediaResource[];
   setClassroomMedia?: React.Dispatch<React.SetStateAction<MediaResource[]>>;
   onOpenDiagnostics?: () => void;
+  onOpenNotes?: () => void;
 }
 
 // Helper to check if text contains raw binary zip code / PK header from DOCX
@@ -125,7 +126,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   setResources: propSetResources,
   classroomMedia: propClassroomMedia,
   setClassroomMedia: propSetClassroomMedia,
-  onOpenDiagnostics
+  onOpenDiagnostics,
+  onOpenNotes
 }) => {
   const isStudent = userRole === 'student';
 
@@ -878,6 +880,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         onAddMedia={handleAddGlobalMedia}
         onUpdateMedia={handleUpdateGlobalMedia}
         onRemoveMedia={handleRemoveGlobalMedia}
+        onOpenNotes={onOpenNotes}
       />
 
       {/* Filter and Search Bar */}

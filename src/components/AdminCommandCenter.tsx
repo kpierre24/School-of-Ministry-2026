@@ -1005,8 +1005,8 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {students.map((student) => {
-                  const key = student.name.toLowerCase().trim();
+                {students.map((student, sIdx) => {
+                  const key = (student.name || '').toLowerCase().trim();
                   const docs = docChecklist[key] || {
                     studentName: student.name,
                     photoId: false,
@@ -1020,7 +1020,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
 
                   return (
                     <div 
-                      key={student.name}
+                      key={`student-doc-${student.name || 'std'}-${sIdx}`}
                       className={`p-4 rounded-2xl border space-y-3 ${
                         isComplete
                           ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
@@ -1216,11 +1216,11 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
 
               {studentsBelowThreshold.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {studentsBelowThreshold.map((student) => {
+                  {studentsBelowThreshold.map((student, bIdx) => {
                     const isCritical = student.rate <= 50;
                     return (
                       <div 
-                        key={student.name}
+                        key={`student-below-thresh-${student.name || 'std'}-${bIdx}`}
                         className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 ${
                           isCritical
                             ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900'

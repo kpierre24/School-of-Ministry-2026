@@ -623,14 +623,14 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
         {/* Mobile View (< md) */}
         <div className="md:hidden space-y-2.5">
-          {filteredClassDays.map((day) => {
+          {filteredClassDays.map((day, dIdx) => {
             const att = safeAttendanceByDay[day.id];
             const isPresent = !!att?.present;
             const excuse = submittedExcuses[day.id];
 
             return (
               <div 
-                key={day.id} 
+                key={`std-mob-day-${day.id || 'd'}-${dIdx}`} 
                 className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 space-y-2 shadow-2xs"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -698,13 +698,13 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-              {filteredClassDays.map((day) => {
+              {filteredClassDays.map((day, dIdx) => {
                 const att = safeAttendanceByDay[day.id];
                 const isPresent = !!att?.present;
                 const excuse = submittedExcuses[day.id];
 
                 return (
-                  <tr key={day.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition-colors">
+                  <tr key={`std-row-day-${day.id || 'd'}-${dIdx}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="p-3.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                       <span>{day.name}</span>

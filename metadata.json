@@ -1,5 +1,5 @@
 {
   "name": "HTEIM School of Ministry",
-  "description": "An introductory landing page, curriculum guide, and analytics portal for the HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries).",
+  "description": "Comprehensive academic portal, student attendance, class lecture notes, and parallel Amplified Bible (AMP) for HTEIM School of Ministry.",
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

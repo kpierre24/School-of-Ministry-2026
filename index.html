@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     <meta name="theme-color" content="#0f172a" />
-    <meta name="description" content="An introductory landing page, curriculum guide, and analytics portal for the HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)." />
+    <meta name="description" content="Comprehensive academic portal, student attendance, class lecture notes, and parallel Amplified Bible (AMP) for HTEIM School of Ministry." />
     <meta property="og:title" content="HTEIM School of Ministry" />
-    <meta property="og:description" content="An introductory landing page, curriculum guide, and analytics portal for the HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)." />
+    <meta property="og:description" content="Comprehensive academic portal, student attendance, class lecture notes, and parallel Amplified Bible (AMP) for HTEIM School of Ministry." />
     
     <!-- Security Meta Tags -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: ws:; object-src 'none'; base-uri 'self';" />
@@ -33,6 +33,23 @@
     <link rel="apple-touch-icon" href="/hteim_logo.svg" />
     
     <title>HTEIM School of Ministry</title>
+    <script>
+      // Filter benign Vite development WebSocket / HMR connection logs in AI Studio preview environment
+      (function() {
+        var origConsoleError = console.error;
+        console.error = function() {
+          var first = arguments[0];
+          if (
+            typeof first === 'string' &&
+            first.indexOf('[vite]') !== -1 &&
+            (first.indexOf('websocket') !== -1 || first.indexOf('connect') !== -1)
+          ) {
+            return;
+          }
+          origConsoleError.apply(console, arguments);
+        };
+      })();
+    </script>
   </head>
   <body class="bg-slate-900 text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 overflow-x-hidden">
     <div id="root"></div>

@@ -22,7 +22,8 @@ import {
   Clock,
   FileText,
   Calendar,
-  Layers
+  Layers,
+  BookOpen
 } from 'lucide-react';
 import { MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
@@ -36,6 +37,7 @@ interface ClassroomMediaPlayerProps {
   onAddMedia?: (newMedia: MediaResource) => void;
   onUpdateMedia?: (updatedMedia: MediaResource) => void;
   onRemoveMedia?: (mediaId: string) => void;
+  onOpenNotes?: (lectureTitle?: string) => void;
 }
 
 export const DEFAULT_PRESET_MEDIA: MediaResource[] = [];
@@ -46,7 +48,8 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   userRole = 'admin',
   onAddMedia,
   onUpdateMedia,
-  onRemoveMedia
+  onRemoveMedia,
+  onOpenNotes
 }) => {
   const isStudent = userRole === 'student';
   const playlist = mediaResources && mediaResources.length > 0 ? mediaResources : DEFAULT_PRESET_MEDIA;
@@ -253,16 +256,30 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
           </div>
         </div>
 
-        {!isStudent && (
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:opacity-80"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Recording</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onOpenNotes && (
+            <button
+              type="button"
+              onClick={() => onOpenNotes(currentTrack?.title)}
+              className="px-3 py-1.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:opacity-80 border border-[#b38f53]/40"
+              title="Open parallel class notes and Amplified Bible"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Notes & AMP Bible</span>
+            </button>
+          )}
+
+          {!isStudent && (
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:opacity-80"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Recording</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Player Display */}

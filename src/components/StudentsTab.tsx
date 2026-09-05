@@ -36,7 +36,8 @@ import {
   Upload,
   Grid,
   Users,
-  User
+  User,
+  List
 } from 'lucide-react';
 import { generateStudentUsername } from '../lib/userAuth';
 import { EmptyState } from './UXPrimitives';
@@ -107,9 +108,30 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [expandedTimelineStudent, setExpandedTimelineStudent] = useState<string | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'present' | 'absent' | 'quizzes'>('all');
 
-  // View mode state for directory view: 'cards' or 'gallery'
-  const [directoryViewMode, setDirectoryViewMode] = useState<'cards' | 'gallery'>('cards');
+  // View mode state for directory view: 'cards', 'list' (compact card-based list), or 'gallery'
+  const [directoryViewMode, setDirectoryViewMode] = useState<'cards' | 'list' | 'gallery'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return 'list';
+    }
+    return 'cards';
+  });
   const [selectedGalleryDayId, setSelectedGalleryDayId] = useState<string>('');
+  const [showReportsDropdown, setShowReportsDropdown] = useState(false);
+  const reportsDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (reportsDropdownRef.current && !reportsDropdownRef.current.contains(e.target as Node)) {
+        setShowReportsDropdown(false);
+      }
+    };
+    if (showReportsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReportsDropdown]);
 
   useEffect(() => {
     if (classDays && classDays.length > 0 && !selectedGalleryDayId) {
@@ -309,109 +331,134 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const satisfactoryStudents = students.filter(s => s.rate >= satisfactoryThreshold).length;
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8 material-screen">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8 material-screen w-full max-w-full overflow-x-hidden">
       {/* Top Banner & Quick Metrics */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-3.5 sm:mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <h2 className="font-display text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">Student Enrolment Directory</h2>
+              <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <h2 className="font-display text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">Student Enrolment Directory</h2>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1 max-w-2xl">
               Centralized management of student profiles, attendance records, academic standing, and official transcripts.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span className="font-display font-bold">HTEIM Ministry Cohort 2026</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
+            <span className="font-display font-bold">HTEIM Cohort 2026</span>
           </div>
         </div>
 
         {/* 4 Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Enrolled</p>
-            <p className="font-display text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">{totalStudents}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Ministry Candidates</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl sm:rounded-2xl p-2.5 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Enrolled</p>
+            <p className="font-display text-xl sm:text-3xl font-black text-slate-900 dark:text-white mt-0.5 sm:mt-1">{totalStudents}</p>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">Ministry Candidates</p>
           </div>
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-emerald-200/60 dark:border-emerald-800/50 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Satisfactory Standing</p>
-            <p className="font-display text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{satisfactoryStudents}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">&ge; {satisfactoryThreshold}% Attendance</p>
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-emerald-200/60 dark:border-emerald-800/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Satisfactory</p>
+            <p className="font-display text-xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1">{satisfactoryStudents}</p>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">&ge; {satisfactoryThreshold}% Attendance</p>
           </div>
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Perfect Attendance</p>
-            <p className="font-display text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">{perfectStudents}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">100% Session Commendation</p>
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-amber-200/60 dark:border-amber-800/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Perfect 100%</p>
+            <p className="font-display text-xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-0.5 sm:mt-1">{perfectStudents}</p>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">100% Commendation</p>
           </div>
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-rose-200/60 dark:border-rose-800/50 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">At-Risk Alert</p>
-            <p className="font-display text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-1">{atRiskStudents}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">&lt; {atRiskThreshold}% Attendance</p>
+          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-rose-200/60 dark:border-rose-800/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">At-Risk Alert</p>
+            <p className="font-display text-xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-0.5 sm:mt-1">{atRiskStudents}</p>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">&lt; {atRiskThreshold}% Attendance</p>
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar (Sticky for smooth scroll ergonomics) */}
-      <div className="sticky top-2 sm:top-3 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-md flex flex-col space-y-3 material-surface transition-all">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="sticky top-1 sm:top-3 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-md flex flex-col space-y-2.5 sm:space-y-3 material-surface transition-all w-full max-w-full">
+        {/* Row 1: Search & Action Tools */}
+        <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap md:flex-nowrap w-full">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-0 w-full md:w-auto">
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search student profile by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full pl-8 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-white"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto flex-shrink-0 flex-wrap justify-end">
-            {/* View Mode Toggle: Cards vs Photo Gallery */}
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-between md:justify-end w-full md:w-auto overflow-x-auto no-scrollbar py-0.5">
+            {/* View Mode Toggle: Cards vs List vs Photo Gallery */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 sm:p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
               <button
+                type="button"
+                onClick={() => setDirectoryViewMode('list')}
+                className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shrink-0 ${
+                  directoryViewMode === 'list'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Compact Responsive Card-Based List View (Optimized for Mobile)"
+              >
+                <List className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="hidden xs:inline">List</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setDirectoryViewMode('cards')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shrink-0 ${
                   directoryViewMode === 'cards'
-                    ? 'bg-white text-indigo-700 shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
                 title="Detailed Student Profile Cards View"
               >
-                <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Profile Cards</span>
+                <LayoutGrid className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="hidden xs:inline">Cards</span>
               </button>
               <button
+                type="button"
                 onClick={() => setDirectoryViewMode('gallery')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shrink-0 ${
                   directoryViewMode === 'gallery'
                     ? 'bg-indigo-600 text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Visual Photo Gallery View with Thumbnail Attendance Marking"
+                title="Visual Photo Gallery View with Attendance Marking"
               >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Photo Gallery</span>
+                <Camera className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden xs:inline">Photos</span>
               </button>
             </div>
 
             {/* Sorting Dropdown & Quick Toggle */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs font-extrabold text-slate-600 flex items-center gap-1">
-                <Sliders className="w-3.5 h-3.5 text-indigo-600" /> Sort:
-              </span>
+            <div className="flex items-center gap-1 shrink-0">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs"
+                className="text-xs font-bold px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs shrink-0 max-w-[110px] xs:max-w-[130px] sm:max-w-none truncate"
+                title="Sort student list"
               >
                 <option value="name_asc">Name (A → Z)</option>
                 <option value="name_desc">Name (Z → A)</option>
                 <option value="last_name_asc">Last Name (A → Z)</option>
                 <option value="last_name_desc">Last Name (Z → A)</option>
-                <option value="rate_desc">Attendance (High → Low)</option>
-                <option value="rate_asc">Attendance (Low → High)</option>
+                <option value="rate_desc">Att. (High → Low)</option>
+                <option value="rate_asc">Att. (Low → High)</option>
                 <option value="score_desc">Avg Score (High → Low)</option>
                 <option value="score_asc">Avg Score (Low → High)</option>
               </select>
@@ -421,105 +468,194 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 onClick={() => {
                   setSortBy(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc');
                 }}
-                className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold shrink-0 ${
                   sortBy === 'name_asc' || sortBy === 'name_desc'
-                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-2xs'
-                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 shadow-2xs'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
                 title={sortBy === 'name_asc' ? 'Currently sorted A to Z. Click for Z to A.' : 'Click to toggle Name Ascending (A-Z) / Descending (Z-A)'}
               >
                 {sortBy === 'name_asc' ? (
-                  <ArrowUp className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                  <ArrowUp className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 stroke-[2.5] shrink-0" />
                 ) : sortBy === 'name_desc' ? (
-                  <ArrowDown className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+                  <ArrowDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 stroke-[2.5] shrink-0" />
                 ) : (
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 )}
-                <span className="hidden sm:inline font-bold">
+                <span className="hidden md:inline font-bold">
                   {sortBy === 'name_desc' ? 'Z-A' : 'A-Z'}
                 </span>
               </button>
             </div>
+
+            {/* Attendance Reports - Desktop buttons & Mobile dropdown */}
+            {onOpenAttendanceReport && (
+              <div className="relative shrink-0" ref={reportsDropdownRef}>
+                {/* Desktop view */}
+                <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onOpenAttendanceReport('fifty_percent')}
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5 shrink-0"
+                    title="Generate printable/downloadable official report for candidates with 50% or lower attendance"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-slate-900 shrink-0" />
+                    <span>Export &le;50% Report</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenAttendanceReport('all')}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 whitespace-nowrap"
+                    title="Generate Printable Full Attendance Report"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-white shrink-0" />
+                    <span>Full Report</span>
+                  </button>
+                </div>
+
+                {/* Mobile / Tablet Compact Reports Menu Button */}
+                <div className="lg:hidden shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowReportsDropdown(!showReportsDropdown)}
+                    className="px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl text-xs font-extrabold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer flex items-center gap-1 shadow-2xs shrink-0"
+                    title="Open Attendance Reports Menu"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span className="hidden xs:inline">Reports</span>
+                    <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showReportsDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showReportsDropdown && (
+                    <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 animate-fadeIn space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">
+                        Attendance Reports
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onOpenAttendanceReport('fifty_percent');
+                          setShowReportsDropdown(false);
+                        }}
+                        className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-amber-50 dark:hover:bg-amber-950/40 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-xs truncate">Export &le;50% Report</p>
+                            <p className="text-[10px] text-slate-400 font-normal truncate">Low attendance cohort</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 shrink-0">
+                          {fiftyPercentStudents}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onOpenAttendanceReport('all');
+                          setShowReportsDropdown(false);
+                        }}
+                        className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-xs truncate">Full Attendance Report</p>
+                            <p className="text-[10px] text-slate-400 font-normal truncate">Complete candidate roster</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 shrink-0">
+                          {students.length}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full overflow-x-auto pb-1 justify-between flex-wrap">
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5 text-slate-400" /> Standing:
+        {/* Row 2: Standing Filter Chips (Horizontal Smooth Scroll, No Scrollbars, Zero Overlap) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full flex-nowrap scroll-smooth touch-pan-x">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 shadow-2xs ${
+              statusFilter === 'all' 
+                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            <span>All Candidates</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
+              statusFilter === 'all' 
+                ? 'bg-white/20 dark:bg-slate-900/20 text-white dark:text-slate-900' 
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+            }`}>
+              {students.length}
             </span>
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
-                statusFilter === 'all' 
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs' 
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              All Candidates ({students.length})
-            </button>
-            <button
-              onClick={() => setStatusFilter('satisfactory')}
-              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
-                statusFilter === 'satisfactory' 
-                  ? 'bg-emerald-600 text-white shadow-xs' 
-                  : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
-              }`}
-            >
-              Good Standing ({satisfactoryStudents})
-            </button>
-            <button
-              onClick={() => setStatusFilter('perfect')}
-              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
-                statusFilter === 'perfect' 
-                  ? 'bg-amber-500 text-slate-950 shadow-xs' 
-                  : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-              }`}
-            >
-              Honor Roll ({perfectStudents})
-            </button>
-            <button
-              onClick={() => setStatusFilter('at_risk')}
-              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
-                statusFilter === 'at_risk' 
-                  ? 'bg-rose-600 text-white shadow-xs' 
-                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40'
-              }`}
-            >
-              At-Risk ({atRiskStudents})
-            </button>
-            <button
-              onClick={() => setStatusFilter('fifty_percent')}
-              className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center justify-center touch-min-44 ${
-                statusFilter === 'fifty_percent' 
-                  ? 'bg-purple-600 text-white shadow-xs' 
-                  : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800'
-              }`}
-            >
-              Low Attendance (&le;50%) ({fiftyPercentStudents})
-            </button>
-          </div>
-
-          {onOpenAttendanceReport && (
-            <div className="flex items-center gap-2 pt-1 sm:pt-0">
-              <button
-                onClick={() => onOpenAttendanceReport('fifty_percent')}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5"
-                title="Generate printable/downloadable official report for candidates with 50% or lower attendance"
-              >
-                <FileText className="w-3.5 h-3.5 text-slate-900" />
-                <span>Export &le;50% Report</span>
-              </button>
-              <button
-                onClick={() => onOpenAttendanceReport('all')}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 flex-shrink-0"
-                title="Generate Printable Full Attendance Report"
-              >
-                <FileText className="w-3.5 h-3.5 text-white" />
-                <span>Full Attendance Report</span>
-              </button>
-            </div>
-          )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('satisfactory')}
+            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 shadow-2xs ${
+              statusFilter === 'satisfactory' 
+                ? 'bg-emerald-600 text-white shadow-xs' 
+                : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+            <span>Good Standing</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">
+              {satisfactoryStudents}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('perfect')}
+            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 shadow-2xs ${
+              statusFilter === 'perfect' 
+                ? 'bg-amber-500 text-slate-950 shadow-xs' 
+                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+            <span>Honor Roll</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black bg-amber-200/60 dark:bg-amber-900/60 text-amber-950 dark:text-amber-200">
+              {perfectStudents}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('at_risk')}
+            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 shadow-2xs ${
+              statusFilter === 'at_risk' 
+                ? 'bg-rose-600 text-white shadow-xs' 
+                : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40'
+            }`}
+          >
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+            <span>At-Risk</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black bg-rose-200/60 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200">
+              {atRiskStudents}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('fifty_percent')}
+            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 shadow-2xs ${
+              statusFilter === 'fifty_percent' 
+                ? 'bg-purple-600 text-white shadow-xs' 
+                : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800'
+            }`}
+          >
+            <span>&le;50% Low Att.</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black bg-purple-200/60 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200">
+              {fiftyPercentStudents}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -566,8 +702,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     onChange={(e) => setSelectedGalleryDayId(e.target.value)}
                     className="bg-transparent font-semibold text-xs text-slate-900 dark:text-white focus:outline-none cursor-pointer w-full sm:w-auto pr-2"
                   >
-                    {classDays.map(day => (
-                      <option key={day.id} value={day.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                    {classDays.map((day, dIdx) => (
+                      <option key={`gal-day-${day.id || 'day'}-${dIdx}`} value={day.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                         {day.name}
                       </option>
                     ))}
@@ -851,9 +987,423 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             </AnimatePresence>
           </div>
         </div>
+      ) : directoryViewMode === 'list' ? (
+        /* Compact Responsive Card-Based List Format (Optimized for Mobile) */
+        <div className="flex flex-col space-y-2.5 sm:space-y-3 w-full max-w-full">
+          <AnimatePresence mode="popLayout">
+            {filteredAndSortedStudents.map((s, idx) => {
+              const studentKey = (s.name || '').toLowerCase().trim();
+              const photoUrl = studentPhotos[studentKey] || s.photoUrl;
+              const currentNote = studentNotes[studentKey] || s.note || '';
+              const canIssueDocs = s.rate >= 80;
+              const timelineItems = getTimelineItems(s);
+              const isExpanded = expandedTimelineStudent === s.name;
+
+              return (
+                <motion.div
+                  key={`list-card-${s.name || idx}`}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18 }}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs hover:shadow-md transition-all flex flex-col space-y-2.5 relative group overflow-hidden w-full max-w-full"
+                >
+                  {/* Delete Confirmation Overlay */}
+                  {confirmingDeleteFor === s.name && (
+                    <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-4 z-20 flex flex-col justify-between text-white animate-fadeIn">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-rose-400 font-extrabold text-xs">
+                          <UserX className="w-4 h-4 shrink-0" />
+                          <span>Delete Student Confirmation</span>
+                        </div>
+                        <p className="text-xs text-slate-200 leading-relaxed">
+                          Are you sure you want to remove <strong className="text-white">{s.name}</strong> from all courses and directory records?
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <button
+                          onClick={() => setConfirmingDeleteFor(null)}
+                          className="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (onDeleteStudent) onDeleteStudent(s.name);
+                            setConfirmingDeleteFor(null);
+                          }}
+                          className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-black transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Row 1: Primary Identity & Badges */}
+                  <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Compact Photo Avatar */}
+                      <div 
+                        onClick={() => handleTriggerUpload(s.name)}
+                        className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-xs shrink-0 uppercase cursor-pointer group/avatar border border-slate-200 dark:border-slate-700"
+                        title="Click to upload profile photo"
+                      >
+                        {photoUrl ? (
+                          <img src={photoUrl} alt={s.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{s.name.charAt(0)}{s.name.split(' ')[1] ? s.name.split(' ')[1].charAt(0) : ''}</span>
+                        )}
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Camera className="w-3 h-3 text-amber-300" />
+                        </div>
+                      </div>
+
+                      {/* Name & ID */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1 sm:gap-1.5">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {s.name}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(s.name)}
+                            className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5 rounded cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Upload photo"
+                          >
+                            <Camera className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
+                          ID: HTEIM-{Math.abs(s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Badges */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                      <span className={`font-mono text-[11px] sm:text-xs font-black px-2 py-0.5 rounded-lg ${
+                        s.rate >= satisfactoryThreshold
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          : s.rate >= atRiskThreshold
+                          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                          : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                      }`}>
+                        {Math.round(s.rate)}%
+                      </span>
+
+                      {s.rate >= 100 ? (
+                        <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                          <Trophy className="w-2.5 h-2.5 text-amber-600" /> 100%
+                        </span>
+                      ) : s.rate >= satisfactoryThreshold ? (
+                        <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Good
+                        </span>
+                      ) : (
+                        <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 animate-pulse">
+                          <AlertCircle className="w-2.5 h-2.5 text-rose-600" /> At-Risk
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 2: Compact Metrics & Progress Bar */}
+                  <div className="space-y-1 bg-slate-50 dark:bg-slate-800/60 p-2 sm:p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 w-full">
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ${
+                          s.rate >= satisfactoryThreshold ? 'bg-emerald-500' : s.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, s.rate))}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-400 gap-1.5 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-slate-500 font-semibold">Sessions:</span>
+                        <strong className="text-slate-800 dark:text-slate-200 font-mono">{s.attended}/{s.totalDays || classDays?.length || 0}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-slate-500 font-semibold">Quiz Avg:</span>
+                        <strong className="text-indigo-600 dark:text-indigo-400 font-mono">{s.avgScore !== null ? `${Math.round(s.avgScore)}%` : 'N/A'}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-slate-500 font-semibold">Status:</span>
+                        <strong className={s.rate >= satisfactoryThreshold ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                          {s.rate >= 100 ? 'Honor Roll' : s.rate >= satisfactoryThreshold ? 'Satisfactory' : 'Below 75%'}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Note Snippet or Add Note Button (Compact) */}
+                  {editingNoteFor === studentKey ? (
+                    <div className="space-y-1.5 pt-1">
+                      <textarea
+                        rows={2}
+                        value={tempNoteText ?? ''}
+                        onChange={(e) => setTempNoteText(e.target.value)}
+                        placeholder="Add faculty note..."
+                        className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                      />
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          onClick={() => setEditingNoteFor(null)}
+                          className="px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            onUpdateNote(s.name, tempNoteText);
+                            setEditingNoteFor(null);
+                          }}
+                          className="px-2.5 py-1 text-[10px] font-bold bg-indigo-600 text-white rounded-md cursor-pointer"
+                        >
+                          Save Note
+                        </button>
+                      </div>
+                    </div>
+                  ) : currentNote ? (
+                    <div 
+                      onClick={() => {
+                        setEditingNoteFor(studentKey);
+                        setTempNoteText(currentNote);
+                      }}
+                      className="px-2 py-1 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 rounded-lg text-[10px] text-amber-800 dark:text-amber-300 italic truncate cursor-pointer flex items-center justify-between"
+                      title="Click to edit faculty note"
+                    >
+                      <span className="truncate">Note: {currentNote}</span>
+                      <span className="text-[9px] font-semibold underline shrink-0 ml-1">Edit</span>
+                    </div>
+                  ) : null}
+
+                  {/* Row 3: Action Buttons & History Drawer Toggle (Zero horizontal overflow) */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 w-full pt-1">
+                    <button
+                      onClick={() => canIssueDocs && onSelectStudentForTranscript(s)}
+                      disabled={!canIssueDocs}
+                      className={`flex-1 min-w-0 py-1.5 px-2 text-[10px] sm:text-[11px] font-bold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
+                        canIssueDocs 
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 cursor-pointer' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
+                      }`}
+                      title={canIssueDocs ? "Generate Official Transcript PDF" : `Requires ≥80% attendance (Current: ${Math.round(s.rate)}%)`}
+                    >
+                      {canIssueDocs ? <FileText className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 text-slate-400 shrink-0" />}
+                      <span className="truncate">Transcript</span>
+                    </button>
+
+                    <button
+                      onClick={() => canIssueDocs && onSelectStudentForCertificate(s)}
+                      disabled={!canIssueDocs}
+                      className={`flex-1 min-w-0 py-1.5 px-2 text-[10px] sm:text-[11px] font-black rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs ${
+                        canIssueDocs 
+                          ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60 shadow-none'
+                      }`}
+                      title={canIssueDocs ? "Award Milestone Certificate" : `Requires ≥80% attendance (Current: ${Math.round(s.rate)}%)`}
+                    >
+                      {canIssueDocs ? <Award className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 text-slate-400 shrink-0" />}
+                      <span className="truncate">Certificate</span>
+                    </button>
+
+                    {s.rate < atRiskThreshold && (
+                      <button
+                        onClick={() => onSelectStudentForEmail(s)}
+                        className="py-1.5 px-2.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] sm:text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                        title="Send Email Warning Notice"
+                        aria-label={`Send email warning to ${s.name}`}
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {/* Details & Timeline Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedTimelineStudent(isExpanded ? null : s.name)}
+                      className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                        isExpanded 
+                          ? 'bg-indigo-600 text-white shadow-xs' 
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                      }`}
+                      title={isExpanded ? "Collapse Timeline" : "View Attendance & Quiz Timeline"}
+                    >
+                      <History className="w-3 h-3 shrink-0" />
+                      <span className="hidden xxs:inline">{isExpanded ? 'Hide' : 'Timeline'}</span>
+                      {isExpanded ? <ChevronUp className="w-3 h-3 shrink-0" /> : <ChevronDown className="w-3 h-3 shrink-0" />}
+                    </button>
+                  </div>
+
+                  {/* Expandable Activity Feed and Notes Drawer */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden w-full max-w-full"
+                      >
+                        {/* Note creation prompt if empty */}
+                        {!currentNote && editingNoteFor !== studentKey && (
+                          <div 
+                            onClick={() => {
+                              setEditingNoteFor(studentKey);
+                              setTempNoteText('');
+                            }}
+                            className="p-1.5 bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg text-[10px] text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-between mt-1 mb-2"
+                          >
+                            <span>+ Add faculty comment or note</span>
+                          </div>
+                        )}
+
+                        {/* Dot Strip */}
+                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 w-full my-1">
+                          <span className="text-[10px] text-slate-400 font-semibold mr-1 shrink-0">Recent:</span>
+                          {timelineItems.length === 0 ? (
+                            <span className="text-[10px] text-slate-400 italic">No history recorded</span>
+                          ) : (
+                            timelineItems.slice(0, 14).map((item, dotIdx) => (
+                              <div
+                                key={`list-dot-${item.id || dotIdx}-${dotIdx}`}
+                                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                  item.present ? 'bg-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-950' : 'bg-rose-500 ring-2 ring-rose-100 dark:ring-rose-950'
+                                }`}
+                                title={`${item.name}: ${item.present ? 'Attended' : 'Absent'} (${item.score})`}
+                              />
+                            ))
+                          )}
+                        </div>
+
+                        {/* Feed box */}
+                        <div className="bg-slate-900 rounded-xl p-3 text-white space-y-2.5 mt-2 border border-slate-800 shadow-inner w-full max-w-full overflow-hidden">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-800 flex-wrap gap-1.5">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span>Timeline Feed</span>
+                            </div>
+
+                            <div className="flex items-center gap-1 text-[10px] overflow-x-auto no-scrollbar py-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setTimelineFilter('all')}
+                                className={`px-2 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${
+                                  timelineFilter === 'all' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                All ({timelineItems.length})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTimelineFilter('present')}
+                                className={`px-2 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${
+                                  timelineFilter === 'present' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                Present
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTimelineFilter('absent')}
+                                className={`px-2 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${
+                                  timelineFilter === 'absent' ? 'bg-rose-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                Absent
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTimelineFilter('quizzes')}
+                                className={`px-2 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${
+                                  timelineFilter === 'quizzes' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                Quizzes
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Chronological Activity Line */}
+                          <div className="relative pl-5 ml-2.5 border-l-2 border-indigo-900/80 space-y-2.5 my-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                            {timelineItems
+                              .filter(item => {
+                                if (timelineFilter === 'present') return item.present;
+                                if (timelineFilter === 'absent') return !item.present;
+                                if (timelineFilter === 'quizzes') return item.score && item.score !== 'N/A' && item.score !== '0%';
+                                return true;
+                              })
+                              .map((item, idx) => (
+                                <div key={`list-tl-item-${item.id || idx}-${idx}`} className="relative group/timeline">
+                                  <div 
+                                    className={`absolute -left-[29px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900 ${
+                                      item.present 
+                                        ? 'bg-emerald-500 text-slate-950 shadow-xs' 
+                                        : 'bg-rose-500 text-white shadow-xs'
+                                    }`}
+                                  >
+                                    {item.present ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <X className="w-2.5 h-2.5 stroke-[3]" />}
+                                  </div>
+
+                                  <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700/60 space-y-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-extrabold text-slate-100 truncate">
+                                        {item.name}
+                                      </span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                                        item.present ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50' : 'bg-rose-950 text-rose-300 border border-rose-800/50'
+                                      }`}>
+                                        {item.present ? 'Attended' : 'Absent'}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                                      <span className="flex items-center gap-1 truncate">
+                                        <CalendarDays className="w-3 h-3 text-indigo-400 shrink-0" />
+                                        <span className="truncate">{item.timestamp}</span>
+                                      </span>
+
+                                      {item.score && (
+                                        <span className={`font-mono font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${
+                                          item.present 
+                                            ? 'bg-indigo-900/60 text-indigo-200 border border-indigo-700/50' 
+                                            : 'bg-slate-900 text-slate-500'
+                                        }`}>
+                                          Quiz: {item.score}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
+                            <span>Total Sessions Tracked: {timelineItems.length}</span>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedTimelineStudent(null)}
+                              className="text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
+                            >
+                              Collapse Feed
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
       ) : (
-        /* Detailed Student Profile Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        /* Detailed Student Profile Cards Grid (Mobile-Optimized) */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5 w-full max-w-full">
           <AnimatePresence mode="popLayout">
           {filteredAndSortedStudents.map((s, idx) => {
             const studentKey = (s.name || '').toLowerCase().trim();
@@ -875,7 +1425,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   scale: { duration: 0.2 },
                   y: { duration: 0.2 }
                 }}
-                className="bg-white border border-slate-200 hover:border-indigo-300 dark:hover:border-indigo-600 rounded-2xl p-5 shadow-2xs hover:shadow-xl transition-shadow flex flex-col justify-between space-y-4 relative group"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-2xs hover:shadow-xl transition-shadow flex flex-col justify-between space-y-3 sm:space-y-4 relative group w-full max-w-full overflow-hidden"
               >
                 {/* Delete Confirmation Overlay */}
                 {confirmingDeleteFor === s.name && (
@@ -914,12 +1464,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 )}
                 {/* Card Header: Student Avatar & Basic Info */}
                 <div>
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                       {/* Interactive Profile Photo Avatar */}
                       <div 
                         onClick={() => handleTriggerUpload(s.name)}
-                        className="relative w-11 h-11 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 text-white font-black text-sm flex items-center justify-center shadow-md flex-shrink-0 uppercase cursor-pointer group/avatar border border-slate-200"
+                        className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 text-white font-black text-sm flex items-center justify-center shadow-md flex-shrink-0 uppercase cursor-pointer group/avatar border border-slate-200 dark:border-slate-700"
                         title="Click to upload/change student profile photo"
                       >
                         {photoUrl ? (
@@ -938,38 +1488,38 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                         </div>
                       </div>
 
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1 sm:gap-1.5">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight truncate">
                             {s.name}
                           </h3>
                           <button
                             type="button"
                             onClick={() => handleTriggerUpload(s.name)}
-                            className="text-slate-400 hover:text-indigo-600 p-0.5 rounded transition-colors cursor-pointer"
+                            className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5 rounded transition-colors cursor-pointer shrink-0"
                             title="Upload profile photo"
                           >
                             <Camera className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          ID: HTEIM-2026-{Math.abs(s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 truncate">
+                          ID: HTEIM-{Math.abs(s.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}
                         </p>
                       </div>
                     </div>
 
                     {/* Standing Badge */}
-                    <div>
+                    <div className="shrink-0">
                       {s.rate >= 100 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                          <Trophy className="w-3 h-3 text-amber-600" /> 100% Perfect
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                          <Trophy className="w-3 h-3 text-amber-600" /> 100%
                         </span>
                       ) : s.rate >= satisfactoryThreshold ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Good Standing
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Good
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 animate-pulse">
                           <AlertCircle className="w-3 h-3 text-rose-600" /> At-Risk
                         </span>
                       )}
@@ -977,12 +1527,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </div>
 
                   {/* Progress & Stats Bar */}
-                  <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="space-y-1.5 sm:space-y-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 sm:p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-[11px] font-bold text-slate-600">Attendance Standing</span>
-                      <span className="font-mono font-bold text-slate-900">{Math.round(s.rate)}% ({s.attended}/{s.totalDays})</span>
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-400">Attendance Standing</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">{Math.round(s.rate)}% ({s.attended}/{s.totalDays || classDays?.length || 0})</span>
                     </div>
-                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                       <div 
                         className={`h-full transition-all duration-500 ${
                           s.rate >= satisfactoryThreshold ? 'bg-emerald-500' : s.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
@@ -991,22 +1541,22 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-[11px]">
+                    <div className="grid grid-cols-2 gap-2 pt-1.5 sm:pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Quiz / Academic Avg</span>
-                        <span className="font-mono font-extrabold text-indigo-700">
+                        <span className="text-slate-400 dark:text-slate-500 block text-[9px] uppercase font-bold">Quiz / Acad. Avg</span>
+                        <span className="font-mono font-extrabold text-indigo-700 dark:text-indigo-400 text-xs">
                           {s.avgScore !== null ? `${Math.round(s.avgScore)}%` : 'N/A'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Sessions Attended</span>
-                        <span className="font-mono font-extrabold text-slate-800">{s.attended} / {s.totalDays}</span>
+                        <span className="text-slate-400 dark:text-slate-500 block text-[9px] uppercase font-bold">Sessions Attended</span>
+                        <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200 text-xs">{s.attended} / {s.totalDays || classDays?.length || 0}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Note Field */}
-                  <div className="mt-3">
+                  <div className="mt-2.5 sm:mt-3">
                     {editingNoteFor === studentKey ? (
                       <div className="space-y-1.5">
                         <textarea
@@ -1014,12 +1564,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           value={tempNoteText ?? ''}
                           onChange={(e) => setTempNoteText(e.target.value)}
                           placeholder="Add faculty note or advisory comment..."
-                          className="w-full p-2 bg-slate-50 border border-indigo-200 rounded-lg text-xs text-slate-800 focus:outline-none"
+                          className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 rounded-lg text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
                         />
                         <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => setEditingNoteFor(null)}
-                            className="px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                            className="px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -1040,10 +1590,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           setEditingNoteFor(studentKey);
                           setTempNoteText(currentNote);
                         }}
-                        className="p-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-between"
+                        className="p-1.5 sm:p-2 bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-between"
                       >
-                        <span className="text-[11px] italic truncate">
-                          {currentNote || '+ Click to add faculty comment / advisory note'}
+                        <span className="text-[10px] sm:text-[11px] italic truncate">
+                          {currentNote || '+ Add faculty comment / note'}
                         </span>
                       </div>
                     )}
@@ -1061,26 +1611,26 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     });
 
                     return (
-                      <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5 sm:space-y-3 w-full">
+                        <div className="flex flex-wrap xs:flex-nowrap items-center justify-between gap-1.5 sm:gap-2 w-full">
                           {/* Mini Visual Dot Strip */}
-                          <div className="flex items-center gap-1 overflow-x-auto py-1 max-w-[160px] sm:max-w-[190px]">
+                          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 shrink-0 max-w-[130px] xs:max-w-[160px] sm:max-w-[190px]">
                             {timelineItems.length === 0 ? (
                               <span className="text-[10px] text-slate-400 italic">No history</span>
                             ) : (
-                              timelineItems.slice(0, 10).map((item, idx) => (
+                              timelineItems.slice(0, 10).map((item, dotIdx) => (
                                 <div
-                                  key={`dot-${item.id || idx}-${idx}`}
+                                  key={`dot-${item.id || dotIdx}-${dotIdx}`}
                                   onClick={() => setExpandedTimelineStudent(isExpanded ? null : s.name)}
-                                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all hover:scale-125 cursor-pointer ${
-                                    item.present ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-rose-500 ring-2 ring-rose-100'
+                                  className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all hover:scale-125 cursor-pointer ${
+                                    item.present ? 'bg-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-950' : 'bg-rose-500 ring-2 ring-rose-100 dark:ring-rose-950'
                                   }`}
                                   title={`${item.name}: ${item.present ? 'Attended' : 'Absent'} (${item.score})`}
                                 />
                               ))
                             )}
                             {timelineItems.length > 10 && (
-                              <span className="text-[9px] font-extrabold text-slate-400">+{timelineItems.length - 10}</span>
+                              <span className="text-[9px] font-extrabold text-slate-400 shrink-0">+{timelineItems.length - 10}</span>
                             )}
                           </div>
 
@@ -1088,15 +1638,15 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                           <button
                             type="button"
                             onClick={() => setExpandedTimelineStudent(isExpanded ? null : s.name)}
-                            className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                            className={`px-2 sm:px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0 ${
                               isExpanded 
                                 ? 'bg-indigo-600 text-white shadow-xs' 
-                                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80'
+                                : 'bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800'
                             }`}
                           >
-                            <History className="w-3.5 h-3.5" />
-                            <span>Timeline Feed ({timelineItems.length})</span>
-                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            <History className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                            <span>Timeline ({timelineItems.length})</span>
+                            {isExpanded ? <ChevronUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" /> : <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />}
                           </button>
                         </div>
 
@@ -1108,21 +1658,21 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.22 }}
-                              className="overflow-hidden"
+                              className="overflow-hidden w-full max-w-full"
                             >
-                              <div className="bg-slate-900 rounded-xl p-3.5 text-white space-y-3 mt-2 border border-slate-800 shadow-inner">
+                              <div className="bg-slate-900 rounded-xl p-3 sm:p-3.5 text-white space-y-2.5 sm:space-y-3 mt-2 border border-slate-800 shadow-inner w-full max-w-full overflow-hidden">
                                 {/* Feed Header & Filter Tabs */}
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-800 flex-wrap gap-2">
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-800 flex-wrap gap-1.5 sm:gap-2">
                                   <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
-                                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                    <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                     <span>Attendance & Quiz Feed</span>
                                   </div>
 
-                                  <div className="flex items-center gap-1 text-[10px]">
+                                  <div className="flex items-center gap-1 text-[10px] overflow-x-auto no-scrollbar py-0.5">
                                     <button
                                       type="button"
                                       onClick={() => setTimelineFilter('all')}
-                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer shrink-0 ${
                                         timelineFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                                       }`}
                                     >
@@ -1131,7 +1681,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => setTimelineFilter('present')}
-                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer shrink-0 ${
                                         timelineFilter === 'present' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                                       }`}
                                     >
@@ -1140,17 +1690,26 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => setTimelineFilter('absent')}
-                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer shrink-0 ${
                                         timelineFilter === 'absent' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                                       }`}
                                     >
                                       Absences
                                     </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTimelineFilter('quizzes')}
+                                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer shrink-0 ${
+                                        timelineFilter === 'quizzes' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                      }`}
+                                    >
+                                      Quizzes
+                                    </button>
                                   </div>
                                 </div>
 
                                 {/* Chronological Activity Line */}
-                                <div className="relative pl-5 border-l-2 border-indigo-900/80 space-y-3.5 my-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                <div className="relative pl-5 ml-2.5 border-l-2 border-indigo-900/80 space-y-3.5 my-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                                   {filteredItems.length === 0 ? (
                                     <EmptyState
                                       title="No activity yet"
@@ -1162,7 +1721,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                       <div key={`tl-item-${item.id || idx}-${idx}`} className="relative group/timeline">
                                         {/* Node Icon on Timeline Line */}
                                         <div 
-                                          className={`absolute -left-[27px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900 ${
+                                          className={`absolute -left-[29px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900 ${
                                             item.present 
                                               ? 'bg-emerald-500 text-slate-950 shadow-xs' 
                                               : 'bg-rose-500 text-white shadow-xs'
@@ -1172,12 +1731,12 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                         </div>
 
                                         {/* Activity Content Card */}
-                                        <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60 space-y-1">
+                                        <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-lg border border-slate-700/60 space-y-1">
                                           <div className="flex items-center justify-between gap-2">
-                                            <span className="text-xs font-extrabold text-slate-100">
+                                            <span className="text-xs font-extrabold text-slate-100 truncate">
                                               {item.name}
                                             </span>
-                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${
                                               item.present ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50' : 'bg-rose-950 text-rose-300 border border-rose-800/50'
                                             }`}>
                                               {item.present ? 'Attended' : 'Absent'}
@@ -1185,13 +1744,13 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                                           </div>
 
                                           <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
-                                            <span className="flex items-center gap-1">
-                                              <CalendarDays className="w-3 h-3 text-indigo-400" />
-                                              {item.timestamp}
+                                            <span className="flex items-center gap-1 truncate">
+                                              <CalendarDays className="w-3 h-3 text-indigo-400 shrink-0" />
+                                              <span className="truncate">{item.timestamp}</span>
                                             </span>
 
                                             {item.score && (
-                                              <span className={`font-mono font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                                              <span className={`font-mono font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${
                                                 item.present 
                                                   ? 'bg-indigo-900/60 text-indigo-200 border border-indigo-700/50' 
                                                   : 'bg-slate-900 text-slate-500'
@@ -1225,48 +1784,46 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   })()}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                {/* Action Buttons (Adaptive fluid row with zero overflow) */}
+                <div className="pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 sm:gap-2 w-full">
                   <button
                     onClick={() => canIssueDocs && onSelectStudentForTranscript(s)}
                     disabled={!canIssueDocs}
-                    className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
+                    className={`flex-1 min-w-0 py-1.5 sm:py-2 px-2 text-[11px] font-bold rounded-lg sm:rounded-xl border transition-colors flex items-center justify-center gap-1 ${
                       canIssueDocs 
-                        ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 cursor-pointer' 
-                        : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 cursor-pointer' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
                     }`}
                     title={canIssueDocs ? "Generate Official Transcript PDF" : `Disabled: Requires ≥80% class completion (Current: ${Math.round(s.rate)}%)`}
                   >
-                    {canIssueDocs ? <FileText className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
-                    Transcript PDF
+                    {canIssueDocs ? <FileText className="w-3.5 h-3.5 shrink-0" /> : <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                    <span className="truncate">Transcript<span className="hidden sm:inline"> PDF</span></span>
                   </button>
 
                   <button
                     onClick={() => canIssueDocs && onSelectStudentForCertificate(s)}
                     disabled={!canIssueDocs}
-                    className={`py-1.5 px-2 text-[11px] font-black rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs ${
+                    className={`flex-1 min-w-0 py-1.5 sm:py-2 px-2 text-[11px] font-black rounded-lg sm:rounded-xl transition-colors flex items-center justify-center gap-1 shadow-2xs ${
                       canIssueDocs 
                         ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer' 
-                        : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60 shadow-none'
                     }`}
                     title={canIssueDocs ? "Award Milestone Certificate" : `Disabled: Requires ≥80% class completion (Current: ${Math.round(s.rate)}%)`}
                   >
-                    {canIssueDocs ? <Award className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
-                    Certificate
+                    {canIssueDocs ? <Award className="w-3.5 h-3.5 shrink-0" /> : <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                    <span className="truncate">Certificate</span>
                   </button>
 
                   {s.rate < atRiskThreshold && (
                     <button
                       onClick={() => onSelectStudentForEmail(s)}
-                      className="py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="py-1.5 sm:py-2 px-2.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg sm:rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer shrink-0"
                       title="Send Email Warning Notice"
                       aria-label={`Send email warning to ${s.name}`}
                     >
                       <Mail className="w-3.5 h-3.5" />
                     </button>
                   )}
-
-
                 </div>
               </motion.div>
             );
@@ -1279,11 +1836,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-2xs space-y-2"
+          className="p-8 sm:p-12 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs space-y-2"
         >
-          <AlertCircle className="w-8 h-8 text-slate-300 mx-auto" />
-          <p className="text-sm font-extrabold text-slate-700">No student profiles match your search or filter options</p>
-          <p className="text-xs text-slate-400">Try adjusting your keyword search or standing filter.</p>
+          <AlertCircle className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
+          <p className="text-sm font-extrabold text-slate-700 dark:text-slate-200">No student profiles match your search or filter options</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Try adjusting your keyword search or standing filter.</p>
         </motion.div>
       )}
     </div>

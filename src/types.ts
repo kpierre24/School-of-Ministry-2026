@@ -1,6 +1,7 @@
-export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages' | 'reports';
+export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages' | 'reports' | 'notes';
 
 export * from './types/database';
+export type { StudentClassNote } from './utils/notesStorage';
 
 export interface FacultyTeacher {
   id: string;

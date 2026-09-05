@@ -82,7 +82,8 @@ import {
   MessageSquare,
   LogOut,
   MoreHorizontal,
-  Users
+  Users,
+  BookOpenCheck
 } from 'lucide-react';
 import { loadAuthoritativeState as loadFromSupabase, saveAuthoritativeState as saveToSupabase } from './services/dataSyncService';
 import { testSupabaseConnection, loadFromSupabase as loadDirectFromSupabase } from './lib/supabaseSync';
@@ -126,6 +127,7 @@ import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
 import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
 import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
 import { ReportsTab } from './components/ReportsTab';
+import { StudentNotesBibleTab } from './components/StudentNotesBibleTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
@@ -3075,7 +3077,7 @@ export default function App() {
       const photoUrl = studentPhotos[key] || '';
       const levelId = studentLevels[key] || getDefaultLevelForStudent(student?.name || '', idx);
 
-      return { ...student, rate, attended, avgScore, note, photoUrl, levelId };
+      return { ...student, rate, attended, totalDays: totalClasses, avgScore, note, photoUrl, levelId };
     });
 
     const avg = students.length > 0 ? (totalRates / students.length) : 0;
@@ -3943,9 +3945,10 @@ create policy "Allow public update" on app_states for update using (true) with c
               alt="HTEIM Logo"
               className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
             />
-            <div className="min-w-0 shrink flex items-center gap-2">
-              <h1 className="font-display text-xs sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[240px]">
-                HTEIM School of Ministry
+            <div className="min-w-0 shrink flex items-center gap-1.5 sm:gap-2">
+              <h1 className="font-display text-xs sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
+                <span className="hidden sm:inline">HTEIM School of Ministry</span>
+                <span className="sm:hidden">HTEIM</span>
               </h1>
               <button
                 type="button"
@@ -3953,12 +3956,13 @@ create policy "Allow public update" on app_states for update using (true) with c
                   e.stopPropagation();
                   setShowCohortModal(true);
                 }}
-                className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer shadow-2xs shrink-0"
+                className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer shadow-2xs shrink-0"
                 title="Click to switch or manage academic cohorts (Class of 2026, 2027, etc.)"
               >
-                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>{activeCohort?.name || 'Class of 2026'}</span>
-                <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
+                <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="hidden xs:inline">{activeCohort?.name || 'Class of 2026'}</span>
+                <span className="xs:hidden">{activeCohort?.name ? activeCohort.name.replace('Class of ', "'") : "'26"}</span>
+                <ChevronDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-70 shrink-0" />
               </button>
             </div>
           </div>
@@ -4122,7 +4126,6 @@ create policy "Allow public update" on app_states for update using (true) with c
                       <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                       <span>Switch Role</span>
                     </button>
-            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && (
                       <button
                         onClick={() => {
@@ -4202,7 +4205,6 @@ create policy "Allow public update" on app_states for update using (true) with c
       </div>
 
       {/* Desktop Navigation */}
-            <div className="hidden sm:block"><PWAInstallButton /></div>
       {appUser && (
         <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
           <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-[#08182c]/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-[#1a385c]">
@@ -4212,6 +4214,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
               { tab: 'courses', label: 'Courses', Icon: BookOpen },
               { tab: 'exams', label: 'Exams', Icon: Award },
+              { tab: 'notes', label: 'Notes & Bible', Icon: BookOpenCheck },
               { tab: 'schedule', label: 'Schedule', Icon: Calendar },
               { tab: 'library', label: 'Library', Icon: Bookmark },
               { tab: 'payments', label: 'Payments', Icon: DollarSign, paymentOnly: true },
@@ -4536,10 +4539,32 @@ create policy "Allow public update" on app_states for update using (true) with c
                 setResources={setLibraryResources}
                 classroomMedia={classroomMedia}
                 setClassroomMedia={setClassroomMedia}
+                onOpenNotes={() => handleNavigate('notes')}
                   onOpenDiagnostics={appUser?.role === 'admin' ? () => setShowDiagnosticModal(true) : undefined}
                 />
               </ErrorBoundary>
             </Suspense>
+            </motion.div>
+          )}
+
+          {activeErpTab === 'notes' && (
+            <motion.div
+              key="notes"
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
+              className="flex-1 w-full"
+            >
+              <ErrorBoundary label="Student Notes & AMP Bible Tab">
+                <StudentNotesBibleTab
+                  currentStudentName={appUser?.studentName || appUser?.name || 'Student'}
+                  userRole={appUser?.role}
+                  availableClassDays={effectiveClassDays}
+                  onNavigateTab={(tab: string) => handleNavigate(tab as TabType)}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -5157,11 +5182,11 @@ onRequestTranscript={(s) => {
                             </div>
                           </th>
 
-                          {effectiveClassDays.map(day => {
+                          {effectiveClassDays.map((day, dIdx) => {
                             const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
                             return (
                               <th 
-                                key={day.id} 
+                                key={`th-day-${day.id || 'day'}-${dIdx}`} 
                                 className={`${densityMode === 'dense' ? 'p-2' : 'p-3'} border-r border-slate-200 text-center min-w-[110px] max-w-[150px] flex-1 hover:bg-slate-200/50 transition-colors group/th`}
                                 title={`Sheet: ${day.name}\nPresent: ${stats.count} students (${Math.round(stats.percentage)}%)\nClick pencil to rename title`}
                               >
@@ -5588,8 +5613,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                   {/* Student Badges */}
                   {studentBadges.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {studentBadges.map(b => (
-                        <span key={b.id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${b.bg}`}>
+                      {studentBadges.map((b, bIdx) => (
+                        <span key={`modal-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${b.bg}`}>
                           {b.icon}
                           <span>{b.label}</span>
                         </span>
@@ -6284,8 +6309,8 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                           <thead>
                             <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
                               <th className="p-2 font-bold sticky left-0 bg-slate-100 z-10 w-48 shadow-[1px_0_3px_rgba(0,0,0,0.05)]">Student Name</th>
-                              {effectiveClassDays.map(day => (
-                                <th key={day.id} className="p-2 font-bold text-center border-r border-slate-200 min-w-[70px]">
+                              {effectiveClassDays.map((day, dIdx) => (
+                                <th key={`rep-th-day-${day.id || 'day'}-${dIdx}`} className="p-2 font-bold text-center border-r border-slate-200 min-w-[70px]">
                                   {day.name.substring(0, 8)}
                                 </th>
                               ))}
@@ -6298,11 +6323,11 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                                 <td className="p-2 font-bold text-slate-900 sticky left-0 bg-white z-10 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate max-w-[192px]">
                                   {st.name}
                                 </td>
-                                {effectiveClassDays.map(day => {
+                                {effectiveClassDays.map((day, dIdx) => {
                                   const attendance = st.attendanceByDay[day.id];
                                   const isPresent = attendance?.present;
                                   return (
-                                    <td key={day.id} className="p-1.5 text-center border-r border-slate-100 font-bold font-mono">
+                                    <td key={`rep-td-day-${day.id || 'day'}-${dIdx}`} className="p-1.5 text-center border-r border-slate-100 font-bold font-mono">
                                       {isPresent ? (
                                         <span className="text-emerald-600">✓</span>
                                       ) : (
@@ -7129,6 +7154,24 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
 
                     <button
                       onClick={() => {
+                        setActiveErpTab('notes');
+                        setShowMobileMoreMenu(false);
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                        activeErpTab === 'notes'
+                          ? 'bg-[#023264] dark:bg-white border-[#023264] dark:border-white text-[#dfc18b] dark:text-[#023264]'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      <BookOpenCheck className="w-4 h-4 text-amber-500" />
+                      <div>
+                        <p className="text-xs font-semibold">Notes & AMP Bible</p>
+                        <p className="text-[9px] text-slate-400">Class Lecture Notes</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         setActiveErpTab('schedule');
                         setShowMobileMoreMenu(false);
                       }}
@@ -7170,7 +7213,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
-            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && (appUser?.role as string) !== 'student' && (
                       <button
                         onClick={() => {
@@ -7191,7 +7233,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
-            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && ((appUser?.role as string) === 'admin' || (appUser?.role as string) === 'teacher') && (
                       <button
                         onClick={() => {
@@ -7212,7 +7253,6 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                       </button>
                     )}
 
-            <div className="hidden sm:block"><PWAInstallButton /></div>
                     {appUser && (
                       <button
                         onClick={() => {
