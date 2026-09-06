@@ -2,6 +2,7 @@ import express from "express";
 import http from "http";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
@@ -105,11 +106,34 @@ async function startServer() {
     });
   }
 
-  // Start single unified server on PORT (bound to 0.0.0.0 for container ingress)
-  const server = app.listen(PORT, "0.0.0.0", () => {
+  // Function to detect reachable local IPv4 network addresses
+  const getNetworkIps = (): string[] => {
+    const interfaces = os.networkInterfaces();
+    const ips: string[] = [];
+    for (const name of Object.keys(interfaces)) {
+      for (const net of interfaces[name] || []) {
+        // Only return non-internal IPv4 addresses and filter out link-local (169.254.x.x)
+        if (net.family === "IPv4" && !net.internal && !net.address.startsWith("169.254.")) {
+          ips.push(net.address);
+        }
+      }
+    }
+    return ips;
+  };
+
+  // Start single unified server on PORT (bound to 0.0.0.0 for container & local network ingress)
+  const HOST = process.env.HOST || "0.0.0.0";
+  const server = app.listen(PORT, HOST, () => {
+    const networkIps = getNetworkIps();
     logger.info(`HTEIM School of Ministry server running:`);
     logger.info(`  > Local:   http://localhost:${PORT}`);
-    logger.info(`  > Network: http://0.0.0.0:${PORT}`);
+    if (networkIps.length > 0) {
+      networkIps.forEach((ip) => {
+        logger.info(`  > Network: http://${ip}:${PORT}`);
+      });
+    } else {
+      logger.info(`  > Network: http://0.0.0.0:${PORT}`);
+    }
   });
 
   server.on("error", (err: NodeJS.ErrnoException) => {

@@ -171,6 +171,7 @@ export type MediaResource = {
   url: string;
   description?: string;
   dateAdded?: string;
+  chapters?: { time: number; title: string }[];
 };
 
 export type Course = {
@@ -305,6 +306,11 @@ export type LibraryResource = {
   versionsHistory?: ResourceVersion[];
   version?: string;
   audience?: string;
+  moduleTrack?: string;
+  isRequiredReading?: boolean;
+  weekNumber?: number;
+  completedByStudents?: string[];
+  scriptureReferences?: string[];
 };
 
 export type CustomAssignment = {

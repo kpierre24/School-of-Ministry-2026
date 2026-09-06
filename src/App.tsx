@@ -4324,14 +4324,16 @@ create policy "Allow public update" on app_states for update using (true) with c
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Library Tab">
                   <LazyLibraryTab
-                userRole={appUser?.role} 
-                resources={libraryResources}
-                setResources={setLibraryResources}
-                classroomMedia={classroomMedia}
-                setClassroomMedia={setClassroomMedia}
-                onOpenNotes={() => handleNavigate('notes')}
-                  onOpenDiagnostics={appUser?.role === 'admin' ? () => setShowDiagnosticModal(true) : undefined}
-                />
+                    userRole={appUser?.role} 
+                    resources={libraryResources}
+                    setResources={setLibraryResources}
+                    classroomMedia={classroomMedia}
+                    setClassroomMedia={setClassroomMedia}
+                    studentName={appUser?.name || selectedStudent?.name || 'General Student'}
+                    onOpenNotes={() => handleNavigate('notes')}
+                    onOpenInBible={() => handleNavigate('notes')}
+                    onOpenDiagnostics={appUser?.role === 'admin' ? () => setShowDiagnosticModal(true) : undefined}
+                  />
               </ErrorBoundary>
             </Suspense>
             </motion.div>

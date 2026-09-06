@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import mammoth from 'mammoth';
 import { evaluateLesson } from '../lib/api/ai';
 import { logger } from '../lib/logger';
@@ -38,7 +38,13 @@ import {
   Check,
   Edit3,
   Globe,
-  RefreshCw
+  RefreshCw,
+  CheckSquare,
+  Square,
+  Star,
+  Award,
+  Flame,
+  Layers
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
@@ -47,6 +53,19 @@ import { UserRole } from '../lib/userAuth';
 import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
 import { parseVideoMediaUrl } from '../lib/mediaUtils';
 import { DocumentReaderModal } from './DocumentReaderModal';
+import { ScriptureHoverPopover } from './ScriptureHoverPopover';
+import { ScriptureFlashcardsModal } from './ScriptureFlashcardsModal';
+import { parseTextWithScriptures, extractScriptureReferences } from '../utils/scriptureDetector';
+import { createNoteFromLibraryExcerpt } from '../utils/notesStorage';
+
+export const CURRICULUM_MODULES = [
+  { code: 'SOM-MOD-1', title: 'Mod 1: Intro', fullName: 'Module 1: Introduction & Foundations' },
+  { code: 'SOM-MOD-2', title: 'Mod 2: Evangelism', fullName: 'Module 2: Evangelism & Soul Winning' },
+  { code: 'SOM-MOD-3', title: 'Mod 3: Ethics', fullName: 'Module 3: Ministerial Character & Ethics' },
+  { code: 'SOM-MOD-4', title: 'Mod 4: Apostolic', fullName: 'Module 4: Apostolic Governance & Epistles' },
+  { code: 'SOM-MOD-5', title: 'Mod 5: Prophetic', fullName: 'Module 5: Prophetic Ministry & Discernment' },
+  { code: 'SOM-MOD-6', title: 'Mod 6: Pastors', fullName: 'Module 6: School of Pastors & Expository Preaching' },
+];
 
 interface LibraryTabProps {
   userRole?: UserRole;
@@ -54,8 +73,10 @@ interface LibraryTabProps {
   setResources?: React.Dispatch<React.SetStateAction<LibraryResource[]>>;
   classroomMedia?: MediaResource[];
   setClassroomMedia?: React.Dispatch<React.SetStateAction<MediaResource[]>>;
+  studentName?: string;
   onOpenDiagnostics?: () => void;
   onOpenNotes?: () => void;
+  onOpenInBible?: (bookId: string, chapter: number, verse?: number) => void;
 }
 
 // Helper to check if text contains raw binary zip code / PK header from DOCX
@@ -126,8 +147,10 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   setResources: propSetResources,
   classroomMedia: propClassroomMedia,
   setClassroomMedia: propSetClassroomMedia,
+  studentName = 'General Student',
   onOpenDiagnostics,
-  onOpenNotes
+  onOpenNotes,
+  onOpenInBible
 }) => {
   const isStudent = userRole === 'student';
 
@@ -202,6 +225,9 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [moduleFilter, setModuleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'required' | 'completed' | 'to-read'>('all');
+  const [showFlashcardsModal, setShowFlashcardsModal] = useState(false);
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
   
   // Modals
@@ -225,6 +251,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [editCategory, setEditCategory] = useState('');
   const [editAuthor, setEditAuthor] = useState('');
   const [editCourseCode, setEditCourseCode] = useState('');
+  const [editModuleTrack, setEditModuleTrack] = useState('SOM-MOD-1');
+  const [editIsRequired, setEditIsRequired] = useState(false);
   const [editSummary, setEditSummary] = useState('');
   const [editKeyTakeaways, setEditKeyTakeaways] = useState('');
   const [editFullContent, setEditFullContent] = useState('');
@@ -236,6 +264,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     setEditCategory(res.category);
     setEditAuthor(res.author);
     setEditCourseCode(res.courseCode);
+    setEditModuleTrack(res.moduleTrack || res.courseCode || 'SOM-MOD-1');
+    setEditIsRequired(!!res.isRequiredReading);
     setEditSummary(res.summary);
     setEditKeyTakeaways((res.keyTakeaways || []).join('\n'));
     setEditFullContent(res.fullContent || '');
@@ -253,6 +283,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
           category: editCategory,
           author: editAuthor.trim(),
           courseCode: editCourseCode.toUpperCase().trim(),
+          moduleTrack: editModuleTrack,
+          isRequiredReading: editIsRequired,
           summary: editSummary.trim(),
           keyTakeaways: editKeyTakeaways.split('\n').map(line => line.trim()).filter(Boolean),
           fullContent: editFullContent
@@ -272,6 +304,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [inlineCategory, setInlineCategory] = useState('');
   const [inlineAuthor, setInlineAuthor] = useState('');
   const [inlineCourseCode, setInlineCourseCode] = useState('');
+  const [inlineModuleTrack, setInlineModuleTrack] = useState('SOM-MOD-1');
+  const [inlineIsRequired, setInlineIsRequired] = useState(false);
   const [inlineSummary, setInlineSummary] = useState('');
 
   const startInlineEdit = (res: LibraryResource, e?: React.MouseEvent) => {
@@ -282,6 +316,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     setInlineCategory(res.category);
     setInlineAuthor(res.author);
     setInlineCourseCode(res.courseCode);
+    setInlineModuleTrack(res.moduleTrack || res.courseCode || 'SOM-MOD-1');
+    setInlineIsRequired(!!res.isRequiredReading);
     setInlineSummary(res.summary);
   };
 
@@ -301,6 +337,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
           category: inlineCategory,
           author: inlineAuthor.trim(),
           courseCode: inlineCourseCode.toUpperCase().trim(),
+          moduleTrack: inlineModuleTrack,
+          isRequiredReading: inlineIsRequired,
           summary: inlineSummary.trim()
         };
       }
@@ -387,17 +425,91 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     }
   };
 
-  // Filter logic
-  const filteredResources = resources.filter(r => {
-    const matchesSearch = (r.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (r.author || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (r.courseCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (r.summary || '').toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
+  // Toggle Student Reading Completion
+  const handleToggleComplete = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setResources(prev => prev.map(r => {
+      if (r.id === id) {
+        const list = r.completedByStudents || [];
+        const isCompleted = list.includes(studentName);
+        const updatedList = isCompleted 
+          ? list.filter(n => n !== studentName)
+          : [...list, studentName];
+        return {
+          ...r,
+          completedByStudents: updatedList
+        };
+      }
+      return r;
+    }));
+  };
 
-    if (categoryFilter !== 'all' && r.category !== categoryFilter) return false;
-    return true;
-  });
+  // Full-text match snippet extractor for search previews
+  const getContentSnippet = (content?: string, query?: string): string | null => {
+    if (!content || !query || !query.trim()) return null;
+    const q = query.toLowerCase().trim();
+    const idx = content.toLowerCase().indexOf(q);
+    if (idx === -1) return null;
+    const start = Math.max(0, idx - 45);
+    const end = Math.min(content.length, idx + q.length + 55);
+    return (start > 0 ? '...' : '') + content.substring(start, end).trim() + (end < content.length ? '...' : '');
+  };
+
+  // Curriculum Reading Progress metrics
+  const moduleStats = useMemo(() => {
+    const relevant = moduleFilter === 'all'
+      ? resources
+      : resources.filter(r => (r.moduleTrack || r.courseCode || '').toUpperCase().includes(moduleFilter));
+
+    const total = relevant.length;
+    const completed = relevant.filter(r => r.completedByStudents?.includes(studentName)).length;
+    const required = relevant.filter(r => r.isRequiredReading).length;
+    const requiredCompleted = relevant.filter(r => r.isRequiredReading && r.completedByStudents?.includes(studentName)).length;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { total, completed, required, requiredCompleted, percent };
+  }, [resources, moduleFilter, studentName]);
+
+  // Deep Full-Text Filter logic
+  const filteredResources = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+
+    return resources.filter(r => {
+      // 1. Full-text search across Title, Author, Course Code, Summary, AND Full Document Content
+      if (q) {
+        const titleMatch = (r.title || '').toLowerCase().includes(q);
+        const authorMatch = (r.author || '').toLowerCase().includes(q);
+        const courseMatch = (r.courseCode || '').toLowerCase().includes(q);
+        const summaryMatch = (r.summary || '').toLowerCase().includes(q);
+        const contentMatch = (r.fullContent || '').toLowerCase().includes(q);
+
+        if (!titleMatch && !authorMatch && !courseMatch && !summaryMatch && !contentMatch) {
+          return false;
+        }
+      }
+
+      // 2. Category Filter
+      if (categoryFilter !== 'all' && r.category !== categoryFilter) {
+        return false;
+      }
+
+      // 3. Module Filter
+      if (moduleFilter !== 'all') {
+        const modKey = (r.moduleTrack || r.courseCode || '').toUpperCase();
+        if (!modKey.includes(moduleFilter)) {
+          return false;
+        }
+      }
+
+      // 4. Status Filter (Required / Completed / To Read)
+      const isCompleted = r.completedByStudents?.includes(studentName);
+      if (statusFilter === 'required' && !r.isRequiredReading) return false;
+      if (statusFilter === 'completed' && !isCompleted) return false;
+      if (statusFilter === 'to-read' && isCompleted) return false;
+
+      return true;
+    });
+  }, [resources, searchQuery, categoryFilter, moduleFilter, statusFilter, studentName]);
 
   // Download Handler
   const handleDownload = (resource: LibraryResource, e?: React.MouseEvent) => {
@@ -815,103 +927,223 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           </p>
         </div>
 
-        {!isStudent && (
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Interactive Scripture Memory Flashcard Action */}
+          <button
+            type="button"
+            onClick={() => setShowFlashcardsModal(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Study scripture memory verses and key takeaways with interactive flashcards"
+          >
+            <Brain className="w-4 h-4" />
+            <span>Scripture Flashcards</span>
+          </button>
 
-            {resources.length > 0 && !isStudent && (
-              (() => {
-                const missingSummaryCount = resources.filter(r => !r.summary || r.summary.trim() === '').length;
-                if (missingSummaryCount === 0) return null;
-                return (
-                  <button
-                    type="button"
-                    onClick={handleBatchGenerateSummaries}
-                    disabled={isBatchGenerating}
-                    className="px-3.5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/60 dark:to-purple-950/60 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
-                    title="Generate AI summaries for all lessons currently lacking one"
-                  >
-                    {isBatchGenerating ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
-                        <span>Analyzing Lessons ({missingSummaryCount})...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>AI Summarize Missing ({missingSummaryCount})</span>
-                      </>
-                    )}
-                  </button>
-                );
-              })()
-            )}
+          {!isStudent && (
+            <>
+              {resources.length > 0 && (
+                (() => {
+                  const missingSummaryCount = resources.filter(r => !r.summary || r.summary.trim() === '').length;
+                  if (missingSummaryCount === 0) return null;
+                  return (
+                    <button
+                      type="button"
+                      onClick={handleBatchGenerateSummaries}
+                      disabled={isBatchGenerating}
+                      className="px-3.5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/60 dark:to-purple-950/60 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                      title="Generate AI summaries for all lessons currently lacking one"
+                    >
+                      {isBatchGenerating ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
+                          <span>Analyzing Lessons ({missingSummaryCount})...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>AI Summarize Missing ({missingSummaryCount})</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })()
+              )}
 
-            {resources.length > 0 ? (
+              {resources.length > 0 ? (
+                <button
+                  onClick={handleClearAllLessons}
+                  className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Clear current lessons to upload fresh lesson files"
+                >
+                  <Trash2 className="w-4 h-4" /> Clear All Lessons
+                </button>
+              ) : (
+                <button
+                  onClick={handleResetSampleLessons}
+                  className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-slate-500" /> Restore Sample Lessons
+                </button>
+              )}
+
               <button
-                onClick={handleClearAllLessons}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Clear current lessons to upload fresh lesson files"
+                onClick={() => setShowUploadModal(true)}
+                className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
               >
-                <Trash2 className="w-4 h-4" /> Clear All Lessons
+                <Upload className="w-4 h-4" /> Upload Lesson Files
               </button>
-            ) : (
-              <button
-                onClick={handleResetSampleLessons}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4 text-slate-500" /> Restore Sample Lessons
-              </button>
-            )}
-
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              <Upload className="w-4 h-4" /> Upload Lesson Files
-            </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Classroom Sermon & Lecture Audio/Video Player */}
       <ClassroomMediaPlayer
         mediaResources={classroomMedia}
         userRole={userRole}
+        studentName={studentName}
         onAddMedia={handleAddGlobalMedia}
         onUpdateMedia={handleUpdateGlobalMedia}
         onRemoveMedia={handleRemoveGlobalMedia}
         onOpenNotes={onOpenNotes}
       />
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search uploaded lessons, topics, AI summaries, or course code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          />
+      {/* Curriculum Module 1-6 Selector & Student Reading Progress Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Curriculum Modules (1–6):
+            </span>
+          </div>
+
+          {/* Student Progress Badge */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
+              <CheckSquare className="w-4 h-4 text-emerald-500" />
+              <span>
+                {moduleStats.completed} of {moduleStats.total} Completed ({moduleStats.percent}%)
+              </span>
+              {moduleStats.required > 0 && (
+                <span className="ml-1 px-2 py-0.5 bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 rounded text-[10px] font-black">
+                  ⭐ {moduleStats.requiredCompleted}/{moduleStats.required} Required
+                </span>
+              )}
+            </div>
+            <div className="w-28 sm:w-36 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300"
+                style={{ width: `${moduleStats.percent}%` }}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto">
-          <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+        {/* Module Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setModuleFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              moduleFilter === 'all'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            All Modules
+          </button>
+          {CURRICULUM_MODULES.map((m) => (
+            <button
+              key={m.code}
+              type="button"
+              onClick={() => setModuleFilter(m.code)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                moduleFilter === m.code
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              title={m.fullName}
+            >
+              <span>{m.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search uploaded lessons, topics, AI summaries, course code, or full document content..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-white"
+            />
+          </div>
+
+          {/* Quick Status Filters */}
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto">
+            <span className="text-xs font-bold text-slate-400 hidden sm:inline">Status:</span>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'all' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              All Status
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('required')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                statusFilter === 'required' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5 fill-current" /> Required Only
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('completed')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                statusFilter === 'completed' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5" /> Completed
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('to-read')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                statusFilter === 'to-read' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+              }`}
+            >
+              <Square className="w-3.5 h-3.5" /> To Read
+            </button>
+          </div>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-t border-slate-100 dark:border-slate-800 pt-2.5">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <Filter className="w-3.5 h-3.5 text-slate-400" /> Category:
           </span>
           <button
             onClick={() => setCategoryFilter('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              categoryFilter === 'all' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
             }`}
           >
-            All Lessons ({resources.length})
+            All ({resources.length})
           </button>
           <button
             onClick={() => setCategoryFilter('Textbook')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter === 'Textbook' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-800'
+              categoryFilter === 'Textbook' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300'
             }`}
           >
             Textbooks
@@ -919,7 +1151,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           <button
             onClick={() => setCategoryFilter('Study Guide')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter === 'Study Guide' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800'
+              categoryFilter === 'Study Guide' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
             }`}
           >
             Study Guides
@@ -927,7 +1159,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           <button
             onClick={() => setCategoryFilter('Scripture Memory')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter === 'Scripture Memory' ? 'bg-amber-500 text-slate-950' : 'bg-amber-50 text-amber-900'
+              categoryFilter === 'Scripture Memory' ? 'bg-amber-500 text-slate-950' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300'
             }`}
           >
             Scripture Memory
@@ -935,7 +1167,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           <button
             onClick={() => setCategoryFilter('Lecture Audio')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter === 'Lecture Audio' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'
+              categoryFilter === 'Lecture Audio' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
             }`}
           >
             Lecture Audio
@@ -943,7 +1175,7 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           <button
             onClick={() => setCategoryFilter('Livestream Recording')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              categoryFilter === 'Livestream Recording' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-800'
+              categoryFilter === 'Livestream Recording' ? 'bg-rose-600 text-white' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
             }`}
           >
             🎥 Livestream Recordings
@@ -1085,6 +1317,33 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     </div>
                   </div>
 
+                  {/* Module Track & Required Reading */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-extrabold text-slate-400 uppercase mb-1">Curriculum Module Track</label>
+                      <select
+                        value={inlineModuleTrack}
+                        onChange={(e) => setInlineModuleTrack(e.target.value)}
+                        className="w-full p-2 bg-slate-950 border border-slate-700 rounded-xl text-[11px] font-bold text-slate-200 focus:outline-none"
+                      >
+                        {CURRICULUM_MODULES.map(m => (
+                          <option key={m.code} value={m.code}>{m.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-4">
+                      <label className="flex items-center gap-2 text-[11px] font-bold text-amber-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={inlineIsRequired}
+                          onChange={(e) => setInlineIsRequired(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-amber-500 focus:ring-amber-400 bg-slate-950 border-slate-700"
+                        />
+                        <span>⭐ Required Reading</span>
+                      </label>
+                    </div>
+                  </div>
+
                   {/* Author / Instructor */}
                   <div>
                     <label className="block text-[9px] font-extrabold text-slate-400 uppercase mb-1">Author / Instructor</label>
@@ -1130,10 +1389,16 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             );
           }
 
+          const isCompleted = (res.completedByStudents || []).includes(studentName);
+
           return (
             <div 
               key={res.id} 
-              className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
+              className={`border rounded-xl p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group ${
+                isCompleted 
+                  ? 'bg-slate-50/50 dark:bg-slate-900/40 border-emerald-300/60 dark:border-emerald-800/60' 
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+              }`}
             >
               <div>
                 {/* Header Badge & Action Buttons */}
@@ -1150,9 +1415,45 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                       {res.format} ({res.size})
                     </span>
 
-                    <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-mono font-bold rounded">
+                    <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-mono font-bold rounded">
                       {res.courseCode}
                     </span>
+
+                    {res.moduleTrack && (
+                      <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 text-[10px] font-bold rounded">
+                        {res.moduleTrack}
+                      </span>
+                    )}
+
+                    {res.isRequiredReading && (
+                      <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[10px] font-black rounded flex items-center gap-1 shadow-2xs">
+                        <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> Required
+                      </span>
+                    )}
+
+                    {/* Completion Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleComplete(res.id, e)}
+                      className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md flex items-center gap-1 transition-all cursor-pointer border ${
+                        isCompleted
+                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                      title={isCompleted ? `Completed by ${studentName} - click to unmark` : `Mark as completed for ${studentName}`}
+                    >
+                      {isCompleted ? (
+                        <>
+                          <CheckSquare className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span>Completed</span>
+                        </>
+                      ) : (
+                        <>
+                          <Square className="w-3 h-3 text-slate-400" />
+                          <span>Mark Read</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -1205,6 +1506,38 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 <p className="text-[11px] text-slate-500 mb-2 font-semibold flex items-center gap-1">
                   <User className="w-3 h-3 text-slate-400" /> {res.author}
                 </p>
+
+                {/* Full-Text Search Match Snippet Box */}
+                {searchQuery.trim() && (() => {
+                  const snippet = getContentSnippet(res.fullContent, searchQuery);
+                  if (!snippet) return null;
+                  return (
+                    <div className="mb-2.5 p-2.5 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl text-xs space-y-1">
+                      <div className="flex items-center gap-1 text-[10px] font-black uppercase text-amber-900 dark:text-amber-400">
+                        <Search className="w-3 h-3 text-amber-600 dark:text-amber-400" /> Matched in Full Content:
+                      </div>
+                      <p className="text-[11px] text-slate-700 dark:text-slate-300 font-mono italic leading-relaxed line-clamp-2">
+                        "...{snippet}..."
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {/* Scripture Memory Practice Launcher */}
+                {res.category === 'Scripture Memory' && (
+                  <div className="mb-2.5 p-2 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /> Memorization Track
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowFlashcardsModal(true)}
+                      className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
+                    >
+                      <Brain className="w-3 h-3" /> Practice Flashcards
+                    </button>
+                  </div>
+                )}
 
                 {/* External Video / Stream Link Badge if present (Google Drive / YouTube) */}
                 {res.downloadUrl && 
@@ -1304,14 +1637,28 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                   </div>
                 )}
 
-                {/* Key Takeaways snippet if present */}
+                {/* Key Takeaways snippet if present with interactive Scripture Hover Popovers */}
                 {res.keyTakeaways && res.keyTakeaways.length > 0 && (
                   <div className="mt-2 space-y-1">
                     <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Key Takeaways:</p>
                     {res.keyTakeaways.slice(0, 2).map((k, idx) => (
-                      <p key={idx} className="text-[11px] text-slate-600 flex items-start gap-1 line-clamp-1">
-                        <span className="text-emerald-500 font-bold">•</span> {k}
-                      </p>
+                      <div key={idx} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1">
+                        <span className="text-emerald-500 font-bold flex-shrink-0">•</span>
+                        <div className="line-clamp-1 inline">
+                          {parseTextWithScriptures(k).map((token, tIdx) => {
+                            if (token.type === 'scripture' && token.reference) {
+                              return (
+                                <ScriptureHoverPopover
+                                  key={tIdx}
+                                  reference={token.reference}
+                                  onOpenInBible={onOpenInBible}
+                                />
+                              );
+                            }
+                            return <span key={tIdx}>{token.text}</span>;
+                          })}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -1647,6 +1994,21 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         onGenerateSummary={handleGenerateAiSummary}
         isGeneratingSummary={generatingSummaryId === previewResource?.id}
         isStudent={isStudent}
+        isCompleted={!!previewResource && (previewResource.completedByStudents || []).includes(studentName)}
+        onToggleComplete={(resourceId: string) => handleToggleComplete(resourceId)}
+        studentName={studentName}
+        onOpenInBible={onOpenInBible}
+        onOpenNotes={onOpenNotes}
+      />
+
+      {/* Interactive Scripture Memory & Flashcards Study Modal */}
+      <ScriptureFlashcardsModal
+        isOpen={showFlashcardsModal}
+        onClose={() => setShowFlashcardsModal(false)}
+        resources={resources}
+        currentModuleFilter={moduleFilter}
+        studentName={studentName}
+        onOpenInBible={onOpenInBible}
       />
 
       {/* ========================================================= */}
@@ -1850,6 +2212,34 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     value={`${editingResource.format} (${editingResource.size})`}
                     className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-400 cursor-not-allowed"
                   />
+                </div>
+              </div>
+
+              {/* Module Track & Required Reading */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Curriculum Module Track</label>
+                  <select
+                    value={editModuleTrack}
+                    onChange={(e) => setEditModuleTrack(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-indigo-500 focus:bg-white"
+                  >
+                    {CURRICULUM_MODULES.map(m => (
+                      <option key={m.code} value={m.code}>{m.title} - {m.fullName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <label className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="editIsRequired"
+                      checked={editIsRequired}
+                      onChange={(e) => setEditIsRequired(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
+                    />
+                    <span>⭐ Required Reading for Graduation</span>
+                  </label>
                 </div>
               </div>
 

@@ -30,12 +30,14 @@ import {
 import { MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
 import { parseVideoMediaUrl } from '../lib/mediaUtils';
+import { createNoteFromLibraryExcerpt } from '../utils/notesStorage';
 
 interface ClassroomMediaPlayerProps {
   mediaResources: MediaResource[];
   courseCode?: string;
   courseTitle?: string;
   userRole?: UserRole;
+  studentName?: string;
   onAddMedia?: (newMedia: MediaResource) => void;
   onUpdateMedia?: (updatedMedia: MediaResource) => void;
   onRemoveMedia?: (mediaId: string) => void;
@@ -48,6 +50,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   mediaResources,
   courseCode,
   userRole = 'admin',
+  studentName = 'General Student',
   onAddMedia,
   onUpdateMedia,
   onRemoveMedia,
@@ -68,6 +71,81 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [useDirectStream, setUseDirectStream] = useState(true);
+  const [timestampNoteToast, setTimestampNoteToast] = useState<string | null>(null);
+
+  // Timestamp Seeking
+  const seekToSeconds = (seconds: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = seconds;
+      setCurrentTime(seconds);
+      if (!isPlaying) {
+        audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      }
+    }
+    if (videoRef.current) {
+      videoRef.current.currentTime = seconds;
+      setCurrentTime(seconds);
+      if (!isPlaying) {
+        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      }
+    }
+  };
+
+  // Capture current playback timestamp to Student Notes
+  const handleCaptureTimestampNote = () => {
+    if (!currentTrack) return;
+    const mins = Math.floor(currentTime / 60);
+    const secs = Math.floor(currentTime % 60);
+    const timeLabel = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+    createNoteFromLibraryExcerpt(studentName, {
+      resourceTitle: currentTrack.title,
+      instructor: currentTrack.speaker,
+      excerpt: currentTrack.description || `Lecture note captured at timestamp ${timeLabel}`,
+      isAudioTimestamp: true,
+      timestampLabel: timeLabel
+    });
+
+    setTimestampNoteToast(`Captured [${timeLabel}] into your Class Notes!`);
+    setTimeout(() => setTimestampNoteToast(null), 3500);
+  };
+
+  // Parse chapter markers or timestamps from description
+  const parsedChapters = useMemo(() => {
+    if (!currentTrack) return [];
+    if (currentTrack.chapters && currentTrack.chapters.length > 0) {
+      return currentTrack.chapters.map(ch => {
+        const mins = Math.floor(ch.time / 60);
+        const secs = Math.floor(ch.time % 60);
+        return {
+          raw: `${mins}:${secs < 10 ? '0' : ''}${secs}`,
+          seconds: ch.time,
+          label: ch.title
+        };
+      });
+    }
+
+    const regex = /(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\s*(?:[-–—:]\s*([^\n\r]+))?/g;
+    const list: { raw: string; seconds: number; label: string }[] = [];
+    const text = currentTrack.description || '';
+    const matches = [...text.matchAll(regex)];
+
+    for (const m of matches) {
+      const hours = m[1] ? parseInt(m[1], 10) : 0;
+      const mins = parseInt(m[2], 10);
+      const secs = parseInt(m[3], 10);
+      const label = (m[4] || '').trim();
+      const totalSeconds = hours * 3600 + mins * 60 + secs;
+
+      list.push({
+        raw: m[0].split(/[-–—:]/)[0].trim(),
+        seconds: totalSeconds,
+        label: label || `Marker at ${m[0].split(/[-–—:]/)[0].trim()}`
+      });
+    }
+
+    return list;
+  }, [currentTrack]);
 
   // Modal for adding new audio/video resource
   const [showAddModal, setShowAddModal] = useState(false);
@@ -588,6 +666,20 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                         </button>
                       ))}
                     </div>
+
+                    {/* Capture Timestamp to Note Button */}
+                    <button
+                      type="button"
+                      onClick={handleCaptureTimestampNote}
+                      className="px-2.5 py-1 bg-indigo-950 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-700/60 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                      title="Save current playback timestamp to Class Notes"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="hidden sm:inline">Note Timestamp</span>
+                      <span className="font-mono text-[10px] bg-slate-900 px-1 py-0.2 rounded text-amber-300 font-bold">
+                        {formatSecs(currentTime)}
+                      </span>
+                    </button>
                   </div>
 
                   {/* Volume Slider */}
@@ -606,6 +698,52 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                     />
                   </div>
                 </div>
+
+                {/* Timestamp Note Toast Notification */}
+                {timestampNoteToast && (
+                  <div className="p-2 bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 rounded-xl text-xs font-bold flex items-center justify-between gap-2 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{timestampNoteToast}</span>
+                    </div>
+                    {onOpenNotes && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenNotes(currentTrack.title)}
+                        className="underline text-amber-300 hover:text-white text-[11px] cursor-pointer"
+                      >
+                        Open Notes →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Clickable Chapter Markers & Timestamps */}
+                {parsedChapters.length > 0 && (
+                  <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <Layers className="w-3 h-3 text-amber-400" /> Lecture Timestamps & Chapters ({parsedChapters.length})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap max-h-24 overflow-y-auto">
+                      {parsedChapters.map((ch, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => seekToSeconds(ch.seconds)}
+                          className="px-2 py-1 bg-slate-900 hover:bg-indigo-950 text-slate-300 hover:text-indigo-200 border border-slate-800 hover:border-indigo-600 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs group"
+                          title={`Seek to ${ch.raw} - ${ch.label}`}
+                        >
+                          <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold rounded group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                            {ch.raw}
+                          </span>
+                          <span className="truncate max-w-[200px]">{ch.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

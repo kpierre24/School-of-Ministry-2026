@@ -7,13 +7,16 @@
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
-    "preview": "vite preview",
+    "preview": "vite preview --host",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "db:health": "node scripts/maintenance/db-health-check.cjs",
     "db:seed": "node scripts/seed/seed-academic-data.cjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docker:build": "docker build -t hteim-school-of-ministry .",
+    "docker:run": "docker run -d -p 3000:3000 --name hteim-school-of-ministry hteim-school-of-ministry",
+    "docker:compose": "docker compose up --build -d"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

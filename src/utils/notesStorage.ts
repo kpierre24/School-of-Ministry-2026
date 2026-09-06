@@ -113,3 +113,57 @@ export function saveStudentNotes(studentName: string, notes: StudentClassNote[])
     console.error('Failed to save notes to localStorage', e);
   }
 }
+
+/**
+ * Append a note or update existing note for a student
+ */
+export function appendStudentNote(studentName: string, newNote: StudentClassNote): void {
+  const current = getStudentNotes(studentName);
+  const updated = [newNote, ...current.filter(n => n.id !== newNote.id)];
+  saveStudentNotes(studentName, updated);
+}
+
+/**
+ * Format and add a student note directly from a library resource excerpt
+ */
+export function createNoteFromLibraryExcerpt(
+  studentName: string,
+  params: {
+    resourceTitle: string;
+    courseCode?: string;
+    instructor?: string;
+    excerpt: string;
+    scriptures?: string[];
+    tags?: string[];
+    isAudioTimestamp?: boolean;
+    timestampLabel?: string;
+  }
+): StudentClassNote {
+  const noteId = `note_lib_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const nowIso = new Date().toISOString();
+  const dateFormatted = nowIso.split('T')[0];
+
+  const prefix = params.isAudioTimestamp ? `🎙️ Lecture Timestamp ${params.timestampLabel || ''}` : '📖 Library Excerpt';
+
+  const note: StudentClassNote = {
+    id: noteId,
+    studentName: studentName || 'General Student',
+    title: `${prefix}: ${params.resourceTitle}`,
+    classDayId: params.courseCode || 'SOM-LIBRARY',
+    classDayName: `${params.courseCode || 'SOM Resource'}: ${params.resourceTitle}`,
+    classDate: dateFormatted,
+    moduleCode: params.courseCode || 'SOM-CORE',
+    instructor: params.instructor || 'HTEIM Faculty',
+    content: `### Source: ${params.resourceTitle}\n${params.instructor ? `**Instructor / Author**: ${params.instructor}\n` : ''}${params.isAudioTimestamp ? `**Audio Timestamp**: \`${params.timestampLabel}\`\n\n` : ''}**Study Excerpt / Notes**:\n> ${params.excerpt.split('\n').join('\n> ')}\n\n### Personal Reflection:\n- `,
+    keyScriptures: params.scriptures || [],
+    spiritualTakeaways: `Captured during self-study from library material: "${params.resourceTitle}".`,
+    actionPoints: ['Review this excerpt for module preparation.'],
+    tags: params.tags && params.tags.length > 0 ? params.tags : ['Digital Library', params.courseCode || 'Curriculum'],
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  appendStudentNote(studentName, note);
+  return note;
+}
+

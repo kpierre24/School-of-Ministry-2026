@@ -82,6 +82,7 @@ export default defineConfig(() => {
       dedupe: ['react', 'react-dom'],
     },
     server: {
+      host: true,
       hmr: false,
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       headers: {
@@ -92,6 +93,7 @@ export default defineConfig(() => {
       },
     },
     preview: {
+      host: true,
       headers: {
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'strict-origin-when-cross-origin',

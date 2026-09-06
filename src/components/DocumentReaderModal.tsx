@@ -31,11 +31,20 @@ import {
   Eye,
   Layers,
   FileType,
-  AlertCircle
+  AlertCircle,
+  CheckSquare,
+  Square,
+  Bookmark,
+  Highlighter,
+  Pin,
+  Plus
 } from 'lucide-react';
 import { LibraryResource } from '../types';
 import { parseVideoMediaUrl } from '../lib/mediaUtils';
 import { dataUrlToUint8Array, extractTextFromPdfData, renderPdfPageToCanvas } from '../lib/pdfUtils';
+import { ScriptureHoverPopover } from './ScriptureHoverPopover';
+import { parseTextWithScriptures } from '../utils/scriptureDetector';
+import { createNoteFromLibraryExcerpt } from '../utils/notesStorage';
 
 interface DocumentReaderModalProps {
   isOpen: boolean;
@@ -46,6 +55,11 @@ interface DocumentReaderModalProps {
   onGenerateSummary?: (resource: LibraryResource) => void;
   isGeneratingSummary?: boolean;
   isStudent?: boolean;
+  studentName?: string;
+  isCompleted?: boolean;
+  onToggleComplete?: (resourceId: string) => void;
+  onOpenInBible?: (bookId: string, chapter: number, verse?: number) => void;
+  onOpenNotes?: () => void;
 }
 
 type ReaderTheme = 'light' | 'sepia' | 'dark' | 'contrast';
@@ -100,6 +114,11 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
   onGenerateSummary,
   isGeneratingSummary = false,
   isStudent = false,
+  studentName = 'General Student',
+  isCompleted = false,
+  onToggleComplete,
+  onOpenInBible,
+  onOpenNotes,
 }) => {
   // Reader Settings State
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -109,6 +128,46 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedText, setCopiedText] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
+
+  // Selection & Notes Capture State
+  const [selectedText, setSelectedText] = useState<string>('');
+  const [noteCreatedToast, setNoteCreatedToast] = useState<string | null>(null);
+
+  const handleMouseUpCapture = () => {
+    const sel = window.getSelection();
+    const str = sel ? sel.toString().trim() : '';
+    if (str && str.length >= 3) {
+      setSelectedText(str);
+    } else {
+      setSelectedText('');
+    }
+  };
+
+  const handleSendSelectedToNotes = () => {
+    if (!resource || !selectedText) return;
+    createNoteFromLibraryExcerpt(studentName, {
+      resourceTitle: resource.title,
+      courseCode: resource.courseCode,
+      instructor: resource.author,
+      excerpt: selectedText
+    });
+    setNoteCreatedToast(`Saved excerpt to Class Notes!`);
+    setSelectedText('');
+    setTimeout(() => setNoteCreatedToast(null), 3500);
+  };
+
+  const handleSendSummaryToNotes = () => {
+    if (!resource) return;
+    const body = `${resource.summary || ''}\n\nKey Learning Takeaways:\n${(resource.keyTakeaways || []).map(t => `• ${t}`).join('\n')}`;
+    createNoteFromLibraryExcerpt(studentName, {
+      resourceTitle: resource.title,
+      courseCode: resource.courseCode,
+      instructor: resource.author,
+      excerpt: body
+    });
+    setNoteCreatedToast(`Saved lesson summary & takeaways to Class Notes!`);
+    setTimeout(() => setNoteCreatedToast(null), 3500);
+  };
 
   // Content Extraction State for DOCX
   const [parsedHtml, setParsedHtml] = useState<string>('');
@@ -370,19 +429,45 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Highlighting in text for search
+  // Highlighting in text for search and interactive scripture hover popovers
   const renderHighlightedText = (text: string) => {
-    if (!searchQuery.trim()) return text;
-    const parts = text.split(new RegExp(`(${searchQuery.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'));
-    return parts.map((part, index) =>
-      part.toLowerCase() === searchQuery.toLowerCase() ? (
-        <mark key={index} className="bg-amber-300 text-slate-900 font-bold px-1 rounded">
-          {part}
-        </mark>
-      ) : (
-        part
-      )
-    );
+    if (!text) return null;
+
+    // Detect scriptures and tokenize
+    const segments = parseTextWithScriptures(text);
+
+    return segments.map((seg, sIdx) => {
+      if (seg.type === 'scripture' && seg.scripture) {
+        return (
+          <ScriptureHoverPopover
+            key={`sc_${sIdx}_${seg.scripture.cleanReference}`}
+            scripture={seg.scripture}
+            onOpenInBible={onOpenInBible}
+          >
+            {seg.content}
+          </ScriptureHoverPopover>
+        );
+      }
+
+      if (!searchQuery.trim()) {
+        return <React.Fragment key={`txt_${sIdx}`}>{seg.content}</React.Fragment>;
+      }
+
+      const parts = seg.content.split(new RegExp(`(${searchQuery.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'));
+      return (
+        <React.Fragment key={`txt_${sIdx}`}>
+          {parts.map((part, index) =>
+            part.toLowerCase() === searchQuery.toLowerCase() ? (
+              <mark key={index} className="bg-amber-300 text-slate-900 font-bold px-1 rounded">
+                {part}
+              </mark>
+            ) : (
+              part
+            )
+          )}
+        </React.Fragment>
+      );
+    });
   };
 
   const activeTheme = THEME_STYLES[theme];
@@ -443,8 +528,37 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
 
           {/* Action buttons on top right */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Mark as Completed Toggle */}
+            {onToggleComplete && (
+              <button
+                type="button"
+                onClick={() => onToggleComplete(resource.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                  isCompleted
+                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:border-emerald-500/50'
+                }`}
+                title={isCompleted ? "Lesson completed (Click to unmark)" : "Mark lesson as completed"}
+              >
+                {isCompleted ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                <span className="hidden lg:inline">{isCompleted ? 'Completed' : 'Mark Completed'}</span>
+              </button>
+            )}
+
+            {/* Send Summary & Takeaways to Class Notes */}
+            <button
+              type="button"
+              onClick={handleSendSummaryToNotes}
+              className="px-3 py-1.5 bg-indigo-950/90 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-700/80 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Add lesson overview & key takeaways to your Class Notes notebook"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden md:inline">Add to Notes</span>
+            </button>
+
             {/* Toggle Summary Sidebar */}
             <button
+              type="button"
               onClick={() => setShowSummarySidebar(prev => !prev)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
                 showSummarySidebar
@@ -459,6 +573,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
 
             {/* Print Button */}
             <button
+              type="button"
               onClick={handlePrint}
               className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer border border-slate-700"
               title="Print Document"
@@ -468,6 +583,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
 
             {/* Download Button */}
             <button
+              type="button"
               onClick={(e) => onDownload(resource, e)}
               className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer border border-slate-700"
               title="Download Original File"
@@ -477,6 +593,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
 
             {/* Fullscreen Toggle */}
             <button
+              type="button"
               onClick={() => setIsFullscreen(prev => !prev)}
               className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer border border-slate-700 hidden sm:flex"
               title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
@@ -494,6 +611,26 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Note Created Notification Toast */}
+        {noteCreatedToast && (
+          <div className="p-2.5 bg-emerald-600 text-white text-xs font-extrabold text-center flex items-center justify-center gap-2 shadow-lg animate-fadeIn shrink-0">
+            <Check className="w-4 h-4" />
+            <span>{noteCreatedToast}</span>
+            {onOpenNotes && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenNotes();
+                }}
+                className="ml-2 underline font-black text-amber-200 hover:text-white cursor-pointer"
+              >
+                View in Class Notes →
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ========================================================= */}
         {/* SECONDARY TOOLBAR: Search, Themes, PDF Page Controls */}
@@ -685,7 +822,10 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
         {/* ========================================================= */}
         <div className="flex-1 flex overflow-hidden relative">
           {/* Main Reading Canvas */}
-          <div className={`flex-1 overflow-y-auto ${activeTheme.bg} ${activeTheme.text} transition-colors duration-150 relative flex flex-col`}>
+          <div 
+            onMouseUp={handleMouseUpCapture}
+            className={`flex-1 overflow-y-auto ${activeTheme.bg} ${activeTheme.text} transition-colors duration-150 relative flex flex-col`}
+          >
             {/* Loading Indicator for DOCX parsing */}
             {isParsingDocx && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/90 text-white gap-3 p-6">
@@ -978,6 +1118,32 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Floating Selection Toolbar for Class Notes */}
+            {selectedText && (
+              <div className="sticky bottom-4 z-40 mx-auto max-w-md p-2.5 bg-slate-900/95 text-white border border-indigo-500/50 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 animate-slideUp">
+                <div className="flex items-center gap-2 overflow-hidden text-xs">
+                  <Pin className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="truncate italic font-serif opacity-90">"{selectedText.slice(0, 35)}..."</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSendSelectedToNotes}
+                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> Send to Notes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedText('')}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ========================================================= */}
@@ -1068,7 +1234,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
                           <span className="w-4 h-4 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center font-bold text-[9px] shrink-0 mt-0.5">
                             {index + 1}
                           </span>
-                          <span className="leading-snug">{point}</span>
+                          <span className="leading-snug">{renderHighlightedText(point)}</span>
                         </div>
                       ))}
                     </div>
