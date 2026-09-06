@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AMP_BIBLE_BOOKS, searchAmpBible, AmpBook, AmpChapter, AmpVerse } from '../data/ampBible';
+import { getMultiTranslationVerse } from '../data/multiTranslationBible';
 import {
   StudentClassNote,
   getStudentNotes,
@@ -84,6 +85,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
   const [bibleSearchQuery, setBibleSearchQuery] = useState<string>('');
   const [bibleFontSize, setBibleFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [copiedVerse, setCopiedVerse] = useState<string | null>(null);
+  const [bibleTranslation, setBibleTranslation] = useState<'AMP' | 'KJV' | 'parallel'>('AMP');
 
   // Active Bible Book & Chapter
   const currentBook = useMemo(() => {
@@ -778,6 +780,43 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                 </div>
               </div>
 
+              {/* Translation Mode Switcher */}
+              <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setBibleTranslation('AMP')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all cursor-pointer ${
+                    bibleTranslation === 'AMP'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  AMP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBibleTranslation('KJV')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all cursor-pointer ${
+                    bibleTranslation === 'KJV'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  KJV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBibleTranslation('parallel')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all cursor-pointer ${
+                    bibleTranslation === 'parallel'
+                      ? 'bg-[#023264] text-[#dfc18b] font-black shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Parallel (AMP / KJV)
+                </button>
+              </div>
+
               {/* Font Size & Chapter Step */}
               <div className="flex items-center gap-1">
                 <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px]">
@@ -914,19 +953,81 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
               /* Normal Chapter Reading View */
               <div className="space-y-4">
                 {/* Chapter Heading */}
-                <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex items-baseline justify-between">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex items-baseline justify-between flex-wrap gap-2">
                   <h3 className="text-base font-black text-slate-900 dark:text-white">
                     {currentBook.name} {currentChapter.chapter}
                   </h3>
                   <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">
-                    Amplified Bible (AMP)
+                    {bibleTranslation === 'AMP' ? 'Amplified Bible (AMP)' : bibleTranslation === 'KJV' ? 'King James Version (KJV)' : 'Parallel View (AMP & KJV)'}
                   </span>
                 </div>
 
                 {/* Verses */}
                 <div className="space-y-3">
                   {currentChapter.verses.map(v => {
-                    const verseRef = `${currentBook.name} ${currentChapter.chapter}:${v.verse} (AMP)`;
+                    const multi = getMultiTranslationVerse(currentBook.id, currentChapter.chapter, v.verse);
+                    const ampText = multi?.amp || v.text;
+                    const kjvText = multi?.kjv || v.text;
+
+                    if (bibleTranslation === 'parallel') {
+                      return (
+                        <div
+                          key={`v-parallel-${v.verse}`}
+                          className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5 shadow-2xs hover:border-indigo-400/50 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                              {currentBook.name} {currentChapter.chapter}:{v.verse}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleInsertScriptureIntoNote(`${currentBook.name} ${currentChapter.chapter}:${v.verse}\nAMP: "${ampText}"\nKJV: "${kjvText}"`, `${currentBook.name} ${currentChapter.chapter}:${v.verse} (Parallel)`)}
+                                className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs cursor-pointer"
+                                title="Insert both AMP and KJV into active note"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Insert Both</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                            <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">Amplified (AMP)</span>
+                                <button
+                                  onClick={() => handleInsertScriptureIntoNote(ampText, `${currentBook.name} ${currentChapter.chapter}:${v.verse} (AMP)`)}
+                                  className="text-[10px] text-amber-800 dark:text-amber-300 font-bold hover:underline cursor-pointer"
+                                >
+                                  + Insert
+                                </button>
+                              </div>
+                              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-serif text-[11px] sm:text-xs">
+                                {ampText}
+                              </p>
+                            </div>
+
+                            <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-400">King James (KJV)</span>
+                                <button
+                                  onClick={() => handleInsertScriptureIntoNote(kjvText, `${currentBook.name} ${currentChapter.chapter}:${v.verse} (KJV)`)}
+                                  className="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold hover:underline cursor-pointer"
+                                >
+                                  + Insert
+                                </button>
+                              </div>
+                              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-serif text-[11px] sm:text-xs">
+                                {kjvText}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const displayText = bibleTranslation === 'KJV' ? kjvText : ampText;
+                    const verseRef = `${currentBook.name} ${currentChapter.chapter}:${v.verse} (${bibleTranslation})`;
                     const isCopied = copiedVerse === verseRef;
 
                     return (
@@ -941,8 +1042,8 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
 
                           <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                             <button
-                              onClick={() => handleCopyScripture(v.text, verseRef)}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-[10px] flex items-center gap-0.5"
+                              onClick={() => handleCopyScripture(displayText, verseRef)}
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-[10px] flex items-center gap-0.5 cursor-pointer"
                               title="Copy Scripture"
                             >
                               {isCopied ? (
@@ -953,8 +1054,8 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                             </button>
 
                             <button
-                              onClick={() => handleInsertScriptureIntoNote(v.text, verseRef)}
-                              className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs border border-[#b38f53]/30"
+                              onClick={() => handleInsertScriptureIntoNote(displayText, verseRef)}
+                              className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs border border-[#b38f53]/30 cursor-pointer"
                               title="Insert directly into your active note"
                             >
                               <Plus className="w-3 h-3" />
@@ -963,9 +1064,9 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                           </div>
                         </div>
 
-                        {/* Verse Text with AMP brackets styled cleanly */}
+                        {/* Verse Text */}
                         <p
-                          className={`text-slate-800 dark:text-slate-200 leading-relaxed ${
+                          className={`text-slate-800 dark:text-slate-200 leading-relaxed font-serif ${
                             bibleFontSize === 'normal'
                               ? 'text-xs sm:text-sm'
                               : bibleFontSize === 'large'
@@ -973,7 +1074,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                               : 'text-base sm:text-lg'
                           }`}
                         >
-                          {v.text}
+                          {displayText}
                         </p>
                       </div>
                     );

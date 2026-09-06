@@ -504,7 +504,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 1: Enrollment */}
           <div 
             onClick={() => setActiveTab('enrollment')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card interactive-hover-card ${
               activeTab === 'enrollment' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -528,7 +528,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 2: Academic */}
           <div 
             onClick={() => setActiveTab('academic')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card interactive-hover-card ${
               activeTab === 'academic' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -552,7 +552,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 3: Attendance */}
           <div 
             onClick={() => setActiveTab('attendance')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card interactive-hover-card ${
               activeTab === 'attendance' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -578,7 +578,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 4: Finance */}
           <div 
             onClick={() => setActiveTab('finance')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer tactile-card interactive-hover-card ${
               activeTab === 'finance' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
@@ -602,7 +602,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           {/* Pillar 5: Actionable Alerts */}
           <div 
             onClick={() => setActiveTab('alerts')}
-            className={`col-span-2 lg:col-span-1 p-4 rounded-2xl border transition-all cursor-pointer tactile-card ${
+            className={`col-span-2 lg:col-span-1 p-4 rounded-2xl border transition-all cursor-pointer tactile-card interactive-hover-card ${
               activeTab === 'alerts' 
                 ? 'bg-slate-900 border-amber-400 ring-1 ring-amber-400/50 shadow-lg' 
                 : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'

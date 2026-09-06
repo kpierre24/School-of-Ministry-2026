@@ -23,7 +23,9 @@ import {
   FileText,
   Calendar,
   Layers,
-  BookOpen
+  BookOpen,
+  RotateCcw,
+  RotateCw
 } from 'lucide-react';
 import { MediaResource } from '../types';
 import { UserRole } from '../lib/userAuth';
@@ -149,13 +151,31 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
     if (el) el.muted = newMute;
   };
 
+  const handleSetSpeed = (speed: number) => {
+    setPlaybackSpeed(speed);
+    try {
+      localStorage.setItem('hteim_media_speed', String(speed));
+    } catch {
+      // ignore
+    }
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+    if (videoRef.current) videoRef.current.playbackRate = speed;
+  };
+
+  const skipTime = (seconds: number) => {
+    const el = currentTrack?.type === 'video' ? videoRef.current : audioRef.current;
+    if (el) {
+      const newTime = Math.max(0, Math.min(el.duration || Infinity, el.currentTime + seconds));
+      el.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
   const changeSpeed = () => {
-    const speeds = [1, 1.25, 1.5, 2];
+    const speeds = [0.75, 1, 1.25, 1.5, 2];
     const nextIdx = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
     const newSpeed = speeds[nextIdx];
-    setPlaybackSpeed(newSpeed);
-    if (audioRef.current) audioRef.current.playbackRate = newSpeed;
-    if (videoRef.current) videoRef.current.playbackRate = newSpeed;
+    handleSetSpeed(newSpeed);
   };
 
   const formatSecs = (secs: number) => {
@@ -524,7 +544,16 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
 
                 {/* Controls Row */}
                 <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => skipTime(-10)}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      title="Skip backward 10 seconds"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={togglePlay}
@@ -535,12 +564,30 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
 
                     <button
                       type="button"
-                      onClick={changeSpeed}
-                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono font-bold text-xs rounded-lg border border-slate-700 cursor-pointer transition-all"
-                      title="Change Playback Speed"
+                      onClick={() => skipTime(10)}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      title="Skip forward 10 seconds"
                     >
-                      {playbackSpeed}x
+                      <RotateCw className="w-3.5 h-3.5" />
                     </button>
+
+                    {/* Speed Pill Selectors */}
+                    <div className="flex items-center bg-slate-900/90 rounded-lg p-0.5 border border-slate-750 ml-1">
+                      {[0.75, 1, 1.25, 1.5, 2].map((spd) => (
+                        <button
+                          key={spd}
+                          type="button"
+                          onClick={() => handleSetSpeed(spd)}
+                          className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded transition-all cursor-pointer ${
+                            playbackSpeed === spd
+                              ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {spd}x
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Volume Slider */}

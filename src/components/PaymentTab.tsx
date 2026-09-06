@@ -42,12 +42,16 @@ import {
   ShieldCheck,
   Receipt as ReceiptIcon,
   LayoutGrid,
-  List
+  List,
+  Heart,
+  Calendar
 } from 'lucide-react';
-import { PaymentRecord, Invoice, PaymentTransaction, Receipt } from '../types';
+import { PaymentRecord, Invoice, PaymentTransaction, Receipt, StudentInstallmentPlan, InstallmentMilestone, SponsorshipDonation } from '../types';
 import { getInvoices, saveInvoices, getTransactions, saveTransactions, getReceipts, saveReceipts, bootstrapFromPaymentRecords } from '../lib/financialWorkflow';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
+import { InstallmentPlanModal } from './InstallmentPlanModal';
+import { SponsorScholarshipModal } from './SponsorScholarshipModal';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
@@ -997,6 +1001,113 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
   const [showRecordCustomPaymentModal, setShowRecordCustomPaymentModal] = useState(false);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
+
+  // Installment Plans & Sponsorship states
+  const [showInstallmentModal, setShowInstallmentModal] = useState(false);
+  const [showScholarshipModal, setShowScholarshipModal] = useState(false);
+  const [installmentPlans, setInstallmentPlans] = useState<StudentInstallmentPlan[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_installment_plans');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [sponsorshipDonations, setSponsorshipDonations] = useState<SponsorshipDonation[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_sponsorship_donations');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleSaveInstallmentPlan = (plan: StudentInstallmentPlan) => {
+    const updated = [...installmentPlans.filter(p => p.id !== plan.id && p.studentName !== plan.studentName), plan];
+    setInstallmentPlans(updated);
+    localStorage.setItem('hteim_installment_plans', JSON.stringify(updated));
+  };
+
+  const handleRecordMilestonePayment = (studentName: string, milestone: InstallmentMilestone) => {
+    // 1. Update the milestone as paid in installment plans
+    const updatedPlans = installmentPlans.map(plan => {
+      if (plan.studentName === studentName) {
+        const updatedMilestones = plan.milestones.map(m => {
+          if (m.id === milestone.id) {
+            return {
+              ...m,
+              isPaid: true,
+              paidDate: new Date().toISOString().slice(0, 10),
+              receiptNumber: `REC-MS-${Date.now().toString().slice(-5)}`
+            };
+          }
+          return m;
+        });
+        const allPaid = updatedMilestones.every(m => m.isPaid);
+        return {
+          ...plan,
+          status: allPaid ? ('completed' as const) : ('active' as const),
+          milestones: updatedMilestones,
+          remainingBalance: Math.max(0, plan.remainingBalance - milestone.amount)
+        };
+      }
+      return plan;
+    });
+    setInstallmentPlans(updatedPlans);
+    localStorage.setItem('hteim_installment_plans', JSON.stringify(updatedPlans));
+
+    // 2. Update student payment ledger
+    setPayments(prev => prev.map(p => {
+      if (p.studentName.toLowerCase().trim() === studentName.toLowerCase().trim()) {
+        const newPaid = Number(p.amountPaid) + milestone.amount;
+        const total = p.totalTuition || 1200;
+        const newStatus = newPaid >= total ? 'Paid In Full' : 'Partial';
+        return {
+          ...p,
+          amountPaid: newPaid,
+          status: newStatus,
+          lastPaymentDate: new Date().toISOString().slice(0, 10),
+          notes: `${p.notes ? p.notes + ' ' : ''}[Installment Milestone ${milestone.milestoneNumber} Paid: $${milestone.amount} on ${new Date().toLocaleDateString()}]`
+        };
+      }
+      return p;
+    }));
+  };
+
+  const handleGrantScholarship = (donation: SponsorshipDonation) => {
+    const updatedDonations = [donation, ...sponsorshipDonations];
+    setSponsorshipDonations(updatedDonations);
+    localStorage.setItem('hteim_sponsorship_donations', JSON.stringify(updatedDonations));
+
+    if (donation.recipientStudentName !== 'General Ministry Scholarship Fund') {
+      setPayments(prev => prev.map(p => {
+        if (p.studentName.toLowerCase().trim() === donation.recipientStudentName.toLowerCase().trim()) {
+          const newPaid = Number(p.amountPaid) + donation.amount;
+          const total = p.totalTuition || 1200;
+          const newStatus = newPaid >= total ? 'Paid In Full' : 'Partial';
+          return {
+            ...p,
+            amountPaid: newPaid,
+            status: newStatus,
+            paymentMethod: 'Scholarship',
+            lastPaymentDate: donation.date,
+            notes: `${p.notes ? p.notes + ' ' : ''}[Scholarship Sponsored by ${donation.sponsorName} (${donation.organization || 'Church Partner'}): $${donation.amount} on ${donation.date}. Receipt #${donation.receiptNumber}]`
+          };
+        }
+        return p;
+      }));
+    }
+  };
+
+  const studentsForInstallment = useMemo(() => {
+    return payments.map(p => ({
+      name: p.studentName,
+      id: p.studentId || p.id,
+      balance: Math.max(0, (p.totalTuition || 1200) - Number(p.amountPaid)),
+      totalTuition: p.totalTuition || 1200,
+      amountPaid: Number(p.amountPaid)
+    }));
+  }, [payments]);
 
   // Invoice form fields
   const [editInvoiceTuition, setEditInvoiceTuition] = useState<number>(1200);
@@ -2165,25 +2276,25 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
         {/* Quick KPI Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+          <div className="tactile-card interactive-hover-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Revenue Collected</p>
             <p className="font-display text-2xl sm:text-3xl font-black font-mono tabular-nums text-slate-900 dark:text-white mt-1">${stats.totalCollected.toLocaleString()}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{stats.collectionRate}% of total tuition target</p>
           </div>
 
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4">
+          <div className="tactile-card interactive-hover-card bg-slate-50 dark:bg-slate-800/90 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Outstanding Balance</p>
             <p className="font-display text-2xl sm:text-3xl font-black font-mono tabular-nums text-amber-600 dark:text-amber-400 mt-1">${stats.totalOutstanding.toLocaleString()}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{stats.pastDueCount} accounts past due</p>
           </div>
 
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-emerald-200/60 dark:border-emerald-800/50 rounded-2xl p-4">
+          <div className="tactile-card interactive-hover-card bg-slate-50 dark:bg-slate-800/90 border border-emerald-200/60 dark:border-emerald-800/50 rounded-2xl p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Paid In Full</p>
             <p className="font-display text-2xl sm:text-3xl font-black font-mono tabular-nums text-emerald-600 dark:text-emerald-400 mt-1">{stats.paidInFullCount} / {stats.totalStudents}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Students with 100% tuition clear</p>
           </div>
 
-          <div className="tactile-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+          <div className="tactile-card interactive-hover-card bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expected Total</p>
             <p className="font-display text-2xl sm:text-3xl font-black font-mono tabular-nums text-slate-900 dark:text-white mt-1">${stats.totalTuition.toLocaleString()}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Full semester tuition value</p>
@@ -2258,6 +2369,22 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             className="min-h-11 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
+          <button
+            onClick={() => setShowInstallmentModal(true)}
+            className="min-h-11 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-indigo-200 dark:border-indigo-800"
+            title="Manage student payment installments"
+          >
+            <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Installments ({installmentPlans.length})</span>
+          </button>
+          <button
+            onClick={() => setShowScholarshipModal(true)}
+            className="min-h-11 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-200 dark:border-emerald-800"
+            title="Record student scholarship or sponsor donation"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-500" />
+            <span>Sponsor a Student</span>
           </button>
           {removedStudentRecords.length > 0 && (
             <button
@@ -3763,6 +3890,28 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               </button>
             </div>
           </Modal>
+        )}
+
+        {/* Installment Plan Modal */}
+        {showInstallmentModal && (
+          <InstallmentPlanModal
+            isOpen={showInstallmentModal}
+            onClose={() => setShowInstallmentModal(false)}
+            students={studentsForInstallment}
+            existingPlans={installmentPlans}
+            onSavePlan={handleSaveInstallmentPlan}
+            onRecordMilestonePayment={handleRecordMilestonePayment}
+          />
+        )}
+
+        {/* Sponsor Scholarship Modal */}
+        {showScholarshipModal && (
+          <SponsorScholarshipModal
+            isOpen={showScholarshipModal}
+            onClose={() => setShowScholarshipModal(false)}
+            students={studentsForInstallment}
+            onGrantScholarship={handleGrantScholarship}
+          />
         )}
     </div>
   );

@@ -600,3 +600,54 @@ export const DEFAULT_COHORTS: Cohort[] = [
   }
 ];
 
+export interface InstallmentMilestone {
+  id: string;
+  milestoneNumber: number;
+  dueDate: string;
+  amount: number;
+  isPaid: boolean;
+  paidDate?: string;
+  receiptNumber?: string;
+  notes?: string;
+}
+
+export interface StudentInstallmentPlan {
+  id: string;
+  studentName: string;
+  studentId: string;
+  totalTuition: number;
+  initialDeposit: number;
+  remainingBalance: number;
+  frequency: 'monthly' | 'biweekly';
+  totalMilestones: number;
+  milestones: InstallmentMilestone[];
+  createdAt: string;
+  status: 'active' | 'completed' | 'defaulted';
+  notes?: string;
+}
+
+export interface SponsorshipDonation {
+  id: string;
+  sponsorName: string;
+  organization?: string;
+  sponsorEmail?: string;
+  sponsorPhone?: string;
+  recipientStudentName: string; // or 'General Ministry Fund'
+  amount: number;
+  date: string;
+  sponsorshipType: 'Full Tuition' | 'Partial Grant (50%)' | 'Custom Ministry Grant' | 'Emergency Aid';
+  notes?: string;
+  receiptNumber: string;
+  status: 'verified' | 'pledged';
+}
+
+export interface OfflineQueueItem {
+  id: string;
+  type: 'attendance_checkin' | 'student_note' | 'grade_update' | 'payment_record';
+  description: string;
+  timestamp: string;
+  status: 'pending' | 'syncing' | 'failed' | 'synced';
+  retryCount: number;
+  payload: any;
+}
+

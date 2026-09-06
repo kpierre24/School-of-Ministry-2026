@@ -30,7 +30,10 @@ import {
   Send,
   X,
   TrendingUp,
-  ShieldCheck
+  ShieldCheck,
+  QrCode,
+  Zap,
+  Key
 } from 'lucide-react';
 import { downloadICSFile } from '../lib/calendarExport';
 
@@ -93,6 +96,83 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
   // Tab Segmented Control state
   const [activePortalTab, setActivePortalTab] = useState<'overview' | 'log' | 'modules'>('overview');
+
+  // Quick Classroom PIN Check-in state
+  const [pinInput, setPinInput] = useState('');
+  const [pinVerifyStatus, setPinVerifyStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [pinFeedbackMessage, setPinFeedbackMessage] = useState('');
+
+  const handleVerifyClassPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinInput.trim()) return;
+
+    setPinVerifyStatus('verifying');
+    setTimeout(() => {
+      try {
+        const storedSession = localStorage.getItem('hteim_active_pin_session');
+        if (!storedSession) {
+          setPinVerifyStatus('error');
+          setPinFeedbackMessage('No active classroom session found. Please ask the instructor to start the Live PIN & QR Check-in screen.');
+          return;
+        }
+
+        const session = JSON.parse(storedSession);
+        const cleanInput = pinInput.trim();
+        const cleanPin = String(session.pin).trim();
+
+        if (cleanInput !== cleanPin) {
+          setPinVerifyStatus('error');
+          setPinFeedbackMessage('Incorrect PIN. Note that the PIN auto-rotates every 45s—check the classroom projector for the current code.');
+          return;
+        }
+
+        if (new Date(session.expiresAt) < new Date()) {
+          setPinVerifyStatus('error');
+          setPinFeedbackMessage('This classroom check-in session has expired. Request a new session from your instructor.');
+          return;
+        }
+
+        // Record check-in to session check-ins
+        const classDayId = session.classDayId || 'day_1';
+        const key = `hteim_pin_checkins_${classDayId}`;
+        const existingRaw = localStorage.getItem(key);
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const updated = [...existing.filter((item: any) => item.studentName !== safeName), {
+          studentName: safeName,
+          time: nowStr,
+          verifiedVia: 'pin_token'
+        }];
+        localStorage.setItem(key, JSON.stringify(updated));
+
+        // Queue in offline / persistent sync buffer
+        try {
+          const queueRaw = localStorage.getItem('hteim_offline_queue');
+          const queue = queueRaw ? JSON.parse(queueRaw) : [];
+          queue.push({
+            id: `q_${Date.now()}`,
+            type: 'attendance_checkin',
+            description: `${safeName} verified attendance for ${session.classDayName || 'Class'} via PIN`,
+            timestamp: new Date().toISOString(),
+            status: 'pending',
+            retryCount: 0,
+            payload: { studentName: safeName, classDayId, pin: cleanPin }
+          });
+          localStorage.setItem('hteim_offline_queue', JSON.stringify(queue));
+        } catch {
+          // ignore
+        }
+
+        setPinVerifyStatus('success');
+        setPinFeedbackMessage(`Attendance Verified! Marked present for ${session.classDayName || 'Today\'s Session'} at ${nowStr}.`);
+        setPinInput('');
+      } catch {
+        setPinVerifyStatus('error');
+        setPinFeedbackMessage('Failed to verify PIN. Please try again.');
+      }
+    }, 500);
+  };
 
   useEffect(() => {
     if (student?.photoUrl) {
@@ -309,7 +389,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
       {activePortalTab === 'overview' && (
         <div className="space-y-4 sm:space-y-6 animate-fadeIn">
           {/* Weekly Tuesday Live Zoom Class Notice Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-700 interactive-hover-card shadow-xs">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
                 <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
@@ -320,7 +400,8 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                     <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-mono font-semibold uppercase rounded-full">
                       Weekly Live Schedule
                     </span>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 live-indicator-ring shrink-0" />
                       Every Tuesday @ 7:00 PM EST
                     </span>
                   </div>
@@ -378,10 +459,10 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                   </button>
 
                   <a
-                    href="https://zoom.us/j/81505377396"
+                    href="https://us02web.zoom.us/j/81505377396"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 min-h-[44px]"
+                    className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer min-h-[44px]"
                   >
                     <span>Join Tuesday Live Zoom</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -389,6 +470,72 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Live Classroom Quick PIN Check-in Card */}
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-indigo-900/10 via-slate-900/5 to-amber-900/10 dark:from-indigo-950/40 dark:via-slate-900/60 dark:to-amber-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-xs space-y-3 glass-morphism interactive-hover-card">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-extrabold text-[10px] rounded-full uppercase tracking-wider">
+                      Live Classroom Check-In
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      Auto-Rotating 45s PIN
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Enter Today's 4-Digit Classroom Code
+                  </h3>
+                </div>
+              </div>
+
+              {/* Form Input */}
+              <form onSubmit={handleVerifyClassPin} className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 7482"
+                  className="w-28 sm:w-32 px-3 py-2 text-center text-base sm:text-lg font-black font-mono tracking-widest bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white shadow-xs"
+                />
+                <button
+                  type="submit"
+                  disabled={pinInput.length < 4 || pinVerifyStatus === 'verifying'}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 min-h-[40px]"
+                >
+                  {pinVerifyStatus === 'verifying' ? (
+                    <span>Verifying...</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Check In</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            {/* Feedback alert */}
+            {pinFeedbackMessage && (
+              <div className={`p-2.5 rounded-lg text-xs font-bold flex items-center gap-2 animate-fadeIn ${
+                pinVerifyStatus === 'success' 
+                  ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
+                  : 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+              }`}>
+                {pinVerifyStatus === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                )}
+                <span>{pinFeedbackMessage}</span>
+              </div>
+            )}
           </div>
 
           {/* Student Welcome & Status Hero Banner */}

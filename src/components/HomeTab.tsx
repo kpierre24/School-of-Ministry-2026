@@ -525,7 +525,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('attendance')}
-                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+                className="tactile-card interactive-hover-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
               >
                 <div className="flex items-center justify-between">
                   <UserCheck className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
@@ -537,7 +537,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('exams')}
-                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+                className="tactile-card interactive-hover-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
               >
                 <div className="flex items-center justify-between">
                   <Award className="w-4 h-4 text-amber-300 group-hover:scale-110 transition-transform" />
@@ -549,7 +549,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('payments')}
-                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+                className="tactile-card interactive-hover-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
               >
                 <div className="flex items-center justify-between">
                   <DollarSign className="w-4 h-4 text-amber-200 group-hover:scale-110 transition-transform" />
@@ -567,7 +567,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('courses')}
-                className="tactile-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
+                className="tactile-card interactive-hover-card p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left cursor-pointer flex flex-col justify-between group"
               >
                 <div className="flex items-center justify-between">
                   <BookOpen className="w-4 h-4 text-indigo-300 group-hover:scale-110 transition-transform" />
@@ -770,7 +770,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
                   transition={{ duration: 0.4, ease: 'easeInOut' }}
-                  className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4 sm:p-8 md:p-10 min-h-[300px] flex flex-col justify-between shadow-2xl"
+                  className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4 sm:p-8 md:p-10 min-h-[300px] flex flex-col justify-between shadow-2xl animate-radiant-glow"
                 >
                   <div className="absolute inset-0 z-0">
                     <img 
@@ -1046,7 +1046,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       {!appUser ? (
         <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           {/* Pathway 1: Prospective Student Enrollment */}
-          <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/30 dark:to-slate-900 border border-amber-400/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3">
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/30 dark:to-slate-900 border border-amber-400/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3 interactive-hover-card">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-amber-400 text-slate-950 font-black">
@@ -1073,7 +1073,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
 
           {/* Pathway 2: Current Student Portal Login */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3 interactive-hover-card">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-[#023264] text-white font-black">
@@ -1100,7 +1100,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
 
           {/* Pathway 3: Course Curriculum & Syllabus */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3 sm:col-span-2 md:col-span-1">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm space-y-3 sm:col-span-2 md:col-span-1 interactive-hover-card">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-[#01883c] text-white font-black">

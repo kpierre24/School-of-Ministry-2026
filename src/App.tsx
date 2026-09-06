@@ -1,4 +1,5 @@
 import { PWAInstallButton } from "./components/PWAInstallButton";
+import { AppHeader } from './components/AppHeader';
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { LogoImage } from './components/LogoImage';
 import { motion, AnimatePresence } from 'motion/react';
@@ -93,6 +94,8 @@ import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
 import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModal';
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
 import { SheetMergeConflictModal } from './components/SheetMergeConflictModal';
+import { OfflineSyncDrawer } from './components/OfflineSyncDrawer';
+import { PINCheckinQRModal } from './components/PINCheckinQRModal';
 import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from './lib/attendanceLock';
 import { usePWAInstall } from './lib/pwa';
 import {
@@ -595,7 +598,7 @@ export default function App() {
   const [showUserManagementModal, setShowUserManagementModal] = useState<boolean>(false);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
-  const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
+  // showMoreMenu is now local state inside <AppHeader /> — removed from App
   const [isNavOpen, setIsNavOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -608,7 +611,7 @@ export default function App() {
         setShowRoleMenu(false);
         setShowToolsMenu(false);
         setShowMobileMoreMenu(false);
-        setShowMoreMenu(false);
+        // showMoreMenu Escape is handled internally by AppHeader
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
@@ -1459,6 +1462,8 @@ export default function App() {
   const [showPresentationModal, setShowPresentationModal] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncedBannerMessage, setSyncedBannerMessage] = useState<string | null>(null);
+  const [showOfflineDrawer, setShowOfflineDrawer] = useState(false);
+  const [showPINCheckinModal, setShowPINCheckinModal] = useState(false);
 
   // Report Modal Search & Sorting & View Detail state
   const [reportSearchQuery, setReportSearchQuery] = useState('');
@@ -3818,7 +3823,16 @@ export default function App() {
             <WifiOff className="w-4 h-4 text-amber-600" />
             <span className="font-medium">Working offline — changes are saved locally and will sync when connection restores.</span>
           </div>
-          <span className="px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-semibold">PWA Ready</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowOfflineDrawer(true)}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+            >
+              Open Sync Queue
+            </button>
+            <span className="px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-semibold">PWA Ready</span>
+          </div>
         </div>
       )}
 
@@ -3934,279 +3948,55 @@ create policy "Allow public update" on app_states for update using (true) with c
         </div>
       )}
 
-      {/* MD3 AppBar */}
-      <header className="relative bg-white/85 dark:bg-[#08182c]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-[#1a385c] px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs mb-3 flex-shrink-0 sticky top-2 z-40 max-w-full overflow-visible transition-all rounded-xl">
-        {/* Subtle Brand Accent Line (HTEIM Royal Navy & Ministry Gold) */}
-        <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-[#023264]/0 via-[#025798]/60 via-[#b38f53]/70 to-[#0277b8]/0 pointer-events-none" />
-        <div className="flex items-center justify-between gap-2 sm:gap-3 flex-nowrap">
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0 shrink group" onClick={() => setActiveErpTab('home')}>
-            <LogoImage
-              alt="HTEIM Logo"
-              className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl object-contain bg-transparent p-0 group-hover:opacity-80 transition-opacity"
-            />
-            <div className="min-w-0 shrink flex items-center gap-1.5 sm:gap-2">
-              <h1 className="font-display text-xs sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
-                <span className="hidden sm:inline">HTEIM School of Ministry</span>
-                <span className="sm:hidden">HTEIM</span>
-              </h1>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowCohortModal(true);
-                }}
-                className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer shadow-2xs shrink-0"
-                title="Click to switch or manage academic cohorts (Class of 2026, 2027, etc.)"
-              >
-                <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span className="hidden xs:inline">{activeCohort?.name || 'Class of 2026'}</span>
-                <span className="xs:hidden">{activeCohort?.name ? activeCohort.name.replace('Class of ', "'") : "'26"}</span>
-                <ChevronDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-70 shrink-0" />
-              </button>
-            </div>
-          </div>
+      {/* MD3 AppBar — extracted into AppHeader component */}
+      <AppHeader
+        activeCohort={activeCohort}
+        onOpenCohortModal={() => setShowCohortModal(true)}
+        onGoHome={() => setActiveErpTab('home')}
+        appUser={appUser}
+        onOpenLogin={() => setShowLoginModal(true)}
+        onLogout={handleAppLogout}
+        onNavigate={handleNavigate}
+        unreadMessagesCount={unreadMessagesCount}
+        filteredNotifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
+        onMarkNotifAsRead={handleMarkNotifAsRead}
+        onMarkAllNotifsAsRead={handleMarkAllNotifsAsRead}
+        onClearNotifs={handleClearNotifs}
+        onSelectNotif={handleSelectNotif}
+        onTriggerNotifScan={handleRunNotificationScan}
+        onAddTestNotif={handleAddTestNotif}
+        onOpenIntro={() => setShowIntro(true)}
+        onOpenPresentation={() => setShowPresentationModal(true)}
+        onOpenCommandPalette={() => setShowCommandPalette(true)}
+        onOpenRoleSwitch={() => setShowRoleMenu(true)}
+        isCloudSyncing={isCloudSyncing}
+        onPushToCloud={handlePushToCloud}
+        dataSource={dataSource}
+        isLoading={isLoading}
+        onLoadSheets={handleLoadSheets}
+        onOpenBroadcast={() => setShowBatchBroadcastModal(true)}
+        onOpenAuditLog={() => setShowAdminAuditModal(true)}
+        onOpenUserManagement={() => setShowUserManagementModal(true)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+        onOpenHelp={() => setShowGuideModal(true)}
+        onToggleMobileDrawer={() => setShowMobileMoreMenu(prev => !prev)}
+        onOpenOfflineDrawer={() => setShowOfflineDrawer(true)}
+        onOpenPINCheckin={() => setShowPINCheckinModal(true)}
+      />
 
-          {/* MD3 AppBar Actions */}
-          <div className="flex items-center gap-1 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
-            {/* Only show Messages and Notifications when user is logged in */}
-            <div className="hidden sm:block"><PWAInstallButton /></div>
-            {appUser && (
-              <>
-                {/* Messages */}
-                <button
-                  type="button"
-                  onClick={() => handleNavigate('messages')}
-                  aria-label="Open messages"
-                  className="relative p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
-                  title="Messages"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {unreadMessagesCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center px-1">
-                      {unreadMessagesCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Notifications */}
-                <NotificationCenter
-                  notifications={filterNotificationsForUser(notifications, appUser?.role, appUser?.studentName || appUser?.name)}
-                  onMarkAsRead={handleMarkNotifAsRead}
-                  onMarkAllAsRead={handleMarkAllNotifsAsRead}
-                  onClearNotifications={handleClearNotifs}
-                  onSelectNotification={handleSelectNotif}
-                  onTriggerScan={handleRunNotificationScan}
-                  onAddTestNotification={handleAddTestNotif}
-                  currentRole={appUser?.role}
-                  currentStudentName={appUser?.studentName || appUser?.name}
-                />
-              </>
-            )}
-
-            {/* More Dropdown */}
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="p-2 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
-                aria-label="More actions"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-
-              {showMoreMenu && (
-                <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-1.5 z-40 space-y-0.5"
-                  style={{ boxShadow: 'var(--md-elev-2)' }}>
-                  <div className="space-y-0.5">
-                    <button
-                      onClick={() => { setShowMoreMenu(false); setShowIntro(true); }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Play Intro (6s)</span>
-                    </button>
-                    <button
-                      onClick={() => { setShowMoreMenu(false); setShowPresentationModal(true); }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <Play className="w-3.5 h-3.5 text-slate-500" />
-                      <span>30s Demo</span>
-                    </button>
-                    <button
-                      onClick={() => { setShowMoreMenu(false); setShowCommandPalette(true); }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <Search className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Search</span>
-                      <span className="ml-auto text-[10px] text-slate-400 font-mono">⌘K</span>
-                    </button>
-                  </div>
-
-                  {appUser?.role === 'admin' && (
-                    <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-2 pt-1">Tools</p>
-                      <button
-                        onClick={() => { setShowMoreMenu(false); handlePushToCloud(); }}
-                        disabled={isCloudSyncing}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isCloudSyncing ? <RefreshCw className="w-3.5 h-3.5 text-slate-500 animate-spin" /> : <Cloud className="w-3.5 h-3.5 text-slate-500" />}
-                        <span>Cloud Backup</span>
-                      </button>
-                      {dataSource === 'sheets' && (
-                        <button
-                          onClick={() => { setShowMoreMenu(false); handleLoadSheets(); }}
-                          disabled={isLoading}
-                          className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
-                          <span>Sync Sheets</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => { setShowMoreMenu(false); setShowBatchBroadcastModal(true); }}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <Radio className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Broadcast</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowMoreMenu(false); setShowAdminAuditModal(true); }}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Audit Log</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowMoreMenu(false); setShowUserManagementModal(true); }}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <Users className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Manage Users</span>
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                    {appUser?.role === 'admin' ? (
-                      <button
-                        onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <Settings className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Settings</span>
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full flex items-center justify-between p-2 rounded-lg text-xs font-medium text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60"
-                        title="Settings can only be changed by Administrator"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Settings className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
-                          <span>Settings</span>
-                        </div>
-                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">Admin Only</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setShowMoreMenu(false); setShowGuideModal(true); }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Help</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                    <button
-                      onClick={() => { setShowMoreMenu(false); setShowRoleMenu(true); }}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Switch Role</span>
-                    </button>
-                    {appUser && (
-                      <button
-                        onClick={() => {
-                          setShowMoreMenu(false);
-                          handleAppLogout();
-                        }}
-                        className="w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium transition-colors cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Logout</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Profile Avatar / Sign In */}
-            {appUser ? (
-              <button
-                onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 sm:gap-2 p-1 pr-2 sm:pr-2.5 rounded-full transition-all cursor-pointer shrink-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#0e2540] border border-slate-200/80 dark:border-[#1a385c]"
-                aria-label={`Account: ${appUser.name}`}
-                title="Account & Role Settings"
-              >
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-2xs ${
-                  appUser?.role === 'admin' ? 'bg-[#023264] text-white dark:bg-[#dceaf8] dark:text-[#023264]' :
-                  appUser?.role === 'teacher' ? 'bg-[#01883c] text-white dark:bg-[#d1fae5] dark:text-[#01883c]' :
-                  'bg-[#b38f53] text-white dark:bg-[#fef3c7] dark:text-[#8c6a32]'
-                }`}>
-                  {appUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="hidden xl:flex flex-col text-left leading-none pr-0.5">
-                  <span className="text-xs font-bold truncate max-w-[100px]">
-                    {appUser.name.split(' ')[0]}
-                  </span>
-                  <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                    appUser?.role === 'admin' ? 'text-[#025798] dark:text-[#7dd3fc]' :
-                    appUser?.role === 'teacher' ? 'text-[#01883c] dark:text-[#4ade80]' :
-                    appUser?.role === 'student' ? 'text-[#b38f53] dark:text-[#dfc18b]' :
-                    'text-slate-400'
-                  }`}>
-                    {appUser?.role}
-                  </span>
-                </div>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs shadow-xs whitespace-nowrap border border-[#b38f53]/30"
-                aria-label="Sign In to Portal"
-                title="Sign in to Student or Faculty Portal"
-              >
-                <Lock className="w-3.5 h-3.5 shrink-0 text-[#dfc18b]" />
-                <span>Sign In</span>
-              </button>
-            )}
-            {/* Mobile Drawer Navigation Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setShowMobileMoreMenu(prev => !prev)}
-              aria-label="Toggle navigation drawer"
-              title="Open Navigation Menu"
-              className="p-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden shrink-0 cursor-pointer transition-colors"
-            >
-              <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
-            </button>
-          </div>
-        </div>
-      </header>
 
       {/* Sacred Scripture Motto Ribbon */}
-      <div className="scripture-ribbon px-3 py-1.5 text-center text-[10px] sm:text-[11px] text-slate-700 dark:text-[#dfc18b] font-medium tracking-wide flex items-center justify-center gap-2 rounded-xl mb-3 shadow-2xs">
-        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-        <span>"Study to shew thyself approved unto God, a workman that needeth not to be ashamed" — 2 Timothy 2:15</span>
-        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 hidden sm:inline" />
+      <div className="scripture-ribbon relative overflow-hidden px-3 py-1.5 text-center text-[10px] sm:text-[11px] text-slate-700 dark:text-[#dfc18b] font-medium tracking-wide flex items-center justify-center gap-2 rounded-xl mb-3 shadow-2xs border border-amber-500/20 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 backdrop-blur-md">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent animate-shimmer pointer-events-none" />
+        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 animate-gentle-float" />
+        {/* truncate prevents overflow on very narrow screens (320px) */}
+        <span className="truncate min-w-0 font-semibold relative z-10">"Study to shew thyself approved unto God, a workman that needeth not to be ashamed" — 2 Timothy 2:15</span>
+        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 hidden md:inline animate-gentle-float" />
       </div>
 
-      {/* Desktop Navigation */}
+      {/* Desktop Navigation — sticky offset uses CSS var so header height changes stay in sync */}
       {appUser && (
-        <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[64px] sm:top-[70px] z-30 mb-4 py-0.5 pointer-events-auto">
+        <nav aria-label="Primary portal navigation" className="hidden md:block sticky top-[var(--header-h)] z-30 mb-4 py-0.5 pointer-events-auto">
           <div className="flex items-center gap-0.5 p-1 bg-slate-100/95 dark:bg-[#08182c]/95 backdrop-blur-md rounded-xl w-fit shadow-xs border border-slate-200/60 dark:border-[#1a385c]">
             {[
               { tab: 'home', label: 'Home', Icon: Sparkles },
@@ -7290,6 +7080,9 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
                 <div>
                   <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Quick Actions</p>
                   <div className="space-y-1.5">
+                    <div className="w-full">
+                      <PWAInstallButton />
+                    </div>
                     {(appUser?.role as string) !== 'student' && (
                       <button
                         onClick={() => {
@@ -7581,6 +7374,25 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
             <ArrowRight className="w-3.5 h-3.5 text-slate-950 shrink-0" />
           </button>
         </motion.div>
+      )}
+
+      {/* Offline Sync Queue Drawer */}
+      <OfflineSyncDrawer
+        isOpen={showOfflineDrawer}
+        onClose={() => setShowOfflineDrawer(false)}
+        isOnline={!isOffline}
+        onTriggerFullSync={async () => {
+          await handlePushToCloud();
+        }}
+      />
+
+      {/* Dynamic Rotating PIN & QR Check-in Modal */}
+      {showPINCheckinModal && (
+        <PINCheckinQRModal
+          classDayName={CURRICULUM_CLASS_DAYS[0]?.name || "Classroom Session"}
+          classDayId={CURRICULUM_CLASS_DAYS[0]?.id || "day_1"}
+          onClose={() => setShowPINCheckinModal(false)}
+        />
       )}
 
       {/* Mobile Bottom Navigation Dock */}

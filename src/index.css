@@ -4,6 +4,9 @@
 @variant high-contrast (&:where(.high-contrast, .high-contrast *));
 
 :root {
+  /* Header height — used by sticky nav offset so changes stay in sync */
+  --header-h: 56px;
+
   --hteim-navy-dark: #023264;
   --hteim-navy-deep: #011a36;
   --hteim-blue-royal: #025798;
@@ -162,6 +165,83 @@ main:focus-visible { outline: none; }
 
 .animate-pulseSoft {
   animation: pulseSoft 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes radiantGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(2, 87, 152, 0.2), 0 0 30px rgba(179, 143, 83, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(2, 87, 152, 0.35), 0 0 45px rgba(179, 143, 83, 0.2);
+  }
+}
+
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes livePulseRing {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 3s infinite;
+  pointer-events: none;
+}
+
+.animate-radiant-glow {
+  animation: radiantGlow 4s ease-in-out infinite;
+}
+
+.animate-gentle-float {
+  animation: gentleFloat 4s ease-in-out infinite;
+}
+
+.live-indicator-ring {
+  animation: livePulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.dark .glass-morphism {
+  background: rgba(10, 25, 47, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.interactive-hover-card {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+.interactive-hover-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -6px rgba(2, 50, 100, 0.12), 0 4px 8px -2px rgba(2, 50, 100, 0.06);
+}
+.dark .interactive-hover-card:hover {
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.5), 0 0 15px rgba(2, 87, 152, 0.25);
 }
 
 @layer utilities {
