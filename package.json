@@ -35,6 +35,7 @@
     "pdfjs-dist": "^4.10.38",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-is": "^19.2.8",
     "recharts": "^3.10.1",
     "sonner": "^2.0.8",
     "string-similarity": "^4.0.4",
