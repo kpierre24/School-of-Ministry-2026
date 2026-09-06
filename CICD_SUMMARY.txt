@@ -1,0 +1,141 @@
+================================================================================
+                   HTEIM SCHOOL OF MINISTRY - CI/CD SETUP
+                          Production-Ready Pipeline
+================================================================================
+
+FILES CREATED:
+
+GitHub Actions:
+  .github/workflows/docker-build-push.yml    Auto-build & push to Docker Hub
+
+Kubernetes:
+  k8s/deployment.yaml                        Deployment, Service, HPA, Secrets
+  k8s/ingress.yaml                           HTTPS routing with Let's Encrypt
+
+Documentation:
+  CHECKLIST.md                               START HERE - Setup checklist
+  CI_CD_SETUP.md                             Overview of what was created
+  DEPLOYMENT.md                              Complete deployment guide
+
+Scripts:
+  scripts/k8s-deploy.sh                      One-command Kubernetes deployment
+
+================================================================================
+
+QUICK START (5 MINUTES):
+
+1. Add 8 GitHub Secrets:
+   GitHub → Repo Settings → Secrets and variables → Actions
+   Add: DOCKER_USERNAME, DOCKER_PASSWORD, VITE_SUPABASE_*, VITE_FIREBASE_*
+
+2. Push workflow:
+   git add .github/workflows/docker-build-push.yml
+   git commit -m "Add CI/CD"
+   git push origin main
+
+3. Watch build:
+   GitHub → Actions tab → "Build & Push Docker Image" workflow
+
+DONE! Every commit now auto-builds & pushes to Docker Hub.
+
+================================================================================
+
+KUBERNETES DEPLOYMENT (Optional):
+
+With cluster:
+  bash scripts/k8s-deploy.sh
+  
+  OR manually:
+  kubectl apply -f k8s/deployment.yaml
+  kubectl apply -f k8s/ingress.yaml
+
+Without cluster:
+  Skip Kubernetes and use Docker Compose locally:
+  docker compose up
+
+================================================================================
+
+WHAT YOU GET:
+
+CI/CD:
+  + Automatic Docker image builds on every commit
+  + Secrets injected as build args (GitHub Secrets)
+  + Published to Docker Hub instantly
+  + Multiple tags: branch, version, SHA, latest
+
+Kubernetes:
+  + 2-5 replicas with auto-scaling (CPU/memory based)
+  + Health checks: liveness, readiness, startup probes
+  + Zero-downtime rolling updates
+  + HTTPS with Let's Encrypt (automatic certs)
+  + Load balancing and traffic distribution
+  + Security: non-root user, encrypted secrets, resource limits
+
+================================================================================
+
+NEXT STEPS:
+
+1. Read CHECKLIST.md (immediate actions)
+2. Add GitHub Secrets
+3. Push to main branch
+4. (Optional) Deploy to Kubernetes using scripts/k8s-deploy.sh
+
+================================================================================
+
+KEY FILES:
+
+.github/workflows/docker-build-push.yml
+  - Triggers on push to main
+  - Builds Docker image with secrets
+  - Pushes to kpierre24/hteim-school-of-ministry:latest
+
+k8s/deployment.yaml
+  - 2-5 replicas with HPA
+  - Liveness/readiness/startup probes on /api/health
+  - Security context (non-root, read-only)
+  - ConfigMap + Secret injection
+  - Resource limits: 250m CPU / 256MB (requests)
+
+k8s/ingress.yaml
+  - HTTPS with cert-manager
+  - Domain-based routing
+  - Rate limiting (100 req/min)
+
+================================================================================
+
+FLOW:
+
+Local Code Changes
+        |
+        v
+git push origin main
+        |
+        v
+GitHub Actions Triggers
+        |
+        v
+Docker Build (with Supabase/Firebase secrets baked in)
+        |
+        v
+Push to Docker Hub: kpierre24/hteim-school-of-ministry:latest
+        |
+        v
+(Optional) Kubernetes detects new image → Rolling update
+        |
+        v
+Zero-downtime deployment!
+
+================================================================================
+
+HELP:
+
+- CI/CD not working? → GitHub Actions must have 8 secrets set
+- Kubernetes failing? → kubectl logs -f deployment/hteim-school-of-ministry -n hteim-school-of-ministry
+- Health check fail? → kubectl port-forward svc/hteim-service 3000:80; curl localhost:3000/api/health
+- Docker Hub image? → docker pull kpierre24/hteim-school-of-ministry:latest
+
+================================================================================
+
+Version: 1.0
+Status: Production Ready
+Last Updated: 2026-09-06
