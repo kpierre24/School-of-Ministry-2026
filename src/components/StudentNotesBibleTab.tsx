@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   BookOpen,
   Calendar,
@@ -27,11 +27,22 @@ import {
   FileText,
   ExternalLink,
   Tag,
-  PenTool
+  PenTool,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Library,
+  BookMarked,
+  Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { AMP_BIBLE_BOOKS, searchAmpBible, AmpBook, AmpChapter, AmpVerse } from '../data/ampBible';
-import { getMultiTranslationVerse } from '../data/multiTranslationBible';
+import {
+  getBibleBooksCatalog,
+  getBibleChapter,
+  BibleBookMeta,
+  ScriptureChapterResult,
+  ScriptureVerseItem
+} from '../services/bibleService';
 import {
   StudentClassNote,
   getStudentNotes,
@@ -79,31 +90,143 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
     new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   );
 
-  // --- Bible State ---
+  // --- Bible State (Dynamic via bibleService) ---
+  const [bibleBooks, setBibleBooks] = useState<BibleBookMeta[]>([]);
+  const [booksLoading, setBooksLoading] = useState(true);
   const [selectedBookId, setSelectedBookId] = useState<string>('2ti');
   const [selectedChapterNumber, setSelectedChapterNumber] = useState<number>(2);
   const [bibleSearchQuery, setBibleSearchQuery] = useState<string>('');
+  const [bibleSearchResults, setBibleSearchResults] = useState<
+    { reference: string; text: string; translation: string }[]
+  >([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [bibleFontSize, setBibleFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [copiedVerse, setCopiedVerse] = useState<string | null>(null);
   const [bibleTranslation, setBibleTranslation] = useState<'AMP' | 'KJV' | 'parallel'>('AMP');
 
-  // Active Bible Book & Chapter
-  const currentBook = useMemo(() => {
-    return AMP_BIBLE_BOOKS.find(b => b.id === selectedBookId) || AMP_BIBLE_BOOKS[0];
-  }, [selectedBookId]);
+  // Dynamic chapter data
+  const [currentChapterData, setCurrentChapterData] = useState<ScriptureChapterResult | null>(null);
+  const [chapterLoading, setChapterLoading] = useState(false);
+  const [chapterError, setChapterError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<string>('');
 
-  const currentChapter = useMemo(() => {
-    return (
-      currentBook.chapters.find(c => c.chapter === selectedChapterNumber) ||
-      currentBook.chapters[0] || { chapter: 1, verses: [] }
-    );
-  }, [currentBook, selectedChapterNumber]);
+  // Book/Chapter lookup helpers
+  const currentBookMeta = useMemo(
+    () => bibleBooks.find(b => b.id === selectedBookId) || null,
+    [bibleBooks, selectedBookId]
+  );
 
-  // Bible Search Results
-  const bibleSearchResults = useMemo(() => {
-    if (!bibleSearchQuery || bibleSearchQuery.trim().length < 2) return [];
-    return searchAmpBible(bibleSearchQuery);
-  }, [bibleSearchQuery]);
+  const chapterCount = currentBookMeta?.chaptersCount || 1;
+
+  // --- Load 66-Book Catalog on Mount ---
+  useEffect(() => {
+    setBooksLoading(true);
+    getBibleBooksCatalog()
+      .then(books => {
+        setBibleBooks(books);
+      })
+      .catch(() => {
+        toast.error('Could not load Bible catalog. Using offline fallback.');
+      })
+      .finally(() => setBooksLoading(false));
+  }, []);
+
+  // --- Load Chapter whenever book, chapter, or translation changes ---
+  const chapterLoadRef = useRef<number>(0);
+
+  const loadChapter = useCallback(async () => {
+    const loadId = ++chapterLoadRef.current;
+    setChapterLoading(true);
+    setChapterError(null);
+
+    try {
+      const result = await getBibleChapter(selectedBookId, selectedChapterNumber, bibleTranslation);
+      if (loadId !== chapterLoadRef.current) return; // Stale request
+
+      if (result.verses.length === 0) {
+        setChapterError(
+          `No local data for ${currentBookMeta?.name || selectedBookId} ${selectedChapterNumber}. Try searching online or check your connection.`
+        );
+        setCurrentChapterData(result);
+      } else {
+        setCurrentChapterData(result);
+        setDataSource(result.source || 'local_json');
+      }
+    } catch (err) {
+      if (loadId !== chapterLoadRef.current) return;
+      setChapterError('Failed to load chapter. Please check your connection.');
+      setCurrentChapterData(null);
+    } finally {
+      if (loadId === chapterLoadRef.current) {
+        setChapterLoading(false);
+      }
+    }
+  }, [selectedBookId, selectedChapterNumber, bibleTranslation, currentBookMeta]);
+
+  useEffect(() => {
+    loadChapter();
+  }, [loadChapter]);
+
+  // Bible Search (via API passage endpoint)
+  const searchTimeoutRef = useRef<any>(null);
+  useEffect(() => {
+    if (!bibleSearchQuery || bibleSearchQuery.trim().length < 3) {
+      setBibleSearchResults([]);
+      return;
+    }
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/bible/passage?ref=${encodeURIComponent(bibleSearchQuery)}&translation=${bibleTranslation}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.verses)) {
+            const results = json.verses.map((v: any) => ({
+              reference: `${v.book_name || json.reference} ${v.chapter}:${v.verse}`,
+              text: (v.text || '').trim(),
+              translation: bibleTranslation
+            }));
+            setBibleSearchResults(results.length > 0 ? results : []);
+            if (results.length === 0) {
+              // Try direct bible-api.com fallback
+              const fallback = await fetch(`https://bible-api.com/${encodeURIComponent(bibleSearchQuery)}?translation=kjv`);
+              if (fallback.ok) {
+                const fd = await fallback.json();
+                if (fd.verses) {
+                  setBibleSearchResults(fd.verses.map((v: any) => ({
+                    reference: `${fd.reference}`,
+                    text: v.text.trim(),
+                    translation: 'KJV'
+                  })));
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback to bible-api.com directly
+        try {
+          const fallback = await fetch(`https://bible-api.com/${encodeURIComponent(bibleSearchQuery)}?translation=kjv`);
+          if (fallback.ok) {
+            const fd = await fallback.json();
+            if (fd.verses) {
+              setBibleSearchResults(fd.verses.map((v: any) => ({
+                reference: fd.reference,
+                text: v.text.trim(),
+                translation: 'KJV'
+              })));
+            }
+          }
+        } catch {
+          setBibleSearchResults([]);
+        }
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 600);
+  }, [bibleSearchQuery, bibleTranslation]);
 
   // Current active note
   const activeNote = useMemo(() => {
@@ -194,7 +317,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
     }
   };
 
-  // Insert AMP Scripture into Active Note
+  // Insert Scripture into Active Note
   const handleInsertScriptureIntoNote = (scriptureText: string, reference: string) => {
     if (!activeNote) {
       toast.error('Please select or create a note first.');
@@ -203,7 +326,6 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
 
     const formattedVerse = `${reference} - ${scriptureText}`;
 
-    // Add to keyScriptures array if not present
     const existingScriptures = activeNote.keyScriptures || [];
     const isAlreadyPresent = existingScriptures.some(s => s.includes(reference));
 
@@ -212,7 +334,6 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
       updatedScriptures = [...existingScriptures, formattedVerse];
     }
 
-    // Also append to markdown note content for fluid study reading
     const appendBlock = `\n\n> **${reference}**\n> "${scriptureText}"\n`;
     const updatedContent = (activeNote.content || '') + appendBlock;
 
@@ -239,25 +360,31 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
     window.print();
   };
 
+  // Navigate chapters
+  const goToPrevChapter = () => {
+    if (selectedChapterNumber > 1) {
+      setSelectedChapterNumber(selectedChapterNumber - 1);
+    }
+  };
+
+  const goToNextChapter = () => {
+    if (selectedChapterNumber < chapterCount) {
+      setSelectedChapterNumber(selectedChapterNumber + 1);
+    }
+  };
+
   // Filtered Notes List
   const filteredNotes = useMemo(() => {
     return notes.filter(note => {
-      // Class session filter
       if (selectedClassFilter !== 'all' && note.classDayId !== selectedClassFilter) {
         return false;
       }
-
-      // Date filter
       if (selectedDateFilter && note.classDate !== selectedDateFilter) {
         return false;
       }
-
-      // Module filter
       if (selectedModuleFilter !== 'all' && note.moduleCode !== selectedModuleFilter) {
         return false;
       }
-
-      // Search Query
       if (noteSearchQuery.trim()) {
         const q = noteSearchQuery.toLowerCase();
         const matchTitle = (note.title || '').toLowerCase().includes(q);
@@ -267,7 +394,6 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
         const matchTags = (note.tags || []).some(t => t.toLowerCase().includes(q));
         return matchTitle || matchContent || matchClass || matchScriptures || matchTags;
       }
-
       return true;
     });
   }, [notes, selectedClassFilter, selectedDateFilter, selectedModuleFilter, noteSearchQuery]);
@@ -281,9 +407,27 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
     return Array.from(dates).sort().reverse();
   }, [notes]);
 
+  // Group books by testament for the select dropdown
+  const ntBooks = useMemo(() => bibleBooks.filter(b => b.testament === 'NT'), [bibleBooks]);
+  const otBooks = useMemo(() => bibleBooks.filter(b => b.testament === 'OT'), [bibleBooks]);
+
+  // Chapter numbers array for selector
+  const chapterNumbers = useMemo(
+    () => Array.from({ length: chapterCount }, (_, i) => i + 1),
+    [chapterCount]
+  );
+
+  // Source badge text
+  const sourceBadge = useMemo(() => {
+    if (dataSource === 'local_json') return { label: 'Local', color: 'text-emerald-600 dark:text-emerald-400' };
+    if (dataSource === 'cache') return { label: 'Cached', color: 'text-sky-600 dark:text-sky-400' };
+    if (dataSource === 'api_fallback' || dataSource === 'dynamic_fallback') return { label: 'Live API', color: 'text-indigo-600 dark:text-indigo-400' };
+    return null;
+  }, [dataSource]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] min-h-[650px] bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-      {/* Top Header Bar: Title, Layout Switches, and Quick Controls */}
+      {/* Top Header Bar */}
       <header className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-amber-500/10 dark:bg-amber-400/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
@@ -292,11 +436,17 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                Student Class Notes & Amplified Bible
+                Student Class Notes & Bible Study
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#023264] text-[#dfc18b] border border-[#b38f53]/40">
-                AMP Translation
+                {bibleTranslation === 'parallel' ? 'AMP + KJV' : bibleTranslation}
               </span>
+              {!booksLoading && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                  <Library className="w-2.5 h-2.5" />
+                  {bibleBooks.length} Books
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2">
               <span>Organized by class sessions & dates</span>
@@ -328,7 +478,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            AMP Bible
+            Bible ({bibleBooks.length > 0 ? `${bibleBooks.length} Books` : '...'})
           </button>
         </div>
 
@@ -498,35 +648,30 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                             : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
                         }`}
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[9px] font-mono font-black uppercase text-amber-700 dark:text-amber-300 truncate max-w-[120px]">
-                              {note.classDayName ? note.classDayName.split('(')[0].trim() : 'Class Note'}
-                            </span>
-                            <span className="text-[9px] font-mono text-slate-400 shrink-0">
-                              {note.classDate || 'No date'}
-                            </span>
-                          </div>
-                          <h4
-                            className={`text-xs font-bold line-clamp-1 ${
-                              isSelected
-                                ? 'text-slate-900 dark:text-white'
-                                : 'text-slate-700 dark:text-slate-300'
-                            }`}
-                          >
-                            {note.title}
-                          </h4>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                            {note.content.replace(/[#*>\-_]/g, '').trim() || 'No notes written yet...'}
+                        <div className="flex items-start justify-between gap-1.5">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-2 leading-tight">
+                            {note.title || 'Untitled Note'}
                           </p>
+                          <button
+                            onClick={e => handleDeleteNote(note.id, e)}
+                            className="p-0.5 rounded text-slate-300 dark:text-slate-700 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                            title="Delete note"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
-
-                        {note.keyScriptures && note.keyScriptures.length > 0 && (
-                          <div className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-amber-800 dark:text-amber-300/90 truncate">
-                            <BookOpen className="w-2.5 h-2.5 shrink-0" />
-                            <span className="truncate">{note.keyScriptures[0].split('-')[0]}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {note.classDayName && (
+                            <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 truncate max-w-[90px]">
+                              {note.classDayName}
+                            </span>
+                          )}
+                          {note.classDate && (
+                            <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                              {note.classDate}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -534,165 +679,138 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
               </div>
             </div>
 
-            {/* Note Editor Area */}
+            {/* Note Editor */}
             {activeNote ? (
-              <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900 overflow-y-auto">
-                {/* Note Meta bar */}
-                <div className="p-3 border-b border-slate-100 dark:border-slate-800/80 space-y-2 shrink-0 bg-white dark:bg-slate-900">
-                  <div className="flex items-center justify-between gap-2">
-                    <input
-                      type="text"
-                      value={activeNote.title}
-                      onChange={e => updateActiveNote({ title: e.target.value })}
-                      placeholder="Note Title..."
-                      className="text-sm sm:text-base font-black text-slate-900 dark:text-white bg-transparent border-0 focus:outline-hidden focus:ring-0 w-full p-0"
-                    />
-
-                    {/* Actions: Print & Delete */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={handlePrintNote}
-                        title="Print / Save PDF of Note"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={e => handleDeleteNote(activeNote.id, e)}
-                        title="Delete Note"
-                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Class Session & Date Link */}
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    {/* Class Session binding */}
-                    <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                      <GraduationCap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <select
-                        aria-label="Assign note to curriculum class"
-                        value={activeNote.classDayId}
-                        onChange={e => {
-                          const chosen = availableClassDays.find(d => d.id === e.target.value);
-                          updateActiveNote({
-                            classDayId: e.target.value,
-                            classDayName: chosen?.name || e.target.value,
-                            classDate: chosen?.date || activeNote.classDate
-                          });
-                        }}
-                        className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md py-0.5 px-1.5 text-[11px] font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-                      >
-                        {availableClassDays.map((d, dIdx) => (
-                          <option key={`assign-class-${d.id || dIdx}-${dIdx}`} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Class Date */}
-                    <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <input
-                        type="date"
-                        aria-label="Class date"
-                        value={activeNote.classDate || ''}
-                        onChange={e => updateActiveNote({ classDate: e.target.value })}
-                        className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md py-0.5 px-1.5 text-[11px] font-mono text-slate-800 dark:text-slate-200 focus:outline-hidden"
-                      />
-                    </div>
-
-                    {/* Module Badge */}
-                    <select
-                      aria-label="Select ministry curriculum module"
-                      value={activeNote.moduleCode || 'SOM-MOD-1'}
-                      onChange={e => updateActiveNote({ moduleCode: e.target.value })}
-                      className="bg-[#023264]/10 dark:bg-[#023264]/40 text-[#023264] dark:text-[#7dd3fc] border border-[#023264]/30 rounded-md py-0.5 px-1.5 text-[10px] font-mono font-bold focus:outline-hidden"
+              <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+                {/* Note Header */}
+                <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/50 shrink-0 space-y-2">
+                  <input
+                    type="text"
+                    value={activeNote.title}
+                    onChange={e => updateActiveNote({ title: e.target.value })}
+                    placeholder="Note title..."
+                    className="w-full text-xs font-extrabold text-slate-900 dark:text-white bg-transparent border-none outline-none placeholder-slate-400"
+                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono text-slate-400">{activeNote.classDate}</span>
+                    {activeNote.moduleCode && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-800">
+                        {activeNote.moduleCode}
+                      </span>
+                    )}
+                    <button
+                      onClick={handlePrintNote}
+                      className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] flex items-center gap-0.5 ml-auto"
+                      title="Print note"
                     >
-                      <option value="SOM-MOD-1">MOD 1: Intro & Evangelism</option>
-                      <option value="SOM-MOD-2">MOD 2: Deliverance & Warfare</option>
-                      <option value="SOM-MOD-3">MOD 3: Ministerial Ethics</option>
-                      <option value="SOM-MOD-4">MOD 4: Apostolic Ministry</option>
-                      <option value="SOM-MOD-5">MOD 5: Prophetic Ministry</option>
-                      <option value="SOM-MOD-6">MOD 6: Pastors & Teachers</option>
-                    </select>
+                      <Printer className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Key Scriptures Attached to this Class Note */}
-                {activeNote.keyScriptures && activeNote.keyScriptures.length > 0 && (
-                  <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border-b border-amber-200/50 dark:border-amber-900/40 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 dark:text-amber-300">
-                      <span className="flex items-center gap-1.5">
-                        <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        Attached AMP Scriptures ({activeNote.keyScriptures.length})
-                      </span>
-                      <span className="text-[10px] text-amber-700 dark:text-amber-400/80 font-normal">
-                        Click 'Insert' in Bible panel to add more
-                      </span>
-                    </div>
+                {/* Note Content Textarea */}
+                <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 block">
+                      Class Notes
+                    </label>
+                    <textarea
+                      value={activeNote.content}
+                      onChange={e => updateActiveNote({ content: e.target.value })}
+                      placeholder="Write your class notes here... Use markdown for formatting."
+                      className="w-full h-40 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-[#025798] resize-none font-mono leading-relaxed"
+                    />
+                  </div>
 
+                  {/* Key Scriptures */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5 block flex items-center gap-1">
+                      <BookMarked className="w-3 h-3" />
+                      Key Scriptures ({activeNote.keyScriptures?.length || 0})
+                    </label>
                     <div className="space-y-1.5">
-                      {activeNote.keyScriptures.map((scrip, scIdx) => (
+                      {(activeNote.keyScriptures || []).map((s, sIdx) => (
                         <div
-                          key={`scrip-tag-${scIdx}`}
-                          className="flex items-start justify-between gap-2 p-1.5 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 rounded-lg text-xs shadow-2xs"
+                          key={`ks-${sIdx}`}
+                          className="p-2.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg flex items-start gap-2 group"
                         >
-                          <p className="text-slate-800 dark:text-slate-200 text-[11px] leading-relaxed">
-                            <span className="font-bold text-amber-700 dark:text-amber-300 font-mono">
-                              {scrip.split('-')[0]}
-                            </span>
-                            {scrip.includes('-') && (
-                              <span className="text-slate-600 dark:text-slate-400">
-                                {' '}
-                                — {scrip.substring(scrip.indexOf('-') + 1)}
-                              </span>
-                            )}
+                          <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-slate-800 dark:text-slate-200 leading-relaxed flex-1 font-serif">
+                            {s}
                           </p>
                           <button
                             onClick={() => {
-                              const updated = activeNote.keyScriptures.filter((_, idx) => idx !== scIdx);
+                              const updated = (activeNote.keyScriptures || []).filter((_, i) => i !== sIdx);
                               updateActiveNote({ keyScriptures: updated });
                             }}
-                            className="text-slate-400 hover:text-rose-500 p-0.5"
-                            title="Remove scripture"
+                            className="p-0.5 text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                           >
-                            &times;
+                            <Trash2 className="w-2.5 h-2.5" />
                           </button>
                         </div>
                       ))}
+                      {(activeNote.keyScriptures || []).length === 0 && (
+                        <p className="text-[11px] text-slate-400 italic px-2">
+                          No scriptures added yet. Use the Bible panel to insert verses →
+                        </p>
+                      )}
                     </div>
                   </div>
-                )}
 
-                {/* Main Markdown / Text Note Body */}
-                <div className="flex-1 p-3 flex flex-col min-h-[220px]">
-                  <textarea
-                    aria-label="Student class lecture notes"
-                    value={activeNote.content}
-                    onChange={e => updateActiveNote({ content: e.target.value })}
-                    placeholder="Type your class notes here... (Supports lecture outlines, quotes, revelations, and AMP scriptures)"
-                    className="flex-1 w-full bg-transparent border-0 focus:outline-hidden resize-none text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed custom-scrollbar"
-                  />
-                </div>
-
-                {/* Spiritual Takeaway & Action Points Footer */}
-                <div className="p-3 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 space-y-2 shrink-0">
+                  {/* Spiritual Takeaways */}
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      Spiritual Takeaway / Prophetic Revelation:
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 block">
+                      Spiritual Takeaways
                     </label>
-                    <input
-                      type="text"
+                    <textarea
                       value={activeNote.spiritualTakeaways || ''}
                       onChange={e => updateActiveNote({ spiritualTakeaways: e.target.value })}
-                      placeholder="What is God speaking to you through this class?"
-                      className="w-full text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                      placeholder="Key revelations and spiritual insights from this session..."
+                      className="w-full h-20 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-[#025798] resize-none leading-relaxed"
                     />
+                  </div>
+
+                  {/* Action Points */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 block">
+                      Action Points
+                    </label>
+                    <div className="space-y-1">
+                      {(activeNote.actionPoints || []).map((ap, apIdx) => (
+                        <div key={`ap-${apIdx}`} className="flex items-center gap-2 group">
+                          <CheckSquare className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <input
+                            type="text"
+                            value={ap}
+                            onChange={e => {
+                              const updated = [...(activeNote.actionPoints || [])];
+                              updated[apIdx] = e.target.value;
+                              updateActiveNote({ actionPoints: updated });
+                            }}
+                            className="flex-1 text-xs bg-transparent border-none outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400"
+                            placeholder="Action point..."
+                          />
+                          <button
+                            onClick={() => {
+                              const updated = (activeNote.actionPoints || []).filter((_, i) => i !== apIdx);
+                              updateActiveNote({ actionPoints: updated });
+                            }}
+                            className="p-0.5 text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const updated = [...(activeNote.actionPoints || []), ''];
+                          updateActiveNote({ actionPoints: updated });
+                        }}
+                        className="text-[10px] text-[#025798] dark:text-[#7dd3fc] flex items-center gap-1 mt-1 hover:underline"
+                      >
+                        <Plus className="w-3 h-3" /> Add action point
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -715,7 +833,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* PANEL 2: AMPLIFIED BIBLE (AMP) PARALLEL COMPONENT (Right Side) */}
+        {/* PANEL 2: FULL BIBLE READER (Right Side) — Dynamic via bibleService */}
         {/* ========================================================================= */}
         <div
           className={`flex flex-col bg-slate-50/60 dark:bg-slate-950/60 min-h-0 transition-all duration-200 ${
@@ -737,30 +855,38 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               {/* Book and Chapter Selectors */}
               <div className="flex items-center gap-1.5 flex-wrap">
-                <select
-                  aria-label="Select Bible Book"
-                  value={selectedBookId}
-                  onChange={e => {
-                    setSelectedBookId(e.target.value);
-                    setSelectedChapterNumber(1);
-                  }}
-                  className="py-1.5 px-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden"
-                >
-                  <optgroup label="New Testament (Epistles & Gospels)">
-                    {AMP_BIBLE_BOOKS.filter(b => b.testament === 'NT').map(b => (
-                      <option key={`nt-${b.id}`} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Old Testament (Wisdom & Prophets)">
-                    {AMP_BIBLE_BOOKS.filter(b => b.testament === 'OT').map(b => (
-                      <option key={`ot-${b.id}`} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                {/* Book Selector — Full 66 Books */}
+                {booksLoading ? (
+                  <div className="flex items-center gap-1.5 py-1.5 px-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-400 animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Loading catalog...
+                  </div>
+                ) : (
+                  <select
+                    aria-label="Select Bible Book"
+                    value={selectedBookId}
+                    onChange={e => {
+                      setSelectedBookId(e.target.value);
+                      setSelectedChapterNumber(1);
+                    }}
+                    className="py-1.5 px-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                  >
+                    <optgroup label="— New Testament —">
+                      {ntBooks.map(b => (
+                        <option key={`nt-${b.id}`} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="— Old Testament —">
+                      {otBooks.map(b => (
+                        <option key={`ot-${b.id}`} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                )}
 
                 {/* Chapter Select */}
                 <div className="flex items-center gap-1">
@@ -771,13 +897,23 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                     onChange={e => setSelectedChapterNumber(Number(e.target.value))}
                     className="py-1.5 px-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden"
                   >
-                    {currentBook.chapters.map(ch => (
-                      <option key={`ch-${ch.chapter}`} value={ch.chapter}>
-                        {ch.chapter}
+                    {chapterNumbers.map(ch => (
+                      <option key={`ch-${ch}`} value={ch}>
+                        {ch}
                       </option>
                     ))}
                   </select>
                 </div>
+
+                {/* Reload chapter button */}
+                <button
+                  onClick={loadChapter}
+                  disabled={chapterLoading}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-[#025798] dark:hover:text-[#7dd3fc] disabled:opacity-40 transition-colors"
+                  title="Reload chapter"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${chapterLoading ? 'animate-spin' : ''}`} />
+                </button>
               </div>
 
               {/* Translation Mode Switcher */}
@@ -813,7 +949,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Parallel (AMP / KJV)
+                  Parallel
                 </button>
               </div>
 
@@ -844,29 +980,16 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
 
                 <div className="flex items-center gap-0.5">
                   <button
-                    onClick={() => {
-                      const idx = currentBook.chapters.findIndex(c => c.chapter === selectedChapterNumber);
-                      if (idx > 0) {
-                        setSelectedChapterNumber(currentBook.chapters[idx - 1].chapter);
-                      }
-                    }}
-                    disabled={selectedChapterNumber === currentBook.chapters[0]?.chapter}
+                    onClick={goToPrevChapter}
+                    disabled={selectedChapterNumber <= 1}
                     className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Previous Chapter"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => {
-                      const idx = currentBook.chapters.findIndex(c => c.chapter === selectedChapterNumber);
-                      if (idx < currentBook.chapters.length - 1) {
-                        setSelectedChapterNumber(currentBook.chapters[idx + 1].chapter);
-                      }
-                    }}
-                    disabled={
-                      selectedChapterNumber ===
-                      currentBook.chapters[currentBook.chapters.length - 1]?.chapter
-                    }
+                    onClick={goToNextChapter}
+                    disabled={selectedChapterNumber >= chapterCount}
                     className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Next Chapter"
                   >
@@ -883,7 +1006,7 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                 type="text"
                 value={bibleSearchQuery}
                 onChange={e => setBibleSearchQuery(e.target.value)}
-                placeholder="Search AMP Bible (e.g. 'workman', 'shepherd', 'fivefold', or '2 Tim 2:15')..."
+                placeholder="Search scripture (e.g. 'John 3:16', 'Romans 8', 'faith', '2 Tim 2:15')..."
                 className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
               />
               {bibleSearchQuery && (
@@ -900,54 +1023,66 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
           {/* Scripture Verses View */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {/* If searching Bible, show results list */}
-            {bibleSearchQuery.trim().length >= 2 ? (
+            {bibleSearchQuery.trim().length >= 3 ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
                   <span>Search Results for "{bibleSearchQuery}"</span>
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {bibleSearchResults.length} verse{bibleSearchResults.length === 1 ? '' : 's'} found
-                  </span>
+                  {searchLoading ? (
+                    <span className="text-slate-400 flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Searching...
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {bibleSearchResults.length} verse{bibleSearchResults.length === 1 ? '' : 's'} found
+                    </span>
+                  )}
                 </div>
 
-                {bibleSearchResults.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-400">
-                    No matching scriptures found in the curriculum database. Try a keyword like "power",
-                    "spirit", "faith", "love", or "pastor".
+                {!searchLoading && bibleSearchResults.length === 0 && (
+                  <div className="p-6 text-center text-xs text-slate-400 space-y-2">
+                    <Globe className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
+                    <p className="font-bold">No results found</p>
+                    <p>Try a book and chapter reference like "John 3" or a full verse like "John 3:16".</p>
                   </div>
-                ) : (
-                  bibleSearchResults.map((res, rIdx) => (
-                    <div
-                      key={`search-res-${res.reference}-${rIdx}`}
-                      className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 shadow-2xs hover:border-amber-400/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
+                )}
+
+                {bibleSearchResults.map((res, rIdx) => (
+                  <div
+                    key={`search-res-${res.reference}-${rIdx}`}
+                    className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 shadow-2xs hover:border-amber-400/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-amber-700 dark:text-amber-400 font-mono">
                           {res.reference}
                         </span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleCopyScripture(res.text, res.reference)}
-                            className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                            title="Copy scripture"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => handleInsertScriptureIntoNote(res.text, res.reference)}
-                            className="px-2 py-0.5 bg-[#023264] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs hover:bg-[#022347]"
-                            title="Insert scripture directly into active class note"
-                          >
-                            <Plus className="w-3 h-3" />
-                            <span>Insert in Note</span>
-                          </button>
-                        </div>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          {res.translation}
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {res.text}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleCopyScripture(res.text, res.reference)}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                          title="Copy scripture"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => handleInsertScriptureIntoNote(res.text, res.reference)}
+                          className="px-2 py-0.5 bg-[#023264] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs hover:bg-[#022347]"
+                          title="Insert scripture directly into active class note"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Insert in Note</span>
+                        </button>
+                      </div>
                     </div>
-                  ))
-                )}
+                    <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-serif">
+                      {res.text}
+                    </p>
+                  </div>
+                ))}
               </div>
             ) : (
               /* Normal Chapter Reading View */
@@ -955,131 +1090,243 @@ export const StudentNotesBibleTab: React.FC<StudentNotesBibleTabProps> = ({
                 {/* Chapter Heading */}
                 <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex items-baseline justify-between flex-wrap gap-2">
                   <h3 className="text-base font-black text-slate-900 dark:text-white">
-                    {currentBook.name} {currentChapter.chapter}
+                    {currentBookMeta?.name || selectedBookId.toUpperCase()} {selectedChapterNumber}
                   </h3>
-                  <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">
-                    {bibleTranslation === 'AMP' ? 'Amplified Bible (AMP)' : bibleTranslation === 'KJV' ? 'King James Version (KJV)' : 'Parallel View (AMP & KJV)'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">
+                      {bibleTranslation === 'AMP'
+                        ? 'Amplified Bible (AMP)'
+                        : bibleTranslation === 'KJV'
+                        ? 'King James Version (KJV)'
+                        : 'Parallel View (AMP & KJV)'}
+                    </span>
+                    {sourceBadge && (
+                      <span className={`text-[9px] font-bold flex items-center gap-1 ${sourceBadge.color}`}>
+                        {sourceBadge.label === 'Live API' ? (
+                          <Globe className="w-2.5 h-2.5" />
+                        ) : (
+                          <Wifi className="w-2.5 h-2.5" />
+                        )}
+                        {sourceBadge.label}
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                {/* Loading State */}
+                {chapterLoading && (
+                  <div className="space-y-3">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={`skel-${i}`} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 animate-pulse">
+                        <div className="w-16 h-3 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="space-y-1.5">
+                          <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded" />
+                          <div className="w-4/5 h-3 bg-slate-100 dark:bg-slate-800 rounded" />
+                          <div className="w-3/5 h-3 bg-slate-100 dark:bg-slate-800 rounded" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Error / Unavailable State */}
+                {!chapterLoading && chapterError && (
+                  <div className="p-6 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl text-center space-y-3">
+                    <WifiOff className="w-8 h-8 text-amber-500 mx-auto" />
+                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                      {chapterError}
+                    </p>
+                    <button
+                      onClick={loadChapter}
+                      className="px-4 py-2 bg-[#023264] text-[#dfc18b] font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 mx-auto"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Try Again
+                    </button>
+                  </div>
+                )}
 
                 {/* Verses */}
-                <div className="space-y-3">
-                  {currentChapter.verses.map(v => {
-                    const multi = getMultiTranslationVerse(currentBook.id, currentChapter.chapter, v.verse);
-                    const ampText = multi?.amp || v.text;
-                    const kjvText = multi?.kjv || v.text;
-
-                    if (bibleTranslation === 'parallel') {
-                      return (
-                        <div
-                          key={`v-parallel-${v.verse}`}
-                          className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5 shadow-2xs hover:border-indigo-400/50 transition-colors"
+                {!chapterLoading && !chapterError && currentChapterData && (
+                  <div className="space-y-3">
+                    {currentChapterData.verses.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400 space-y-2">
+                        <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto" />
+                        <p>No verses loaded. Try refreshing or check your connection.</p>
+                        <button
+                          onClick={loadChapter}
+                          className="text-[#025798] dark:text-[#7dd3fc] underline font-bold flex items-center gap-1 mx-auto"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                              {currentBook.name} {currentChapter.chapter}:{v.verse}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleInsertScriptureIntoNote(`${currentBook.name} ${currentChapter.chapter}:${v.verse}\nAMP: "${ampText}"\nKJV: "${kjvText}"`, `${currentBook.name} ${currentChapter.chapter}:${v.verse} (Parallel)`)}
-                                className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs cursor-pointer"
-                                title="Insert both AMP and KJV into active note"
-                              >
-                                <Plus className="w-3 h-3" />
-                                <span>Insert Both</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                            <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">Amplified (AMP)</span>
-                                <button
-                                  onClick={() => handleInsertScriptureIntoNote(ampText, `${currentBook.name} ${currentChapter.chapter}:${v.verse} (AMP)`)}
-                                  className="text-[10px] text-amber-800 dark:text-amber-300 font-bold hover:underline cursor-pointer"
-                                >
-                                  + Insert
-                                </button>
-                              </div>
-                              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-serif text-[11px] sm:text-xs">
-                                {ampText}
-                              </p>
-                            </div>
-
-                            <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-400">King James (KJV)</span>
-                                <button
-                                  onClick={() => handleInsertScriptureIntoNote(kjvText, `${currentBook.name} ${currentChapter.chapter}:${v.verse} (KJV)`)}
-                                  className="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold hover:underline cursor-pointer"
-                                >
-                                  + Insert
-                                </button>
-                              </div>
-                              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-serif text-[11px] sm:text-xs">
-                                {kjvText}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    const displayText = bibleTranslation === 'KJV' ? kjvText : ampText;
-                    const verseRef = `${currentBook.name} ${currentChapter.chapter}:${v.verse} (${bibleTranslation})`;
-                    const isCopied = copiedVerse === verseRef;
-
-                    return (
-                      <div
-                        key={`v-${v.verse}`}
-                        className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-1.5 group hover:border-amber-500/40 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 font-mono">
-                            {currentBook.name} {currentChapter.chapter}:{v.verse}
-                          </span>
-
-                          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => handleCopyScripture(displayText, verseRef)}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-[10px] flex items-center gap-0.5 cursor-pointer"
-                              title="Copy Scripture"
-                            >
-                              {isCopied ? (
-                                <Check className="w-3 h-3 text-emerald-500" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-
-                            <button
-                              onClick={() => handleInsertScriptureIntoNote(displayText, verseRef)}
-                              className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs border border-[#b38f53]/30 cursor-pointer"
-                              title="Insert directly into your active note"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>Insert to Note</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Verse Text */}
-                        <p
-                          className={`text-slate-800 dark:text-slate-200 leading-relaxed font-serif ${
-                            bibleFontSize === 'normal'
-                              ? 'text-xs sm:text-sm'
-                              : bibleFontSize === 'large'
-                              ? 'text-sm sm:text-base'
-                              : 'text-base sm:text-lg'
-                          }`}
-                        >
-                          {displayText}
-                        </p>
+                          <RefreshCw className="w-3 h-3" /> Reload
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    ) : (
+                      currentChapterData.verses.map(v => {
+                        const ampText = v.amp || v.text || '';
+                        const kjvText = v.kjv || v.text || '';
+                        const bookName = currentBookMeta?.name || currentChapterData.bookName || selectedBookId.toUpperCase();
+
+                        if (bibleTranslation === 'parallel') {
+                          return (
+                            <div
+                              key={`v-parallel-${v.verse}`}
+                              className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5 shadow-2xs hover:border-indigo-400/50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                                  {bookName} {selectedChapterNumber}:{v.verse}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() =>
+                                      handleInsertScriptureIntoNote(
+                                        `AMP: "${ampText}"\nKJV: "${kjvText}"`,
+                                        `${bookName} ${selectedChapterNumber}:${v.verse} (Parallel)`
+                                      )
+                                    }
+                                    className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    title="Insert both AMP and KJV into active note"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Insert Both</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">Amplified (AMP)</span>
+                                    <button
+                                      onClick={() =>
+                                        handleInsertScriptureIntoNote(
+                                          ampText,
+                                          `${bookName} ${selectedChapterNumber}:${v.verse} (AMP)`
+                                        )
+                                      }
+                                      className="text-[10px] text-amber-800 dark:text-amber-300 font-bold hover:underline cursor-pointer"
+                                    >
+                                      + Insert
+                                    </button>
+                                  </div>
+                                  <p className={`text-slate-800 dark:text-slate-200 leading-relaxed font-serif ${
+                                    bibleFontSize === 'normal' ? 'text-[11px] sm:text-xs' : bibleFontSize === 'large' ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
+                                  }`}>
+                                    {ampText || <span className="italic text-slate-400">AMP text not available — local data or API needed</span>}
+                                  </p>
+                                </div>
+
+                                <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-400">King James (KJV)</span>
+                                    <button
+                                      onClick={() =>
+                                        handleInsertScriptureIntoNote(
+                                          kjvText,
+                                          `${bookName} ${selectedChapterNumber}:${v.verse} (KJV)`
+                                        )
+                                      }
+                                      className="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold hover:underline cursor-pointer"
+                                    >
+                                      + Insert
+                                    </button>
+                                  </div>
+                                  <p className={`text-slate-800 dark:text-slate-200 leading-relaxed font-serif ${
+                                    bibleFontSize === 'normal' ? 'text-[11px] sm:text-xs' : bibleFontSize === 'large' ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
+                                  }`}>
+                                    {kjvText}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        const displayText = bibleTranslation === 'KJV' ? kjvText : ampText;
+                        const verseRef = `${bookName} ${selectedChapterNumber}:${v.verse} (${bibleTranslation})`;
+                        const isCopied = copiedVerse === verseRef;
+
+                        return (
+                          <div
+                            key={`v-${v.verse}`}
+                            className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-1.5 group hover:border-amber-500/40 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 font-mono">
+                                {bookName} {selectedChapterNumber}:{v.verse}
+                              </span>
+
+                              <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleCopyScripture(displayText, verseRef)}
+                                  className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-[10px] flex items-center gap-0.5 cursor-pointer"
+                                  title="Copy Scripture"
+                                >
+                                  {isCopied ? (
+                                    <Check className="w-3 h-3 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => handleInsertScriptureIntoNote(displayText, verseRef)}
+                                  className="px-2 py-0.5 bg-[#023264] hover:bg-[#022347] text-[#dfc18b] font-bold text-[10px] rounded-md flex items-center gap-1 shadow-2xs border border-[#b38f53]/30 cursor-pointer"
+                                  title="Insert directly into your active note"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>Insert to Note</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Verse Text */}
+                            <p
+                              className={`text-slate-800 dark:text-slate-200 leading-relaxed font-serif ${
+                                bibleFontSize === 'normal'
+                                  ? 'text-xs sm:text-sm'
+                                  : bibleFontSize === 'large'
+                                  ? 'text-sm sm:text-base'
+                                  : 'text-base sm:text-lg'
+                              }`}
+                            >
+                              {displayText || (
+                                <span className="italic text-slate-400">
+                                  {bibleTranslation} text not available for this verse.
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {/* Chapter navigation footer */}
+                    {currentChapterData.verses.length > 0 && (
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <button
+                          onClick={goToPrevChapter}
+                          disabled={selectedChapterNumber <= 1}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                          Ch. {selectedChapterNumber - 1}
+                        </button>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {currentBookMeta?.name} {selectedChapterNumber} / {chapterCount}
+                        </span>
+                        <button
+                          onClick={goToNextChapter}
+                          disabled={selectedChapterNumber >= chapterCount}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          Ch. {selectedChapterNumber + 1}
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

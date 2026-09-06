@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import { githubRouter } from "./src/server/routes/github";
 import { aiRouter } from "./src/server/routes/ai";
 import { driveProxyRouter } from "./src/server/routes/driveProxy";
+import { bibleRouter } from "./src/server/routes/bible";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
 
@@ -63,6 +64,7 @@ async function startServer() {
   app.use("/api/github", githubRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/drive-proxy", driveProxyRouter);
+  app.use("/api/bible", bibleRouter);
 
   // Vite middleware for development vs static asset serving in production
   if (isDev) {
