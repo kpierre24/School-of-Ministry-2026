@@ -6,8 +6,8 @@ FROM node:22-slim AS builder
 WORKDIR /app
 
 # Cache dependency installations
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json* ./
+RUN npm ci || npm install
 
 # Copy source code (respects .dockerignore)
 COPY . .
@@ -47,10 +47,10 @@ ENV NODE_ENV=production \
 
 # Copy built distribution files and package manifests
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/package.json /app/package-lock.json* ./
 
 # Install only production runtime dependencies
-RUN npm ci --omit=dev && npm cache clean --force
+RUN (npm ci --omit=dev || npm install --omit=dev) && npm cache clean --force
 
 # Adjust permissions for non-root node user
 RUN chown -R node:node /app
