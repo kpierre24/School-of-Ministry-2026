@@ -3,6 +3,7 @@ export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' |
 import { UserRole } from './types/rbac';
 export * from './types/rbac';
 export * from './types/database';
+export * from './types/attendance';
 export type { StudentClassNote } from './utils/notesStorage';
 
 export interface FacultyTeacher {

@@ -31,7 +31,7 @@ export type TermStatus = 'upcoming' | 'active' | 'completed' | 'archived';
 export type SubmissionStatus = 'draft' | 'submitted' | 'graded' | 'resubmitted' | 'late';
 export type ProgramEnrollmentStatus = 'enrolled' | 'active' | 'completed' | 'withdrawn' | 'deferred';
 export type CourseEnrollmentStatus = 'enrolled' | 'in_progress' | 'completed' | 'failed' | 'dropped';
-export type AttendanceStatus = 'present' | 'absent' | 'excused' | 'tardy';
+export type DbAttendanceStatus = 'present' | 'absent' | 'excused' | 'tardy';
 export type InvoiceStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
 export type PaymentMethod = 'stripe' | 'card' | 'bank_transfer' | 'cash' | 'check' | 'scholarship' | 'other';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
@@ -229,7 +229,7 @@ export interface DbAttendance {
   course_id: string; // FK -> DbCourse.id
   lesson_id?: string | null; // FK -> DbLesson.id
   session_date: string;
-  status: AttendanceStatus;
+  status: DbAttendanceStatus;
   notes?: string | null;
   recorded_by_user_id?: string | null; // FK -> DbUser.id
   created_at: string;
