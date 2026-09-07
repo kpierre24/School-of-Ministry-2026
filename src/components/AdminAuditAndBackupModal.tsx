@@ -569,11 +569,11 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                     <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
                       <tr>
                         <th className="p-3 pl-4 min-w-[140px]">Timestamp</th>
-                        <th className="p-3 min-w-[150px]">Action Category</th>
-                        <th className="p-3 min-w-[200px]">Action Title</th>
-                        <th className="p-3 min-w-[140px]">Actor / Role</th>
-                        <th className="p-3 min-w-[150px]">Target Candidate</th>
-                        <th className="p-3 min-w-[280px]">Action Details & Notes</th>
+                        <th className="p-3 min-w-[160px]">User & Actor</th>
+                        <th className="p-3 min-w-[140px]">Action Code</th>
+                        <th className="p-3 min-w-[150px]">Student & Course</th>
+                        <th className="p-3 min-w-[160px]">Old Value ➔ New Value</th>
+                        <th className="p-3 min-w-[260px]">Action Details</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
@@ -581,35 +581,65 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                         <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                           <td className="p-3 pl-4 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
-                              <Clock className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                              <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                               <span>{log.timestamp}</span>
                             </div>
                           </td>
                           <td className="p-3 whitespace-nowrap">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-extrabold uppercase border ${getCategoryBadgeClass(log.actionCategory)}`}>
-                              {log.actionCategory}
-                            </span>
-                          </td>
-                          <td className="p-3 font-bold text-slate-900 dark:text-slate-100">
-                            {log.actionTitle}
+                            <div className="font-bold text-slate-900 dark:text-slate-100">{log.actor}</div>
+                            <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
+                              <span className="text-slate-400">{log.userEmail || `${log.role}@hteim.org`}</span>
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[9px]">
+                                {log.role}
+                              </span>
+                            </div>
                           </td>
                           <td className="p-3 whitespace-nowrap">
-                            <div className="font-bold text-slate-800 dark:text-slate-200">{log.actor}</div>
-                            <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wide">
-                              {log.role}
-                            </span>
-                          </td>
-                          <td className="p-3 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            {log.targetStudent ? (
-                              <span className="font-extrabold text-indigo-700 dark:text-indigo-400">
-                                {log.targetStudent}
+                            <div className="space-y-1">
+                              <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-[#025798] dark:text-[#7dd3fc] border border-slate-200 dark:border-slate-700">
+                                {log.action || 'OTHER'}
                               </span>
+                              <span className={`block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${getCategoryBadgeClass(log.actionCategory)}`}>
+                                {log.actionCategory}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 font-medium text-slate-700 dark:text-slate-300">
+                            {log.targetStudent ? (
+                              <div>
+                                <span className="font-extrabold text-indigo-700 dark:text-indigo-400 block">
+                                  {log.targetStudent}
+                                </span>
+                                {log.course && (
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">
+                                    {log.course}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-slate-400 italic">N/A (System)</span>
                             )}
                           </td>
+                          <td className="p-3 whitespace-nowrap">
+                            {log.oldValue !== undefined || log.newValue !== undefined ? (
+                              <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                                <span className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 line-through">
+                                  {String(log.oldValue ?? 'None')}
+                                </span>
+                                <span className="text-slate-400">➔</span>
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40 font-bold">
+                                  {String(log.newValue ?? 'Updated')}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-[10px] italic">No prior value record</span>
+                            )}
+                          </td>
                           <td className="p-3 text-slate-600 dark:text-slate-300 leading-relaxed max-w-md">
-                            {log.details}
+                            <div className="font-bold text-slate-900 dark:text-slate-100 mb-0.5">
+                              {log.actionTitle}
+                            </div>
+                            <p className="text-xs">{log.details}</p>
                             {log.ipOrDevice && (
                               <span className="block text-[10px] text-slate-400 font-mono mt-0.5">
                                 Session: {log.ipOrDevice}

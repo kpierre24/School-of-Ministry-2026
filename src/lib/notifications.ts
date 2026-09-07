@@ -10,12 +10,12 @@ export function generateAutomatedNotifications(
   currentRole?: string,
   currentStudentName?: string
 ): AppNotification[] {
-  const todayStr = new Date().toISOString().split('T')[0]; // e.g. 2026-07-25
+  const todayStr = new Date().toISOString().split('T')[0];
   const generated: AppNotification[] = [...existingNotifications];
 
   const hasNotification = (id: string) => generated.some(n => n.id === id);
 
-  // 1. Scan Custom Assignments for Due Date Alerts (Targeted exclusively to STUDENTS)
+  // 1. Scan Custom Assignments for Due Date Alerts (Targeted to STUDENTS)
   assignments.forEach(asg => {
     if (!asg.dueDate) return;
 
@@ -31,13 +31,14 @@ export function generateAutomatedNotifications(
           id: notifId,
           title: `⚠️ Past Due: ${asg.title}`,
           message: `The assignment "${asg.title}" was due on ${asg.dueDate}. Please submit your work immediately.`,
-          type: 'past_due',
+          type: 'assignment_deadline',
+          category: 'academic',
           targetRole: 'student',
           assignmentId: asg.id,
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
           priority: 'high',
-          actionTab: 'exams'
+          actionTab: 'courses'
         });
       }
     } 
@@ -49,13 +50,14 @@ export function generateAutomatedNotifications(
           id: notifId,
           title: `⏰ Due Today: ${asg.title}`,
           message: `"${asg.title}" is due today (${asg.dueDate})! Ensure your document response is uploaded before end of day.`,
-          type: 'due_date',
+          type: 'assignment_deadline',
+          category: 'academic',
           targetRole: 'student',
           assignmentId: asg.id,
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
           priority: 'high',
-          actionTab: 'exams'
+          actionTab: 'courses'
         });
       }
     }
@@ -67,19 +69,20 @@ export function generateAutomatedNotifications(
           id: notifId,
           title: `📅 Upcoming Due Date: ${asg.title}`,
           message: `"${asg.title}" is due in ${daysDiff} day(s) on ${asg.dueDate}.`,
-          type: 'due_date',
+          type: 'assignment_deadline',
+          category: 'academic',
           targetRole: 'student',
           assignmentId: asg.id,
           createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
           priority: 'normal',
-          actionTab: 'exams'
+          actionTab: 'courses'
         });
       }
     }
   });
 
-  // 2. Scan Submissions for Grading & Feedback Notifications (Targeted to STUDENTS) and Submission Alerts (Targeted to ADMIN/TEACHER)
+  // 2. Scan Submissions for Grading & Feedback (STUDENTS) and Submission Alerts (ADMIN/TEACHER)
   submissions.forEach(sub => {
     const asg = assignments.find(a => a.id === sub.assignmentId);
     const asgTitle = asg?.title || 'Coursework Assignment';
@@ -91,15 +94,16 @@ export function generateAutomatedNotifications(
         generated.unshift({
           id: notifId,
           title: `🎓 Assignment Graded: ${asgTitle}`,
-          message: `${sub.studentName}'s submission received a score of ${sub.score || 0}/${asg?.maxPoints || 100}.${sub.teacherFeedback ? ` Feedback: "${sub.teacherFeedback}"` : ''}${sub.teacherCorrectedFileName ? ' Corrected document attached.' : ''}`,
-          type: 'graded',
+          message: `${sub.studentName}'s submission received a score of ${sub.score || 0}/${asg?.maxPoints || 100}.${sub.teacherFeedback ? ` Feedback: "${sub.teacherFeedback}"` : ''}`,
+          type: 'grade_published',
+          category: 'academic',
           targetRole: 'student',
           studentName: sub.studentName,
           assignmentId: sub.assignmentId,
           createdAt: sub.updatedAt || new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
           priority: 'high',
-          actionTab: 'exams'
+          actionTab: 'courses'
         });
       }
     }
@@ -112,14 +116,15 @@ export function generateAutomatedNotifications(
           id: notifId,
           title: `📄 New Submission: ${sub.studentName}`,
           message: `${sub.studentName} uploaded "${sub.studentFileName || 'Assignment Document'}" for "${asgTitle}". Pending instructor review & grading.`,
-          type: 'submission',
+          type: 'assignment_submitted',
+          category: 'academic',
           targetRole: 'admin',
           studentName: sub.studentName,
           assignmentId: sub.assignmentId,
           createdAt: sub.submittedAt || new Date().toISOString().replace('T', ' ').slice(0, 16),
           read: false,
           priority: 'normal',
-          actionTab: 'exams'
+          actionTab: 'courses'
         });
       }
     }
@@ -144,12 +149,12 @@ export function filterNotificationsForUser(
 
     // 1. RBAC: Administrator or Teacher view
     if (normalizedRole === 'admin' || normalizedRole === 'teacher') {
-      // Administrators and Teachers should NEVER receive student homework/quiz due date or student grade notifications
+      // Administrators and Teachers should NEVER receive student-only personal grade/due alerts
       if (target === 'student') return false;
-      if (n.type === 'due_date' || n.type === 'past_due' || n.type === 'graded') {
+      const studentOnlyTypes = ['new_assignment', 'assignment_deadline', 'due_date', 'past_due', 'grade_published', 'payment_reminder', 'registration_confirmation'];
+      if (n.type && studentOnlyTypes.includes(n.type as string)) {
         return false;
       }
-      // Administrators and Teachers receive submissions to review, admin alerts, teacher announcements, and general notices
       return target === 'admin' || target === 'teacher' || target === 'all';
     }
 
@@ -157,25 +162,26 @@ export function filterNotificationsForUser(
     if (normalizedRole === 'student') {
       // Students should NEVER see administrative submission review alerts or faculty-only items
       if (target === 'admin' || target === 'teacher') return false;
-      if (n.type === 'submission') return false;
+      const adminOnlyTypes = ['new_enrollment', 'payment_received', 'outstanding_balance', 'attendance_issue', 'assignment_submitted', 'lecturer_pending_grades', 'submission'];
+      if (n.type && adminOnlyTypes.includes(n.type as string)) {
+        return false;
+      }
 
       // If targeted to a specific individual student, strictly enforce identity matching
       if (n.studentName) {
         if (!normalizedStudentName) return false;
         const targetStudent = n.studentName.toLowerCase().trim();
-        const matches = (
+        return (
           targetStudent === normalizedStudentName ||
           targetStudent.includes(normalizedStudentName) ||
           normalizedStudentName.includes(targetStudent)
         );
-        return matches;
       }
 
-      // General student notifications (e.g. general quiz published, course-wide due date alerts)
       return target === 'student' || target === 'all';
     }
 
     // Fallback: general public / guest accounts only see general announcements
-    return target === 'all' && n.type !== 'submission' && n.type !== 'due_date' && n.type !== 'past_due' && n.type !== 'graded';
+    return target === 'all';
   });
 }

@@ -1,5 +1,7 @@
 export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages' | 'reports' | 'notes';
 
+import { UserRole } from './types/rbac';
+export * from './types/rbac';
 export * from './types/database';
 export type { StudentClassNote } from './utils/notesStorage';
 
@@ -105,6 +107,22 @@ export type PaymentRecord = {
   paymentPlan?: PaymentPlanType;
 };
 
+export type FinancialAdjustmentType = 'discount' | 'scholarship' | 'refund' | 'adjustment' | 'fee_waiver' | 'late_fee';
+
+export type FinancialAdjustment = {
+  id: string; // ADJ-2026-XXXX
+  invoiceId: string;
+  studentId: string;
+  studentName: string;
+  type: FinancialAdjustmentType;
+  categoryName: string; // e.g. "Five-Fold Ministry Scholarship", "Early Bird Discount", "Course Drop Refund"
+  amount: number; // positive reduces invoice balance, negative increases
+  appliedDate: string;
+  authorizedBy: string;
+  notes?: string;
+  receiptOrDocRef?: string;
+};
+
 export type Invoice = {
   id: string; // INV-2026-XXXX
   studentId: string;
@@ -112,17 +130,23 @@ export type Invoice = {
   email?: string;
   phone?: string;
   moduleTrack: string;
+  term?: string; // e.g. "2026 Semester 1"
+  academicYear?: string;
   issueDate: string;
   dueDate: string;
   totalTuition: number;
   discounts: number;
   scholarships: number;
-  netTuition: number; // totalTuition - discounts - scholarships
-  amountPaid: number;
+  refunds?: number;
+  adjustments?: number;
+  netTuition: number; // totalTuition - discounts - scholarships - adjustments + refunds
+  amountPaid: number; // sum of completed transactions
   outstandingBalance: number; // netTuition - amountPaid
   paymentPlan: 'Pay In Full' | 'Monthly Installments' | 'Custom Plan' | string;
-  status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Past Due';
+  status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Past Due' | 'Refunded' | 'Cancelled';
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type PaymentTransaction = {
@@ -133,9 +157,16 @@ export type PaymentTransaction = {
   amount: number;
   paymentDate: string;
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe' | string;
-  receiptNumber: string;
-  status: 'Completed' | 'Pending' | 'Failed';
+  paymentReference?: string; // wire confirmation, check #, transaction reference
+  receiptNumber: string; // REC-2026-XXXX
+  status: 'Completed' | 'Pending' | 'Failed' | 'Refunded';
   notes?: string;
+  recordedBy?: string;
+  reconciliationStatus?: 'Reconciled' | 'Unreconciled' | 'Discrepancy';
+  reconciledAt?: string;
+  reconciledBy?: string;
+  depositBatchId?: string;
+  createdAt?: string;
 };
 
 export type Receipt = {
@@ -148,8 +179,35 @@ export type Receipt = {
   amountPaid: number;
   paymentDate: string;
   paymentMethod: string;
+  paymentReference?: string;
   issuedAt: string;
+  issuedBy?: string;
+  academicTerm?: string;
+  courseOrModule?: string;
+  totalTuitionBilled?: number;
+  discountsAndScholarships?: number;
+  balanceRemaining?: number;
+  verificationCode?: string;
   notes?: string;
+};
+
+import { AuditLogEntry, AuditLogCategory, AuditActionCode } from './lib/auditLogger';
+export type { AuditLogEntry, AuditLogCategory, AuditActionCode };
+export { logActivity, logAuditEvent, getAuditLogs } from './lib/auditLogger';
+
+export type FinancialAuditLog = {
+  id: string;
+  timestamp: string;
+  action: 'INVOICE_CREATED' | 'PAYMENT_RECORDED' | 'ADJUSTMENT_APPLIED' | 'REFUND_ISSUED' | 'PAYMENT_RECONCILED' | 'INVOICE_UPDATED' | 'SCHOLARSHIP_AWARDED';
+  actorName: string;
+  actorRole: string;
+  studentId: string;
+  studentName: string;
+  entityId: string;
+  entityType: 'invoice' | 'transaction' | 'receipt' | 'adjustment';
+  amount?: number;
+  details: string;
+  metadata?: Record<string, any>;
 };
 
 export type StudentProfile = {
@@ -361,16 +419,22 @@ export type AppNotification = {
   id: string;
   title: string;
   message: string;
-  type: 'due_date' | 'past_due' | 'graded' | 'submission' | 'general' | 'at_risk_attendance' | 'payment_past_due';
-  category?: 'assignment_due' | 'assignment_graded' | 'attendance_warning' | 'payment_due' | 'payment_received' | 'application_status' | 'announcement' | 'system';
+  type?: string;
+  eventType?: string;
+  category?: string;
   targetRole?: 'admin' | 'teacher' | 'student' | 'all';
   studentName?: string;
   assignmentId?: string;
+  courseOfferingId?: string;
   createdAt: string;
   read: boolean;
-  priority?: 'high' | 'normal' | 'low';
+  priority?: 'urgent' | 'high' | 'normal' | 'low';
   actionTab?: TabType;
-  channelSent?: ('portal' | 'email' | 'sms' | 'whatsapp')[];
+  actionUrl?: string;
+  channelSent?: ('portal' | 'in_app' | 'email' | 'sms' | 'push' | 'whatsapp')[];
+  deliveryLogs?: any[];
+  channelDelivery?: any;
+  metadata?: Record<string, any>;
 };
 
 export type AttendanceRecord = {
@@ -421,7 +485,7 @@ export type MessageAttachment = {
 export type MessageReply = {
   id: string;
   senderName: string;
-  senderRole: 'student' | 'teacher' | 'admin';
+  senderRole: UserRole | 'student' | 'teacher' | 'admin';
   senderEmail?: string;
   senderPhotoUrl?: string;
   message: string;
@@ -435,7 +499,7 @@ export type AppMessage = {
   category: MessageCategory;
   priority: MessagePriority;
   senderName: string;
-  senderRole: 'student' | 'teacher' | 'admin';
+  senderRole: UserRole | 'student' | 'teacher' | 'admin';
   senderEmail?: string;
   senderStudentId?: string;
   recipientType: 'admin' | 'teacher' | 'student' | 'all_staff';

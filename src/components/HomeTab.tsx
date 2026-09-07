@@ -90,6 +90,10 @@ import { EnrollmentInquiryModal } from './EnrollmentInquiryModal';
 import { StudentStoriesSection, FaqSection } from './VisitorSections';
 import { AdminCommandCenter } from './AdminCommandCenter';
 import { GraduationCarousel } from './GraduationCarousel';
+import { AdministratorDashboardView } from './dashboards/AdministratorDashboardView';
+import { LecturerDashboardView } from './dashboards/LecturerDashboardView';
+import { StudentDashboardView } from './dashboards/StudentDashboardView';
+import { FinanceDashboardView } from './dashboards/FinanceDashboardView';
 
 interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
@@ -470,8 +474,181 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     return payments.find(p => (p?.studentName || '').toLowerCase().trim() === nameToMatch) || null;
   }, [isStudent, appUser, payments]);
 
+  // Active Role Dashboard View Controller
+  const [selectedDashboardRole, setSelectedDashboardRole] = useState<'auto' | 'administrator' | 'lecturer' | 'student' | 'finance' | 'public'>('auto');
+
+  // Resolved role dashboard based on auth or user override
+  const resolvedRoleDashboard = useMemo(() => {
+    if (selectedDashboardRole !== 'auto') {
+      return selectedDashboardRole;
+    }
+    if (!appUser) return 'public';
+    if (appUser.role === 'admin' || appUser.role === 'super_admin' || appUser.role === 'registrar') {
+      return 'administrator';
+    }
+    if (appUser.role === 'lecturer' || appUser.role === 'teacher') {
+      return 'lecturer';
+    }
+    if (appUser.role === 'student') {
+      return 'student';
+    }
+    if (appUser.role === 'finance_officer') {
+      return 'finance';
+    }
+    return 'public';
+  }, [selectedDashboardRole, appUser]);
+
   return (
     <div className="space-y-6 pb-28 sm:pb-24 md:pb-12 animate-fadeIn material-screen" id="som-home-container">
+      {/* ─── Role Dashboard Perspective Switcher Bar ─────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 sm:p-3.5 rounded-2xl shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Active Perspective:
+          </span>
+          <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[#025798] dark:text-[#7dd3fc]">
+            {resolvedRoleDashboard.toUpperCase()}
+          </span>
+          {appUser && (
+            <span className="text-[10px] text-slate-500 hidden md:inline">
+              (Signed in as: <strong className="text-slate-700 dark:text-slate-300">{appUser.name}</strong> • Role: <strong className="text-slate-700 dark:text-slate-300">{appUser.role}</strong>)
+            </span>
+          )}
+        </div>
+
+        {/* Quick Role View Selector Pills */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            type="button"
+            onClick={() => setSelectedDashboardRole('auto')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              selectedDashboardRole === 'auto'
+                ? 'bg-[#023264] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Auto ({appUser ? appUser.role : 'Public'})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedDashboardRole('administrator')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              resolvedRoleDashboard === 'administrator' && selectedDashboardRole !== 'auto'
+                ? 'bg-[#023264] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Administrator
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedDashboardRole('lecturer')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              resolvedRoleDashboard === 'lecturer' && selectedDashboardRole !== 'auto'
+                ? 'bg-[#023264] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Lecturer
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedDashboardRole('student')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              resolvedRoleDashboard === 'student' && selectedDashboardRole !== 'auto'
+                ? 'bg-[#023264] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Student
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedDashboardRole('finance')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              resolvedRoleDashboard === 'finance' && selectedDashboardRole !== 'auto'
+                ? 'bg-[#023264] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Finance
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedDashboardRole('public')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              resolvedRoleDashboard === 'public' && selectedDashboardRole !== 'auto'
+                ? 'bg-[#023264] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            Visitor View
+          </button>
+        </div>
+      </div>
+
+      {/* ─── 1. Administrator Dashboard View ─────────────────────────────── */}
+      {resolvedRoleDashboard === 'administrator' && (
+        <AdministratorDashboardView
+          students={students}
+          payments={payments}
+          classDays={classDays}
+          customAssignments={customAssignments}
+          submissions={submissions}
+          coursesCount={coursesCount}
+          onNavigate={onNavigate}
+          atRiskThreshold={atRiskThreshold}
+          isCloudSyncing={isCloudSyncing}
+          lastSyncedTime={lastSyncedTime}
+          onPushToCloud={onPushToCloud}
+          appUser={appUser}
+        />
+      )}
+
+      {/* ─── 2. Lecturer Dashboard View ─────────────────────────────────── */}
+      {resolvedRoleDashboard === 'lecturer' && (
+        <LecturerDashboardView
+          appUser={appUser}
+          classDays={classDays}
+          students={students}
+          customAssignments={customAssignments}
+          submissions={submissions}
+          facultyTeachers={facultyTeachers}
+          onNavigate={onNavigate}
+          pendingAssignmentsCount={pendingAssignmentsCount}
+        />
+      )}
+
+      {/* ─── 3. Student Dashboard View ──────────────────────────────────── */}
+      {resolvedRoleDashboard === 'student' && (
+        <StudentDashboardView
+          appUser={appUser}
+          studentData={loggedInStudentData}
+          paymentRecord={loggedInStudentPayment}
+          classDays={classDays}
+          customAssignments={customAssignments}
+          submissions={submissions}
+          onNavigate={onNavigate}
+          onTakeQuiz={onTakeQuiz}
+          atRiskThreshold={atRiskThreshold}
+        />
+      )}
+
+      {/* ─── 4. Finance Dashboard View ──────────────────────────────────── */}
+      {resolvedRoleDashboard === 'finance' && (
+        <FinanceDashboardView
+          payments={payments}
+          students={students}
+          onNavigate={onNavigate}
+          appUser={appUser}
+        />
+      )}
       
       {/* ─── Role-Specific Jumpstart Banners (#2) ─────────────────────────── */}
       {/* Student Jumpstart Strip */}

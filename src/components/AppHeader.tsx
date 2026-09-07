@@ -60,10 +60,25 @@ export interface AppHeaderProps {
 }
 
 const ROLE_COLORS: Record<string, { avatar: string; label: string; dot: string }> = {
+  super_admin: {
+    avatar: 'bg-purple-700 text-white dark:bg-purple-950 dark:text-purple-200',
+    label: 'text-purple-700 dark:text-purple-300',
+    dot: 'bg-purple-600',
+  },
   admin: {
     avatar: 'bg-[#023264] text-white dark:bg-[#dceaf8] dark:text-[#023264]',
     label: 'text-[#025798] dark:text-[#7dd3fc]',
     dot: 'bg-[#025798]',
+  },
+  registrar: {
+    avatar: 'bg-blue-600 text-white dark:bg-blue-950 dark:text-blue-200',
+    label: 'text-blue-600 dark:text-blue-400',
+    dot: 'bg-blue-500',
+  },
+  lecturer: {
+    avatar: 'bg-[#01883c] text-white dark:bg-[#d1fae5] dark:text-[#01883c]',
+    label: 'text-[#01883c] dark:text-[#4ade80]',
+    dot: 'bg-[#01883c]',
   },
   teacher: {
     avatar: 'bg-[#01883c] text-white dark:bg-[#d1fae5] dark:text-[#01883c]',
@@ -74,6 +89,21 @@ const ROLE_COLORS: Record<string, { avatar: string; label: string; dot: string }
     avatar: 'bg-[#b38f53] text-white dark:bg-[#fef3c7] dark:text-[#8c6a32]',
     label: 'text-[#b38f53] dark:text-[#dfc18b]',
     dot: 'bg-[#b38f53]',
+  },
+  finance_officer: {
+    avatar: 'bg-emerald-700 text-white dark:bg-emerald-950 dark:text-emerald-200',
+    label: 'text-emerald-700 dark:text-emerald-400',
+    dot: 'bg-emerald-600',
+  },
+  librarian: {
+    avatar: 'bg-amber-600 text-white dark:bg-amber-950 dark:text-amber-200',
+    label: 'text-amber-600 dark:text-amber-400',
+    dot: 'bg-amber-500',
+  },
+  viewer: {
+    avatar: 'bg-slate-600 text-white dark:bg-slate-800 dark:text-slate-300',
+    label: 'text-slate-600 dark:text-slate-400',
+    dot: 'bg-slate-500',
   },
 };
 

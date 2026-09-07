@@ -10,8 +10,19 @@ import { githubRouter } from "./src/server/routes/github";
 import { aiRouter } from "./src/server/routes/ai";
 import { driveProxyRouter } from "./src/server/routes/driveProxy";
 import { bibleRouter } from "./src/server/routes/bible";
+import { authRouter } from "./src/server/routes/auth";
+import { studentsRouter } from "./src/server/routes/students";
+import { academicsRouter } from "./src/server/routes/academics";
+import { attendanceRouter } from "./src/server/routes/attendance";
+import { paymentsRouter } from "./src/server/routes/payments";
+import { libraryRouter } from "./src/server/routes/library";
+import { assignmentsRouter } from "./src/server/routes/assignments";
+import { auditLogsRouter } from "./src/server/routes/auditLogs";
+import { stateRouter } from "./src/server/routes/state";
+import { notificationsRouter } from "./src/server/routes/notifications";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
+import { authenticate } from "./src/server/middleware/rbac";
 
 dotenv.config();
 
@@ -53,15 +64,28 @@ async function startServer() {
   app.get("/ping", (_req, res) => res.status(200).send("pong"));
 
   // Limit payload size to prevent payload bombing attacks
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "15mb" }));
 
   // Sanitize incoming JSON bodies
   app.use(sanitizeBody);
 
-  // Apply rate limiting specifically to /api endpoints
-  app.use("/api", rateLimiter(100, 15 * 60 * 1000));
+  // Apply rate limiting specifically to /api endpoints (1000 requests per 15 min)
+  app.use("/api", rateLimiter(1000, 15 * 60 * 1000));
+
+  // Role-Based Access Control authentication context
+  app.use("/api", authenticate);
 
   // Mount API routers
+  app.use("/api/auth", authRouter);
+  app.use("/api/students", studentsRouter);
+  app.use("/api/academics", academicsRouter);
+  app.use("/api/attendance", attendanceRouter);
+  app.use("/api/payments", paymentsRouter);
+  app.use("/api/library", libraryRouter);
+  app.use("/api/assignments", assignmentsRouter);
+  app.use("/api/audit-logs", auditLogsRouter);
+  app.use("/api/state", stateRouter);
+  app.use("/api/notifications", notificationsRouter);
   app.use("/api/github", githubRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/drive-proxy", driveProxyRouter);

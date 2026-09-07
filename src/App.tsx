@@ -1,3 +1,5 @@
+import { PortalFooter, MobileBottomNav } from './components/layout';
+import { FloatingQuizBanner } from './features/assignments';
 import { PWAInstallButton } from "./components/PWAInstallButton";
 import { AppHeader } from './components/AppHeader';
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
@@ -96,6 +98,7 @@ import { ManageClassDaysModal } from './components/ManageClassDaysModal';
 import { SheetMergeConflictModal } from './components/SheetMergeConflictModal';
 import { OfflineSyncDrawer } from './components/OfflineSyncDrawer';
 import { PINCheckinQRModal } from './components/PINCheckinQRModal';
+import { RoleManagementModal } from './components/RoleManagementModal';
 import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from './lib/attendanceLock';
 import { usePWAInstall } from './lib/pwa';
 import {
@@ -110,7 +113,7 @@ import {
 import { subscribeToOAuthState as initAuth, loginWithGoogleOAuth as googleSignIn, logoutUserSession as logout, logoutUserSession as supabaseLogout } from './services/authService';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
 import { getDemoAttendance, CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS } from './data';
-import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord, Cohort, DEFAULT_COHORTS } from './types';
+import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord, Cohort, DEFAULT_COHORTS, UserRole } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword, isMatchingCredential, mergeUserCredentials, DEFAULT_USER_PASSWORD } from './lib/userAuth';
 import { updatePasswordInSupabase } from './lib/supabaseAuth';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -121,6 +124,7 @@ import { UserManagementModal } from './components/UserManagementModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { CohortManagementModal } from './components/CohortManagementModal';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
+import { AttendanceWorkspace as AttendanceTab } from './features/attendance/AttendanceWorkspace';
 import { HomeTab, DEFAULT_FACULTY_TEACHERS } from './components/HomeTab';
 import { StudentsTab } from './components/StudentsTab';
 import { CoursesTab, INITIAL_COURSES } from './components/CoursesTab';
@@ -134,6 +138,13 @@ import { StudentNotesBibleTab } from './components/StudentNotesBibleTab';
 import { DEFAULT_PRESET_MEDIA } from './components/ClassroomMediaPlayer';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from './components/OutstandingPaymentBanner';
+import { StudentDetailModal } from './features/students/StudentDetailModal';
+import { StudentTranscriptModal } from './features/students/StudentTranscriptModal';
+import { CertificateModal } from './features/students/CertificateModal';
+import { BatchEmailModal } from './features/attendance/BatchEmailModal';
+import { PrintableReportModal } from './features/attendance/PrintableReportModal';
+import { GuideModal } from './components/shared/GuideModal';
+import { MobileMoreMenuDrawer } from './components/layout/MobileMoreMenuDrawer';
 
 // Subtle Page-Fade transition variants for smooth tab navigation
 const pageFadeVariants = {
@@ -618,36 +629,77 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
-  const handleQuickRoleSwitch = (role: 'admin' | 'teacher' | 'student', studentNameChoice?: string) => {
+  const handleQuickRoleSwitch = (role: UserRole | string, customName?: string, studentIdChoice?: string) => {
     let newUser: AppUser;
-    if (role === 'admin') {
+    const cleanRole = (role || 'student') as UserRole;
+
+    if (cleanRole === 'super_admin') {
+      newUser = {
+        id: 'u-super-admin',
+        username: 'superadmin',
+        name: customName || 'Apostle Kendell Pierre',
+        role: 'super_admin',
+        email: 'kpierre24@gmail.com'
+      };
+    } else if (cleanRole === 'admin') {
       newUser = {
         id: 'u-admin',
         username: 'admin',
-        name: 'Administrator',
+        name: customName || 'Administrator Sarah',
         role: 'admin',
         email: 'admin@hteim.edu'
       };
-    } else if (role === 'teacher') {
+    } else if (cleanRole === 'registrar') {
       newUser = {
-        id: 'u-teacher',
-        username: 'teacher',
-        name: 'Rev. Dr. Faculty Instructor',
-        role: 'teacher',
-        email: 'teacher@hteim.edu'
+        id: 'u-registrar',
+        username: 'registrar',
+        name: customName || 'Dr. Evelyn Registrar',
+        role: 'registrar',
+        email: 'registrar@hteim.edu'
+      };
+    } else if (cleanRole === 'lecturer' || cleanRole === 'teacher') {
+      newUser = {
+        id: 'u-lecturer',
+        username: 'lecturer',
+        name: customName || 'Rev. Dr. Matthew Faculty',
+        role: 'lecturer',
+        email: 'lecturer@hteim.edu',
+        assignedCourses: ['SOM-101', 'SOM-102']
+      };
+    } else if (cleanRole === 'finance_officer') {
+      newUser = {
+        id: 'u-finance',
+        username: 'finance',
+        name: customName || 'Minister David Bursar',
+        role: 'finance_officer',
+        email: 'finance@hteim.edu'
+      };
+    } else if (cleanRole === 'librarian') {
+      newUser = {
+        id: 'u-librarian',
+        username: 'librarian',
+        name: customName || 'Sister Grace Librarian',
+        role: 'librarian',
+        email: 'librarian@hteim.edu'
+      };
+    } else if (cleanRole === 'viewer') {
+      newUser = {
+        id: 'u-viewer',
+        username: 'viewer',
+        name: customName || 'Guest Observer',
+        role: 'viewer',
+        email: 'guest@hteim.edu'
       };
     } else {
-      let chosenName = 'Aaron Miller';
-      if (typeof studentNameChoice === 'string' && studentNameChoice.trim()) {
-        chosenName = studentNameChoice.trim();
-      } else if (studentNameChoice && typeof (studentNameChoice as any).name === 'string') {
-        chosenName = (studentNameChoice as any).name.trim();
-      } else if (uniqueStudents && uniqueStudents.length > 0) {
-        const firstStudent = uniqueStudents[0];
-        if (typeof firstStudent === 'string') {
-          chosenName = firstStudent;
-        } else if (firstStudent && typeof (firstStudent as any).name === 'string') {
-          chosenName = (firstStudent as any).name;
+      let chosenName = customName || 'Aaron Miller';
+      if (!customName) {
+        if (uniqueStudents && uniqueStudents.length > 0) {
+          const firstStudent = uniqueStudents[0];
+          if (typeof firstStudent === 'string') {
+            chosenName = firstStudent;
+          } else if (firstStudent && typeof (firstStudent as any).name === 'string') {
+            chosenName = (firstStudent as any).name;
+          }
         }
       }
 
@@ -657,12 +709,13 @@ export default function App() {
         name: chosenName,
         role: 'student',
         studentName: chosenName,
-        email: `${(generateStudentUsername(chosenName) || '').toLowerCase()}@hteim.edu`
+        studentId: studentIdChoice || 'HTEIM-2026-0001',
+        email: `${(generateStudentUsername(chosenName) || '').toLowerCase()}@student.hteim.edu`
       };
     }
     setAppUser(newUser);
     setShowRoleMenu(false);
-    setSyncedBannerMessage(`🎭 Role Switch: Previewing portal as ${role.toUpperCase()} (${newUser.name})`);
+    setSyncedBannerMessage(`🎭 Role Switch: Previewing portal as ${cleanRole.toUpperCase().replace('_', ' ')} (${newUser.name})`);
     setTimeout(() => {
       setSyncedBannerMessage('');
     }, 4500);
@@ -4441,6 +4494,7 @@ create policy "Allow public update" on app_states for update using (true) with c
             </motion.div>
           )}
 
+          {/* Attendance Tab */}
           {activeErpTab === 'attendance' && (
             <motion.div
               key="attendance"
@@ -4453,809 +4507,106 @@ create policy "Allow public update" on app_states for update using (true) with c
             >
               <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
                 <ErrorBoundary label="Attendance Tab">
-                  {appUser?.role === 'student' ? (
-              <StudentAttendancePortal
-                student={currentStudentPortalData}
-                classDays={classDays}
-                rubricScores={rubricScores}
-                onUpdateStudentPhoto={handleUpdateStudentPhoto}
-onRequestTranscript={(s) => {
-                    setSelectedStudent({
-                      name: s.name,
-                      rate: s.rate,
-                      attended: s.attended,
-                      totalDays: s.totalDays,
-                      avgScore: s.avgScore || 90,
-                      attendanceByDay: s.attendanceByDay,
-                      levelId: s.levelId || 'level_1'
-                    });
-                  setShowStudentTranscriptModal(true);
-                }}
-                onRequestCertificate={(s) => {
-                  setCertificateData({
-                    studentName: s.name,
-                    awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
-                    criteria: `Demonstrated commitment with ${s.rate.toFixed(1)}% class attendance.`,
-                    rate: s.rate,
-                    avgScore: s.avgScore || 90
-                  });
-                  setShowCertificateModal(true);
-                }}
-                atRiskThreshold={atRiskThreshold}
-                satisfactoryThreshold={satisfactoryThreshold}
-              />
-            ) : (records.length > 0 || classDays.length > 0 || uniqueStudents.length > 0) ? (
-              <>
-                {/* Toolbar: Search, Filter, Date Range, View Mode & Settings */}
-              {/* Sticky Search Header & Mobile Quick Filter Chips Toolbar */}
-              <div className="sticky top-0 z-20 p-2 sm:p-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2 flex-shrink-0 shadow-2xs">
-                {/* Search Bar & Mobile View Mode Switcher */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search student..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                    {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Desktop View Switcher & Action Buttons */}
-                  <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-                    <div className="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-xl text-xs text-slate-600 dark:text-slate-300">
-                      <button
-                        onClick={() => setViewMode('matrix')}
-                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${viewMode === 'matrix' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                        title="Visual Attendance Matrix (Grid)"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setViewMode('cards')}
-                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${viewMode === 'cards' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                        title="Student Profile Cards View"
-                      >
-                        <List className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {(appUser?.role as string) !== 'student' && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleAddClassDay()}
-                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
-                          title="Add a new class session"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>+ Class Day</span>
-                        </button>
-                        <button
-                          onClick={() => setShowClassDaysModal(true)}
-                          className="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
-                          title="Manage class session titles"
-                        >
-                          <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                          <span>Manage ({classDays.length})</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Mobile Touch-Scrollable Dropdowns & Filter Chips Row */}
-                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 max-w-full">
-                  {/* Date Range Filter */}
-                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300 shrink-0">
-                    <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                    <select
-                      value={dateRangeFilter}
-                      onChange={(e: any) => setDateRangeFilter(e.target.value)}
-                      className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
-                    >
-                      <option value="all">All Dates</option>
-                      <option value="30days">Last 30 Days</option>
-                      <option value="month">This Month</option>
-                    </select>
-                  </div>
-
-                  {/* Academic Module Filter */}
-                  <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl px-2 py-1 text-xs text-amber-900 dark:text-amber-200 shrink-0">
-                    <Layers className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <select
-                      value={selectedModule}
-                      onChange={(e: any) => setSelectedModule(e.target.value)}
-                      className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-amber-900 dark:text-amber-200 cursor-pointer"
-                    >
-                      <option value="all">All Modules</option>
-                      <option value="m1">Module 1</option>
-                      <option value="m2">Module 2</option>
-                      <option value="m3">Module 3</option>
-                    </select>
-                  </div>
-
-                  {/* Sorting */}
-                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs text-slate-600 dark:text-slate-300 shrink-0">
-                    <ArrowUpDown className="w-3 h-3 text-slate-400 shrink-0" />
-                    <select
-                      value={sortBy}
-                      onChange={(e: any) => setSortBy(e.target.value)}
-                      className="bg-transparent focus:outline-none font-bold text-[11px] sm:text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
-                    >
-                      <option value="name_asc">Name (A → Z)</option>
-                      <option value="name_desc">Name (Z → A)</option>
-                      <option value="last_name_asc">Last Name (A → Z)</option>
-                      <option value="last_name_desc">Last Name (Z → A)</option>
-                      <option value="rate_desc">Attendance (High → Low)</option>
-                      <option value="rate_asc">Attendance (Low → High)</option>
-                      <option value="score_desc">Avg Score (High → Low)</option>
-                      <option value="score_asc">Avg Score (Low → High)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Attendance Workspace View Mode */}
-              {viewMode === 'cards' ? (
-                /* Student Profile Cards Grid View */
-                <div className="flex-1 overflow-auto custom-scrollbar p-4 bg-slate-50/50">
-                  {filteredAndSortedStudents.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      <AnimatePresence mode="popLayout">
-                        {filteredAndSortedStudents.map((student, idx) => {
-                          const studentKey = (student?.name || '').toLowerCase().trim();
-                          const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
-                          const note = studentNotes[studentKey] || student.note;
-                          const studentBadges = getStudentBadges(student);
-
-                          return (
-                            <motion.div 
-                              key={`student-card-${student.name || idx}-${idx}`}
-                              layout
-                              initial={{ opacity: 0, scale: 0.92, y: 12 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.88, y: -12 }}
-                              whileHover={{ scale: 1.015, y: -2 }}
-                              transition={{
-                                layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
-                                opacity: { duration: 0.2 },
-                                scale: { duration: 0.2 },
-                                y: { duration: 0.2 }
-                              }}
-                              onClick={() => setSelectedStudent(student)}
-                              className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-lg hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between group"
-                            >
-                              <div>
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    {cardPhoto ? (
-                                      <img 
-                                        src={cardPhoto} 
-                                        alt={student.name} 
-                                        className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0" 
-                                      />
-                                    ) : (
-                                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 font-black text-slate-700 text-xs flex items-center justify-center flex-shrink-0">
-                                        {student.name.charAt(0)}
-                                      </div>
-                                    )}
-                                    <div className="min-w-0">
-                                      <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">{student.name}</h4>
-                                      <p className="text-[10px] text-slate-400">Attended {student.attended} of {effectiveClassDays.length} sessions</p>
-                                    </div>
-                                  </div>
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold flex-shrink-0 ${
-                                    student.rate >= satisfactoryThreshold ? 'bg-emerald-100 text-emerald-800' : student.rate >= atRiskThreshold ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800 font-extrabold'
-                                  }`}>
-                                    {Math.round(student.rate)}%
-                                  </span>
-                                </div>
-
-                                {/* Student Badges / Milestones */}
-                                {studentBadges.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mb-2">
-                                    {studentBadges.map((b, bIdx) => (
-                                      <span key={`card-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${b.bg}`}>
-                                        {b.icon}
-                                        <span>{b.label}</span>
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Attendance Progress Bar */}
-                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden my-2">
-                                  <div 
-                                    className={`h-full transition-all duration-500 ${
-                                      student.rate >= satisfactoryThreshold ? 'bg-emerald-500' : student.rate >= atRiskThreshold ? 'bg-amber-500' : 'bg-rose-500'
-                                    }`}
-                                    style={{ width: `${Math.min(100, Math.max(0, student.rate))}%` }}
-                                  />
-                                </div>
-
-                                {/* Note preview if available */}
-                                {note && (
-                                  <div className="mt-2 p-1.5 bg-indigo-50/60 border border-indigo-100 rounded text-[10px] text-indigo-900 line-clamp-2 italic">
-                                    "{note}"
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
-                                <span>View Breakdown & Remarks</span>
-                                <span>&rarr;</span>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </div>
-                  ) : (
-                    <EmptyState
-                      title="No students found"
-                      description="No students match your current search or filter criteria."
-                    />
-                  )}
-                </div>
-              ) : (
-                /* Attendance Matrix View Container */
-                <div className="flex-1 overflow-hidden flex flex-col min-h-0 relative">
-                  
-                  {/* Mobile Attendance Matrix Card Format (< 768px / md:hidden) */}
-                  <div className="md:hidden flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/50 custom-scrollbar">
-                    {/* Mobile Active Check-in Session Quick Controller Bar */}
-                    {(appUser?.role as string) !== 'student' && effectiveClassDays.length > 0 && (
-                      <div className="sticky top-0 z-10 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800 shadow-md space-y-2.5">
-                        {/* Session Header & Mode Selector */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="relative flex h-2.5 w-2.5 shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                            </span>
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-                              Active Roll Call Session
-                            </span>
-                          </div>
-
-                          {/* Mobile View Mode Switcher: Rapid List vs Full Cards */}
-                          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setMobileRollCallMode('rapid')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
-                                mobileRollCallMode === 'rapid' 
-                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
-                                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                              }`}
-                            >
-                              <Zap className="w-3 h-3 text-amber-500" />
-                              <span>Rapid List</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMobileRollCallMode('cards')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
-                                mobileRollCallMode === 'cards' 
-                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs' 
-                                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                              }`}
-                            >
-                              <LayoutGrid className="w-3 h-3" />
-                              <span>Cards</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Full Width Styled Session Selector Dropdown */}
-                        <div className="relative">
-                          <select
-                            value={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
-                            onChange={(e) => setLiveCheckinDayId(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer pr-8 truncate appearance-none"
-                          >
-                            {effectiveClassDays.map(d => (
-                              <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                                {d.name}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-
-                        {/* Quick Action Row */}
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px]">
-                          <span className="text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shrink-0">
-                            <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded font-extrabold">
-                              {filteredAndSortedStudents.length} Students
-                            </span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const activeDay = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
-                              if (!activeDay) return;
-                              filteredAndSortedStudents.forEach(s => {
-                                const currentAtt = s.attendanceByDay[activeDay];
-                                if (!currentAtt || currentAtt.present === undefined) {
-                                  handleToggleStudentAttendance(s.name, activeDay, 'present');
-                                }
-                              });
-                              if (navigator.vibrate) navigator.vibrate([20, 50, 20]);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black shrink-0 active:opacity-80 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[36px]"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Mark Unmarked Present</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {filteredAndSortedStudents.length > 0 ? (
-                      mobileRollCallMode === 'cards' ? (
-                        <AnimatePresence mode="popLayout">
-                          {filteredAndSortedStudents.map((student, idx) => (
-                            <motion.div
-                              key={`swipe-card-${student.name || idx}-${idx}`}
-                              layout
-                              initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                              transition={{
-                                layout: { type: 'spring', stiffness: 280, damping: 28, mass: 0.8 },
-                                opacity: { duration: 0.2 },
-                                scale: { duration: 0.2 },
-                                y: { duration: 0.2 }
-                              }}
-                            >
-                              <SwipeableAttendanceCard
-                                student={student}
-                                effectiveClassDays={effectiveClassDays}
-                                activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
-                                studentPhotos={studentPhotos}
-                                studentNotes={studentNotes}
-                                excusedAbsences={excusedAbsences}
-                                isSelected={selectedStudentNames.includes(student.name)}
-                                satisfactoryThreshold={satisfactoryThreshold}
-                                atRiskThreshold={atRiskThreshold}
-                                studentBadges={getStudentBadges(student)}
-                                onToggleAttendance={handleToggleStudentAttendance}
-                                onSelectStudent={setSelectedStudent}
-                                onToggleSelectStudent={toggleSelectStudent}
-                                appRole={appUser?.role}
-                              />
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      ) : (
-                        /* Rapid Roll Call Mode: Super Compact 1-Line Row per Student */
-                        <div className="space-y-2">
-                          {filteredAndSortedStudents.map((student, idx) => {
-                            const studentKey = (student?.name || '').toLowerCase().trim();
-                            const cardPhoto = studentPhotos[studentKey] || student.photoUrl;
-                            const activeDayId = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
-                            const att = student.attendanceByDay[activeDayId];
-                            const isPresent = att?.present === true;
-                            const isExcused = !isPresent && !!(excusedAbsences[studentKey] || {})[activeDayId];
-                            const isAbsent = !isPresent && !isExcused && att?.present === false;
-
-                            return (
-                              <div
-                                key={`rapid-row-${student.name || idx}-${idx}`}
-                                className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-2"
-                              >
-                                <div 
-                                  onClick={() => setSelectedStudent(student)}
-                                  className="flex items-center gap-2 min-w-0 cursor-pointer group"
-                                >
-                                  {cardPhoto ? (
-                                    <img src={cardPhoto} alt={student.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs flex items-center justify-center shrink-0">
-                                      {student.name.charAt(0)}
-                                    </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <h4 className="text-xs font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">
-                                      {student.name}
-                                    </h4>
-                                    <p className="text-[9px] text-slate-400 font-mono">
-                                      {student.attended}/{effectiveClassDays.length} ({Math.round(student.rate)}%)
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {(appUser?.role as string) !== 'student' && activeDayId && (
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleStudentAttendance(student.name, activeDayId, 'present');
-                                        if (navigator.vibrate) navigator.vibrate(20);
-                                      }}
-                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:opacity-80 touch-min-44 ${
-                                        isPresent 
-                                          ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-400' 
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-                                      }`}
-                                      title="Mark Present"
-                                    >
-                                      P
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleStudentAttendance(student.name, activeDayId, 'excused');
-                                        if (navigator.vibrate) navigator.vibrate(20);
-                                      }}
-                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:opacity-80 touch-min-44 ${
-                                        isExcused 
-                                          ? 'bg-amber-500 text-slate-950 shadow-xs ring-2 ring-amber-300' 
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-                                      }`}
-                                      title="Mark Excused"
-                                    >
-                                      E
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleToggleStudentAttendance(student.name, activeDayId, 'absent');
-                                        if (navigator.vibrate) navigator.vibrate(20);
-                                      }}
-                                      className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-black text-sm flex items-center justify-center transition-all cursor-pointer active:opacity-80 touch-min-44 ${
-                                        isAbsent 
-                                          ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-400' 
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-                                      }`}
-                                      title="Mark Absent"
-                                    >
-                                      A
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )
-                    ) : (
-                      <EmptyState
-                        title="No students found"
-                        description="No students match your current search or filter criteria."
-                      />
-                    )}
-                  </div>
-
-                  {/* Desktop Attendance Matrix Table (>= 768px / hidden md:block) */}
-                  <div className="hidden md:block flex-1 overflow-auto custom-scrollbar relative">
-                    <table className="w-full text-left border-collapse min-w-max">
-                      {/* Table Sticky Header */}
-                      <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-xs">
-                        <tr>
-                          <th className={`sticky left-0 z-30 bg-slate-100 border-r border-slate-200 ${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} font-black uppercase text-slate-700 tracking-wider w-64 min-w-[256px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]`}>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="checkbox"
-                                  checked={selectedStudentNames.length > 0 && selectedStudentNames.length >= filteredAndSortedStudents.length}
-                                  onChange={handleSelectAllDisplayed}
-                                  className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer"
-                                  title="Select / Deselect all displayed students for batch operations"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSortBy(prev => prev === 'name_asc' ? 'name_desc' : 'name_asc');
-                                  }}
-                                  className="flex items-center gap-1.5 cursor-pointer select-none hover:text-indigo-600 transition-colors uppercase font-black text-slate-700 tracking-wider group/sort"
-                                  title="Click to toggle sorting student names in Ascending (A-Z) or Descending (Z-A) order"
-                                >
-                                  <span>Student Name</span>
-                                  {sortBy === 'name_asc' ? (
-                                    <ArrowUp className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
-                                  ) : sortBy === 'name_desc' ? (
-                                    <ArrowDown className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
-                                  ) : (
-                                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-60 group-hover/sort:opacity-100" />
-                                  )}
-                                </button>
-                              </div>
-                              <span className="text-[10px] font-semibold text-slate-400 normal-case">({filteredAndSortedStudents.length} shown)</span>
-                            </div>
-                          </th>
-
-                          {effectiveClassDays.map((day, dIdx) => {
-                            const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
-                            return (
-                              <th 
-                                key={`th-day-${day.id || 'day'}-${dIdx}`} 
-                                className={`${densityMode === 'dense' ? 'p-2' : 'p-3'} border-r border-slate-200 text-center min-w-[110px] max-w-[150px] flex-1 hover:bg-slate-200/50 transition-colors group/th`}
-                                title={`Sheet: ${day.name}\nPresent: ${stats.count} students (${Math.round(stats.percentage)}%)\nClick pencil to rename title`}
-                              >
-                                <div className="flex flex-col items-center justify-center">
-                                  <div className="flex items-center gap-1 justify-center max-w-[135px]">
-                                    <span className={`${densityMode === 'dense' ? 'text-[11px]' : 'text-xs'} font-extrabold text-slate-800 truncate`} title={day.name}>
-                                      {day.name}
-                                    </span>
-{(appUser?.role as string) !== 'student' && (
-                                      <div className="flex items-center gap-0.5 opacity-80 group-hover/th:opacity-100 transition-opacity">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const newName = prompt('Rename Class Day Title:', day.name);
-                                            if (newName && newName.trim() !== '') {
-                                              handleEditClassDayTitle(day.id, newName.trim());
-                                            }
-                                          }}
-                                          className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-indigo-600 transition-all cursor-pointer flex-shrink-0"
-                                          title="Rename class day title"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleClearClassDayRecords(day.id);
-                                          }}
-                                          className="p-1 hover:bg-amber-100 rounded text-slate-400 hover:text-amber-600 transition-all cursor-pointer flex-shrink-0"
-                                          title="Clear all attendance records for this day"
-                                        >
-                                          <RotateCcw className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteClassDay(day.id);
-                                          }}
-                                          className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 transition-all cursor-pointer flex-shrink-0"
-                                          title="Delete this class session completely"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-white/80 border border-slate-200 text-slate-600">
-                                    <span>{stats.count}/{uniqueStudents.length}</span>
-                                    <span className="text-emerald-600">({Math.round(stats.percentage)}%)</span>
-                                  </div>
-                                </div>
-                              </th>
-                            );
-                          })}
-
-                          <th className={`${densityMode === 'dense' ? 'p-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 text-center font-black uppercase text-emerald-800 tracking-wider w-28 min-w-[112px] bg-emerald-50/60`}>
-                            Attendance Rate
-                          </th>
-                        </tr>
-                      </thead>
-
-                      {/* Table Body */}
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredAndSortedStudents.length > 0 ? (
-                          filteredAndSortedStudents.map((student, idx) => {
-                            const studentKey = (student?.name || '').toLowerCase().trim();
-                            const isExcusedMap = excusedAbsences[studentKey] || {};
-                            const studentBadges = getStudentBadges(student);
-
-                            return (
-                              <tr 
-                                key={`matrix-row-${student.name || idx}-${idx}`} 
-                                onClick={() => setSelectedStudent(student)}
-                                className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
-                              >
-                                {/* Student Name Sticky Column */}
-                                <td className={`sticky left-0 z-10 ${densityMode === 'dense' ? 'py-1.5 px-2 text-[11px]' : 'p-3 text-xs'} border-r border-slate-200 font-bold text-slate-800 bg-white group-hover:bg-indigo-50/80 transition-colors shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] w-64 min-w-[256px] truncate ${student.rate < atRiskThreshold ? 'text-rose-700' : ''}`} title="Click to view student detail">
-                                  <div className="flex items-center justify-between gap-1 min-w-0">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedStudentNames.includes(student.name)}
-                                        onChange={(e) => {
-                                          e.stopPropagation();
-                                          toggleSelectStudent(student.name);
-                                        }}
-                                        className="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer flex-shrink-0"
-                                      />
-                                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${student.rate >= satisfactoryThreshold ? 'bg-emerald-500' : student.rate >= atRiskThreshold ? 'bg-amber-400' : 'bg-rose-500'}`} />
-                                      <span className="truncate">{student.name}</span>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      {studentBadges.map((b, bIdx) => (
-                                        <span key={`matrix-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center p-0.5 rounded border ${b.bg}`} title={b.label}>
-                                          {b.icon}
-                                        </span>
-                                      ))}
-                                      {student.note && (
-                                        <span className="text-indigo-500 bg-indigo-50 p-1 rounded" title={`Note: ${student.note}`}>
-                                          <PenSquare className="w-3 h-3" />
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Attendance Status Per Sheet/Day */}
-                                {effectiveClassDays.map(day => {
-                                  const attendance = student.attendanceByDay[day.id];
-                                  const isPresent = attendance?.present;
-                                  const isExcused = !isPresent && !!isExcusedMap[day.id];
-
-                                  return (
-                                    <td 
-                                      key={day.id} 
-                                      className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px]`}
-                                      onClick={(e) => {
-                                        if (appUser?.role === 'student') return;
-                                        e.stopPropagation();
-                                        handleToggleStudentAttendance(
-                                          student.name, 
-                                          day.id, 
-                                          isPresent ? 'excused' : isExcused ? 'absent' : 'present'
-                                        );
-                                      }}
-                                      title={appUser?.role !== 'student' ? 'Click to toggle manual attendance (Present -> Excused -> Absent)' : undefined}
-                                    >
-                                      {isPresent ? (
-                                        <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer`}>
-                                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                          <span>Present</span>
-                                        </div>
-                                      ) : isExcused ? (
-                                        <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold hover:bg-amber-100 transition-colors cursor-pointer`}>
-                                          <AlertCircle className="w-3 h-3 text-amber-500" />
-                                          <span>Excused</span>
-                                        </div>
-                                      ) : (
-                                        <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium hover:bg-rose-100 transition-colors cursor-pointer`}>
-                                          <XCircle className="w-3 h-3 text-rose-300" />
-                                          <span>Absent</span>
-                                        </div>
-                                      )}
-                                    </td>
-                                  );
-                                })}
-
-                                {/* Attendance Rate Badge */}
-                                <td className={`${densityMode === 'dense' ? 'py-1.5 px-2 text-[10px]' : 'p-3 text-xs'} border-r border-slate-100 text-center font-mono font-bold w-28 min-w-[112px] bg-slate-50/50`}>
-                                  <span className={`inline-block px-2.5 py-0.5 rounded ${
-                                    student.rate >= satisfactoryThreshold 
-                                      ? 'bg-emerald-100 text-emerald-800' 
-                                      : student.rate >= atRiskThreshold 
-                                      ? 'bg-amber-100 text-amber-800' 
-                                      : 'bg-rose-100 text-rose-800 font-extrabold'
-                                  }`}>
-                                    {Math.round(student.rate)}%
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={effectiveClassDays.length + 2} className="p-8 text-center text-slate-400 text-xs">
-                              No students found matching your search or filter criteria.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Table Footer Legend */}
-              <div className="p-2.5 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
-                <div className="flex items-center gap-4">
-                  <span className="font-semibold text-slate-600">Legend:</span>
-                  <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Present in Form Response
-                  </span>
-                  <span className="flex items-center gap-1 text-rose-600 font-medium">
-                    <XCircle className="w-3.5 h-3.5 text-rose-400" /> No Submission
-                  </span>
-                </div>
-                <div className="text-slate-400 font-medium">
-                  Showing <strong className="text-slate-700">{filteredAndSortedStudents.length}</strong> of <strong className="text-slate-700">{uniqueStudents.length}</strong> total evaluated students
-                </div>
-              </div>
-
-              {/* Batch Selection Faculty Action Bar */}
-              {selectedStudentNames.length > 0 && (
-                <div className="p-3 bg-slate-900 text-white border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-lg animate-slideUp z-30">
-                  <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-1 bg-amber-500 text-slate-950 font-black text-xs rounded-full">
-                      {selectedStudentNames.length} Student{selectedStudentNames.length > 1 ? 's' : ''} Selected
-                    </span>
-                    <button
-                      onClick={handleSelectAllAtRisk}
-                      className="text-xs text-amber-300 hover:text-amber-200 underline font-semibold cursor-pointer"
-                    >
-                      Select All At-Risk Students
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Clear all attendance records for the ${selectedStudentNames.length} selected student(s)?`)) {
-                          selectedStudentNames.forEach(name => {
-                            const key = (name || '').toLowerCase().trim();
-                            setRecords(prev => prev.filter(r => (r.studentName || r.name || '').toLowerCase().trim() !== key));
-                            setExcusedAbsences(prev => {
-                              const copy = { ...prev };
-                              delete copy[key];
-                              return copy;
-                            });
-                          });
-                          logActivity({
-                            actor: appUser?.name || 'Admin',
-                            role: appUser?.role === 'student' ? 'student' : 'admin',
-                            actionCategory: 'Attendance Override',
-                            actionTitle: 'Batch Records Cleared',
-                            details: `Cleared attendance records for ${selectedStudentNames.length} selected students.`
-                          });
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs"
-                      title="Clear attendance history for all selected students"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Clear Attendance ({selectedStudentNames.length})
-                    </button>
-
-                    <button
-                      onClick={() => setShowBatchEmailModal(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      Batch At-Risk Email Notice
-                    </button>
-
-                    <button
-                      onClick={clearBatchSelection}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-lg transition-all cursor-pointer"
-                    >
-                      Deselect All
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center flex-1 p-6 text-center animate-fadeIn">
-              <EmptyState
-                title="No attendance records available"
-                description="Click '+ Class Day' above to create session days, or mark attendance manually for enrolled students."
-                action={
-                  <button
-                    onClick={() => handleAddClassDay()}
-                    className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Class Day
-                  </button>
-                }
-              />
-            </div>
+                  <AttendanceTab
+                    appUser={appUser}
+                    currentStudentPortalData={currentStudentPortalData}
+                    classDays={classDays}
+                    rubricScores={rubricScores}
+                    onUpdateStudentPhoto={handleUpdateStudentPhoto}
+                    onRequestTranscript={(s) => {
+                      const found = uniqueStudents.find(u => u.name === s.name);
+                      if (found) {
+                        setSelectedStudent(found);
+                        setShowStudentTranscriptModal(true);
+                      }
+                    }}
+                    onRequestCertificate={(s) => {
+                      setCertificateData({
+                        studentName: s.name,
+                        awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
+                        criteria: `Demonstrated commitment with ${s.rate.toFixed(1)}% class attendance.`,
+                        rate: s.rate,
+                        avgScore: s.avgScore || 90
+                      });
+                      setShowCertificateModal(true);
+                    }}
+                    atRiskThreshold={atRiskThreshold}
+                    satisfactoryThreshold={satisfactoryThreshold}
+                    records={records}
+                    uniqueStudents={uniqueStudents}
+                    excusedAbsences={excusedAbsences}
+                    studentPhotos={studentPhotos}
+                    studentNotes={studentNotes}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    dateRangeFilter={dateRangeFilter}
+                    setDateRangeFilter={setDateRangeFilter}
+                    selectedModule={selectedModule}
+                    setSelectedModule={setSelectedModule}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    densityMode={densityMode}
+                    setDensityMode={setDensityMode}
+                    statusFilter={statusFilter}
+                    setStatusFilter={setStatusFilter}
+                    selectedStudent={selectedStudent}
+                    setSelectedStudent={setSelectedStudent}
+                    selectedStudentNames={selectedStudentNames}
+                    setSelectedStudentNames={setSelectedStudentNames}
+                    filteredAndSortedStudents={filteredAndSortedStudents}
+                    effectiveClassDays={effectiveClassDays}
+                    classDayStats={classDayStats}
+                    trendChartData={trendChartData}
+                    getStudentBadges={getStudentBadges}
+                    handleToggleStudentAttendance={handleToggleStudentAttendance}
+                    handleAddClassDay={handleAddClassDay}
+                    handleEditClassDayTitle={handleEditClassDayTitle}
+                    handleDeleteClassDay={handleDeleteClassDay}
+                    handleClearClassDayRecords={handleClearClassDayRecords}
+                    handleSaveStudentNote={handleSaveStudentNote}
+                    handleToggleExcusedAbsence={handleToggleExcusedAbsence}
+                    handleSelectAllDisplayed={handleSelectAllDisplayed}
+                    handleSelectAllAtRisk={handleSelectAllAtRisk}
+                    clearBatchSelection={clearBatchSelection}
+                    handleExportCSV={handleExportCSV}
+                    handleLoadDemo={handleLoadDemo}
+                    isLoading={isLoading}
+                    dataSource={dataSource}
+                    error={error}
+                    showReportModal={showReportModal}
+                    setShowReportModal={setShowReportModal}
+                    showEmailDraftModal={showEmailDraftModal}
+                    setShowEmailDraftModal={setShowEmailDraftModal}
+                    copiedEmail={copiedEmail}
+                    setCopiedEmail={setCopiedEmail}
+                    showStudentTranscriptModal={showStudentTranscriptModal}
+                    setShowStudentTranscriptModal={setShowStudentTranscriptModal}
+                    showCertificateModal={showCertificateModal}
+                    setShowCertificateModal={setShowCertificateModal}
+                    showBatchEmailModal={showBatchEmailModal}
+                    setShowBatchEmailModal={setShowBatchEmailModal}
+                    certificateData={certificateData}
+                    setCertificateData={setCertificateData}
+                    isGeneratingPDF={isGeneratingPDF}
+                    showClassDaysModal={showClassDaysModal}
+                    setShowClassDaysModal={setShowClassDaysModal}
+                    liveCheckinDayId={liveCheckinDayId}
+                    setLiveCheckinDayId={setLiveCheckinDayId}
+                    handleClearStudentAttendanceRecords={handleClearStudentAttendanceRecords}
+                    selectedReportLevel={selectedReportLevel}
+                    setSelectedReportLevel={setSelectedReportLevel}
+                    selectedReportAttendanceFilter={selectedReportAttendanceFilter}
+                    setSelectedReportAttendanceFilter={setSelectedReportAttendanceFilter}
+                    toggleSelectStudent={toggleSelectStudent}
+                    setRecords={setRecords}
+                    setExcusedAbsences={setExcusedAbsences}
+                  />
+                </ErrorBoundary>
+              </Suspense>
+            </motion.div>
           )}
-              </ErrorBoundary>
-            </Suspense>
-        </motion.div>
-      )}
 
         {/* Error notification if any */}
         {(activeErpTab === 'attendance' || activeErpTab === 'exams') && appUser?.role !== 'student' && error && (
@@ -5312,857 +4663,49 @@ onRequestTranscript={(s) => {
       </main>
 
       {/* Student Detail Modal */}
-      <AnimatePresence>
-        {selectedStudent && (() => {
-          const studentKey = (selectedStudent.name || '').toLowerCase().trim();
-          const currentNote = studentNotes[studentKey] || '';
-          const isExcusedMap = excusedAbsences[studentKey] || {};
-          const studentBadges = getStudentBadges(selectedStudent);
-
-          const missedDays = effectiveClassDays.filter(day => !selectedStudent.attendanceByDay[day.id]?.present);
-          const missedListText = missedDays.map(d => ` • ${d.name}`).join('\n');
-          
-          const emailSubject = `[HTEIM School of Ministry] Academic Attendance Notice for ${selectedStudent.name}`;
-          const emailBody = `Dear ${selectedStudent.name},
-
-This is an official academic notice from HTEIM School of Ministry regarding your class attendance record.
-
-Current Course Attendance & Evaluation Summary:
-• Attendance Rate: ${Math.round(selectedStudent.rate)}%
-• Total Sessions Attended: ${selectedStudent.attended} out of ${effectiveClassDays.length}
-• Total Missed Sessions: ${missedDays.length}
-${missedDays.length > 0 ? `Missed Class Sessions:\n${missedListText}\n\n` : ''}Consistent class attendance is essential to your ministry preparation and course completion. Please contact your instructor or administration team at HTEIM School of Ministry to discuss your standing.
-
-In His Service,
-Faculty & Academic Administration Team
-HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
-
-          const handleCopyEmail = () => {
-            navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailBody}`);
-            setCopiedEmail(true);
-            setTimeout(() => setCopiedEmail(false), 2500);
-          };
-
-          const mailtoUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-
-          const modalPhoto = studentPhotos[studentKey] || selectedStudent.photoUrl;
-
-          return (
-            <div 
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden"
-              onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Spacebar') {
-                  e.stopPropagation();
-                  const target = e.target as HTMLElement;
-                  const isInput = target.tagName === 'INPUT' || 
-                                  target.tagName === 'TEXTAREA' || 
-                                  target.isContentEditable;
-                  if (!isInput) {
-                    e.preventDefault();
-                  }
-                }
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => {
-                  setSelectedStudent(null);
-                  setShowEmailDraftModal(false);
-                }}
-                className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 16 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                className="relative z-10 bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
-              >
-              {/* Modal Header */}
-              <div className="p-5 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 text-white font-bold text-lg flex items-center justify-center flex-shrink-0 border border-slate-600 uppercase">
-                    {modalPhoto ? (
-                      <img src={modalPhoto} alt={selectedStudent.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{selectedStudent.name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-lg font-extrabold">{selectedStudent.name}</h2>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                      selectedStudent.rate >= satisfactoryThreshold ? 'bg-emerald-500/20 text-emerald-300' : selectedStudent.rate >= atRiskThreshold ? 'bg-amber-500/20 text-amber-300' : 'bg-rose-500/20 text-rose-300 font-extrabold'
-                    }`}>
-                      {Math.round(selectedStudent.rate)}% Rate
-                    </span>
-                  </div>
-
-                  {/* Student Badges */}
-                  {studentBadges.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {studentBadges.map((b, bIdx) => (
-                        <span key={`modal-badge-${b.id || bIdx}-${bIdx}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${b.bg}`}>
-                          {b.icon}
-                          <span>{b.label}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-xs text-slate-400 mt-1">
-                    Attended {selectedStudent.attended} out of {effectiveClassDays.length} total class days
-                  </p>
-                </div>
-                </div>
-                <button 
-                  onClick={() => {
-                    setSelectedStudent(null);
-                    setShowEmailDraftModal(false);
-                  }}
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Modal Body Scrollable */}
-              <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4">
-                {/* Draft Email Warning Button */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                      <div>
-                        <h4 className="text-xs font-bold text-amber-900">Academic Attendance Communication</h4>
-                        <p className="text-[10px] text-amber-700">Generate formatted email warning with attendance rate & missed dates</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setShowEmailDraftModal(prev => !prev);
-                        setCopiedEmail(false);
-                      }}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1 flex-shrink-0 shadow-2xs"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      {showEmailDraftModal ? 'Hide Draft' : 'Draft Email Warning'}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowStudentTranscriptModal(true);
-                      }}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-2xs"
-                      title="Generate official academic transcript & evaluation PDF report for this student"
-                    >
-                      <GraduationCap className="w-3.5 h-3.5" />
-                      Academic Transcript PDF
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setCertificateData({
-                          studentName: selectedStudent.name,
-                          awardTitle: selectedStudent.rate >= 100 
-                            ? "CERTIFICATE OF EXCELLENCE - 100% PERFECT ATTENDANCE" 
-                            : selectedStudent.avgScore && selectedStudent.avgScore >= 85 
-                            ? "HONOR ROLL COMMENDATION OF ACADEMIC DISTINCTION" 
-                            : "COMMENDATION OF MINISTERIAL PROGRESS & DILIGENCE",
-                          criteria: `Attendance Standing: ${Math.round(selectedStudent.rate)}% (${selectedStudent.attended}/${effectiveClassDays.length} Sessions Attended)${selectedStudent.avgScore !== null ? ` • Average Evaluation Score: ${Math.round(selectedStudent.avgScore)}%` : ''}`,
-                          rate: selectedStudent.rate,
-                          avgScore: selectedStudent.avgScore
-                        });
-                        setShowCertificateModal(true);
-                      }}
-                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 flex-shrink-0 shadow-2xs"
-                      title="Generate printable milestone certificate of achievement"
-                    >
-                      <Trophy className="w-3.5 h-3.5" />
-                      Award Certificate
-                    </button>
-                  </div>
-
-                  {/* Expanded Email Warning Composer */}
-                  {showEmailDraftModal && (
-                    <div className="mt-3 pt-3 border-t border-amber-200 space-y-2.5 animate-fadeIn">
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-amber-800 mb-1">Subject</label>
-                        <input
-                          readOnly
-                          type="text"
-                          value={emailSubject}
-                          className="w-full p-2 bg-white border border-amber-200 rounded text-xs font-bold text-slate-800 focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-amber-800 mb-1">Generated Body</label>
-                        <textarea
-                          readOnly
-                          rows={7}
-                          value={emailBody}
-                          className="w-full p-2.5 bg-white border border-amber-200 rounded text-xs font-mono text-slate-800 focus:outline-none custom-scrollbar"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <button
-                          onClick={handleCopyEmail}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                        >
-                          {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          {copiedEmail ? 'Copied to Clipboard!' : 'Copy Email Text'}
-                        </button>
-
-                        <a
-                          href={mailtoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                          Open Mail Client
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Custom Evaluation Breakdown (Participation, Assignments) */}
-                {(() => {
-                  const studentRubric = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-                  const rubricAvg = Math.round((studentRubric.participation + studentRubric.assignment) / 2);
-
-                  const handleUpdateRubric = (key: 'participation' | 'scripture' | 'assignment', val: number) => {
-                    const updated = { ...studentRubric, [key]: Math.min(100, Math.max(0, val)) };
-                    setRubricScores(prev => ({ ...prev, [studentKey]: updated }));
-                  };
-
-                  return (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4 text-indigo-600" />
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">Rubric & Ministerial Evaluation</h4>
-                        </div>
-                        <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                          Composite Score: {rubricAvg}%
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Participation */}
-                        <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
-                              <BookOpen className="w-3 h-3 text-emerald-500" /> Class Participation
-                            </span>
-                            <span className="text-xs font-mono font-bold text-slate-800">{studentRubric.participation}%</span>
-                          </div>
-                          <input 
-                            type="range" min="0" max="100" value={studentRubric?.participation ?? 90}
-                            onChange={(e) => handleUpdateRubric('participation', parseInt(e.target.value, 10))}
-                            className="w-full accent-emerald-600 cursor-pointer h-1.5"
-                          />
-                        </div>
-
-                        {/* Reading Assignments */}
-                        <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
-                              <FileText className="w-3 h-3 text-indigo-500" /> Course Readings & Assignments
-                            </span>
-                            <span className="text-xs font-mono font-bold text-slate-800">{studentRubric.assignment}%</span>
-                          </div>
-                          <input 
-                            type="range" min="0" max="100" value={studentRubric?.assignment ?? 85}
-                            onChange={(e) => handleUpdateRubric('assignment', parseInt(e.target.value, 10))}
-                            className="w-full accent-indigo-600 cursor-pointer h-1.5"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Attendance & Response Breakdown</p>
-                  
-                  <div className="space-y-2">
-                    {classDays.map(day => {
-                      const att = selectedStudent.attendanceByDay[day.id];
-                      const isPresent = att?.present;
-                      const isExcused = !isPresent && !!isExcusedMap[day.id];
-
-                      return (
-                        <div key={day.id} className={`p-3 rounded-lg border flex items-center justify-between text-xs ${
-                          isPresent ? 'bg-emerald-50/40 border-emerald-200/60' : isExcused ? 'bg-amber-50/40 border-amber-200/60' : 'bg-slate-50 border-slate-200/60'
-                        }`}>
-                          <div className="flex items-center gap-3">
-                            {isPresent ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            ) : isExcused ? (
-                              <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-slate-300 flex-shrink-0" />
-                            )}
-                            <div>
-                              <p className="font-bold text-slate-800">{day.name}</p>
-                              {att?.timestamp && (
-                                <p className="text-[10px] text-slate-500">Submitted: {att.timestamp}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {(appUser?.role as string) !== 'student' && (
-                              <>
-                                <button
-                                  onClick={() => handleToggleStudentAttendance(selectedStudent.name, day.id, isPresent ? 'absent' : 'present')}
-                                  className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                                    isPresent ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
-                                  }`}
-                                  title="Toggle Present / Absent"
-                                >
-                                  {isPresent ? 'Mark Absent' : 'Mark Present'}
-                                </button>
-                                {!isPresent && (
-                                  <button
-                                    onClick={() => handleToggleExcusedAbsence(selectedStudent.name, day.id)}
-                                    className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                                      isExcused ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-slate-200/80 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
-                                    }`}
-                                    title="Toggle excused absence"
-                                  >
-                                    {isExcused ? 'Unmark Excused' : 'Mark Excused'}
-                                  </button>
-                                )}
-                                {(isPresent || isExcused || att) && (
-                                  <button
-                                    onClick={() => handleToggleStudentAttendance(selectedStudent.name, day.id, 'unmarked')}
-                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100/60 rounded transition-colors cursor-pointer"
-                                    title="Delete/Clear this day's attendance record"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              isPresent ? 'bg-emerald-100 text-emerald-800' : isExcused ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
-                            }`}>
-                              {isPresent ? 'Present' : isExcused ? 'Excused' : 'Absent'}
-                            </span>
-                            {att?.score && (
-                              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
-                                {att.score}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Teacher Notes Section */}
-                <div className="pt-3 border-t border-slate-100">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
-                    <PenSquare className="w-3.5 h-3.5 text-indigo-500" />
-                    Teacher Notes & Remarks
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Enter custom remarks or flags for this student..."
-                    value={currentNote ?? ''}
-                    onChange={(e) => handleSaveStudentNote(selectedStudent.name, e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400"
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => handleDeleteStudent(selectedStudent.name)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-rose-600 hover:bg-rose-100 hover:text-rose-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                    title="Remove student from local active roster"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Exclude Student
-                  </button>
-                  {(appUser?.role as string) !== 'student' && (
-                    <button
-                      onClick={() => handleClearStudentAttendanceRecords(selectedStudent.name)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-amber-700 hover:bg-amber-100 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                      title="Clear all attendance logs for this student"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Clear Attendance History
-                    </button>
-                  )}
-                </div>
-                <button 
-                  onClick={() => {
-                    setSelectedStudent(null);
-                    setShowEmailDraftModal(false);
-                  }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        );
-      })()}
-      </AnimatePresence>
-
+      {selectedStudent && (
+        <StudentDetailModal
+          selectedStudent={selectedStudent}
+          onClose={() => {
+            setSelectedStudent(null);
+            setShowEmailDraftModal(false);
+          }}
+          studentNotes={studentNotes}
+          excusedAbsences={excusedAbsences}
+          effectiveClassDays={effectiveClassDays}
+          classDays={classDays}
+          studentPhotos={studentPhotos}
+          satisfactoryThreshold={satisfactoryThreshold}
+          atRiskThreshold={atRiskThreshold}
+          getStudentBadges={getStudentBadges}
+          rubricScores={rubricScores}
+          setRubricScores={setRubricScores}
+          onOpenTranscript={() => setShowStudentTranscriptModal(true)}
+          onOpenCertificate={(certData) => {
+            setCertificateData(certData);
+            setShowCertificateModal(true);
+          }}
+          handleToggleStudentAttendance={handleToggleStudentAttendance}
+          handleToggleExcusedAbsence={handleToggleExcusedAbsence}
+          handleSaveStudentNote={handleSaveStudentNote}
+          handleDeleteStudent={handleDeleteStudent}
+          handleClearStudentAttendanceRecords={handleClearStudentAttendanceRecords}
+          appUser={appUser}
+        />
+      )}
       {/* Printable Report Modal */}
-      {showReportModal && (() => {
-        // Filter by Attendance Status only (no level filter)
-        let reportStudents = uniqueStudents;
-        
-        if (selectedReportAttendanceFilter === 'fifty_percent') {
-          reportStudents = reportStudents.filter(s => s.rate <= 50);
-        } else if (selectedReportAttendanceFilter === 'at_risk') {
-          reportStudents = reportStudents.filter(s => s.rate < atRiskThreshold);
-        } else if (selectedReportAttendanceFilter === 'satisfactory') {
-          reportStudents = reportStudents.filter(s => s.rate >= satisfactoryThreshold);
-        }
-
-        if (reportSearchQuery.trim()) {
-          const q = reportSearchQuery.toLowerCase().trim();
-          reportStudents = reportStudents.filter(s => 
-            s.name.toLowerCase().includes(q) || (s.note && s.note.toLowerCase().includes(q))
-          );
-        }
-
-        // Apply sorting
-        reportStudents = [...reportStudents].sort((a, b) => {
-          let comp = 0;
-          if (reportSortBy === 'name') {
-            comp = a.name.localeCompare(b.name);
-          } else if (reportSortBy === 'rate') {
-            comp = a.rate - b.rate;
-          } else if (reportSortBy === 'score') {
-            const scoreA = a.avgScore ?? -1;
-            const scoreB = b.avgScore ?? -1;
-            comp = scoreA - scoreB;
-          }
-          return reportSortDir === 'asc' ? comp : -comp;
-        });
-        
-        let filterSuffix = '';
-        if (selectedReportAttendanceFilter === 'fifty_percent') {
-          filterSuffix = ' (Low Attendance: \u2264 50%)';
-        } else if (selectedReportAttendanceFilter === 'at_risk') {
-          filterSuffix = ' (At Risk)';
-        } else if (selectedReportAttendanceFilter === 'satisfactory') {
-          filterSuffix = ' (Satisfactory Standing)';
-        }
-
-        const reportTitle = `School of Ministry Academic Attendance & Evaluation Report${filterSuffix}`;
-
-        const reportAvgRate = reportStudents.length > 0 
-          ? reportStudents.reduce((acc, s) => acc + s.rate, 0) / reportStudents.length 
-          : 0;
-
-        const scoresWithValues = reportStudents.map(s => s.avgScore).filter((s): s is number => s !== null);
-        const reportAvgScore = scoresWithValues.length > 0
-          ? scoresWithValues.reduce((a, b) => a + b, 0) / scoresWithValues.length
-          : null;
-
-        const atRiskInReport = reportStudents.filter(s => s.rate < atRiskThreshold);
-        const fiftyPercentInReport = reportStudents.filter(s => s.rate <= 50);
-
-        const handleHeaderSort = (field: 'name' | 'rate' | 'score') => {
-          if (reportSortBy === field) {
-            setReportSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
-          } else {
-            setReportSortBy(field);
-            setReportSortDir(field === 'name' ? 'asc' : 'desc');
-          }
-        };
-
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-              {/* Report Header Toolbar */}
-              <div className="p-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-emerald-400" />
-                  <div>
-                    <h2 className="text-base font-extrabold leading-tight">Academic Attendance Report</h2>
-                    <p className="text-[11px] text-slate-400">
-                      Overall student attendance and grading roster
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleExportPDF('printable-report', `HTEIM_Attendance_Report_${selectedReportAttendanceFilter}.pdf`)}
-                    disabled={isGeneratingPDF}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
-                    title="Export high-definition PDF document for selected filters"
-                  >
-                    <Download className={`w-3.5 h-3.5 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
-                    {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
-                  </button>
-                  <button
-                    onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors cursor-pointer border border-slate-700"
-                    title="Print or save via browser print dialog"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    Print
-                  </button>
-                  <button
-                    onClick={() => setShowReportModal(false)}
-                    className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Advanced Filter & Search Sub-Bar */}
-              <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-                {/* Attendance Criteria Row */}
-                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-                  <span className="text-[10px] font-extrabold uppercase text-slate-500 mr-1.5 flex items-center gap-1 flex-shrink-0">
-                    <Filter className="w-3 h-3 text-purple-600" /> Filter:
-                  </span>
-                  <button
-                    onClick={() => setSelectedReportAttendanceFilter('all')}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      selectedReportAttendanceFilter === 'all'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
-                  >
-                    All Statuses
-                  </button>
-                  <button
-                    onClick={() => setSelectedReportAttendanceFilter('fifty_percent')}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                      selectedReportAttendanceFilter === 'fifty_percent'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-200'
-                    }`}
-                  >
-                    <span>Low (&le;50%)</span>
-                    <span className="opacity-75 font-mono text-[10px]">
-                      ({uniqueStudents.filter(s => s.rate <= 50).length})
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedReportAttendanceFilter('at_risk')}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                      selectedReportAttendanceFilter === 'at_risk'
-                        ? 'bg-rose-600 text-white shadow-xs'
-                        : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
-                    }`}
-                  >
-                    <span>At-Risk Students</span>
-                    <span className="opacity-75 font-mono text-[10px]">
-                      ({uniqueStudents.filter(s => s.rate < atRiskThreshold).length})
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedReportAttendanceFilter('satisfactory')}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                      selectedReportAttendanceFilter === 'satisfactory'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
-                    }`}
-                  >
-                    <span>Satisfactory Standing</span>
-                    <span className="opacity-75 font-mono text-[10px]">
-                      ({uniqueStudents.filter(s => s.rate >= satisfactoryThreshold).length})
-                    </span>
-                  </button>
-                </div>
-
-                {/* Quick Search in Report */}
-                <div className="relative flex-1 min-w-[200px] max-w-[280px]">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={reportSearchQuery}
-                    onChange={(e) => setReportSearchQuery(e.target.value)}
-                    placeholder="Search roster..."
-                    className="w-full pl-8 pr-3 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:outline-hidden focus:border-indigo-500 shadow-2xs"
-                  />
-                  {reportSearchQuery && (
-                    <button
-                      onClick={() => setReportSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Report Document Body */}
-              <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-slate-800 print-container" id="printable-report">
-                {/* Document Header with HTEIM Logo & Ministry Letterhead */}
-                <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
-                  <div className="flex items-center gap-4">
-                    <LogoImage 
-                      alt="HTEIM School of Ministry Logo" 
-                      className="w-16 h-16 rounded-full border border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                    />
-                    <div>
-                      <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
-                      <p className="text-xs font-bold text-amber-900 tracking-wide">HEAVEN TOUCHING EARTH INT'L MINISTRIES</p>
-                      <p className="text-[11px] italic font-serif text-slate-600 mt-0.5">"Bringing Heaven to Earth, Taking People to Heaven"</p>
-                      <div className="mt-1.5 inline-block px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-extrabold uppercase tracking-wider rounded-lg shadow-2xs">
-                        {reportTitle}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right text-xs text-slate-600 font-mono space-y-0.5">
-                    <p className="font-sans font-bold text-slate-800">{new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}</p>
-                    <p>Evaluated Sessions: <strong className="text-slate-900">{effectiveClassDays.length}</strong></p>
-                    <p>Students in Report: <strong className="text-slate-900">{reportStudents.length}</strong></p>
-                  </div>
-                </div>
-
-                {/* KPI Summary Grid */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Avg Attendance Rate</p>
-                    <p className="text-2xl font-mono font-bold text-emerald-600 mt-1">{reportAvgRate.toFixed(1)}%</p>
-                  </div>
-                  {reportAvgScore !== null && (
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Avg Evaluation Score</p>
-                      <p className="text-2xl font-mono font-bold text-amber-600 mt-1">{reportAvgScore.toFixed(1)}%</p>
-                    </div>
-                  )}
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">At-Risk Students</p>
-                    <p className="text-2xl font-mono font-bold text-rose-600 mt-1">
-                      {atRiskInReport.length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* At Risk List Callout */}
-                {atRiskInReport.length > 0 && selectedReportAttendanceFilter !== 'fifty_percent' && (
-                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                    <h3 className="text-xs font-bold uppercase text-rose-800 mb-2 flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 text-rose-600" />
-                      At-Risk Students (Attendance Follow-Up)
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {atRiskInReport.map((st, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-white border border-rose-200 rounded-md text-xs font-semibold text-rose-800 shadow-2xs flex items-center gap-1.5">
-                          <span>{st.name}</span>
-                          <span className="font-mono font-bold">({Math.round(st.rate)}%)</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Critical Low Attendance (<=50%) Callout */}
-                {fiftyPercentInReport.length > 0 && (
-                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                    <h3 className="text-xs font-bold uppercase text-purple-900 mb-2 flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 text-purple-600" />
-                      Critical Low Attendance (&le;50% Attendance) - Academic Standing Warning
-                    </h3>
-                    <p className="text-[11px] text-purple-700 mb-2.5">
-                      The following students have attended 50% or fewer of the overall academic sessions and may require academic module recovery or attendance counseling.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {fiftyPercentInReport.map((st, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-white border border-purple-200 rounded-md text-xs font-semibold text-purple-800 shadow-2xs flex items-center gap-1.5">
-                          <span>{st.name}</span>
-                          <span className="font-mono font-bold">({Math.round(st.rate)}%)</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Student Table for Selected Level */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                        Student Roster ({reportStudents.length})
-                      </h3>
-                      <div className="flex bg-slate-200 p-0.5 rounded-lg text-xs font-bold">
-                        <button
-                          type="button"
-                          onClick={() => setReportViewDetailMode('compact')}
-                          className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
-                            reportViewDetailMode === 'compact' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          Compact Summary
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setReportViewDetailMode('detailed')}
-                          className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
-                            reportViewDetailMode === 'detailed' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          Detailed Session Grid
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium italic">
-                      Click headers to sort column values
-                    </p>
-                  </div>
-
-                  {reportStudents.length > 0 ? (
-                    reportViewDetailMode === 'compact' ? (
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
-                          <th 
-                            onClick={() => handleHeaderSort('name')}
-                            className="p-2 font-bold cursor-pointer hover:bg-slate-200 transition-colors select-none"
-                          >
-                            <div className="flex items-center gap-1">
-                              Student Name
-                              {reportSortBy === 'name' && (
-                                <span className="text-indigo-600 font-extrabold">{reportSortDir === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </th>
-                          <th className="p-2 font-bold text-center">Attended / Total</th>
-                          <th 
-                            onClick={() => handleHeaderSort('rate')}
-                            className="p-2 font-bold text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
-                          >
-                            <div className="flex items-center justify-center gap-1">
-                              Attendance %
-                              {reportSortBy === 'rate' && (
-                                <span className="text-indigo-600 font-extrabold">{reportSortDir === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </th>
-                          <th 
-                            onClick={() => handleHeaderSort('score')}
-                            className="p-2 font-bold text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
-                          >
-                            <div className="flex items-center justify-center gap-1">
-                              Avg Score
-                              {reportSortBy === 'score' && (
-                                <span className="text-indigo-600 font-extrabold">{reportSortDir === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </div>
-                          </th>
-                          <th className="p-2 font-bold">Notes / Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {reportStudents.map((st, idx) => {
-                          return (
-                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                              <td className="p-2 font-bold text-slate-900">{st.name}</td>
-                              <td className="p-2 text-center font-mono">{st.attended} / {effectiveClassDays.length}</td>
-                              <td className="p-2 text-center font-mono font-bold">
-                                <span className={st.rate >= satisfactoryThreshold ? 'text-emerald-700' : st.rate >= atRiskThreshold ? 'text-amber-700' : 'text-rose-700'}>
-                                  {Math.round(st.rate)}%
-                                </span>
-                              </td>
-                              <td className="p-2 text-center font-mono">
-                                {st.avgScore !== null ? `${Math.round(st.avgScore)}%` : '—'}
-                              </td>
-                              <td className="p-2 text-slate-600 italic">
-                                {st.note || '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    ) : (
-                      /* Detailed Session Grid View */
-                      <div className="overflow-x-auto custom-scrollbar border border-slate-200 rounded-lg">
-                        <table className="w-full text-left border-collapse text-[11px]">
-                          <thead>
-                            <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
-                              <th className="p-2 font-bold sticky left-0 bg-slate-100 z-10 w-48 shadow-[1px_0_3px_rgba(0,0,0,0.05)]">Student Name</th>
-                              {effectiveClassDays.map((day, dIdx) => (
-                                <th key={`rep-th-day-${day.id || 'day'}-${dIdx}`} className="p-2 font-bold text-center border-r border-slate-200 min-w-[70px]">
-                                  {day.name.substring(0, 8)}
-                                </th>
-                              ))}
-                              <th className="p-2 font-bold text-center bg-slate-200/80 min-w-[75px]">Rate %</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200">
-                            {reportStudents.map((st, idx) => (
-                              <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                                <td className="p-2 font-bold text-slate-900 sticky left-0 bg-white z-10 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate max-w-[192px]">
-                                  {st.name}
-                                </td>
-                                {effectiveClassDays.map((day, dIdx) => {
-                                  const attendance = st.attendanceByDay[day.id];
-                                  const isPresent = attendance?.present;
-                                  return (
-                                    <td key={`rep-td-day-${day.id || 'day'}-${dIdx}`} className="p-1.5 text-center border-r border-slate-100 font-bold font-mono">
-                                      {isPresent ? (
-                                        <span className="text-emerald-600">✓</span>
-                                      ) : (
-                                        <span className="text-rose-500">✗</span>
-                                      )}
-                                    </td>
-                                  );
-                                })}
-                                <td className="p-2 text-center font-mono font-bold bg-slate-50">
-                                  <span className={st.rate >= satisfactoryThreshold ? 'text-emerald-700' : st.rate >= atRiskThreshold ? 'text-amber-700' : 'text-rose-700'}>
-                                    {Math.round(st.rate)}%
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )
-                  ) : (
-                    <div className="p-8 text-center text-slate-400 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
-                      No students match the selected attendance filter criteria.
-                    </div>
-                  )}
-                </div>
-
-                {/* Report Footer & Official Seal */}
-                <div className="pt-6 mt-6 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <LogoImage alt="HTEIM Logo" className="w-6 h-6 rounded-full border border-amber-400 p-0.5 object-contain bg-white" />
-                    <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
-                    <span>•</span>
-                    <span>Heaven Touching Earth Int'l Ministries</span>
-                  </div>
-                  <div className="text-right italic font-serif text-slate-600">
-                    "Bringing Heaven to Earth, Taking People to Heaven"
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <PrintableReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        uniqueStudents={uniqueStudents}
+        effectiveClassDays={effectiveClassDays}
+        atRiskThreshold={atRiskThreshold}
+        satisfactoryThreshold={satisfactoryThreshold}
+        isGeneratingPDF={isGeneratingPDF}
+        handleExportPDF={handleExportPDF}
+        selectedReportAttendanceFilter={selectedReportAttendanceFilter}
+        setSelectedReportAttendanceFilter={setSelectedReportAttendanceFilter}
+      />
 
       {/* Settings Modal */}
       <SettingsModal
@@ -6269,524 +4812,49 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Guide & Access Modal */}
-      {showGuideModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-amber-400" />
-                <h2 className="text-sm font-extrabold">HTEIM Portal - Access, Exporting & Sharing Guide</h2>
-              </div>
-              <button 
-                onClick={() => setShowGuideModal(false)}
-                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 text-xs text-slate-700">
-              <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-1">
-                <h4 className="font-bold text-indigo-950 flex items-center gap-1.5 text-xs">
-                  <Share2 className="w-4 h-4 text-indigo-600" />
-                  1. How to Share this Live App with Others
-                </h4>
-                <p className="text-slate-600 text-[11px]">
-                  Click the <strong>Share</strong> button located at the top toolbar of Google AI Studio. This generates a direct public link that colleagues, co-teachers, or admins can open in any browser tab to view attendance matrices in real time.
-                </p>
-              </div>
-
-              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl space-y-1">
-                <h4 className="font-bold text-emerald-950 flex items-center gap-1.5 text-xs">
-                  <Download className="w-4 h-4 text-emerald-600" />
-                  2. How to Export Source Code or Publish to GitHub
-                </h4>
-                <p className="text-slate-600 text-[11px]">
-                  To download the full source code or publish to GitHub for testing purposes, open the <strong>Settings / Export</strong> menu in the upper right corner of Google AI Studio. You can download a complete ZIP bundle or commit to a GitHub repository with one click.
-                </p>
-              </div>
-
-              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl space-y-1">
-                <h4 className="font-bold text-amber-950 flex items-center gap-1.5 text-xs">
-                  <Printer className="w-4 h-4 text-amber-600" />
-                  3. Export Printable PDF Reports & CSV Data
-                </h4>
-                <p className="text-slate-600 text-[11px]">
-                  Use the <strong>Print Report</strong> button in the top bar to generate formatted PDF class summaries for official records, or click <strong>Export CSV</strong> to save raw spreadsheet data.
-                </p>
-              </div>
-
-              {/* Developer / Creator Info */}
-              <div className="p-3 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-1 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="font-extrabold text-amber-400 uppercase text-[10px] tracking-wider">Application Software Creator</span>
-                  <span className="text-[10px] text-slate-400 font-mono">Rockproxy Technologies</span>
-                </div>
-                <p className="text-slate-300 text-[11px]">
-                  Created by <strong>Rockproxy Technologies</strong> • Director: <strong>Kendell Pierre</strong>
-                </p>
-                <p className="text-indigo-300 font-mono text-[10px]">
-                  Email: <a href="mailto:rockproxytechnologies@gmail.com" className="underline hover:text-white">rockproxytechnologies@gmail.com</a>
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-              <span className="text-[10px] text-slate-500">
-                Created by <strong>Rockproxy Technologies</strong> (Kendell Pierre)
-              </span>
-              <button 
-                onClick={() => setShowGuideModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-              >
-                Got It
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <GuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
 
       {/* Individual Student Academic Transcript PDF Modal */}
-      <AnimatePresence>
-        {showStudentTranscriptModal && selectedStudent && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden"
-            onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Spacebar') {
-                e.stopPropagation();
-                const target = e.target as HTMLElement;
-                const isInput = target.tagName === 'INPUT' || 
-                                target.tagName === 'TEXTAREA' || 
-                                target.isContentEditable;
-                if (!isInput) {
-                  e.preventDefault();
-                }
-              }
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setShowStudentTranscriptModal(false)}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative z-10 bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden"
-            >
-            {/* Modal Toolbar */}
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-base font-extrabold">Official Student Academic Transcript</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleExportPDF('printable-student-transcript', `HTEIM_Academic_Transcript_${selectedStudent.name.replace(/\s+/g, '_')}.pdf`)}
-                  disabled={isGeneratingPDF}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
-                  title="Directly download high-definition PDF transcript"
-                >
-                  <Download className={`w-3.5 h-3.5 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
-                  {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF Transcript'}
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors cursor-pointer border border-slate-700"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Browser Print
-                </button>
-                <button
-                  onClick={() => setShowStudentTranscriptModal(false)}
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+      <StudentTranscriptModal
+        isOpen={showStudentTranscriptModal}
+        onClose={() => setShowStudentTranscriptModal(false)}
+        selectedStudent={selectedStudent}
+        effectiveClassDays={effectiveClassDays}
+        rubricScores={rubricScores}
+        excusedAbsences={excusedAbsences}
+        satisfactoryThreshold={satisfactoryThreshold}
+        atRiskThreshold={atRiskThreshold}
+        isGeneratingPDF={isGeneratingPDF}
+        handleExportPDF={handleExportPDF}
+        handleToggleStudentAttendance={handleToggleStudentAttendance}
+        appUser={appUser}
+      />
 
-            {/* Transcript Document Printable Canvas */}
-            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-slate-800 print-container" id="printable-student-transcript">
-              {/* Document Letterhead */}
-              <div className="border-b-2 border-slate-900 pb-5 flex justify-between items-start">
-                <div className="flex items-center gap-4">
-                  <LogoImage 
-                    alt="HTEIM Logo" 
-                    className="w-16 h-16 rounded-full border border-amber-500 shadow-md object-contain bg-white p-0.5 flex-shrink-0"
-                  />
-                  <div>
-                    <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">HTEIM SCHOOL OF MINISTRY</h1>
-                    <p className="text-xs font-bold text-amber-900 tracking-wide">HEAVEN TOUCHING EARTH INT'L MINISTRIES</p>
-                    <p className="text-[11px] italic font-serif text-slate-600 mt-0.5">"Bringing Heaven to Earth, Taking People to Heaven"</p>
-                    <div className="mt-1.5 inline-block px-2.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-900 text-[10px] font-bold uppercase tracking-wider rounded">
-                      Official Academic Transcript & Evaluation Report
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right text-xs text-slate-600 space-y-1 font-mono">
-                  <p className="font-sans font-bold text-slate-900">{new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}</p>
-                  <p className="text-[10px] text-slate-500">Document Ref: HTEIM-TR-{Math.floor(100000 + Math.random() * 900000)}</p>
-                </div>
-              </div>
-
-              {/* Student Summary Box */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Student Name</p>
-                  <p className="text-base font-bold text-slate-900 mt-0.5">{selectedStudent.name}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Attendance Rate</p>
-                  <p className={`text-base font-mono font-bold mt-0.5 ${
-                    selectedStudent.rate >= satisfactoryThreshold ? 'text-emerald-700' : selectedStudent.rate >= atRiskThreshold ? 'text-amber-700' : 'text-rose-700'
-                  }`}>
-                    {Math.round(selectedStudent.rate)}% ({selectedStudent.attended}/{effectiveClassDays.length})
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Academic Standing</p>
-                  <p className="text-xs font-extrabold uppercase mt-1">
-                    {selectedStudent.rate >= 100 
-                      ? <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Perfect Standing</span>
-                      : selectedStudent.rate >= satisfactoryThreshold
-                      ? <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Good Standing</span>
-                      : <span className="text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-300">At-Risk Standing</span>
-                    }
-                  </p>
-                </div>
-                {(() => {
-                  const studentKey = (selectedStudent.name || '').toLowerCase().trim();
-                  const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-                  const rubAvg = Math.round((rub.participation + rub.assignment) / 2);
-                  return (
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Composite Evaluation</p>
-                      <p className="text-base font-mono font-bold text-indigo-700 mt-0.5">{rubAvg}% Average</p>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Rubric Evaluation Breakdown */}
-              {(() => {
-                const studentKey = (selectedStudent.name || '').toLowerCase().trim();
-                const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-                return (
-                  <div>
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Rubric & Ministerial Competency Breakdown</h3>
-                    <div className="grid grid-cols-2 gap-3 bg-white p-3 border border-slate-200 rounded-xl text-center">
-                      <div className="p-2 bg-slate-50 rounded-lg">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Class Participation</p>
-                        <p className="text-lg font-mono font-bold text-emerald-700 mt-0.5">{rub.participation}%</p>
-                      </div>
-                      <div className="p-2 bg-slate-50 rounded-lg">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Course Readings & Assignments</p>
-                        <p className="text-lg font-mono font-bold text-indigo-700 mt-0.5">{rub.assignment}%</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Session-by-Session Attendance Table */}
-              <div>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Class Session Attendance Record</h3>
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b-2 border-slate-800 bg-slate-100 text-slate-700">
-                      <th className="p-2 font-bold">Class Session / Date</th>
-                      <th className="p-2 font-bold text-center">Attendance Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {effectiveClassDays.map(day => {
-                      const att = selectedStudent.attendanceByDay[day.id];
-                      const isPresent = att?.present;
-                      const isExcused = !isPresent && !!(excusedAbsences[(selectedStudent.name || '').toLowerCase().trim()] || {})[day.id];
-
-                      return (
-                        <tr key={day.id} className="hover:bg-slate-50">
-                          <td className="p-2 font-bold text-slate-900">{day.name}</td>
-                          <td className="p-2 text-center">
-                            {appUser?.role !== 'student' ? (
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStudentAttendance(
-                                  selectedStudent.name,
-                                  day.id,
-                                  isPresent ? 'excused' : isExcused ? 'absent' : 'present'
-                                )}
-                                className="cursor-pointer inline-block"
-                                title="Click to cycle attendance status (Present -> Excused -> Absent)"
-                              >
-                                {isPresent ? (
-                                  <span className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold rounded transition-colors">Present</span>
-                                ) : isExcused ? (
-                                  <span className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-bold rounded transition-colors">Excused</span>
-                                ) : (
-                                  <span className="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-[10px] font-bold rounded transition-colors">Absent</span>
-                                )}
-                              </button>
-                            ) : (
-                              isPresent ? (
-                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">Present</span>
-                              ) : isExcused ? (
-                                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded">Excused</span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">Absent</span>
-                              )
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Faculty Notes & Commentary */}
-              {selectedStudent.note && (
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-950">
-                  <span className="font-bold uppercase tracking-wider text-[10px] text-amber-800 block mb-1">Faculty Academic Note:</span>
-                  <p className="italic">{selectedStudent.note}</p>
-                </div>
-              )}
-
-              {/* Official Signature Block */}
-              <div className="grid grid-cols-2 gap-8 mt-8 pt-6 border-t border-slate-200 text-slate-700 text-xs">
-                <div className="flex flex-col items-center">
-                  <div className="w-36 border-b border-slate-800 mb-1"></div>
-                  <p className="font-bold text-slate-900">Dr. Faculty Director</p>
-                  <p className="text-[10px] text-slate-400">Academic Dean, HTEIM School of Ministry</p>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className="w-36 border-b border-slate-800 mb-1"></div>
-                  <p className="font-bold text-slate-900">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                  <p className="text-[10px] text-slate-400">Date of Issue</p>
-                </div>
-              </div>
-
-              {/* Letterhead Footer */}
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[10px]">
-                <div className="flex items-center gap-2">
-                  <LogoImage alt="HTEIM Logo" className="w-5 h-5 rounded-full border border-amber-400 p-0.5 object-contain bg-white" />
-                  <span className="font-bold text-slate-700">HTEIM School of Ministry</span>
-                </div>
-                <div className="italic font-serif text-slate-600">
-                  "Bringing Heaven to Earth, Taking People to Heaven"
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-      {showCertificateModal && certificateData && (
-        <div 
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden"
-          onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
-          onKeyDown={(e) => {
-            if (e.key === ' ' || e.key === 'Spacebar') {
-              e.stopPropagation();
-              const target = e.target as HTMLElement;
-              const isInput = target.tagName === 'INPUT' || 
-                              target.tagName === 'TEXTAREA' || 
-                              target.isContentEditable;
-              if (!isInput) {
-                e.preventDefault();
-              }
-            }
-          }}
-        >
-          <div className="bg-white border-8 border-double border-amber-600 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden my-auto animate-scaleUp p-8 text-center relative text-slate-900 print:border-8 print:shadow-none print:m-0" id="printable-certificate">
-            {/* Top Certificate Header */}
-            <div className="flex flex-col items-center justify-center mb-6">
-              <LogoImage 
-                alt="HTEIM School of Ministry Logo" 
-                className="w-20 h-20 rounded-full border border-amber-500 shadow-md object-contain bg-white p-1 mb-2"
-              />
-              <h1 className="text-2xl font-black tracking-wider text-slate-900 uppercase">HTEIM SCHOOL OF MINISTRY</h1>
-              <p className="text-xs font-extrabold text-amber-800 uppercase tracking-widest mt-0.5">Heaven Touching Earth Int'l Ministries</p>
-              <p className="text-xs italic font-serif text-slate-600 mt-1">"Bringing Heaven to Earth, Taking People to Heaven"</p>
-            </div>
-
-            <div className="my-6 py-4 border-y border-amber-200 bg-amber-50/40 rounded-lg">
-              <span className="text-xs font-bold uppercase tracking-widest text-amber-900 bg-amber-100 px-3 py-1 rounded-full border border-amber-300">
-                Official Academic Commendation
-              </span>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight mt-3 uppercase">
-                {certificateData.awardTitle}
-              </h2>
-            </div>
-
-            <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">This Certificate is Proudly Awarded To</p>
-            <h3 className="text-3xl font-serif font-black text-slate-900 my-3 text-amber-950 underline decoration-amber-400 underline-offset-8">
-              {certificateData.studentName}
-            </h3>
-
-            <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed my-4">
-              In recognition of exceptional diligence, spiritual commitment, and outstanding academic engagement during the ministry training program at HTEIM School of Ministry.
-            </p>
-
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg inline-block text-xs font-mono font-bold text-slate-800 my-2">
-              {certificateData.criteria}
-            </div>
-
-            {/* Signature Block */}
-            <div className="grid grid-cols-2 gap-8 mt-10 pt-6 border-t border-slate-200 text-slate-700 text-xs">
-              <div className="flex flex-col items-center">
-                <div className="w-36 border-b border-slate-800 mb-1"></div>
-                <p className="font-bold text-slate-900">Dr. Faculty Director</p>
-                <p className="text-[10px] text-slate-400">Academic Dean, HTEIM</p>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-36 border-b border-slate-800 mb-1"></div>
-                <p className="font-bold text-slate-900">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                <p className="text-[10px] text-slate-400">Date of Presentation</p>
-              </div>
-            </div>
-
-            {/* Modal Action Buttons (Hidden when printing) */}
-            <div className="mt-8 flex justify-end gap-2 print:hidden">
-              <button 
-                onClick={() => handleExportPDF('printable-certificate', `HTEIM_Certificate_${certificateData.studentName.replace(/\s+/g, '_')}.pdf`)}
-                disabled={isGeneratingPDF}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Download className={`w-3.5 h-3.5 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
-                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF Certificate'}
-              </button>
-              <button 
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                Browser Print
-              </button>
-              <button 
-                onClick={() => setShowCertificateModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Milestone / Achievement Certificate Modal */}
+      <CertificateModal
+        isOpen={showCertificateModal}
+        onClose={() => {
+          setShowCertificateModal(false);
+          setCertificateData(null);
+        }}
+        certificateData={certificateData}
+        isGeneratingPDF={isGeneratingPDF}
+        handleExportPDF={handleExportPDF}
+      />
 
       {/* 2. Batch At-Risk Email Notice Modal */}
-      {showBatchEmailModal && selectedStudentNames.length > 0 && (() => {
-        const selectedStudentsData = uniqueStudents.filter(s => selectedStudentNames.includes(s.name));
-        const atRiskSelected = selectedStudentsData.filter(s => s.rate < atRiskThreshold);
-
-        const batchSubject = `[HTEIM School of Ministry] Batch Academic Notice - ${selectedStudentsData.length} Students`;
-        
-        let batchBody = `HTEIM SCHOOL OF MINISTRY - FACULTY BATCH ACADEMIC NOTICE\n`;
-        batchBody += `Heaven Touching Earth Int'l Ministries\n`;
-        batchBody += `Generated on ${new Date().toLocaleDateString()}\n\n`;
-        batchBody += `The following ${selectedStudentsData.length} student(s) have been flagged for attendance review:\n\n`;
-
-        selectedStudentsData.forEach((s, idx) => {
-          const missedCount = effectiveClassDays.filter(day => !s.attendanceByDay[day.id]?.present).length;
-          batchBody += `${idx + 1}. ${s.name}\n`;
-          batchBody += `   • Attendance Standing: ${Math.round(s.rate)}% (${s.attended}/${effectiveClassDays.length} Attended, ${missedCount} Missed)\n`;
-          if (s.avgScore !== null) {
-            batchBody += `   • Evaluation Score: ${Math.round(s.avgScore)}%\n`;
-          }
-          batchBody += `\n`;
-        });
-
-        batchBody += `Please coordinate with academic advisors or students to maintain ministerial standard requirements.\n\nIn His Service,\nHTEIM Academic Administration`;
-
-        const handleCopyBatchEmail = () => {
-          navigator.clipboard.writeText(`Subject: ${batchSubject}\n\n${batchBody}`);
-          setCopiedBatchEmail(true);
-          setTimeout(() => setCopiedBatchEmail(false), 2500);
-        };
-
-        const batchMailtoUrl = `mailto:?subject=${encodeURIComponent(batchSubject)}&body=${encodeURIComponent(batchBody)}`;
-
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-xl overflow-hidden animate-scaleUp">
-              <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-rose-400" />
-                  <div>
-                    <h2 className="text-sm font-extrabold">Batch At-Risk Email Notice</h2>
-                    <p className="text-[10px] text-slate-400">{selectedStudentsData.length} Students Selected ({atRiskSelected.length} At-Risk)</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowBatchEmailModal(false)}
-                  className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-3">
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Subject</label>
-                  <input
-                    readOnly
-                    type="text"
-                    value={batchSubject}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Consolidated Batch Notice Body</label>
-                  <textarea
-                    readOnly
-                    rows={10}
-                    value={batchBody}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-slate-800 custom-scrollbar focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                <button
-                  onClick={clearBatchSelection}
-                  className="text-xs text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
-                >
-                  Clear Selected
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleCopyBatchEmail}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                  >
-                    {copiedBatchEmail ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copiedBatchEmail ? 'Copied Batch Email!' : 'Copy Batch Email'}
-                  </button>
-
-                  <a
-                    href={batchMailtoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    Open Mail Client
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <BatchEmailModal
+        isOpen={showBatchEmailModal}
+        onClose={() => setShowBatchEmailModal(false)}
+        selectedStudentNames={selectedStudentNames}
+        uniqueStudents={uniqueStudents}
+        effectiveClassDays={effectiveClassDays}
+        atRiskThreshold={atRiskThreshold}
+        clearBatchSelection={() => setSelectedStudentNames([])}
+      />
 
       {/* Batch Announcement Broadcast Modal */}
       {showBatchBroadcastModal && (
@@ -6886,313 +4954,34 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       )}
 
       {/* Mobile Slide-Up "More" Options Drawer */}
-      <AnimatePresence>
-        {showMobileMoreMenu && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowMobileMoreMenu(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            />
+      <MobileMoreMenuDrawer
+        isOpen={showMobileMoreMenu}
+        onClose={() => setShowMobileMoreMenu(false)}
+        activeErpTab={activeErpTab}
+        setActiveErpTab={setActiveErpTab}
+        appUser={appUser}
+        uniqueStudentsCount={uniqueStudents.length}
+        unreadMessagesCount={unreadMessagesCount}
+        setShowLoginModal={setShowLoginModal}
+        setShowLiveCheckinModal={setShowLiveCheckinModal}
+        liveCheckinDayId={liveCheckinDayId}
+        setLiveCheckinDayId={setLiveCheckinDayId}
+        classDays={classDays}
+        setShowIntro={setShowIntro}
+        setShowCommandPalette={setShowCommandPalette}
+        setShowSettingsModal={setShowSettingsModal}
+        setShowRoleMenu={setShowRoleMenu}
+      />
 
-            <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 250 }}
-              className="relative z-10 w-full bg-slate-900 border-t-2 border-indigo-500/40 rounded-t-3xl shadow-xl p-4 text-white max-h-[85dvh] overflow-y-auto custom-scrollbar pb-safe"
-            >
-              {/* Drawer Drag Handle / Header */}
-              <div className="flex flex-col items-center mb-3">
-                <div className="w-12 h-1.5 bg-slate-700 rounded-full mb-3" />
-                <div className="flex items-center justify-between w-full pb-2 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <h3 className="text-sm font-black text-amber-300">HTEIM Mobile Navigation & Tools</h3>
-                  </div>
-                  <button 
-                    onClick={() => setShowMobileMoreMenu(false)}
-                    className="p-1 bg-slate-800 rounded-xl text-slate-400 hover:text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Mobile Quick Modules Section */}
-              <div className="space-y-2">
-                <div>
-                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Modules</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        setActiveErpTab('library');
-                        setShowMobileMoreMenu(false);
-                      }}
-                      className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                        activeErpTab === 'library'
-                          ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      <Bookmark className="w-4 h-4" />
-                      <div>
-                        <p className="text-xs font-semibold">Library</p>
-                        <p className="text-[9px] text-slate-400">Files & Media</p>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setActiveErpTab('notes');
-                        setShowMobileMoreMenu(false);
-                      }}
-                      className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                        activeErpTab === 'notes'
-                          ? 'bg-[#023264] dark:bg-white border-[#023264] dark:border-white text-[#dfc18b] dark:text-[#023264]'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      <BookOpenCheck className="w-4 h-4 text-amber-500" />
-                      <div>
-                        <p className="text-xs font-semibold">Notes & AMP Bible</p>
-                        <p className="text-[9px] text-slate-400">Class Lecture Notes</p>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setActiveErpTab('schedule');
-                        setShowMobileMoreMenu(false);
-                      }}
-                      className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                        activeErpTab === 'schedule'
-                          ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      <Calendar className="w-4 h-4" />
-                      <div>
-                        <p className="text-xs font-semibold">Schedule</p>
-                        <p className="text-[9px] text-slate-400">Class Dates</p>
-                      </div>
-                    </button>
-
-                    {(!appUser || appUser?.role === 'admin' || appUser?.role === 'student') && (
-                      <button
-                        onClick={() => {
-                          if (!appUser) {
-                            setShowMobileMoreMenu(false);
-                            setShowLoginModal(true);
-                          } else {
-                            setActiveErpTab('payments');
-                            setShowMobileMoreMenu(false);
-                          }
-                        }}
-                        className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                          activeErpTab === 'payments'
-                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <DollarSign className="w-4 h-4" />
-                        <div>
-                          <p className="text-xs font-semibold">Tuition</p>
-                          <p className="text-[9px] text-slate-400">{appUser ? 'Payment Ledger' : 'Tuition Info'}</p>
-                        </div>
-                      </button>
-                    )}
-
-                    {appUser && (appUser?.role as string) !== 'student' && (
-                      <button
-                        onClick={() => {
-                          setActiveErpTab('students');
-                          setShowMobileMoreMenu(false);
-                        }}
-                        className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                          activeErpTab === 'students'
-                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <GraduationCap className="w-4 h-4" />
-                        <div>
-                          <p className="text-xs font-semibold">Students</p>
-                          <p className="text-[9px] text-slate-400">{uniqueStudents.length} Enrolled</p>
-                        </div>
-                      </button>
-                    )}
-
-                    {appUser && ((appUser?.role as string) === 'admin' || (appUser?.role as string) === 'teacher') && (
-                      <button
-                        onClick={() => {
-                          setActiveErpTab('reports');
-                          setShowMobileMoreMenu(false);
-                        }}
-                        className={`p-3 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                          activeErpTab === 'reports'
-                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <FileText className="w-4 h-4" />
-                        <div>
-                          <p className="text-xs font-semibold">Reports</p>
-                          <p className="text-[9px] text-slate-400">Analytics & PDF</p>
-                        </div>
-                      </button>
-                    )}
-
-                    {appUser && (
-                      <button
-                        onClick={() => {
-                          setActiveErpTab('messages');
-                          setShowMobileMoreMenu(false);
-                        }}
-                        className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all col-span-2 ${
-                          activeErpTab === 'messages'
-                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <MessageSquare className="w-4 h-4" />
-                          <div>
-                            <p className="text-xs font-semibold">Messaging</p>
-                            <p className="text-[9px] text-slate-400">Direct Messages</p>
-                          </div>
-                        </div>
-                        {unreadMessagesCount > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold">
-                            {unreadMessagesCount} New
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-mono">
-                            Open
-                          </span>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Mobile Quick Actions */}
-                <div>
-                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Quick Actions</p>
-                  <div className="space-y-1.5">
-                    <div className="w-full">
-                      <PWAInstallButton />
-                    </div>
-                    {(appUser?.role as string) !== 'student' && (
-                      <button
-                        onClick={() => {
-                          setShowMobileMoreMenu(false);
-                          setShowLiveCheckinModal(true);
-                          if (!liveCheckinDayId && classDays.length > 0) {
-                            setLiveCheckinDayId(classDays[classDays.length - 1].id);
-                          }
-                        }}
-                        className="w-full p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4" />
-                          <span>Live Check-In</span>
-                        </div>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => {
-                        setShowMobileMoreMenu(false);
-                        setShowIntro(true);
-                      }}
-                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-500" />
-                        <span>Play Intro (6s)</span>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowMobileMoreMenu(false);
-                        setShowCommandPalette(true);
-                      }}
-                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Search className="w-4 h-4 text-slate-400" />
-                        <span>Search</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono">⌘K</span>
-                    </button>
-
-                    {appUser?.role === 'admin' ? (
-                      <button
-                        onClick={() => {
-                          setShowMobileMoreMenu(false);
-                          setShowSettingsModal(true);
-                        }}
-                        className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-between cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Settings className="w-4 h-4 text-slate-400" />
-                          <span>Settings</span>
-                        </div>
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-600 text-xs font-medium rounded-xl flex items-center justify-between cursor-not-allowed opacity-60"
-                        title="Settings can only be changed by Administrator"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Settings className="w-4 h-4 text-slate-400 dark:text-slate-600" />
-                          <span>Settings</span>
-                        </div>
-                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800 text-slate-400">Admin Only</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Role & Account Section */}
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <p className="text-[10px] uppercase font-mono font-bold text-slate-400 mb-2">Account</p>
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                        appUser?.role === 'admin' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' :
-                        appUser?.role === 'teacher' ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900' :
-                        'bg-slate-500 dark:bg-slate-400 text-white'
-                      }`}>
-                        {appUser ? appUser.name.charAt(0).toUpperCase() : 'G'}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-800 dark:text-white">{appUser ? appUser.name : 'Guest User'}</p>
-                        <p className="text-[10px] text-slate-400 uppercase font-mono">{appUser?.role || 'Guest'}</p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setShowMobileMoreMenu(false);
-                        setShowRoleMenu(true);
-                      }}
-                      className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors"
-                    >
-                      Switch Role
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Role-Based Access Control (RBAC) & Persona Switcher Modal */}
+      {showRoleMenu && (
+        <RoleManagementModal
+          isOpen={showRoleMenu}
+          onClose={() => setShowRoleMenu(false)}
+          currentUser={appUser}
+          onSwitchRole={handleQuickRoleSwitch}
+        />
+      )}
 
       {/* Supabase Storage & Data Diagnostic Modal */}
       <SupabaseDiagnosticModal
@@ -7262,121 +5051,20 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       />
 
       {/* Portal Footer */}
-      <footer id="portal-footer" className="mt-auto md:mt-8 mb-16 md:mb-0 px-3 sm:px-5 py-2.5 sm:py-2 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-xl flex flex-col md:flex-row items-center justify-between gap-2.5 sm:gap-3 text-[11px] text-slate-500 dark:text-slate-400 z-10 relative shrink-0 shadow-xs">
-        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" title="System Operational"></span>
-            <p className="font-semibold text-slate-800 dark:text-slate-200">HTEIM School of Ministry</p>
-          </div>
-          <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
-          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>75% Attendance Policy Enforced</span>
-          </div>
-          <span className="hidden md:inline text-slate-300 dark:text-slate-700">•</span>
-          <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-            <Cloud className="w-3 h-3 text-indigo-500 shrink-0" />
-            <span>Cloud & Offline PWA Active</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={() => setShowGuideModal(true)}
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Guide</span>
-          </button>
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          {appUser?.role === 'admin' ? (
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span>Settings</span>
-            </button>
-          ) : (
-            <span className="text-slate-400 dark:text-slate-600 flex items-center gap-1 cursor-not-allowed text-[11px] font-medium" title="Settings can only be changed by Administrator">
-              <Lock className="w-3 h-3 text-slate-400 dark:text-slate-600" />
-              <span>Settings (Admin)</span>
-            </span>
-          )}
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">HTEIM © 2026</p>
-        </div>
-      </footer>
-
-
+      <PortalFooter
+        appUser={appUser}
+        onOpenGuide={() => setShowGuideModal(true)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+      />
 
       {/* Floating Active Quiz Banner (Students Only) */}
-      {appUser?.role === 'student' && activeQuizzesList.length > 0 && showFloatingQuizBanner && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{
-            opacity: 1,
-            y: 0,
-            scale: [1, 1.02, 1],
-            borderColor: [
-              'rgba(192, 132, 252, 0.6)',
-              'rgba(251, 191, 36, 0.9)',
-              'rgba(192, 132, 252, 0.6)'
-            ],
-            boxShadow: [
-              '0 20px 25px -5px rgba(147, 51, 234, 0.3), 0 8px 10px -6px rgba(147, 51, 234, 0.2)',
-              '0 25px 35px -5px rgba(245, 158, 11, 0.5), 0 10px 15px -6px rgba(168, 85, 247, 0.4)',
-              '0 20px 25px -5px rgba(147, 51, 234, 0.3), 0 8px 10px -6px rgba(147, 51, 234, 0.2)'
-            ]
-          }}
-          transition={{
-            opacity: { duration: 0.3 },
-            y: { duration: 0.3 },
-            scale: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' },
-            borderColor: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' },
-            boxShadow: { repeat: Infinity, duration: 2.8, ease: 'easeInOut' }
-          }}
-          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-80 bg-slate-900/95 dark:bg-purple-950/95 backdrop-blur-md text-white p-4 rounded-xl border shadow-xl flex flex-col gap-2.5"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-              </span>
-              <span className="tracking-wide">Active Class Day Quiz Live</span>
-            </div>
-            <button 
-              onClick={() => setShowFloatingQuizBanner(false)}
-              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
-              title="Dismiss floating banner"
-              aria-label="Dismiss banner"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-black text-white line-clamp-1 leading-tight">
-              {activeQuizzesList[0].title}
-            </h4>
-            <p className="text-[11px] text-purple-200/90 mt-1 font-medium">
-              {activeQuizzesList[0].maxPoints} Points Max • {activeQuizzesList[0].quizData?.timeLimitMinutes ? `${activeQuizzesList[0].quizData.timeLimitMinutes} min limit` : 'Timed Quiz'}
-            </p>
-          </div>
-
-          <button
-            onClick={() => {
-              setActiveErpTab('exams');
-            }}
-            className="w-full mt-0.5 px-3.5 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:opacity-80"
-          >
-            <BookOpen className="w-4 h-4 text-slate-950 shrink-0" />
-            <span>Take Active Quiz Now</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-950 shrink-0" />
-          </button>
-        </motion.div>
-      )}
+      <FloatingQuizBanner
+        appUser={appUser}
+        activeQuizzesList={activeQuizzesList}
+        showFloatingQuizBanner={showFloatingQuizBanner}
+        onDismiss={() => setShowFloatingQuizBanner(false)}
+        onTakeQuiz={() => setActiveErpTab('exams')}
+      />
 
       {/* Offline Sync Queue Drawer */}
       <OfflineSyncDrawer
@@ -7398,75 +5086,14 @@ HTEIM School of Ministry (Heaven Touching Earth Int'l Ministries)`;
       )}
 
       {/* Mobile Bottom Navigation Dock */}
-      <nav aria-label="Mobile bottom navigation" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-[#08182c]/95 border-t border-slate-200/90 dark:border-[#1a385c] backdrop-blur-xl shadow-xl flex flex-row flex-nowrap items-center justify-around px-1 py-1 w-full min-h-[56px] pb-[max(0.375rem,env(safe-area-inset-bottom,0.375rem))] overflow-hidden">
-        {(appUser ? (
-          appUser.role === 'student' ? [
-            { tab: 'home', Icon: Sparkles, label: 'Home' },
-            { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-            { tab: 'courses', Icon: BookOpen, label: 'Courses' },
-            { tab: 'payments', Icon: DollarSign, label: 'Tuition' },
-          ] : [
-            { tab: 'home', Icon: Sparkles, label: 'Home' },
-            { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-            { tab: 'students', Icon: GraduationCap, label: 'Students' },
-            { tab: 'exams', Icon: Award, label: 'Exams' },
-          ]
-        ) : [
-          { tab: 'home', Icon: Sparkles, label: 'Home' },
-          { tab: 'courses', Icon: BookOpen, label: '6 Modules' },
-          { tab: 'library', Icon: Bookmark, label: 'Media' },
-          { tab: 'schedule', Icon: Calendar, label: 'Schedule' },
-        ]).map(({ tab, Icon, label }: any) => {
-          const isActive = activeErpTab === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => handleNavigate(tab as TabType)}
-              aria-label={`Open ${label}`}
-              aria-current={isActive ? 'page' : undefined}
-              className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 touch-min-44 ${
-                isActive
-                  ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <div className="relative">
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'}`} />
-              </div>
-              <span className={`text-[10px] tracking-tight truncate max-w-full ${
-                isActive ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
-              }`}>{label}</span>
-            </button>
-          );
-        })}
-
-        {/* More / Menu button */}
-        <button
-          type="button"
-          onClick={() => setShowMobileMoreMenu(true)}
-          aria-label="Open more portal sections"
-          className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 touch-min-44 ${
-            showMobileMoreMenu
-              ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <div className="relative">
-            <Menu className={`w-5 h-5 transition-transform ${
-              showMobileMoreMenu ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'
-            }`} />
-            {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 rounded-full bg-[#b38f53] text-white font-bold text-[8px] flex items-center justify-center px-0.5">
-                {unreadMessagesCount}
-              </span>
-            )}
-          </div>
-          <span className={`text-[10px] tracking-tight ${
-            showMobileMoreMenu ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
-          }`}>{appUser ? 'More' : 'Menu'}</span>
-        </button>
-      </nav>
+      <MobileBottomNav
+        appUser={appUser}
+        activeErpTab={activeErpTab}
+        handleNavigate={handleNavigate}
+        showMobileMoreMenu={showMobileMoreMenu}
+        setShowMobileMoreMenu={setShowMobileMoreMenu}
+        unreadMessagesCount={unreadMessagesCount}
+      />
 
       {/* Floating Back-To-Top Button (#4) */}
       <BackToTopButton />

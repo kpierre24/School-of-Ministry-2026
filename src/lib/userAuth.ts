@@ -1,4 +1,6 @@
-export type UserRole = 'admin' | 'teacher' | 'student';
+import { UserRole, Permission, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from '../types/rbac';
+
+export type { UserRole };
 
 export interface AppUser {
   id: string;
@@ -8,6 +10,8 @@ export interface AppUser {
   username?: string;
   studentName?: string; // If role is student, links to student profile name
   studentId?: string; // Student ID for messaging and records
+  assignedCourses?: string[];
+  permissions?: Permission[];
   moduleOrDepartment?: string;
   avatarUrl?: string;
   phone?: string;

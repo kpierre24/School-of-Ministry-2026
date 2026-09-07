@@ -52,6 +52,13 @@ import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '.
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
 import { InstallmentPlanModal } from './InstallmentPlanModal';
 import { SponsorScholarshipModal } from './SponsorScholarshipModal';
+import { StudentFinancialProfileView } from './finance/StudentFinancialProfileView';
+import { FinancialReconciliationModal } from './finance/FinancialReconciliationModal';
+import { FinancialAuditTrailModal } from './finance/FinancialAuditTrailModal';
+import { FinancialReportsModal } from './finance/FinancialReportsModal';
+import { PrintableReceiptModal } from './finance/PrintableReceiptModal';
+import { RecordTransactionModal } from './finance/RecordTransactionModal';
+import { FinancialAdjustmentModal } from './finance/FinancialAdjustmentModal';
 import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
@@ -1259,6 +1266,11 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const { route, navigate } = usePortalRouter('payments');
 
   const [activeSubTab, setActiveSubTab] = useState<'invoices' | 'payments' | 'receipts' | 'analytics' | 'ledger'>('invoices');
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<string | null>(null);
+  const [showReconciliationModal, setShowReconciliationModal] = useState<boolean>(false);
+  const [showAuditTrailModal, setShowAuditTrailModal] = useState<boolean>(false);
+  const [showReportsModal, setShowReportsModal] = useState<boolean>(false);
+  const [printableReceiptData, setPrintableReceiptData] = useState<{ receipt: Receipt; invoice?: Invoice; studentEmail?: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid In Full' | 'Partial' | 'Past Due' | 'Pending Review'>('All');
   const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards');
@@ -1903,350 +1915,23 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       );
     }
 
-    const outstandingBalance = Math.max(0, studentPayment.totalTuition - studentPayment.amountPaid);
-    const progressPercent = Math.min(100, Math.round((studentPayment.amountPaid / studentPayment.totalTuition) * 100));
-
     return (
       <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
-        {/* Student Welcome Banner */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6 relative">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
-            <div>
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">My Tuition & Payments</h2>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Student: <strong className="text-slate-900 dark:text-white">{studentPayment.studentName}</strong> • ID: <strong className="text-slate-900 dark:text-white font-mono">{studentPayment.studentId}</strong>
-              </p>
-            </div>
-
-            <button
-              onClick={() => setReceiptRecord(studentPayment)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer flex-shrink-0"
-            >
-              <ReceiptIcon className="w-4 h-4" /> View My Statement
-            </button>
-          </div>
-
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Tuition Fees</p>
-              <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">${studentPayment.totalTuition.toLocaleString()}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{studentPayment.moduleTrack}</p>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Amount Paid</p>
-              <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">${studentPayment.amountPaid.toLocaleString()}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{progressPercent}% paid to date</p>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Balance Outstanding</p>
-              <p className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">${outstandingBalance.toLocaleString()}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Remaining tuition dues</p>
-            </div>
-
-            <div className={`border rounded-lg p-4 ${studentPayment.status === 'Paid In Full' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' :
-              studentPayment.status === 'Partial' ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800' :
-              'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account Status</p>
-              <p className={`text-2xl font-bold mt-1 ${studentPayment.status === 'Paid In Full' ? 'text-emerald-600 dark:text-emerald-400' :
-                studentPayment.status === 'Partial' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}`}>{studentPayment.status}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Tuition Ledger Standing</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Bar & Details Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-2xs space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-emerald-600" /> Tuition Payment Progress
-                </h3>
-                <span className="text-xs font-black text-emerald-700 font-mono bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-lg">{progressPercent}%</span>
-              </div>
-              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500" 
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Ledger item details */}
-            <div className="border-t border-slate-100 pt-6 space-y-4">
-              <h4 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Tuition Account Overview</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Assigned Course Track</p>
-                  <p className="font-extrabold text-slate-800">{studentPayment.moduleTrack}</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Associated Email Address</p>
-                  <p className="font-extrabold text-slate-800">{studentPayment.email || 'N/A'}</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Last Logged Payment Date</p>
-                  <p className="font-extrabold text-slate-800 font-mono">{studentPayment.lastPaymentDate || 'N/A'}</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Last Used Payment Method</p>
-                  <p className="font-extrabold text-slate-800">{studentPayment.paymentMethod || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-
-            {studentPayment.notes && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-1.5 text-amber-900">
-                <p className="font-extrabold uppercase text-[9px] text-amber-800 tracking-wider flex items-center gap-1">
-                  <FileText className="w-3.5 h-3.5" /> Finance Office Ledger Notes
-                </p>
-                <p className="font-medium leading-relaxed italic">
-                  "{studentPayment.notes}"
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column: Payment Actions & Help */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xs space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-emerald-600" /> Payment Statement Action
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Generate, view, and print your official tuition payment statement and digital receipts logged in the master financial spreadsheet.
-              </p>
-
-              {studentPayment.receiptUrl && (
-                <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-2">
-                  <p className="text-[10px] font-extrabold uppercase text-emerald-800 flex items-center gap-1">
-                    <Paperclip className="w-3 h-3" /> Attached Receipt File
-                  </p>
-                  <p className="text-[11px] text-slate-600 truncate font-mono">{studentPayment.receiptName || 'receipt_attached.file'}</p>
-                  <a
-                    href={studentPayment.receiptUrl}
-                    download={studentPayment.receiptName || 'receipt_attached'}
-                    className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 hover:underline"
-                  >
-                    <Download className="w-3 h-3" /> Download Receipt File
-                  </a>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3 pt-6 border-t border-slate-100">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  onClick={() => setReceiptRecord(studentPayment)}
-                  className="py-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
-                >
-                  <ReceiptIcon className="w-4 h-4 text-emerald-400" /> View Statement
-                </button>
-                <button
-                  onClick={() => generateTuitionReceiptPDF(studentPayment)}
-                  className="py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                  <Download className="w-4 h-4" /> PDF Receipt
-                </button>
-              </div>
-
-              {outstandingBalance > 0 ? (
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3.5 text-[11px] text-blue-900 leading-normal font-medium space-y-1">
-                  <p className="font-extrabold text-blue-950">How to pay?</p>
-                  <p>To settle your outstanding balance of <strong className="font-bold">${outstandingBalance.toLocaleString()}</strong>, please contact the Financial Office or initiate a Bank Transfer.</p>
-                </div>
-              ) : (
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 text-[11px] text-emerald-900 leading-normal font-medium space-y-1">
-                  <p className="font-extrabold text-emerald-950 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Tuition Fully Paid!
-                  </p>
-                  <p>Your account is in excellent standing with zero outstanding balance. Thank you for your diligence.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Modal display portal within student context */}
-        {receiptRecord && (
-          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-            <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl my-auto flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
-              <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-                <h3 className="font-extrabold text-xs sm:text-sm flex items-center gap-2">
-                  <ReceiptIcon className="w-4 h-4 text-emerald-400 shrink-0" /> Official Tuition Statement & Receipt
-                </h3>
-                <button
-                  onClick={() => setReceiptRecord(null)}
-                  className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-                  title="Close Modal"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div id="printable-tuition-receipt" className="p-4 sm:p-8 space-y-4 sm:space-y-6 text-slate-800 overflow-y-auto custom-scrollbar flex-1">
-                <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-4 gap-3">
-                  <div className="flex items-center gap-2.5 sm:gap-3">
-                    <LogoImage 
-                      alt="HTEIM Logo" 
-                      className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-amber-400 p-0.5 object-contain bg-white flex-shrink-0 shadow-xs"
-                    />
-                    <div>
-                      <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">HTEIM School of Ministry</h2>
-                      <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Academic Financial Office • Official Statement</p>
-                      <p className="text-[9px] sm:text-[10px] italic font-serif text-amber-900">"Bringing Heaven to Earth, Taking People to Heaven"</p>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right font-mono text-xs">
-                    <p className="font-extrabold text-emerald-700">Receipt #{receiptRecord.id.toUpperCase()}</p>
-                    <p className="text-slate-400 text-[10px]">{new Date().toLocaleDateString()}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase text-slate-400">Student Name</p>
-                    <p className="font-black text-slate-900 text-sm sm:text-base">{receiptRecord.studentName}</p>
-                    <p className="font-mono text-emerald-700 text-xs font-bold">{receiptRecord.studentId}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase text-slate-400">Enrolled Program Track</p>
-                    <p className="font-bold text-slate-800">{receiptRecord.moduleTrack}</p>
-                    <p className="text-slate-500 text-[11px] break-all">{receiptRecord.email}</p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span>Semester Academic Tuition</span>
-                    <span className="font-mono">${receiptRecord.totalTuition.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-xs font-bold text-emerald-700">
-                    <span>Total Amount Paid To Date</span>
-                    <span className="font-mono">${receiptRecord.amountPaid.toLocaleString()}</span>
-                  </div>
-                  <div className="border-t border-slate-200 pt-2 flex justify-between text-xs sm:text-sm font-black text-slate-900">
-                    <span>Balance Outstanding</span>
-                    <span className="font-mono text-amber-700">${(receiptRecord.totalTuition - receiptRecord.amountPaid).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 italic font-medium">
-                  Note: {receiptRecord.notes || 'All tuition payments support academic ministry training and resources.'}
-                </div>
-
-                {receiptRecord.receiptUrl && (
-                  <div className="border-t border-slate-200 pt-4 space-y-2 print:hidden">
-                    <p className="text-[10px] font-extrabold uppercase text-slate-400">Attached Payment Receipt</p>
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                          <Paperclip className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]" title={receiptRecord.receiptName}>
-                          {receiptRecord.receiptName || 'receipt_attached.file'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 justify-end">
-                        {receiptRecord.receiptUrl.startsWith('data:image/') && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const w = window.open();
-                              if (w) {
-                                w.document.write(`<img src="${receiptRecord.receiptUrl}" style="max-width:100%; height:auto; margin:auto; display:block;" />`);
-                              }
-                            }}
-                            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[10px] rounded-lg border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" /> View Full
-                          </button>
-                        )}
-                        <a
-                          href={receiptRecord.receiptUrl}
-                          download={receiptRecord.receiptName || 'receipt_attached'}
-                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download
-                        </a>
-                      </div>
-                    </div>
-                    {receiptRecord.receiptUrl.startsWith('data:image/') && (
-                      <div className="flex justify-center bg-slate-50 p-2 border border-slate-200 rounded-xl max-h-40 overflow-hidden mt-1">
-                        <img
-                          src={receiptRecord.receiptUrl}
-                          alt="Receipt file"
-                          className="max-h-36 object-contain rounded-lg"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Rockproxy Technology Mark */}
-                <div className="pt-3 border-t border-slate-200 text-center text-[10px] text-slate-500 font-mono flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                  <span>Software Powered by <strong className="text-slate-800">Rockproxy Technologies</strong></span>
-                  <span>•</span>
-                  <span>Director: Kendell Pierre</span>
-                  <span>•</span>
-                  <span className="text-indigo-600">rockproxytechnologies@gmail.com</span>
-                </div>
-              </div>
-
-              <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const studentRecords = payments.filter(p => p.studentName === receiptRecord.studentName || p.studentId === receiptRecord.studentId);
-                    generateStudentAccountStatementPDF(
-                      receiptRecord.studentName,
-                      receiptRecord.studentId,
-                      receiptRecord.email || '',
-                      studentRecords.length > 0 ? studentRecords : [receiptRecord]
-                    );
-                  }}
-                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <FileText className="w-3.5 h-3.5 text-indigo-600" /> Account Statement PDF
-                </button>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => setReceiptRecord(null)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => generateTuitionReceiptPDF(receiptRecord)}
-                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Download PDF Receipt
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <Printer className="w-3.5 h-3.5" /> Print
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <StudentFinancialProfileView
+          studentName={studentPayment.studentName}
+          studentId={studentPayment.studentId}
+          studentEmail={studentPayment.email}
+          userRole={userRole}
+          userEmail={studentPayment.email}
+          onUpdated={() => {
+            const updatedInvs = getInvoices();
+            setInvoices(updatedInvs);
+            const updatedTxs = getTransactions();
+            setTransactions(updatedTxs);
+            setReceipts(getReceipts());
+            syncToPayments(updatedInvs, updatedTxs);
+          }}
+        />
       </div>
     );
   }

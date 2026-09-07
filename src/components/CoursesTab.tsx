@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookOpen, 
   Search, 
@@ -22,17 +22,40 @@ import {
   Tag,
   Lock,
   ShieldAlert,
-  BrainCircuit
+  BrainCircuit,
+  Filter,
+  UserCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
 import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { Course } from '../types';
 import { UserRole } from '../lib/userAuth';
+import { 
+  AcademicYear, 
+  Term, 
+  MasterCourse, 
+  CourseOffering, 
+  AcademicStructureData 
+} from '../types/academicEngine';
+import { 
+  DEFAULT_ACADEMIC_YEARS, 
+  DEFAULT_TERMS, 
+  DEFAULT_MASTER_COURSES, 
+  DEFAULT_COURSE_OFFERINGS,
+  INITIAL_ACADEMIC_STRUCTURE
+} from '../data/defaultAcademicData';
+import { CourseOfferingDetailModal } from '../features/academics/CourseOfferingDetailModal';
+import { ScheduleOfferingModal } from '../features/academics/ScheduleOfferingModal';
+import { MasterCourseCatalogView } from '../features/academics/MasterCourseCatalogView';
+import { AcademicCalendarView } from '../features/academics/AcademicCalendarView';
+import { portalApi } from '../services/api/portalApiClient';
 
 interface CoursesTabProps {
   userRole?: UserRole;
   courses?: Course[];
   setCourses?: React.Dispatch<React.SetStateAction<Course[]>>;
+  uniqueStudents?: { name: string; email?: string; photoUrl?: string; levelId?: string }[];
 }
 
 export const INITIAL_COURSES: Course[] = [
@@ -46,11 +69,11 @@ export const INITIAL_COURSES: Course[] = [
     scheduleDays: 'Tuesdays & Thursdays (7:00 PM - 9:00 PM EST)',
     location: 'HTEIM Main Sanctuary & Live Streaming',
     topics: [
-      'Module 1: Introduction',
-      'Module 2: Evangelism',
-      'Module 3: Ministerial Ethics',
-      'Module 4: Apostolic Ministry',
-      'Module 5: Prophetic Ministry',
+      'Module 1: Introduction & Biblical Hermeneutics',
+      'Module 2: Evangelism & The Great Commission',
+      'Module 3: Ministerial Ethics & Pastoral Integrity',
+      'Module 4: Apostolic Governance & Five-Fold Ministry',
+      'Module 5: Prophetic Ministry & Spiritual Discernment',
       'Module 6: School of the Pastors and Teachers'
     ],
     enrolledCount: 38
@@ -58,35 +81,35 @@ export const INITIAL_COURSES: Course[] = [
   {
     id: 'm1',
     code: 'SOM-MOD-1',
-    title: 'Module 1: Introduction',
-    instructor: 'HTEIM Academic Directorate',
+    title: 'Module 1: Biblical Hermeneutics & Exegesis',
+    instructor: 'Pastor John Selkridge',
     credits: 5,
-    description: 'Foundational orientation into the School of Ministry, covenant alignment, academic expectations, spiritual discipline, and ministerial commitment.',
-    scheduleDays: 'Class Session 1 & 2',
-    location: 'Main Sanctuary Hall',
-    topics: ['Kingdom Citizenship & Purpose', 'Scripture Recitation Discipline', 'Classroom & Attendance Integrity', 'Foundational Doctrine'],
-    enrolledCount: 38
+    description: 'Sound biblical interpretation, exegesis methodologies, historical-grammatical context, and delivering scriptural truth without doctrinal distortion.',
+    scheduleDays: 'Tuesdays & Thursdays (7:00 PM - 9:00 PM EST)',
+    location: 'Main Sanctuary Hall & Zoom Live',
+    topics: ['Authority of Scripture & Canon', 'Historical-Grammatical Exegesis', 'The Christocentric Principle', 'Homiletical Application'],
+    enrolledCount: 6
   },
   {
     id: 'm2',
     code: 'SOM-MOD-2',
-    title: 'Module 2: Evangelism',
-    instructor: 'Evangelism Ministry Lead',
+    title: 'Module 2: Evangelism & The Great Commission',
+    instructor: 'Minister Christy Ruben',
     credits: 5,
-    description: 'Practical soul-winning strategies, personal witnessing, the Great Commission mandate (Matthew 28:19-20), street ministry, and follow-up discipleship.',
-    scheduleDays: 'Class Session 3 & 4',
-    location: 'Outreach Training Room',
+    description: 'Practical soul-winning strategies, personal witnessing, the Matthew 28 mandate, street ministry, and follow-up discipleship.',
+    scheduleDays: 'Mondays (7:00 PM - 9:00 PM EST) & Outreach',
+    location: 'Outreach Training Room & Field',
     topics: ['The Matthew 28 Mandate', 'Effective Witnessing Protocols', 'Overcoming Objections in Soul Winning', 'Discipleship & Follow-up'],
-    enrolledCount: 38
+    enrolledCount: 2
   },
   {
     id: 'm3',
     code: 'SOM-MOD-3',
-    title: 'Module 3: Ministerial Ethics',
-    instructor: 'Pastor Senior Advisor',
+    title: 'Module 3: Ministerial Ethics & Pastoral Integrity',
+    instructor: 'Rev. Gillian Selkridge',
     credits: 5,
     description: 'High standards of character, financial integrity, church accountability, conflict resolution, confidentiality, and biblical servant leadership.',
-    scheduleDays: 'Class Session 5 & 6',
+    scheduleDays: 'Wednesdays (7:00 PM - 9:00 PM EST)',
     location: 'Leadership Conference Center',
     topics: ['Integrity of the Leader', 'Financial Stewardship & Transparency', 'Pastoral Counseling Ethics', 'Handling Church Conflict'],
     enrolledCount: 38
@@ -94,36 +117,36 @@ export const INITIAL_COURSES: Course[] = [
   {
     id: 'm4',
     code: 'SOM-MOD-4',
-    title: 'Module 4: Apostolic Ministry',
-    instructor: 'Dr. Faculty Director',
+    title: 'Module 4: Apostolic Governance & Five-Fold Ministry',
+    instructor: 'Apostle Dr. Kendell Pierre',
     credits: 5,
-    description: 'Understanding the apostolic mandate, five-fold governance, spiritual authority according to Ephesians 2:20, and distinguishing true vs false apostolic marks.',
-    scheduleDays: 'Class Session 7 & 8',
-    location: 'Main Sanctuary Hall',
-    topics: ['Ephesians 2:20 Foundation', 'Apostolic Marks & Signs', 'Church Governance & Oversight', 'Kingdom Expansion'],
+    description: 'Understanding the apostolic mandate, five-fold governance, spiritual authority according to Ephesians 4:11, and distinguishing true vs false apostolic marks.',
+    scheduleDays: 'Fridays (7:00 PM - 9:30 PM EST)',
+    location: 'Main Sanctuary & Global Apostolic Room',
+    topics: ['Apostolic Foundation (Ephesians 2:20)', 'Marks and Signs of an Apostle', 'Five-Fold Synergy & Alignment', 'Apostolic Church Planting'],
     enrolledCount: 38
   },
   {
     id: 'm5',
     code: 'SOM-MOD-5',
-    title: 'Module 5: Prophetic Ministry',
-    instructor: 'Prophetic Faculty Director',
+    title: 'Module 5: Prophetic Ministry & Spiritual Discernment',
+    instructor: 'Apostolic Faculty Team',
     credits: 5,
-    description: 'Developing prophetic discernment, hearing the voice of God, evaluating prophecy against Scripture, and maintaining order in prophetic ministry.',
+    description: 'The operation and biblical testing of prophecy, cultivating spiritual sensitivity, dream interpretation, and prophetic order according to 1 Cor 14.',
     scheduleDays: 'Class Session 9 & 10',
-    location: 'Prayer & Warfare Chapel',
-    topics: ['Hearing the Voice of God', 'Testing & Judging Prophecy', 'Prophetic Protocol & Order', 'Spiritual Discernment'],
+    location: 'Lecture Hall B',
+    topics: ['The Gift of Prophecy vs Prophetic Office', 'Testing and Judging Prophecy', 'Spiritual Discernment & Warfare', 'Prophetic Protocol in Assembly'],
     enrolledCount: 38
   },
   {
     id: 'm6',
     code: 'SOM-MOD-6',
     title: 'Module 6: School of the Pastors and Teachers',
-    instructor: 'Rev. Academic Dean',
+    instructor: 'Rev. Dr. Samuel Selkridge',
     credits: 5,
     description: 'Shepherding the flock, pastoral counseling, expository sermon preparation, sound biblical teaching, and nurturing believers unto maturity.',
-    scheduleDays: 'Class Session 11 & 12',
-    location: 'Lecture Hall A',
+    scheduleDays: 'Saturdays (9:00 AM - 1:00 PM EST)',
+    location: 'Main Sanctuary & Online Broadcast',
     topics: ['Shepherding & Pastoral Care', 'Expository Preaching & Hermeneutics', 'Teaching Sound Doctrine', 'Building Sustainable Ministries'],
     enrolledCount: 38
   }
@@ -132,781 +155,446 @@ export const INITIAL_COURSES: Course[] = [
 export const CoursesTab: React.FC<CoursesTabProps> = ({ 
   userRole = 'admin',
   courses: propCourses,
-  setCourses: propSetCourses
+  setCourses: propSetCourses,
+  uniqueStudents = []
 }) => {
   const isStudent = userRole === 'student';
-  const [localCourses, setLocalCourses] = useState<Course[]>(() => {
-    const saved = localStorage.getItem('hteim_courses');
-    return saved ? JSON.parse(saved) : INITIAL_COURSES;
+  const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
+
+  // --- Academic Engine Hierarchy State ---
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => {
+    const saved = localStorage.getItem('hteim_academic_years');
+    return saved ? JSON.parse(saved) : DEFAULT_ACADEMIC_YEARS;
   });
 
-  const courses = propCourses !== undefined ? propCourses : localCourses;
-  const setCourses = propSetCourses !== undefined ? propSetCourses : setLocalCourses;
+  const [terms, setTerms] = useState<Term[]>(() => {
+    const saved = localStorage.getItem('hteim_academic_terms');
+    return saved ? JSON.parse(saved) : DEFAULT_TERMS;
+  });
 
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('hteim_courses', JSON.stringify(courses));
-  }, [courses]);
+  const [masterCourses, setMasterCourses] = useState<MasterCourse[]>(() => {
+    const saved = localStorage.getItem('hteim_master_courses');
+    return saved ? JSON.parse(saved) : DEFAULT_MASTER_COURSES;
+  });
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [courseOfferings, setCourseOfferings] = useState<CourseOffering[]>(() => {
+    const saved = localStorage.getItem('hteim_course_offerings');
+    return saved ? JSON.parse(saved) : DEFAULT_COURSE_OFFERINGS;
+  });
+
+  // Active Filter: Academic Year and Term
+  const [selectedTermId, setSelectedTermId] = useState<string>('term_2026_s1');
+  const [activeTabMode, setActiveTabMode] = useState<'offerings' | 'catalog' | 'calendar'>('offerings');
+
+  // Modal / Detail States
+  const [selectedOffering, setSelectedOffering] = useState<CourseOffering | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [preselectedCourseForSchedule, setPreselectedCourseForSchedule] = useState<MasterCourse | null>(null);
   const [showFlashcards, setShowFlashcards] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal States
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  // Persist Academic Engine Data locally
+  useEffect(() => {
+    localStorage.setItem('hteim_academic_years', JSON.stringify(academicYears));
+    localStorage.setItem('hteim_academic_terms', JSON.stringify(terms));
+    localStorage.setItem('hteim_master_courses', JSON.stringify(masterCourses));
+    localStorage.setItem('hteim_course_offerings', JSON.stringify(courseOfferings));
+  }, [academicYears, terms, masterCourses, courseOfferings]);
 
-  // Form Fields State
-  const [formCode, setFormCode] = useState('');
-  const [formTitle, setFormTitle] = useState('');
-  const [formInstructor, setFormInstructor] = useState('');
-  const [formCredits, setFormCredits] = useState(5);
-  const [formEnrolled, setFormEnrolled] = useState(38);
-  const [formSchedule, setFormSchedule] = useState('TBA');
-  const [formLocation, setFormLocation] = useState('Main Sanctuary Hall');
-  const [formDesc, setFormDesc] = useState('');
-  const [formTopics, setFormTopics] = useState<string[]>([]);
-  const [formExpiryDate, setFormExpiryDate] = useState('');
-  const [newTopicInput, setNewTopicInput] = useState('');
-
-  // Course Filter Tab: 'all' | 'active' | 'expired'
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
-
-  // Quick topic input for selected syllabus modal
-  const [quickSyllabusTopic, setQuickSyllabusTopic] = useState('');
-
-  const filteredCourses = courses.filter(c => {
-    const matchesSearch = 
-      (c.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.instructor || '').toLowerCase().includes(searchQuery.toLowerCase());
-
-    const isExpired = c.expiryDate ? new Date(c.expiryDate) < new Date() : false;
-
-    if (statusFilter === 'active') return matchesSearch && !isExpired;
-    if (statusFilter === 'expired') return matchesSearch && isExpired;
-    return matchesSearch;
-  });
-
-  // Open Add Modal
-  const handleOpenAddModal = () => {
-    setEditingCourse(null);
-    setFormCode('');
-    setFormTitle('');
-    setFormInstructor('HTEIM Faculty Member');
-    setFormCredits(5);
-    setFormEnrolled(38);
-    setFormSchedule('TBA');
-    setFormLocation('HTEIM Campus');
-    setFormDesc('');
-    setFormExpiryDate('');
-    setFormTopics(['Course Orientation & Kingdom Mandate', 'Biblical Foundations & Hermeneutics']);
-    setNewTopicInput('');
-    setShowAddModal(true);
-  };
-
-  // Open Edit Modal
-  const handleOpenEditModal = (course: Course) => {
-    setEditingCourse(course);
-    setFormCode(course.code);
-    setFormTitle(course.title);
-    setFormInstructor(course.instructor);
-    setFormCredits(course.credits);
-    setFormEnrolled(course.enrolledCount);
-    setFormSchedule(course.scheduleDays);
-    setFormLocation(course.location);
-    setFormDesc(course.description);
-    setFormExpiryDate(course.expiryDate || '');
-    setFormTopics([...course.topics]);
-    setNewTopicInput('');
-    setShowAddModal(true);
-  };
-
-  // Save Course (Create or Update)
-  const handleSaveCourse = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formCode.trim() || !formTitle.trim()) return;
-
-    if (editingCourse) {
-      const updatedList = courses.map(c => c.id === editingCourse.id ? {
-        ...c,
-        code: formCode.toUpperCase().trim(),
-        title: formTitle.trim(),
-        instructor: formInstructor.trim() || 'HTEIM Faculty Member',
-        credits: formCredits,
-        enrolledCount: formEnrolled,
-        scheduleDays: formSchedule.trim() || 'TBA',
-        location: formLocation.trim() || 'HTEIM Campus',
-        description: formDesc.trim() || 'School of Ministry course module.',
-        expiryDate: formExpiryDate.trim() || undefined,
-        topics: formTopics.length > 0 ? formTopics : ['Course Introduction']
-      } : c);
-
-      setCourses(updatedList);
-
-      // Also update selectedCourse if currently viewed
-      if (selectedCourse && selectedCourse.id === editingCourse.id) {
-        setSelectedCourse({
-          ...selectedCourse,
-          code: formCode.toUpperCase().trim(),
-          title: formTitle.trim(),
-          instructor: formInstructor.trim() || 'HTEIM Faculty Member',
-          credits: formCredits,
-          enrolledCount: formEnrolled,
-          scheduleDays: formSchedule.trim() || 'TBA',
-          location: formLocation.trim() || 'HTEIM Campus',
-          description: formDesc.trim() || 'School of Ministry course module.',
-          expiryDate: formExpiryDate.trim() || undefined,
-          topics: formTopics.length > 0 ? formTopics : ['Course Introduction']
-        });
-      }
-    } else {
-      const newCourseObj: Course = {
-        id: `c_${Date.now()}`,
-        code: formCode.toUpperCase().trim(),
-        title: formTitle.trim(),
-        instructor: formInstructor.trim() || 'HTEIM Faculty Member',
-        credits: formCredits,
-        enrolledCount: formEnrolled,
-        scheduleDays: formSchedule.trim() || 'TBA',
-        location: formLocation.trim() || 'HTEIM Campus',
-        description: formDesc.trim() || 'School of Ministry course module.',
-        expiryDate: formExpiryDate.trim() || undefined,
-        topics: formTopics.length > 0 ? formTopics : ['Course Introduction']
-      };
-      setCourses([...courses, newCourseObj]);
-    }
-
-    setShowAddModal(false);
-  };
-
-  // Delete Course
-  const handleDeleteCourse = (id: string) => {
-    setCourses(prev => prev.filter(c => c.id !== id));
-    if (selectedCourse?.id === id) {
-      setSelectedCourse(null);
-    }
-    if (editingCourse?.id === id) {
-      setShowAddModal(false);
-    }
-  };
-
-  // Topic Management inside Modal
-  const handleAddTopic = () => {
-    if (!newTopicInput.trim()) return;
-    setFormTopics([...formTopics, newTopicInput.trim()]);
-    setNewTopicInput('');
-  };
-
-  const handleRemoveTopic = (index: number) => {
-    setFormTopics(formTopics.filter((_, i) => i !== index));
-  };
-
-  // Quick Add Topic in Syllabus Detail View
-  const handleQuickAddSyllabusTopic = (courseId: string) => {
-    if (!quickSyllabusTopic.trim()) return;
-    const updated = courses.map(c => {
-      if (c.id === courseId) {
-        return { ...c, topics: [...c.topics, quickSyllabusTopic.trim()] };
-      }
-      return c;
+  // Load authoritative academic structure on mount from Express API
+  useEffect(() => {
+    let isMounted = true;
+    portalApi.getAcademicStructure().then(structure => {
+      if (!isMounted || !structure) return;
+      if (structure.academicYears?.length) setAcademicYears(structure.academicYears);
+      if (structure.terms?.length) setTerms(structure.terms);
+      if (structure.masterCourses?.length) setMasterCourses(structure.masterCourses);
+      if (structure.courseOfferings?.length) setCourseOfferings(structure.courseOfferings);
+      if (structure.activeTermId) setSelectedTermId(structure.activeTermId);
+    }).catch(err => {
+      console.warn('Using local academic structure fallback:', err);
     });
-    setCourses(updated);
-    if (selectedCourse && selectedCourse.id === courseId) {
-      setSelectedCourse({
-        ...selectedCourse,
-        topics: [...selectedCourse.topics, quickSyllabusTopic.trim()]
-      });
-    }
-    setQuickSyllabusTopic('');
+    return () => { isMounted = false; };
+  }, []);
+
+  // Active Term and Year Objects
+  const activeTerm = useMemo(() => {
+    return terms.find(t => t.id === selectedTermId) || terms[0];
+  }, [terms, selectedTermId]);
+
+  const activeYear = useMemo(() => {
+    return academicYears.find(ay => ay.id === activeTerm?.academicYearId) || academicYears[0];
+  }, [academicYears, activeTerm]);
+
+  // Filter offerings by term and search
+  const filteredOfferings = useMemo(() => {
+    return courseOfferings.filter(offering => {
+      const matchesTerm = selectedTermId === 'all' || offering.termId === selectedTermId;
+      const matchesSearch = 
+        offering.courseTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        offering.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        offering.lecturer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        offering.section.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesTerm && matchesSearch;
+    });
+  }, [courseOfferings, selectedTermId, searchQuery]);
+
+  // Handle updated offering from detail modal
+  const handleUpdateOffering = (updatedOffering: CourseOffering) => {
+    setCourseOfferings(prev => prev.map(o => o.id === updatedOffering.id ? updatedOffering : o));
+    setSelectedOffering(updatedOffering);
+
+    // Sync to Express API
+    portalApi.saveCourseOffering(updatedOffering).catch(err => {
+      console.warn('Failed to sync course offering to API:', err);
+    });
   };
 
-  // Quick Remove Topic in Syllabus Detail View
-  const handleQuickRemoveSyllabusTopic = (courseId: string, topicIndex: number) => {
-    const updated = courses.map(c => {
-      if (c.id === courseId) {
-        return { ...c, topics: c.topics.filter((_, i) => i !== topicIndex) };
-      }
-      return c;
+  // Handle scheduling new offering from master course
+  const handleScheduleOffering = (newOffering: CourseOffering) => {
+    setCourseOfferings(prev => [newOffering, ...prev]);
+    setSelectedTermId(newOffering.termId);
+    setActiveTabMode('offerings');
+    setSelectedOffering(newOffering);
+
+    // Sync to Express API
+    portalApi.saveCourseOffering(newOffering).catch(err => {
+      console.warn('Failed to sync new course offering to API:', err);
     });
-    setCourses(updated);
-    if (selectedCourse && selectedCourse.id === courseId) {
-      setSelectedCourse({
-        ...selectedCourse,
-        topics: selectedCourse.topics.filter((_, i) => i !== topicIndex)
-      });
-    }
   };
 
   return (
-    <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
-      {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-[#025798] dark:text-[#7dd3fc] shrink-0" />
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ministry Courses & Curriculum</h2>
+    <div className="space-y-6 pb-12">
+      
+      {/* Top Academic Hierarchy Header */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80">
+                Academic Engine
+              </span>
+              <span className="text-xs text-slate-400 font-medium">
+                {activeYear?.name}
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">&bull;</span>
+              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                {activeTerm?.name}
+              </span>
+            </div>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Academic Curriculum & Course Management
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+              Distinguishing reusable <strong>Master Courses</strong> from term-specific <strong>Course Offerings</strong> with appointed Lecturers, Enrolled Students, Attendance, Assignments, Exams, and Gradebooks.
+            </p>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            Manage structured theological modules, syllabus guidelines, and course cards for HTEIM School of Ministry.
-          </p>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => setShowFlashcards(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors"
+            >
+              <BrainCircuit className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              Scripture Flashcards
+            </button>
+
+            {isTeacherOrAdmin && (
+              <button
+                onClick={() => {
+                  setPreselectedCourseForSchedule(null);
+                  setShowScheduleModal(true);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Schedule Course Offering
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button
-            onClick={() => setShowFlashcards(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-2 border border-indigo-500/30 shadow-xs active:opacity-80"
-          >
-            <BrainCircuit className="w-4 h-4 text-indigo-200" /> Study Flashcards
-          </button>
-
-          {!isStudent && (
+        {/* View Mode Switcher */}
+        <div className="flex items-center justify-between gap-4 mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
             <button
-              onClick={handleOpenAddModal}
-              className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-2 flex-shrink-0 border border-[#b38f53]/30 shadow-xs active:opacity-80"
+              onClick={() => setActiveTabMode('offerings')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTabMode === 'offerings'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
             >
-              <Plus className="w-4 h-4 text-[#dfc18b]" /> Add New Course
+              <GraduationCap className="w-4 h-4" />
+              Course Offerings ({courseOfferings.length})
             </button>
+
+            <button
+              onClick={() => setActiveTabMode('catalog')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTabMode === 'catalog'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              Master Curriculum Catalog (6 Modules)
+            </button>
+
+            <button
+              onClick={() => setActiveTabMode('calendar')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTabMode === 'calendar'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Academic Calendar & Terms
+            </button>
+          </div>
+
+          {/* Term Filter dropdown when in Offerings view */}
+          {activeTabMode === 'offerings' && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Viewing Term:</span>
+              <select
+                value={selectedTermId}
+                onChange={(e) => setSelectedTermId(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Semesters & Terms</option>
+                {terms.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Search Bar & Counter & Status Filter */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search courses by title, code (e.g. SOM-101), or instructor..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-          />
-        </div>
+      {/* VIEW 1: COURSE OFFERINGS (The Heart of the Engine) */}
+      {activeTabMode === 'offerings' && (
+        <div className="space-y-4">
+          
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search scheduled course offerings, lecturers, or sections..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1 rounded-lg transition-all ${
-              statusFilter === 'all' ? 'bg-[#023264] text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            All ({courses.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('active')}
-            className={`px-3 py-1 rounded-lg transition-all ${
-              statusFilter === 'active' ? 'bg-[#01883c] text-white shadow-xs' : 'text-[#01883c] dark:text-[#4ade80] hover:bg-[#01883c]/10'
-            }`}
-          >
-            Active
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('expired')}
-            className={`px-3 py-1 rounded-lg transition-all ${
-              statusFilter === 'expired' ? 'bg-rose-600 text-white shadow-xs' : 'text-rose-700 hover:bg-rose-50'
-            }`}
-          >
-            Expired
-          </button>
-        </div>
-
-        <div className="text-xs font-bold text-slate-500 font-mono whitespace-nowrap">
-          Showing {filteredCourses.length} Courses
-        </div>
-      </div>
-
-      {/* Course List Grid */}
-      {filteredCourses.length === 0 ? (
-        <EmptyState
-          title="No courses found"
-          description="There are no courses matching your current filters. Try adjusting your search or status filter."
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredCourses.map((course) => {
-          const isExpired = course.expiryDate ? new Date(course.expiryDate) < new Date() : false;
-
-          return (
-            <div 
-              key={course.id} 
-              className={`bg-white dark:bg-slate-900 border rounded-xl p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group ${
-                isExpired ? 'border-rose-300 bg-rose-50/10' : 'border-slate-200 dark:border-slate-800'
-              }`}
-            >
-              <div>
-                {/* Header Badge & Action Buttons */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 bg-[#023264]/10 dark:bg-[#023264]/40 border border-[#025798]/30 text-[#023264] dark:text-[#bae6fd] text-xs font-mono font-black rounded-lg">
-                      {course.code}
-                    </span>
-                    <span className="px-2.5 py-1 bg-[#b38f53]/15 text-[#8c6a32] dark:text-[#dfc18b] border border-[#b38f53]/30 text-[10px] font-bold rounded-lg flex items-center gap-1">
-                      <Award className="w-3 h-3 text-[#b38f53]" /> {course.credits} Credits
-                    </span>
-
-                    {/* Expiry Badge */}
-                    {course.expiryDate ? (
-                      isExpired ? (
-                        <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black uppercase rounded-lg flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-rose-600" /> Expired ({course.expiryDate})
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-semibold rounded-lg flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-500" /> Expires: {course.expiryDate}
-                        </span>
-                      )
-                    ) : null}
-                  </div>
-
-                  {/* Edit & Remove Card Action Buttons */}
-                  {!isStudent && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenEditModal(course)}
-                        className="p-1.5 text-slate-500 hover:text-[#025798] hover:bg-[#025798]/10 border border-slate-200 dark:border-slate-700 hover:border-[#025798]/40 rounded-lg transition-all cursor-pointer"
-                        title="Edit Course Information"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCourse(course.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 dark:border-slate-700 hover:border-rose-200 rounded-lg transition-all cursor-pointer"
-                        title="Remove Course Card"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-2 leading-snug">
-                {course.title}
+          {filteredOfferings.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-3">
+              <GraduationCap className="w-10 h-10 mx-auto text-slate-400" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                No course offerings scheduled for this term
               </h3>
-
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 mb-4">
-                {course.description}
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Schedule an offering from the Master Curriculum Catalog to appoint a Lecturer, enroll students, and begin tracking attendance and grades.
               </p>
-
-              {/* Course Info Cards */}
-              <div className="space-y-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
-                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                    <GraduationCap className="w-4 h-4 text-[#025798] dark:text-[#7dd3fc]" /> Faculty Instructor:
-                  </span>
-                  <span className="font-bold text-slate-900 dark:text-white">{course.instructor}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                    <Calendar className="w-4 h-4 text-[#01883c]" /> Schedule:
-                  </span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px]">{course.scheduleDays}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                    <MapPin className="w-4 h-4 text-[#b38f53]" /> Location:
-                  </span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px]">{course.location}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700">
-                  <span className="font-bold flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                    <Users className="w-4 h-4 text-[#0277b8]" /> Enrolled Roster:
-                  </span>
-                  <span className="font-mono font-bold text-[#023264] dark:text-[#7dd3fc]">{course.enrolledCount} Students Enrolled</span>
-                </div>
-              </div>
-
-              {/* Topics Pill List */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                    Key Syllabus Modules ({course.topics.length})
-                  </p>
-                  {!isStudent && (
-                    <button
-                      onClick={() => handleOpenEditModal(course)}
-                      className="text-[10px] font-bold text-[#025798] dark:text-[#7dd3fc] hover:underline flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <Plus className="w-2.5 h-2.5" /> Edit Topics
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {course.topics.slice(0, 3).map((topic, idx) => (
-                    <span key={idx} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1">
-                      • {topic}
-                    </span>
-                  ))}
-                  {course.topics.length > 3 && (
-                    <span className="px-2 py-1 bg-[#025798]/10 text-[#025798] dark:text-[#7dd3fc] text-[10px] font-bold rounded-md">
-                      +{course.topics.length - 3} more
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Action Buttons */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-              <button
-                onClick={() => setSelectedCourse(course)}
-                className="flex-1 py-2.5 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs border border-[#b38f53]/30"
-              >
-                <span>View Full Syllabus & Materials</span> <ChevronRight className="w-4 h-4 text-[#dfc18b]" />
-              </button>
-
-              {!isStudent && (
+              {isTeacherOrAdmin && (
                 <button
-                  onClick={() => handleOpenEditModal(course)}
-                  className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-[#025798]/15 text-[#023264] dark:text-[#7dd3fc] font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer border border-slate-200 dark:border-slate-700"
-                  title="Edit Course"
+                  onClick={() => setShowScheduleModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 mt-2"
                 >
-                  <Edit3 className="w-3.5 h-3.5" /> Edit
+                  <Plus className="w-3.5 h-3.5" /> Schedule Offering
                 </button>
               )}
             </div>
-          </div>
-        );
-      })}
-      </div>
-      )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredOfferings.map((offering) => {
+                const atRiskEnrolled = offering.enrolledStudents.filter(
+                  s => s.standing === 'at_risk' || s.attendanceRate < 75
+                ).length;
 
-      {/* Course Detail Syllabus Modal */}
-      {selectedCourse && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-scaleUp">
-            <div className="p-5 bg-[#023264] text-white flex items-center justify-between border-b border-[#b38f53]/30">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-[#dfc18b] bg-[#b38f53]/20 px-2 py-0.5 rounded border border-[#b38f53]/40">
-                  {selectedCourse.code}
-                </span>
-                <h3 className="text-base font-extrabold mt-1">{selectedCourse.title}</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {!isStudent && (
-                  <button
-                    onClick={() => {
-                      const c = selectedCourse;
-                      setSelectedCourse(null);
-                      handleOpenEditModal(c);
-                    }}
-                    className="px-3 py-1 bg-[#025798] hover:bg-[#0277b8] text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                return (
+                  <div
+                    key={offering.id}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:border-indigo-400 dark:hover:border-indigo-700 transition-all flex flex-col justify-between group"
                   >
-                    <Edit3 className="w-3.5 h-3.5" /> Edit Course
-                  </button>
-                )}
-                <button 
-                  onClick={() => setSelectedCourse(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar text-xs text-slate-800 dark:text-slate-200">
-              <div>
-                <h4 className="font-extrabold uppercase text-[10px] text-slate-400 tracking-wider mb-1">Course Description</h4>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">{selectedCourse.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Instructor</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{selectedCourse.instructor}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Schedule</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{selectedCourse.scheduleDays}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Location</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{selectedCourse.location}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Credits / Roster</span>
-                  <span className="font-bold text-[#025798] dark:text-[#7dd3fc]">{selectedCourse.credits} Cr ({selectedCourse.enrolledCount} Enrolled)</span>
-                </div>
-              </div>
-
-              {/* Complete Syllabus Modules & Quick Add Topic */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-extrabold uppercase text-[10px] text-slate-400 tracking-wider">
-                    Syllabus Topics & Modules ({selectedCourse.topics.length})
-                  </h4>
-                  {!isStudent && <span className="text-[10px] text-slate-400">Click remove button to trim topic</span>}
-                </div>
-
-                <div className="space-y-2 mb-3">
-                  {selectedCourse.topics.map((t, idx) => (
-                    <div key={idx} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-between gap-2 font-bold text-slate-800 dark:text-slate-200 group/topic">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-[#01883c] flex-shrink-0" />
-                        <span>Module {idx + 1}: {t}</span>
+                    <div>
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80">
+                          {offering.courseCode}
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {offering.termName}
+                        </span>
                       </div>
-                      {!isStudent && (
-                        <button
-                          onClick={() => handleQuickRemoveSyllabusTopic(selectedCourse.id, idx)}
-                          className="opacity-0 group-hover/topic:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer"
-                          title="Remove Topic"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+
+                      {/* Course Title */}
+                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+                        {offering.courseTitle}
+                      </h3>
+
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                        {offering.section}
+                      </p>
+
+                      {/* Lecturer Card snippet */}
+                      <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                        <img
+                          src={offering.lecturer.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150'}
+                          alt={offering.lecturer.name}
+                          className="w-10 h-10 rounded-full object-cover border border-indigo-200 dark:border-indigo-800 flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                            Appointed Lecturer
+                          </span>
+                          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                            {offering.lecturer.name}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {offering.lecturer.title}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Schedule & Location */}
+                      <div className="mt-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{offering.scheduleDays}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{offering.location}</span>
+                        </div>
+                      </div>
+
+                      {/* Facet Summary stats */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center">
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                          <span className="text-[10px] text-slate-400 block">Enrolled</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {offering.enrolledStudents.length} / {offering.capacity}
+                          </span>
+                        </div>
+
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                          <span className="text-[10px] text-slate-400 block">Sessions</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {offering.attendance.length}
+                          </span>
+                        </div>
+
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                          <span className="text-[10px] text-slate-400 block">Coursework</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {offering.assignments.length + offering.exams.length}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* At-risk student badge if any */}
+                      {atRiskEnrolled > 0 && (
+                        <div className="mt-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{atRiskEnrolled} student(s) below 75% attendance threshold</span>
+                        </div>
                       )}
                     </div>
-                  ))}
-                </div>
 
-                {/* Quick Add Topic Input (Admin/Teacher only) */}
-                {!isStudent && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <input
-                      type="text"
-                      placeholder="Add a new syllabus topic or lecture module..."
-                      value={quickSyllabusTopic}
-                      onChange={(e) => setQuickSyllabusTopic(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleQuickAddSyllabusTopic(selectedCourse.id);
-                        }
-                      }}
-                      className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30 text-slate-900 dark:text-white"
-                    />
-                    <button
-                      onClick={() => handleQuickAddSyllabusTopic(selectedCourse.id)}
-                      className="px-3 py-2 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-[#dfc18b]" /> Add Topic
-                    </button>
+                    {/* Action button: Open Deep Dive Workspace */}
+                    <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={() => setSelectedOffering(offering)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 shadow-sm transition-all"
+                      >
+                        <span>Open Course Offering Workspace</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
+          )}
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-              <button
-                onClick={() => setSelectedCourse(null)}
-                className="px-5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl cursor-pointer"
-              >
-                Close Course
-              </button>
-            </div>
+        </div>
+      )}
+
+      {/* VIEW 2: MASTER CURRICULUM CATALOG (6 Core Modules) */}
+      {activeTabMode === 'catalog' && (
+        <MasterCourseCatalogView
+          masterCourses={masterCourses}
+          courseOfferings={courseOfferings}
+          onSelectCourseOffering={(offering) => setSelectedOffering(offering)}
+          onScheduleCourse={(course) => {
+            setPreselectedCourseForSchedule(course);
+            setShowScheduleModal(true);
+          }}
+          userRole={userRole}
+        />
+      )}
+
+      {/* VIEW 3: ACADEMIC CALENDAR & TERMS */}
+      {activeTabMode === 'calendar' && (
+        <AcademicCalendarView
+          academicYears={academicYears}
+          terms={terms}
+          courseOfferings={courseOfferings}
+          activeTermId={selectedTermId}
+          onSelectTerm={(termId) => {
+            setSelectedTermId(termId);
+            setActiveTabMode('offerings');
+          }}
+          userRole={userRole}
+        />
+      )}
+
+      {/* Course Offering Detail Deep-Dive Modal (The 6 Facets) */}
+      {selectedOffering && (
+        <CourseOfferingDetailModal
+          offering={selectedOffering}
+          onClose={() => setSelectedOffering(null)}
+          userRole={userRole}
+          onUpdateOffering={handleUpdateOffering}
+          availableStudents={uniqueStudents}
+        />
+      )}
+
+      {/* Schedule Offering Modal */}
+      {showScheduleModal && (
+        <ScheduleOfferingModal
+          masterCourses={masterCourses}
+          academicYears={academicYears}
+          terms={terms}
+          preselectedCourse={preselectedCourseForSchedule}
+          currentTermId={selectedTermId === 'all' ? terms[0]?.id : selectedTermId}
+          currentYearId={activeYear?.id}
+          onClose={() => setShowScheduleModal(false)}
+          onSchedule={handleScheduleOffering}
+        />
+      )}
+
+      {/* Interactive Scripture Flashcards Modal */}
+      {showFlashcards && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <button
+              onClick={() => setShowFlashcards(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <InteractiveFlashcards onClose={() => setShowFlashcards(false)} />
           </div>
         </div>
       )}
 
-      {/* Add / Edit Course Modal */}
-      {!isStudent && showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleSaveCourse} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-xl overflow-hidden animate-scaleUp">
-            <div className="p-4 bg-[#023264] text-white flex items-center justify-between border-b border-[#b38f53]/30">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#dfc18b]" />
-                <h3 className="text-sm font-extrabold">
-                  {editingCourse ? `Edit Course Card (${editingCourse.code})` : 'Add New Ministry Course'}
-                </h3>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 space-y-3.5 max-h-[75vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Code *</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. SOM-MOD-7"
-                    value={formCode}
-                    onChange={(e) => setFormCode(e.target.value)}
-                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Credits</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={formCredits}
-                    onChange={(e) => setFormCredits(parseInt(e.target.value, 10) || 1)}
-                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Enrolled Count</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="500"
-                    value={formEnrolled}
-                    onChange={(e) => setFormEnrolled(parseInt(e.target.value, 10) || 0)}
-                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Title *</label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Practical Pastoral Ministry & Shepherding"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Instructor Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dr. Faculty Director"
-                    value={formInstructor}
-                    onChange={(e) => setFormInstructor(e.target.value)}
-                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Expiration Date</label>
-                  <input
-                    type="date"
-                    value={formExpiryDate}
-                    onChange={(e) => setFormExpiryDate(e.target.value)}
-                    className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Schedule Days</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Tuesdays (7:00 PM - 9:00 PM)"
-                  value={formSchedule}
-                  onChange={(e) => setFormSchedule(e.target.value)}
-                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Location / Venue</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Main Sanctuary Hall A"
-                  value={formLocation}
-                  onChange={(e) => setFormLocation(e.target.value)}
-                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  placeholder="Provide detailed course summary and objectives..."
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#025798]/30"
-                />
-              </div>
-
-              {/* Topics / Syllabus List Editor */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                  Syllabus Topics ({formTopics.length})
-                </label>
-                <div className="space-y-1.5 mb-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
-                  {formTopics.map((top, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium">
-                      <span className="truncate pr-2">• {top}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTopic(idx)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
-                        title="Remove Topic"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type new topic and press Add..."
-                    value={newTopicInput}
-                    onChange={(e) => setNewTopicInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTopic();
-                      }
-                    }}
-                    className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none text-slate-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTopic}
-                    className="px-3 py-2 bg-[#025798]/15 hover:bg-[#025798]/25 text-[#023264] dark:text-[#7dd3fc] font-bold text-xs rounded-lg transition-colors cursor-pointer border border-[#025798]/30"
-                  >
-                    + Add Topic
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-              {editingCourse ? (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteCourse(editingCourse.id)}
-                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-rose-200"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete Card
-                </button>
-              ) : <div />}
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-lg cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs rounded-lg cursor-pointer flex items-center gap-1 shadow-xs border border-[#b38f53]/30"
-                >
-                  <Save className="w-3.5 h-3.5 text-[#dfc18b]" />
-                  {editingCourse ? 'Save Changes' : 'Create Course'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {showFlashcards && (
-        <InteractiveFlashcards onClose={() => setShowFlashcards(false)} />
-      )}
     </div>
   );
 };

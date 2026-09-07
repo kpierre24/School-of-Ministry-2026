@@ -17,10 +17,11 @@ import {
   CheckCircle,
   UserCheck,
   Radio,
+  BookOpen,
+  GraduationCap,
   Sparkles
 } from 'lucide-react';
 import {
-  NotificationCategory,
   NotificationChannel,
   UserNotificationPreferences,
   CATEGORY_LABELS,
@@ -54,22 +55,33 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
   if (!isOpen) return null;
 
-  const categories = Object.keys(CATEGORY_LABELS) as NotificationCategory[];
+  const primaryCategories = [
+    'academic',
+    'attendance',
+    'financial',
+    'announcement',
+    'enrollment',
+    'library',
+    'system'
+  ];
 
-  const handleToggleChannel = (category: NotificationCategory, channel: NotificationChannel) => {
-    setPreferences(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [channel]: !prev[category][channel]
-      }
-    }));
+  const handleToggleChannel = (categoryKey: string, channel: NotificationChannel) => {
+    setPreferences(prev => {
+      const current = prev[categoryKey] || { in_app: true, email: true, push: true, whatsapp: false };
+      return {
+        ...prev,
+        [categoryKey]: {
+          ...current,
+          [channel]: !current[channel]
+        }
+      };
+    });
   };
 
   const handleEnableAll = () => {
     const updated = { ...preferences };
-    categories.forEach(cat => {
-      updated[cat] = { in_app: true, email: true, sms: true, whatsapp: true };
+    primaryCategories.forEach(cat => {
+      updated[cat] = { in_app: true, email: true, push: true, whatsapp: true };
     });
     setPreferences(updated);
   };
@@ -85,25 +97,23 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
       setSaveSuccessBanner(false);
       if (onSaveSuccess) onSaveSuccess();
       onClose();
-    }, 1000);
+    }, 900);
   };
 
-  const getCategoryIcon = (category: NotificationCategory) => {
+  const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'assignment_due':
-        return <Clock className="w-4 h-4 text-amber-500" />;
-      case 'assignment_graded':
-        return <Award className="w-4 h-4 text-emerald-500" />;
-      case 'attendance_warning':
-        return <AlertCircle className="w-4 h-4 text-rose-500" />;
-      case 'payment_due':
-        return <DollarSign className="w-4 h-4 text-red-500" />;
-      case 'payment_received':
-        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
-      case 'application_status':
-        return <UserCheck className="w-4 h-4 text-indigo-500" />;
+      case 'academic':
+        return <GraduationCap className="w-4 h-4 text-blue-500" />;
+      case 'attendance':
+        return <Clock className="w-4 h-4 text-rose-500" />;
+      case 'financial':
+        return <DollarSign className="w-4 h-4 text-emerald-500" />;
       case 'announcement':
-        return <Radio className="w-4 h-4 text-blue-500" />;
+        return <Radio className="w-4 h-4 text-indigo-500" />;
+      case 'enrollment':
+        return <UserCheck className="w-4 h-4 text-purple-500" />;
+      case 'library':
+        return <BookOpen className="w-4 h-4 text-teal-500" />;
       case 'system':
         return <Shield className="w-4 h-4 text-slate-500" />;
       default:
@@ -112,23 +122,23 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in" id="notification-preferences-modal">
       <div
         ref={dialogRef}
-        className="relative w-full max-w-3xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-3xl max-h-[90vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Modal Header */}
         <div className="p-5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Sliders className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-black tracking-tight uppercase">
-                Centralized Notification Preferences
+                Notification Delivery Settings
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Configure delivery channels (In-App, Email, SMS, WhatsApp) across all notification categories
+                Configure delivery channels (In-App, Email, Push, WhatsApp) across institutional categories
               </p>
             </div>
           </div>
@@ -143,16 +153,16 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
         {/* Success Banner */}
         {saveSuccessBanner && (
-          <div className="p-3 bg-emerald-500 text-white text-xs font-bold text-center flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" /> Preferences saved and synchronized successfully!
+          <div className="p-3 bg-emerald-500 text-white text-xs font-bold text-center flex items-center justify-center gap-2 animate-fadeIn">
+            <Check className="w-4 h-4" /> Preferences saved and synchronized to cloud engine!
           </div>
         )}
 
         {/* Quick Presets Bar */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2 text-slate-500 font-medium">
             <Info className="w-3.5 h-3.5 text-amber-500" />
-            <span>Customize how alerts reach you in real-time</span>
+            <span>Customize how real-time ministerial alerts reach your devices</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -172,24 +182,24 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
         </div>
 
         {/* Preferences Matrix Table */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
           {/* Table Legend */}
           <div className="grid grid-cols-12 gap-2 pb-2 border-b border-slate-200 dark:border-slate-800 text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-            <div className="col-span-6 sm:col-span-6">Category & Description</div>
+            <div className="col-span-6 sm:col-span-6">Category & Scope</div>
             <div className="col-span-6 sm:col-span-6 grid grid-cols-4 text-center">
-              <div className="flex flex-col items-center gap-0.5" title="In-App Portal Feeds">
+              <div className="flex flex-col items-center gap-0.5" title="In-App Real-Time Feeds">
                 <Bell className="w-3.5 h-3.5 text-amber-500" />
                 <span>In-App</span>
               </div>
-              <div className="flex flex-col items-center gap-0.5" title="Email Notifications">
+              <div className="flex flex-col items-center gap-0.5" title="Email Broadcasts">
                 <Mail className="w-3.5 h-3.5 text-blue-500" />
                 <span>Email</span>
               </div>
-              <div className="flex flex-col items-center gap-0.5" title="SMS Text Messages">
+              <div className="flex flex-col items-center gap-0.5" title="Web / Mobile Push">
                 <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
-                <span>SMS</span>
+                <span>Push</span>
               </div>
-              <div className="flex flex-col items-center gap-0.5" title="WhatsApp Business Alerts">
+              <div className="flex flex-col items-center gap-0.5" title="WhatsApp Business Alerts (Planned)">
                 <MessageSquare className="w-3.5 h-3.5 text-green-500" />
                 <span>WhatsApp</span>
               </div>
@@ -197,19 +207,19 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
           </div>
 
           {/* Categories Rows */}
-          {categories.map(category => {
-            const meta = CATEGORY_LABELS[category];
-            const pref = preferences[category] || { in_app: true, email: true, sms: false, whatsapp: false };
+          {primaryCategories.map(catKey => {
+            const meta = CATEGORY_LABELS[catKey] || { label: catKey, description: '' };
+            const pref = preferences[catKey] || { in_app: true, email: true, push: true, whatsapp: false };
 
             return (
               <div
-                key={category}
+                key={catKey}
                 className="grid grid-cols-12 gap-2 p-3 bg-slate-50/60 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-800/80 items-center hover:bg-slate-100/60 dark:hover:bg-slate-800/80 transition-colors"
               >
                 {/* Category Info */}
                 <div className="col-span-6 sm:col-span-6 flex items-start gap-2.5">
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 mt-0.5 shadow-2xs">
-                    {getCategoryIcon(category)}
+                    {getCategoryIcon(catKey)}
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -223,16 +233,17 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
 
                 {/* Channel Toggles */}
                 <div className="col-span-6 sm:col-span-6 grid grid-cols-4 items-center justify-items-center">
-                  {(['in_app', 'email', 'sms', 'whatsapp'] as NotificationChannel[]).map(channel => {
+                  {(['in_app', 'email', 'push', 'whatsapp'] as NotificationChannel[]).map(channel => {
                     const isChecked = pref[channel];
+                    const isPlanned = channel === 'whatsapp';
                     return (
                       <button
                         key={channel}
-                        onClick={() => handleToggleChannel(category, channel)}
+                        onClick={() => handleToggleChannel(catKey, channel)}
                         className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer focus:outline-none ring-offset-2 focus:ring-1 focus:ring-amber-500 ${
                           isChecked ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
-                        }`}
-                        title={`Toggle ${channel} for ${meta.label}`}
+                        } ${isPlanned ? 'opacity-70' : ''}`}
+                        title={isPlanned ? `WhatsApp delivery staged for next phase (Toggle: ${isChecked ? 'Queued' : 'Off'})` : `Toggle ${channel} for ${meta.label}`}
                       >
                         <span
                           className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -249,9 +260,9 @@ export const NotificationPreferencesModal: React.FC<NotificationPreferencesModal
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-100 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-4 bg-slate-100 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
           <div className="text-[11px] text-slate-500 dark:text-slate-400">
-            Saved preferences apply immediately to all automated notifications.
+            Delivery engine dispatches in-app alerts instantly, with Email & Web Push active.
           </div>
 
           <div className="flex items-center gap-2">

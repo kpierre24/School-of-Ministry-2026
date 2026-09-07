@@ -1,15 +1,18 @@
 /**
  * ============================================================================
- * PRIMARY DATA SYNC SERVICE (PostgreSQL / Supabase Authoritative)
+ * PRIMARY DATA SYNC SERVICE (React -> Express API -> Supabase PostgreSQL)
  * HTEIM School of Ministry
  * ============================================================================
- * Establishes PostgreSQL/Supabase as the single authoritative source of truth
- * for all application state, academic records, and student profiles.
+ * Establishes Supabase PostgreSQL as the primary single source of truth
+ * for all business data (Students, Courses, Enrollments, Attendance,
+ * Assignments, Grades, Payments, and Audit Logs).
  *
- * Utilizes Supabase Realtime channels for multi-user synchronization,
- * with local browser storage functioning strictly as an offline PWA buffer cache.
+ * All business operations flow through the Express API layer.
+ * Local browser storage functions strictly as a temporary offline buffer/cache,
+ * not as an authoritative data store.
  */
 
+import { portalApi } from './api/portalApiClient';
 import { supabase } from '../lib/supabaseClient';
 import { SyncedAppState } from '../lib/firebaseSync';
 import { handleError } from '../lib/errorHandler';
@@ -23,10 +26,22 @@ export interface DataSyncStatus {
 }
 
 /**
- * Loads the current workspace state from PostgreSQL / Supabase as authoritative source.
+ * Loads the current workspace state from Express API / Supabase PostgreSQL as authoritative source.
  */
 export async function loadAuthoritativeState(userEmail: string | null | undefined): Promise<SyncedAppState | null> {
   try {
+    // 1. Primary path: Fetch authoritative state via Express API -> Supabase PostgreSQL
+    const apiState = await portalApi.loadAuthoritativeState(userEmail || undefined);
+    if (apiState) {
+      try {
+        localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(apiState));
+      } catch {
+        // Safe ignore for storage quota
+      }
+      return apiState;
+    }
+
+    // 2. Direct Supabase fallback if Express endpoint returned empty/null
     const docId = userEmail 
       ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` 
       : 'shared_default_state';
@@ -37,21 +52,17 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
       .eq('id', docId)
       .single();
 
-    if (error) {
+    if (error && error.code !== 'PGRST116') {
       if (error.code === '42P01') {
         handleError(error, `loadAuthoritativeState - table app_states does not exist`, 'database');
         return null;
       }
-      throw error;
     }
 
     if (data?.state) {
-      // Save local offline snapshot cache
       try {
         localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(data.state));
-      } catch (e) {
-        // Cache warning
-      }
+      } catch {}
       return data.state;
     }
 
@@ -63,10 +74,6 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
         .eq('id', 'shared_default_state')
         .single();
 
-      if (fallback.error && fallback.error.code !== 'PGRST116') { // PGRST116 means no rows found, which is normal
-        throw fallback.error;
-      }
-
       if (fallback.data?.state) {
         return fallback.data.state;
       }
@@ -75,10 +82,11 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
     return null;
   } catch (err: any) {
     handleError(err, 'loadAuthoritativeState - PostgreSQL load failure', 'database');
+    // Read-only offline cache fallback
     try {
       const cached = localStorage.getItem('hteim_offline_state_snapshot');
       if (cached) return JSON.parse(cached);
-    } catch (e) {
+    } catch {
       // Return null if no offline snapshot
     }
     return null;
@@ -86,63 +94,65 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
 }
 
 /**
- * Saves state directly to PostgreSQL / Supabase as the single authoritative record.
+ * Saves state authoritatively via Express API -> Supabase PostgreSQL.
  */
 export async function saveAuthoritativeState(
   userEmail: string | null | undefined,
-  state: SyncedAppState
+  state: SyncedAppState,
+  actionDescription?: string
 ): Promise<boolean> {
   try {
+    // 1. Update temporary offline snapshot cache
+    try {
+      localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(state));
+    } catch {
+      // Quota exceeded ignore
+    }
+
+    // 2. Authoritative save through Express API layer -> Supabase PostgreSQL
+    const savedViaApi = await portalApi.saveAuthoritativeState(
+      state,
+      userEmail || undefined,
+      actionDescription || 'State updated from portal'
+    );
+
+    if (savedViaApi) {
+      return true;
+    }
+
+    // 3. Fallback direct client write to Supabase app_states if Express API had an issue
     const docId = userEmail 
       ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` 
       : 'shared_default_state';
-
     const timestamp = new Date().toISOString();
     const updater = userEmail || 'anonymous';
 
-    // 1. Save local offline snapshot first for instant UI response
-    try {
-      localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(state));
-    } catch (e) {
-      // Buffer error
-    }
-
-    // 2. Persist to Supabase app_states PostgreSQL table
     const { error } = await supabase
       .from('app_states')
       .upsert({
         id: docId,
-        state: state,
+        state,
         updated_at: timestamp,
-        updated_by: updater
+        updated_by: updater,
       });
 
     if (error) {
-      if (error.code === '42P01') {
-        handleError(error, `saveAuthoritativeState - app_states table does not exist`, 'database');
-        return false;
-      }
-      throw error;
+      handleError(error, 'saveAuthoritativeState - Supabase direct upsert failure', 'database');
+      return false;
     }
 
-    // Always keep shared_default_state updated so published/guest views get the latest workspace state
     if (docId !== 'shared_default_state') {
-      const fallbackRes = await supabase
-        .from('app_states')
-        .upsert({
-          id: 'shared_default_state',
-          state: state,
-          updated_at: timestamp,
-          updated_by: updater
-        });
-      if (fallbackRes.error) {
-        throw fallbackRes.error;
-      }
+      await supabase.from('app_states').upsert({
+        id: 'shared_default_state',
+        state,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
     }
 
     return true;
   } catch (err: any) {
-    handleError(err, 'saveAuthoritativeState - PostgreSQL upsert failure', 'database');
+    handleError(err, 'saveAuthoritativeState - Persistence failure', 'database');
     return false;
   }
 }
@@ -185,4 +195,16 @@ export function subscribeToRealtimeStateChanges(
   return () => {
     supabase.removeChannel(channel);
   };
+}
+
+/**
+ * Tests database connectivity
+ */
+export async function testDatabaseConnection(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/health');
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

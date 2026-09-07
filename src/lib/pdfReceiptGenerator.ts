@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { PaymentRecord } from '../types';
+import { PaymentRecord, Receipt } from '../types';
 import hteimLogoAsset from '../assets/hteim_logo.png';
 
 async function getLogoBase64(): Promise<string | null> {
@@ -336,3 +336,202 @@ export async function generateStudentAccountStatementPDF(
 
   doc.save(`HTEIM_Financial_Statement_${studentName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
 }
+
+export async function generateOfficialReceiptPDF(receipt: Receipt): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const logoData = await getLogoBase64();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header Banner Background
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, pageWidth, 40, 'F');
+
+  // Gold accent bar
+  doc.setFillColor(217, 119, 6); // amber-600
+  doc.rect(0, 40, pageWidth, 2, 'F');
+
+  if (logoData) {
+    try {
+      doc.addImage(logoData, 'JPEG', 12, 6, 28, 28);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Header Titles
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('HEAVEN TOUCHING EARTH INTERNATIONAL MINISTRIES', 46, 16);
+
+  doc.setFontSize(10);
+  doc.setTextColor(251, 191, 36); // amber-400
+  doc.text('SCHOOL OF MINISTRY — OFFICIAL TUITION RECEIPT', 46, 23);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(203, 213, 225); // slate-300
+  doc.text('Bursar & Treasury Office • Academic Financial Management System', 46, 29);
+  doc.text(`Official Receipt No: ${receipt.receiptNumber} • Verification: ${receipt.verificationCode || 'HTEIM-VALID'}`, 46, 35);
+
+  // Metadata Box
+  doc.setFillColor(248, 250, 252);
+  doc.rect(12, 48, pageWidth - 24, 28, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(12, 48, pageWidth - 24, 28, 'D');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('STUDENT & BILLING DETAILS', 16, 55);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Student Name: `, 16, 61);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(receipt.studentName, 42, 61);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Student ID: `, 16, 67);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(receipt.studentId, 42, 67);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Academic Term: `, 16, 73);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(receipt.academicTerm || '2026 Semester 1', 42, 73);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Payment Date: `, 115, 61);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(receipt.paymentDate, 142, 61);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Payment Method: `, 115, 67);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(receipt.paymentMethod, 142, 67);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Payment Ref: `, 115, 73);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(receipt.paymentReference || 'N/A', 142, 73);
+
+  // Financial Items Table
+  let currentY = 84;
+  doc.setFillColor(15, 23, 42);
+  doc.rect(12, currentY, pageWidth - 24, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text('LINE ITEM DESCRIPTION', 16, currentY + 5.5);
+  doc.text('TOTAL BILLED', 115, currentY + 5.5, { align: 'right' });
+  doc.text('DISCOUNTS/AID', 145, currentY + 5.5, { align: 'right' });
+  doc.text('AMOUNT PAID', pageWidth - 16, currentY + 5.5, { align: 'right' });
+
+  currentY += 8;
+  doc.setFillColor(255, 255, 255);
+  doc.rect(12, currentY, pageWidth - 24, 12, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(12, currentY, pageWidth - 24, 12, 'D');
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(receipt.courseOrModule || 'School of Ministry 6 Core Curriculum Modules', 16, currentY + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Invoice Ref: ${receipt.invoiceId} • Transaction: ${receipt.paymentId}`, 16, currentY + 9.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`$${(receipt.totalTuitionBilled || 1200).toLocaleString()}`, 115, currentY + 7, { align: 'right' });
+  doc.text(`$${(receipt.discountsAndScholarships || 0).toLocaleString()}`, 145, currentY + 7, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(16, 185, 129);
+  doc.text(`$${receipt.amountPaid.toLocaleString()}`, pageWidth - 16, currentY + 7, { align: 'right' });
+
+  currentY += 12;
+
+  // Summary Totals
+  doc.setFillColor(241, 245, 249);
+  doc.rect(12, currentY, pageWidth - 24, 20, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(12, currentY, pageWidth - 24, 20, 'D');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text('TOTAL AMOUNT RECEIVED THIS TRANSACTION:', 16, currentY + 8);
+  doc.setTextColor(16, 185, 129);
+  doc.text(`$${receipt.amountPaid.toFixed(2)} USD`, pageWidth - 16, currentY + 8, { align: 'right' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Remaining Outstanding Balance on Account:', 16, currentY + 15);
+  const remBalance = receipt.balanceRemaining !== undefined ? receipt.balanceRemaining : 0;
+  doc.setTextColor(remBalance > 0 ? 225 : 16, remBalance > 0 ? 29 : 185, remBalance > 0 ? 72 : 129);
+  doc.text(`$${remBalance.toFixed(2)} USD`, pageWidth - 16, currentY + 15, { align: 'right' });
+
+  // Verification & Signatures
+  currentY += 28;
+  doc.setFillColor(248, 250, 252);
+  doc.rect(12, currentY, pageWidth - 24, 28, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(12, currentY, pageWidth - 24, 28, 'D');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('AUTHORIZED SIGNATURE & INSTITUTIONAL SEAL', 16, currentY + 6);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Issued by: ${receipt.issuedBy || 'Finance Bursar'}`, 16, currentY + 13);
+  doc.text(`Timestamp: ${receipt.issuedAt || new Date().toISOString()}`, 16, currentY + 18);
+  doc.text(`Notes: ${receipt.notes || 'Official university ministerial receipt.'}`, 16, currentY + 23);
+
+  doc.setDrawColor(148, 163, 184);
+  doc.line(pageWidth - 65, currentY + 18, pageWidth - 16, currentY + 18);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('AUTHORIZED TREASURER SIGNATURE', pageWidth - 40, currentY + 22, { align: 'center' });
+
+  // Footer
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 275, pageWidth, 22, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(251, 191, 36);
+  doc.text('HEAVEN TOUCHING EARTH INTERNATIONAL MINISTRIES', pageWidth / 2, 281, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text('Official Tuition & Financial Management System • All Rights Reserved', pageWidth / 2, 286, { align: 'center' });
+
+  doc.save(`HTEIM_Receipt_${receipt.receiptNumber}.pdf`);
+}
+

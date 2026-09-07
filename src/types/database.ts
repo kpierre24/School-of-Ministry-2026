@@ -7,8 +7,7 @@
  * relationships, and dynamic computed views.
  */
 
-// User Role Enums
-export type UserRole = 'admin' | 'teacher' | 'student' | 'staff';
+import { UserRole } from './rbac';
 
 // Student Enrollment Status Enums
 export type EnrollmentStatus = 
