@@ -19,7 +19,7 @@ const NotesPage = lazy(() => import('../features/notes/NotesPage'));
 
 export interface AppRoutesProps {
   currentTab: TabType;
-  userRole?: 'student' | 'teacher' | 'admin' | 'guest';
+  userRole?: string;
   onNavigate: (tab: TabType) => void;
   // Feature Props
   attendanceProps?: any;
