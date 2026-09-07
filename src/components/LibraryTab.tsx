@@ -1646,16 +1646,16 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                         <span className="text-emerald-500 font-bold flex-shrink-0">•</span>
                         <div className="line-clamp-1 inline">
                           {parseTextWithScriptures(k).map((token, tIdx) => {
-                            if (token.type === 'scripture' && token.reference) {
+                              if (token.type === 'scripture' && token.scripture) {
                               return (
                                 <ScriptureHoverPopover
                                   key={tIdx}
-                                  reference={token.reference}
+                                  scripture={token.scripture}
                                   onOpenInBible={onOpenInBible}
                                 />
                               );
                             }
-                            return <span key={tIdx}>{token.text}</span>;
+                            return <span key={tIdx}>{token.content}</span>;
                           })}
                         </div>
                       </div>
