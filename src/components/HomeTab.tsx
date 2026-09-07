@@ -95,7 +95,7 @@ import { LecturerDashboardView } from './dashboards/LecturerDashboardView';
 import { StudentDashboardView } from './dashboards/StudentDashboardView';
 import { FinanceDashboardView } from './dashboards/FinanceDashboardView';
 
-interface HomeTabProps {
+export interface HomeTabProps {
   onNavigate: (tab: TabType) => void;
   appUser: AppUser | null;
   onOpenLogin: () => void;

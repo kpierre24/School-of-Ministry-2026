@@ -1,4 +1,12 @@
+export * from './attendanceSchemas';
+export * from './attendanceHooks';
 export * from './AttendanceWorkspace';
+export * from './AttendancePage';
+export * from './AttendanceCorrectionModal';
+export * from './AttendanceApprovalsDrawer';
+export * from './AttendanceAuditHistoryModal';
+export * from './LecturerSessionSubmissionModal';
+export * from './AdminOverrideModal';
 export * from './BatchEmailModal';
 export * from './PrintableReportModal';
 export * from '../../components/ManageClassDaysModal';
@@ -6,3 +14,4 @@ export * from '../../components/SwipeableAttendanceCard';
 export * from '../../components/ExcusedAbsenceModal';
 export * from '../../components/PINCheckinQRModal';
 export * from '../../components/AtRiskNotificationModal';
+export { default } from './AttendancePage';

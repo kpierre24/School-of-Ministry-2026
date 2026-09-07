@@ -37,7 +37,7 @@ import { sanitizeInput } from '../lib/securityHelper';
 
 export const INITIAL_MESSAGES: AppMessage[] = [];
 
-interface MessagesTabProps {
+export interface MessagesTabProps {
   appUser?: AppUser | null;
   messages: AppMessage[];
   onSendMessage: (msg: Omit<AppMessage, 'id' | 'createdAt' | 'updatedAt' | 'replies' | 'isReadByRecipient' | 'isReadBySender' | 'status'>) => void;

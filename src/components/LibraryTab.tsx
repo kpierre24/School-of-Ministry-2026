@@ -67,7 +67,7 @@ export const CURRICULUM_MODULES = [
   { code: 'SOM-MOD-6', title: 'Mod 6: Pastors', fullName: 'Module 6: School of Pastors & Expository Preaching' },
 ];
 
-interface LibraryTabProps {
+export interface LibraryTabProps {
   userRole?: UserRole;
   resources?: LibraryResource[];
   setResources?: React.Dispatch<React.SetStateAction<LibraryResource[]>>;

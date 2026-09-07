@@ -60,7 +60,7 @@ import { MasterCourseCatalogView } from '../features/academics/MasterCourseCatal
 import { AcademicCalendarView } from '../features/academics/AcademicCalendarView';
 import { portalApi } from '../services/api/portalApiClient';
 
-interface CoursesTabProps {
+export interface CoursesTabProps {
   userRole?: UserRole;
   courses?: Course[];
   setCourses?: React.Dispatch<React.SetStateAction<Course[]>>;

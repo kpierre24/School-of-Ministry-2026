@@ -1,5 +1,14 @@
+export * from './academicSchemas';
+export * from './academicService';
+export * from './academicHooks';
+export * from './AcademicCalendarView';
+export * from './CourseOfferingDetailModal';
+export * from './MasterCourseCatalogView';
+export * from './ScheduleOfferingModal';
+export * from './CoursesPage';
 export * from '../../components/CoursesTab';
 export * from '../../components/StudentNotesBibleTab';
 export * from '../../components/ScriptureHoverPopover';
 export * from '../../components/ScriptureFlashcardsModal';
 export * from '../../components/InteractiveFlashcards';
+export { default } from './CoursesPage';

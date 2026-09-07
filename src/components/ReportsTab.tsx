@@ -46,7 +46,7 @@ export type ReportType =
   | 'instructor_workload'
   | 'at_risk';
 
-interface ReportsTabProps {
+export interface ReportsTabProps {
   students?: StudentSummary[];
   attendanceRecords?: AttendanceRecord[];
   payments?: PaymentRecord[];

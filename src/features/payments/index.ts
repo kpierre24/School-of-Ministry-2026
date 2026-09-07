@@ -1,6 +1,7 @@
-export * from '../../components/PaymentTab';
-export * from '../../components/OnlinePaymentModal';
-export * from '../../components/BulkPaymentReminderModal';
-export * from '../../components/InstallmentPlanModal';
-export * from '../../components/SponsorScholarshipModal';
-export * from '../../components/OutstandingPaymentBanner';
+export * from './paymentSchemas';
+export * from './paymentService';
+export * from './paymentHooks';
+export * from './PaymentTable';
+export * from './PaymentForm';
+export * from './PaymentsPage';
+export { default } from './PaymentsPage';

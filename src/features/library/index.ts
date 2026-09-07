@@ -1,3 +1,10 @@
-export * from '../../components/LibraryTab';
+export * from './librarySchemas';
+export * from './libraryService';
+export * from './libraryHooks';
+export * from './LibraryPage';
+export { LibraryTab, CURRICULUM_MODULES } from '../../components/LibraryTab';
+export type { LibraryTabProps } from '../../components/LibraryTab';
 export * from '../../components/DocumentReaderModal';
 export * from '../../components/DocumentVersionPreviewModal';
+export * from '../../components/ClassroomMediaPlayer';
+export { default } from './LibraryPage';

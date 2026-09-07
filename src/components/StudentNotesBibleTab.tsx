@@ -50,7 +50,7 @@ import {
   STARTER_STUDENT_NOTES
 } from '../utils/notesStorage';
 
-interface StudentNotesBibleTabProps {
+export interface StudentNotesBibleTabProps {
   currentStudentName?: string;
   userRole?: string;
   availableClassDays: { id: string; name: string; date?: string }[];
