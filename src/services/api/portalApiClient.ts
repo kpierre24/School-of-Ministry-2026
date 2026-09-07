@@ -358,16 +358,4 @@ export const portalApi = {
       body: JSON.stringify({ eventType, targetStudentName }),
     });
   },
-
-  // 10. Academics & Course Offerings
-  async getAcademicStructure() {
-    return fetchJson<any>('/academics/structure').catch(() => null);
-  },
-
-  async saveCourseOffering(offering: any) {
-    return fetchJson<{ success: boolean; offering: any }>('/academics/offerings', {
-      method: 'POST',
-      body: JSON.stringify(offering),
-    }).catch(() => null);
-  },
 };

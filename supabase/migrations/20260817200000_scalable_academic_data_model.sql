@@ -354,22 +354,34 @@ CREATE INDEX IF NOT EXISTS idx_documents_status ON public.documents (verificatio
 -- Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  recipient_role TEXT NOT NULL DEFAULT 'all' CHECK (recipient_role IN ('admin', 'teacher', 'student', 'all')),
+  recipient_user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  recipient_student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
+  recipient_email TEXT,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   category TEXT NOT NULL DEFAULT 'academic'
-    CHECK (category IN ('academic', 'attendance', 'financial', 'system', 'ministry')),
-  priority TEXT NOT NULL DEFAULT 'medium'
-    CHECK (priority IN ('low', 'medium', 'high', 'critical')),
+    CHECK (category IN ('academic', 'attendance', 'financial', 'announcement', 'library', 'enrollment', 'system', 'ministry', 'assignment_due', 'assignment_graded', 'attendance_warning', 'payment_due', 'payment_received', 'application_status')),
+  event_type TEXT NOT NULL DEFAULT 'general',
+  priority TEXT NOT NULL DEFAULT 'normal'
+    CHECK (priority IN ('low', 'normal', 'medium', 'high', 'urgent', 'critical')),
+  read BOOLEAN NOT NULL DEFAULT false,
   is_read BOOLEAN NOT NULL DEFAULT false,
   read_at TIMESTAMPTZ,
+  action_tab TEXT,
+  action_url TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ
 );
 
+CREATE INDEX IF NOT EXISTS idx_notifications_role ON public.notifications (recipient_role);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications (user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications (user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications (read);
+CREATE INDEX IF NOT EXISTS idx_notifications_category ON public.notifications (category);
 
 -- Ministry Requirements Table
 CREATE TABLE IF NOT EXISTS public.ministry_requirements (
