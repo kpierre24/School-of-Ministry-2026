@@ -14,6 +14,7 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
         'react': path.resolve(__dirname, 'node_modules/react'),
         'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+        'mammoth': path.resolve(__dirname, 'node_modules/mammoth/mammoth.browser.js'),
       },
       dedupe: ['react', 'react-dom'],
     },
