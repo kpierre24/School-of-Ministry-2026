@@ -1,9 +1,7 @@
 import express from "express";
-import http from "http";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 import { githubRouter } from "./src/server/routes/github";
@@ -26,12 +24,8 @@ import { authenticate } from "./src/server/middleware/rbac";
 
 dotenv.config();
 
-const currentFilename = typeof __filename !== "undefined"
-  ? __filename
-  : fileURLToPath(import.meta.url);
-const currentDirname = typeof __dirname !== "undefined"
-  ? __dirname
-  : path.dirname(currentFilename);
+const currentFilename = typeof __filename !== "undefined" ? __filename : process.cwd();
+const currentDirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(currentFilename);
 
 async function startServer() {
   const app = express();
@@ -93,6 +87,11 @@ async function startServer() {
 
   // Vite middleware for development vs static asset serving in production
   if (isDev) {
+    // In dev mode, return 404 for stale production asset bundles instead of index.html
+    app.use("/assets", (_req, res) => {
+      res.status(404).type("text/plain").send("Not Found");
+    });
+
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: {
@@ -112,17 +111,27 @@ async function startServer() {
 
     app.use(
       express.static(distPath, {
-        setHeaders: (res) => {
+        setHeaders: (res, filePath) => {
           res.setHeader("X-Content-Type-Options", "nosniff");
           res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
           res.setHeader("X-XSS-Protection", "1; mode=block");
+          // Never cache HTML or Service Worker files so updates and cache invalidation are immediate
+          if (filePath.endsWith(".html") || filePath.endsWith("sw.js") || filePath.endsWith("registerSW.js")) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          }
         },
       })
     );
 
+    // Explicit 404 for missing static assets or files with extensions rather than serving HTML
+    app.get(["/assets/*", "*.*"], (_req, res) => {
+      res.status(404).type("text/plain").send("Not Found");
+    });
+
     app.get("*", (_req, res) => {
       const indexPath = path.join(distPath, "index.html");
       if (fs.existsSync(indexPath)) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.sendFile(indexPath);
       } else {
         res.status(200).send("<!DOCTYPE html><html><head><title>HTEIM School of Ministry</title></head><body><div id='root'>HTEIM Portal Service Running</div></body></html>");

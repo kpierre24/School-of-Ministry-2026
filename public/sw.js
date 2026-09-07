@@ -1,77 +1,37 @@
-const CACHE_NAME = 'hteim-erp-pwa-v2.5.0';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/hteim_logo.jpg',
-  '/hteim_logo.png',
-  '/manifest.json'
-];
-
-// Install Event - Pre-cache essential app shell assets
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('PWA SW: Some static assets failed caching during install:', err);
-      });
-    }).then(() => self.skipWaiting())
-  );
+// Self-unregistering and cache-clearing service worker for development / migration
+// This purges legacy manual caches (e.g. hteim-erp-pwa-v2.5.0) and unregisters itself
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-// Activate Event - Clean up stale caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('PWA SW: Purging legacy cache:', cache);
-            return caches.delete(cache);
+        keys.map((key) => {
+          // Clear any legacy manual caches
+          if (key.startsWith('hteim-erp-pwa')) {
+            console.log('[SW] Cleared legacy cache:', key);
+            return caches.delete(key);
           }
+          return Promise.resolve(false);
         })
       );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// Fetch Event - Stale-While-Revalidate & Network First with Offline Fallback
-self.addEventListener('fetch', (event) => {
-  // Only intercept GET requests
-  if (event.request.method !== 'GET') return;
-
-  const url = new URL(event.request.url);
-
-  // Skip chrome-extension or third-party non-http requests
-  if (!url.protocol.startsWith('http')) return;
-
-  // Stale-While-Revalidate for local assets and HTML/CSS/JS
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cachedResponse = await cache.match(event.request);
-      
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Fallback if offline and network request fails
-          if (event.request.mode === 'navigate') {
-            return cache.match('/index.html');
-          }
-          return cachedResponse;
-        });
-
-      return cachedResponse || fetchPromise;
+    }).then(() => {
+      // In development mode or migration, unregister to allow fresh Vite assets
+      return self.registration.unregister();
+    }).then(() => {
+      return self.clients.matchAll();
+    }).then((clients) => {
+      clients.forEach((client) => {
+        if (client.url && 'navigate' in client) {
+          // Soft refresh to clear out hijacked stale DOM/CSS references
+          client.navigate(client.url);
+        }
+      });
     })
   );
 });
 
-// Listen for background sync or message events
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
+// Pass-through fetch listener (never blocks or caches requests)
+self.addEventListener('fetch', () => {});
