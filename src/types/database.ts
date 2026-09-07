@@ -26,7 +26,7 @@ export type CohortLevel =
   | 'Level 4 Executive';
 
 // Status Enums
-export type AcademicYearStatus = 'draft' | 'active' | 'completed' | 'archived';
+export type AcademicYearStatus = 'draft' | 'upcoming' | 'active' | 'completed' | 'archived';
 export type TermStatus = 'upcoming' | 'active' | 'completed' | 'archived';
 export type SubmissionStatus = 'draft' | 'submitted' | 'graded' | 'resubmitted' | 'late';
 export type ProgramEnrollmentStatus = 'enrolled' | 'active' | 'completed' | 'withdrawn' | 'deferred';
