@@ -2,8 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { sanitizeFileName } from './securityHelper';
 import { logger } from './logger';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const isTestMode = import.meta.env.MODE === 'test';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || (isTestMode ? 'https://placeholder-project.supabase.co' : '');
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || (isTestMode ? 'placeholder-anon-key' : '');
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing required Supabase env vars: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
