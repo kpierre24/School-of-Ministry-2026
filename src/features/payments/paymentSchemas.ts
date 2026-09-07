@@ -1,4 +1,4 @@
-import { PaymentRecord, Invoice, PaymentTransaction, Receipt, StudentInstallmentPlan, SponsorshipDonation } from '../../types';
+import { PaymentRecord, Invoice, PaymentTransaction, Receipt, StudentInstallmentPlan, SponsorshipDonation, PaymentMethod } from '../../types';
 
 export interface PaymentSummaryStats {
   totalCollected: number;
@@ -29,7 +29,7 @@ export interface StudentFinancialProfile {
 export interface RecordPaymentPayload {
   studentName: string;
   amount: number;
-  method: 'cash' | 'card' | 'bank_transfer' | 'stripe' | 'check' | 'scholarship' | 'other';
+  method: PaymentMethod;
   referenceNumber?: string;
   notes?: string;
   receivedBy: string;

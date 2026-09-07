@@ -53,7 +53,7 @@ import {
   DEFAULT_MASTER_COURSES, 
   DEFAULT_COURSE_OFFERINGS,
   INITIAL_ACADEMIC_STRUCTURE
-} from '../data/defaultAcademicData';
+} from '../data/constants';
 import { CourseOfferingDetailModal } from '../features/academics/CourseOfferingDetailModal';
 import { ScheduleOfferingModal } from '../features/academics/ScheduleOfferingModal';
 import { MasterCourseCatalogView } from '../features/academics/MasterCourseCatalogView';

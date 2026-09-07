@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { DollarSign, CreditCard, User, FileText, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { RecordPaymentPayload } from './paymentSchemas';
+import { PaymentMethod } from '../../types';
 
 export interface PaymentFormProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
 }) => {
   const [studentName, setStudentName] = useState(initialStudentName);
   const [amount, setAmount] = useState<string>('50.00');
-  const [method, setMethod] = useState<RecordPaymentPayload['method']>('cash');
+  const [method, setMethod] = useState<RecordPaymentPayload['method']>('Cash');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,15 +130,17 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
             </label>
             <select
               value={method}
-              onChange={(e) => setMethod(e.target.value as any)}
+              onChange={(e) => setMethod(e.target.value as PaymentMethod)}
               className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
             >
-              <option value="cash">Cash in Hand</option>
-              <option value="card">Credit / Debit Card</option>
-              <option value="bank_transfer">Direct Bank Transfer</option>
-              <option value="check">Bank Check</option>
-              <option value="scholarship">Scholarship / Sponsorship</option>
-              <option value="stripe">Stripe Online</option>
+              <option value="Cash">Cash in Hand</option>
+              <option value="Credit Card">Credit / Debit Card</option>
+              <option value="Bank Transfer">Direct Bank Transfer</option>
+              <option value="Zelle">Zelle / QuickPay</option>
+              <option value="Check">Bank Check</option>
+              <option value="Scholarship">Scholarship / Sponsorship</option>
+              <option value="Stripe">Stripe Online</option>
+              <option value="PayPal">PayPal</option>
               <option value="other">Other Method</option>
             </select>
           </div>

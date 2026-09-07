@@ -115,7 +115,8 @@ import {
 } from 'recharts';
 import { subscribeToOAuthState as initAuth, loginWithGoogleOAuth as googleSignIn, logoutUserSession as logout, logoutUserSession as supabaseLogout } from './services/authService';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from './lib/sheets';
-import { getDemoAttendance, CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS } from './data';
+import { CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS } from './data/constants';
+import { getDemoAttendance, RAW_CURRICULUM_RECORDS } from './data/fixtures';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord, Cohort, DEFAULT_COHORTS, UserRole } from './types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword, isMatchingCredential, mergeUserCredentials, DEFAULT_USER_PASSWORD } from './lib/userAuth';
 import { updatePasswordInSupabase } from './lib/supabaseAuth';
