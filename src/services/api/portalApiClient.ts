@@ -154,10 +154,25 @@ export const portalApi = {
     return fetchJson<{ courses: any[]; count: number }>(`/academics/courses${query}`);
   },
 
+  // Convenience: load full academic structure (years, terms, masterCourses, courseOfferings)
+  async getAcademicStructure(userEmail?: string) {
+    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+    // Expected shape: { academicYears, terms, masterCourses, courseOfferings, activeTermId? }
+    return fetchJson<any>(`/academics/structure${query}`);
+  },
+
   async saveCourse(course: any, userEmail?: string) {
     return fetchJson<{ status: string; course: any }>('/academics/courses', {
       method: 'POST',
       body: JSON.stringify({ course, userEmail }),
+    });
+  },
+
+  // Save or update a course offering (CourseOffering)
+  async saveCourseOffering(offering: any, userEmail?: string) {
+    return fetchJson<{ status: string; offering: any }>('/academics/offerings', {
+      method: 'POST',
+      body: JSON.stringify({ offering, userEmail }),
     });
   },
 
