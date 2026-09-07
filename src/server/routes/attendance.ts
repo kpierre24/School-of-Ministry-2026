@@ -4,6 +4,7 @@ import { requireAuth, requirePermission, requireResourceOwnership } from "../mid
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
 import { AttendanceStatus, ATTENDANCE_STATUS_LIST } from "../../types/attendance";
+import { AttendanceRecordSchema, validateBody } from "../middleware/validation";
 
 export const attendanceRouter = Router();
 
@@ -98,15 +99,12 @@ attendanceRouter.post(
     }),
     allowedRoles: ["super_admin", "admin", "registrar", "lecturer"],
   }),
+  validateBody(AttendanceRecordSchema),
   async (req: Request, res: Response) => {
     try {
       const { studentName, date, classDayId, status, notes } = req.body;
       const userEmail = req.user?.email || req.body.userEmail || "teacher";
       const userRole = req.user?.role || "lecturer";
-
-      if (!studentName || (!date && !classDayId)) {
-        return res.status(400).json({ error: "studentName and date or classDayId are required" });
-      }
 
       const sessionIdentifier = classDayId || date;
       const state = (await getAuthoritativeState(userEmail)) || {};

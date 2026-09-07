@@ -9,14 +9,14 @@ interface RateLimitRecord {
   resetTime: number;
 }
 
-const ipLimits = new Map<string, RateLimitRecord>();
+const rateLimitMap = new Map<string, RateLimitRecord>();
 
 // Clean up stale rate limit records every 10 minutes
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
-  for (const [ip, record] of ipLimits.entries()) {
+  for (const [key, record] of rateLimitMap.entries()) {
     if (now > record.resetTime) {
-      ipLimits.delete(ip);
+      rateLimitMap.delete(key);
     }
   }
 }, 10 * 60 * 1000);
@@ -27,21 +27,24 @@ if (cleanupTimer.unref) {
 
 /**
  * Rate Limiting Middleware
- * Defaults to max 100 requests per 15 minutes per IP address.
+ * Namespaced by route and client identifier (resolved user ID or client IP)
  */
-export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
+export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000, routeNamespace = "global") {
   return (req: Request, res: Response, next: NextFunction) => {
-    const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "unknown-ip";
+    // Generate key: authenticated user ID (email) if available, otherwise client IP
+    const userKey = req.user ? `user:${req.user.id}` : `ip:${req.ip || "unknown-ip"}`;
+    // Namespace the rate limiting key so routes have isolated request allowances
+    const rateLimitKey = `${routeNamespace}:${userKey}`;
     const now = Date.now();
 
-    let record = ipLimits.get(clientIp);
+    let record = rateLimitMap.get(rateLimitKey);
 
     if (!record || now > record.resetTime) {
       record = {
         count: 1,
         resetTime: now + windowMs,
       };
-      ipLimits.set(clientIp, record);
+      rateLimitMap.set(rateLimitKey, record);
     } else {
       record.count += 1;
     }
@@ -51,7 +54,7 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
     res.setHeader("X-RateLimit-Reset", Math.ceil(record.resetTime / 1000));
 
     if (record.count > maxRequests) {
-      logger.warn(`Rate limit exceeded for IP: ${clientIp} on endpoint: ${req.originalUrl}`);
+      logger.warn(`Rate limit exceeded for client: ${rateLimitKey} on endpoint: ${req.originalUrl}`);
       return res.status(429).json({
         error: "Too Many Requests",
         message: "Rate limit exceeded. Please try again later.",

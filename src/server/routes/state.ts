@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
+import { RoleChangeSchema } from "../middleware/validation";
 
 export const stateRouter = Router();
 
@@ -46,6 +47,21 @@ stateRouter.post(
 
       if (!state || typeof state !== "object") {
         return res.status(400).json({ error: "State object is required" });
+      }
+
+      if (state.userCredentials && Array.isArray(state.userCredentials)) {
+        for (const cred of state.userCredentials) {
+          const validation = RoleChangeSchema.safeParse(cred);
+          if (!validation.success) {
+            return res.status(400).json({
+              error: "Invalid user role credentials structure in sync payload",
+              details: validation.error.issues.map((e) => ({
+                field: e.path.join("."),
+                message: e.message,
+              })),
+            });
+          }
+        }
       }
 
       const result = await saveAuthoritativeState(state, userEmail, actionDescription);
