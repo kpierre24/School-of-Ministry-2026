@@ -105,3 +105,81 @@ academicsRouter.get("/schedules", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to fetch schedules" });
   }
 });
+
+/**
+ * GET /api/academics/structure
+ * Returns the complete academic structure (years, terms, master courses, course offerings).
+ * This is used by the client as the authoritative hierarchical snapshot for the Academic Engine.
+ */
+academicsRouter.get("/structure", async (req: Request, res: Response) => {
+  try {
+    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
+    const state = await getAuthoritativeState(userEmail);
+
+    const payload = {
+      academicYears: state?.academicYears || state?.years || [],
+      terms: state?.terms || state?.semesters || [],
+      masterCourses: state?.masterCourses || state?.courses || [],
+      courseOfferings: state?.courseOfferings || state?.offerings || [],
+      activeTermId: state?.activeTermId || null,
+    };
+
+    return res.status(200).json(payload);
+  } catch (err: any) {
+    logger.error("GET /api/academics/structure error:", err);
+    return res.status(500).json({ error: "Failed to fetch academic structure" });
+  }
+});
+
+/**
+ * POST /api/academics/offerings
+ * Create or update a CourseOffering in the authoritative state.
+ * RBAC: Only super_admin, admin, registrar, lecturer
+ */
+academicsRouter.post(
+  "/offerings",
+  requireAuth,
+  requirePermission(["academics:manage_courses", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const offering = req.body.offering || req.body;
+      const userEmail = req.user?.email || req.body.userEmail || "admin";
+
+      if (!offering || !offering.id || !offering.courseId) {
+        return res.status(400).json({ error: "Offering id and courseId are required" });
+      }
+
+      const state = (await getAuthoritativeState(userEmail)) || {};
+      const offerings = [...(state.courseOfferings || state.offerings || [])];
+
+      const idx = offerings.findIndex((o: any) => o.id === offering.id);
+      if (idx >= 0) {
+        offerings[idx] = { ...offerings[idx], ...offering, updatedAt: new Date().toISOString() };
+      } else {
+        offerings.unshift({ ...offering, createdAt: new Date().toISOString() });
+      }
+
+      const updatedState = {
+        ...state,
+        courseOfferings: offerings,
+        updatedAt: new Date().toISOString(),
+        updatedBy: userEmail,
+      };
+
+      await saveAuthoritativeState(updatedState, userEmail, `Saved offering: ${offering.id}`);
+
+      await logAuditEvent({
+        actorUserId: userEmail,
+        entityType: "course_offering",
+        entityId: offering.id,
+        action: idx >= 0 ? "update" : "create",
+        newValues: offering,
+      });
+
+      return res.status(200).json({ status: "saved", offering });
+    } catch (err: any) {
+      logger.error("POST /api/academics/offerings error:", err);
+      return res.status(500).json({ error: "Failed to save course offering" });
+    }
+  }
+);
