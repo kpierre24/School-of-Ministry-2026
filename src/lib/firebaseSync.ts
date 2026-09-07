@@ -74,6 +74,7 @@ export interface SyncedAppState {
   activeZoomSession?: any;
   updatedAt?: string;
   updatedBy?: string;
+  dataSource?: 'demo' | 'production' | 'sheets';
 }
 
 /**

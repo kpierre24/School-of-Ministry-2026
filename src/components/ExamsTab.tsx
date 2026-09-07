@@ -61,6 +61,7 @@ import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
 import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
+import { isDemoAssignment } from '../data/guards';
 
 type StudentScoreRecord = {
   name: string;
@@ -1347,7 +1348,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {customAssignments.map(asg => {
+              {customAssignments
+                .filter(asg => !asg.isDemo && !isDemoAssignment(asg) && (isTeacherOrAdmin || (!asg.isDraft && asg.published !== false)))
+                .map(asg => {
                 const sub = submissions.find(
                   s => s.assignmentId === asg.id && (s?.studentName || '').toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
                 );

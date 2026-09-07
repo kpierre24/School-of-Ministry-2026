@@ -8,6 +8,7 @@ import {
   FinancialAdjustmentType
 } from '../types';
 import { INITIAL_PAYMENTS } from '../components/PaymentTab';
+import { isDemoPayment } from '../data/guards';
 
 // Storage Keys
 const INVOICES_STORAGE_KEY = 'hteim_student_invoices';
@@ -18,6 +19,7 @@ const AUDIT_LOGS_STORAGE_KEY = 'hteim_financial_audit_logs';
 
 /**
  * Loads all invoices from local storage or bootstraps from initial payment records.
+ * Strictly excludes any demo payments from production financial datasets.
  */
 export function getInvoices(paymentRecords: PaymentRecord[] = []): Invoice[] {
   const saved = localStorage.getItem(INVOICES_STORAGE_KEY);
@@ -25,7 +27,7 @@ export function getInvoices(paymentRecords: PaymentRecord[] = []): Invoice[] {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.filter(i => !isDemoPayment(i));
       }
     } catch (e) {
       console.error('Error loading invoices from storage', e);
@@ -33,7 +35,7 @@ export function getInvoices(paymentRecords: PaymentRecord[] = []): Invoice[] {
   }
 
   // Bootstrap initial dataset
-  const source = paymentRecords.length > 0 ? paymentRecords : INITIAL_PAYMENTS;
+  const source = paymentRecords.length > 0 ? paymentRecords.filter(p => !isDemoPayment(p)) : INITIAL_PAYMENTS;
   const bootstrapped = bootstrapFromPaymentRecords(source);
   saveInvoices(bootstrapped.invoices);
   saveTransactions(bootstrapped.transactions);
@@ -43,7 +45,8 @@ export function getInvoices(paymentRecords: PaymentRecord[] = []): Invoice[] {
 }
 
 export function saveInvoices(invoices: Invoice[]): void {
-  localStorage.setItem(INVOICES_STORAGE_KEY, JSON.stringify(invoices));
+  const clean = invoices.filter(i => !isDemoPayment(i));
+  localStorage.setItem(INVOICES_STORAGE_KEY, JSON.stringify(clean));
 }
 
 export function getTransactions(): PaymentTransaction[] {
@@ -51,7 +54,7 @@ export function getTransactions(): PaymentTransaction[] {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return parsed.filter(t => !isDemoPayment(t));
     } catch (e) {
       console.error('Error loading transactions', e);
     }

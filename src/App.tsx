@@ -88,8 +88,11 @@ import {
   Users,
   BookOpenCheck
 } from 'lucide-react';
-import { loadAuthoritativeState as loadFromSupabase, saveAuthoritativeState as saveToSupabase } from './services/dataSyncService';
-import { testSupabaseConnection, loadFromSupabase as loadDirectFromSupabase } from './lib/supabaseSync';
+import { 
+  loadAuthoritativeState as loadFromSupabase, 
+  saveAuthoritativeState as saveToSupabase,
+  testDatabaseConnection as testSupabaseConnection
+} from './services/dataSyncService';
 import { supabase, uploadToSupabaseStorage, ensureSupabaseStorageUrl, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase, syncStudentPhotosToSupabase } from './lib/supabaseClient';
 import { SupabaseDiagnosticModal } from './components/SupabaseDiagnosticModal';
 import { BatchAnnouncementModal } from './components/BatchAnnouncementModal';
@@ -3946,7 +3949,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <button
                   onClick={async () => {
                     try {
-                      await loadDirectFromSupabase(user?.email);
+                      await loadFromSupabase(user?.email);
                       setSupabaseTableMissing(false);
                       setSyncedBannerMessage("✅ Supabase table verified — workspace synced.");
                       setTimeout(() => setSyncedBannerMessage(null), 4000);

@@ -1,8 +1,9 @@
 import { supabase } from './supabaseClient';
 import { AppUser, UserRole, UserCredential, generateStudentUsername, getStudentEmailFromName, isMatchingCredential, mergeUserCredentials, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME, DEFAULT_USER_PASSWORD } from './userAuth';
-import { loadFromSupabase, saveToSupabase } from './supabaseSync';
+import { loadFromSupabase, saveToSupabase } from '../services/dataSyncService';
 import { logger } from './logger';
 import { handleError } from './errorHandler';
+import { isDemoUser } from '../data/guards';
 
 export interface AuthVerificationResult {
   success: boolean;
@@ -29,6 +30,15 @@ export async function authenticateWithSupabase(
   }
   if (!cleanPassword) {
     return { success: false, error: 'Please enter your password.' };
+  }
+
+  // Guard: Demo accounts are simulation-only and cannot authenticate as real users
+  if (isDemoUser(cleanId)) {
+    logger.warn(`Rejected real user authentication attempt for demo persona: ${cleanId}`);
+    return {
+      success: false,
+      error: 'Demo accounts are for preview simulation only and cannot authenticate as real users.'
+    };
   }
 
   let verifiedCredentials: UserCredential[] = memoryCredentials && memoryCredentials.length > 0 ? memoryCredentials : [];

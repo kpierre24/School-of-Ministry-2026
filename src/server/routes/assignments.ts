@@ -3,19 +3,27 @@ import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "..
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
+import { isDemoAssignment } from "../../data/guards";
 
 export const assignmentsRouter = Router();
 
 /**
  * GET /api/assignments
- * Retrieves assignments and quizzes.
+ * Retrieves assignments and quizzes, strictly excluding demo assignments.
  */
 assignmentsRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
+    const user = req.user;
+    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
     const state = await getAuthoritativeState(userEmail);
 
-    const assignments = state?.customAssignments || [];
+    let assignments = (state?.customAssignments || []).filter((a: any) => !isDemoAssignment(a));
+
+    // RBAC: If student, only show published non-draft assignments
+    if (user && user.role === "student") {
+      assignments = assignments.filter((a: any) => !a.isDraft && a.published !== false);
+    }
+
     return res.status(200).json({
       assignments,
       count: assignments.length,

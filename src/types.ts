@@ -105,6 +105,7 @@ export type PaymentRecord = {
   receiptName?: string;
   receiptNumber?: string;
   paymentPlan?: PaymentPlanType;
+  isDemo?: boolean;
 };
 
 export type FinancialAdjustmentType = 'discount' | 'scholarship' | 'refund' | 'adjustment' | 'fee_waiver' | 'late_fee';
@@ -381,11 +382,15 @@ export type CustomAssignment = {
   startDate?: string;
   dueDate: string;
   maxPoints: number;
+  points?: number;
   createdAt: string;
   teacherAttachmentUrl?: string;
   teacherAttachmentName?: string;
   type?: 'document' | 'quiz';
   quizData?: QuizAssignment;
+  isDemo?: boolean;
+  isDraft?: boolean;
+  published?: boolean;
 };
 
 export type AssignmentSubmission = {

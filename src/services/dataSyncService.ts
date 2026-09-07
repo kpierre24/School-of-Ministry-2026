@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabaseClient';
 import { SyncedAppState } from '../lib/firebaseSync';
 import { handleError } from '../lib/errorHandler';
 import { logger } from '../lib/logger';
+import { sanitizeProductionState } from '../data/guards';
 
 export interface DataSyncStatus {
   isOnline: boolean;
@@ -102,16 +103,24 @@ export async function saveAuthoritativeState(
   actionDescription?: string
 ): Promise<boolean> {
   try {
+    // Guard: Demo state must never be saved to production database
+    if (state.dataSource === 'demo' || (state as any).isDemo === true) {
+      logger.warn('[DataSync] Blocked attempt to save demo state into production database.');
+      return false;
+    }
+
+    const cleanState = sanitizeProductionState(state);
+
     // 1. Update temporary offline snapshot cache
     try {
-      localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(state));
+      localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(cleanState));
     } catch {
       // Quota exceeded ignore
     }
 
     // 2. Authoritative save through Express API layer -> Supabase PostgreSQL
     const savedViaApi = await portalApi.saveAuthoritativeState(
-      state,
+      cleanState,
       userEmail || undefined,
       actionDescription || 'State updated from portal'
     );
@@ -131,7 +140,7 @@ export async function saveAuthoritativeState(
       .from('app_states')
       .upsert({
         id: docId,
-        state,
+        state: cleanState,
         updated_at: timestamp,
         updated_by: updater,
       });
@@ -208,3 +217,9 @@ export async function testDatabaseConnection(): Promise<boolean> {
     return false;
   }
 }
+
+// Single-source-of-truth export aliases
+export const testSupabaseConnection = testDatabaseConnection;
+export const loadFromSupabase = loadAuthoritativeState;
+export const saveToSupabase = saveAuthoritativeState;
+export const subscribeToAppState = subscribeToRealtimeStateChanges;

@@ -32,6 +32,7 @@ import {
   TabType 
 } from '../../types';
 import { AppUser } from '../../lib/userAuth';
+import { isDemoAssignment } from '../../data/guards';
 
 interface StudentDashboardViewProps {
   appUser: AppUser | null;
@@ -131,25 +132,27 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
     }
   ];
 
-  // 5. Upcoming Assignments & Quizzes
-  const upcomingAssignments = [
-    {
-      id: 'asg-1',
-      title: 'Module 4 Reflection: The Apostolic Mandate in Modern Ministry',
-      dueDate: 'This Thursday, 11:59 PM',
-      type: 'Essay Assignment',
-      points: 100,
-      status: 'due_soon'
-    },
-    {
-      id: 'asg-2',
-      title: 'Five-Fold Ministry Office Recitation & Knowledge Check',
-      dueDate: 'Sunday, 6:00 PM',
-      type: 'Online Quiz',
-      points: 50,
-      status: 'ready_to_take'
-    }
-  ];
+  // 5. Upcoming Assignments & Quizzes (Strictly excludes demo assignments from student view)
+  const currentStudentClean = (studentData?.name || appUser?.studentName || appUser?.name || '').toLowerCase().trim();
+  const upcomingAssignments = useMemo(() => {
+    return (customAssignments || [])
+      .filter(a => !a.isDemo && !isDemoAssignment(a) && !a.isDraft && a.published !== false)
+      .filter(a => {
+        const isSubmitted = (submissions || []).some(s => 
+          s.assignmentId === a.id && 
+          (s.studentName || '').toLowerCase().trim() === currentStudentClean
+        );
+        return !isSubmitted;
+      })
+      .map(a => ({
+        id: a.id,
+        title: a.title,
+        dueDate: a.dueDate ? a.dueDate : 'Coursework Due',
+        type: a.type === 'quiz' ? 'Online Quiz' : 'Essay Assignment',
+        points: a.points || 100,
+        status: 'due_soon'
+      }));
+  }, [customAssignments, submissions, currentStudentClean]);
 
   // 6. Recent Announcements & Broadcasts
   const announcements = [
@@ -479,40 +482,48 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
             </div>
 
             <div className="space-y-2.5">
-              {upcomingAssignments.map(asg => (
-                <div
-                  key={asg.id}
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-mono font-bold uppercase text-amber-600 dark:text-amber-400">
-                        {asg.type} • {asg.points} Pts
+              {upcomingAssignments.length > 0 ? (
+                upcomingAssignments.map(asg => (
+                  <div
+                    key={asg.id}
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold uppercase text-amber-600 dark:text-amber-400">
+                          {asg.type} • {asg.points} Pts
+                        </span>
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
+                          {asg.title}
+                        </h3>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                        Due Soon
                       </span>
-                      <h3 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                        {asg.title}
-                      </h3>
                     </div>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 shrink-0">
-                      Due Soon
-                    </span>
-                  </div>
 
-                  <div className="flex items-center justify-between text-[11px] pt-1">
-                    <span className="text-slate-500">
-                      Deadline: <strong className="text-slate-700 dark:text-slate-300">{asg.dueDate}</strong>
-                    </span>
+                    <div className="flex items-center justify-between text-[11px] pt-1">
+                      <span className="text-slate-500">
+                        Deadline: <strong className="text-slate-700 dark:text-slate-300">{asg.dueDate}</strong>
+                      </span>
 
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('exams')}
-                      className="px-3 py-1 bg-[#023264] hover:bg-[#025798] text-white rounded-lg text-xs font-bold transition-colors cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      {asg.type.includes('Quiz') ? 'Take Quiz' : 'Submit Paper'}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('exams')}
+                        className="px-3 py-1 bg-[#023264] hover:bg-[#025798] text-white rounded-lg text-xs font-bold transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                      >
+                        {asg.type.includes('Quiz') ? 'Take Quiz' : 'Submit Paper'}
+                      </button>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="p-6 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center space-y-1.5">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">All Coursework Caught Up</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">You have no pending assignments or quizzes due at this time.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { getAuthoritativeState } from "../services/supabaseServer";
 import { UserRole, ROLE_DEFINITIONS, normalizeUserRole } from "../../types/rbac";
 import { logger } from "../../lib/logger";
+import { isDemoUser } from "../../data/guards";
 
 export const authRouter = Router();
 
@@ -18,6 +19,13 @@ authRouter.post("/session", async (req: Request, res: Response) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Guard: Demo users cannot authenticate as real users
+    if (isDemoUser(cleanEmail)) {
+      return res.status(403).json({
+        error: "Demo accounts are for preview simulation only and cannot authenticate as real users."
+      });
+    }
     const state = await getAuthoritativeState(cleanEmail);
 
     // Default admin accounts per HTEIM portal rules

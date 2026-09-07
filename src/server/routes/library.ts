@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
 export const libraryRouter = Router();
@@ -10,7 +11,7 @@ export const libraryRouter = Router();
  */
 libraryRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const userEmail = (req.query.userEmail as string) || undefined;
+    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
     const state = await getAuthoritativeState(userEmail);
 
     const resources = state?.libraryResources || [];
@@ -31,100 +32,115 @@ libraryRouter.get("/", async (req: Request, res: Response) => {
 /**
  * POST /api/library
  * Adds a new resource to the digital library.
+ * RBAC: Librarian, Super Admin, Admin, Lecturer (library:manage)
  */
-libraryRouter.post("/", async (req: Request, res: Response) => {
-  try {
-    const { resource, userEmail } = req.body;
-    if (!resource || !resource.title) {
-      return res.status(400).json({ error: "Resource title is required" });
+libraryRouter.post(
+  "/",
+  requireAuth,
+  requirePermission(["library:manage", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const { resource } = req.body;
+      const userEmail = req.user?.email || req.body.userEmail || "librarian";
+
+      if (!resource || !resource.title) {
+        return res.status(400).json({ error: "Resource title is required" });
+      }
+
+      const state = (await getAuthoritativeState(userEmail)) || {};
+      const resources = [...(state.libraryResources || [])];
+
+      const newResource = {
+        id: resource.id || `LIB-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: resource.title,
+        category: resource.category || "Study Guide",
+        author: resource.author || "Faculty",
+        courseCode: resource.courseCode || "General",
+        url: resource.url || "",
+        fileType: resource.fileType || "pdf",
+        description: resource.description || "",
+        uploadedAt: new Date().toISOString(),
+      };
+
+      resources.unshift(newResource);
+
+      const updatedState = {
+        ...state,
+        libraryResources: resources,
+        updatedAt: new Date().toISOString(),
+        updatedBy: userEmail,
+      };
+
+      await saveAuthoritativeState(
+        updatedState,
+        userEmail,
+        `Added library resource: ${newResource.title}`
+      );
+
+      await logAuditEvent({
+        actorUserId: userEmail,
+        entityType: "library_resource",
+        entityId: newResource.id,
+        action: "create",
+        newValues: newResource,
+      });
+
+      return res.status(201).json({
+        status: "added",
+        resource: newResource,
+      });
+    } catch (err: any) {
+      logger.error("POST /api/library error:", err);
+      return res.status(500).json({ error: "Failed to add library resource" });
     }
-
-    const state = (await getAuthoritativeState(userEmail)) || {};
-    const resources = [...(state.libraryResources || [])];
-
-    const newResource = {
-      id: resource.id || `LIB-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      title: resource.title,
-      category: resource.category || "Study Guide",
-      author: resource.author || "Faculty",
-      courseCode: resource.courseCode || "General",
-      url: resource.url || "",
-      fileType: resource.fileType || "pdf",
-      description: resource.description || "",
-      uploadedAt: new Date().toISOString(),
-    };
-
-    resources.unshift(newResource);
-
-    const updatedState = {
-      ...state,
-      libraryResources: resources,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "teacher",
-    };
-
-    await saveAuthoritativeState(
-      updatedState,
-      userEmail,
-      `Added library resource: ${newResource.title}`
-    );
-
-    await logAuditEvent({
-      actorUserId: userEmail || "teacher",
-      entityType: "library_resource",
-      entityId: newResource.id,
-      action: "create",
-      newValues: newResource,
-    });
-
-    return res.status(201).json({
-      status: "added",
-      resource: newResource,
-    });
-  } catch (err: any) {
-    logger.error("POST /api/library error:", err);
-    return res.status(500).json({ error: "Failed to add library resource" });
   }
-});
+);
 
 /**
  * DELETE /api/library/:id
  * Removes a resource from the library.
+ * RBAC: Librarian, Super Admin, Admin (library:manage)
  */
-libraryRouter.delete("/:id", async (req: Request, res: Response) => {
-  try {
-    const id = req.params.id;
-    const userEmail = (req.query.userEmail as string) || undefined;
-    const state = (await getAuthoritativeState(userEmail)) || {};
+libraryRouter.delete(
+  "/:id",
+  requireAuth,
+  requirePermission(["library:manage", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
+      const state = (await getAuthoritativeState(userEmail)) || {};
 
-    let resources = [...(state.libraryResources || [])];
-    const target = resources.find((r: any) => r.id === id);
-    resources = resources.filter((r: any) => r.id !== id);
+      let resources = [...(state.libraryResources || [])];
+      const target = resources.find((r: any) => r.id === id);
+      resources = resources.filter((r: any) => r.id !== id);
 
-    const updatedState = {
-      ...state,
-      libraryResources: resources,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "admin",
-    };
+      const updatedState = {
+        ...state,
+        libraryResources: resources,
+        updatedAt: new Date().toISOString(),
+        updatedBy: userEmail || "admin",
+      };
 
-    await saveAuthoritativeState(
-      updatedState,
-      userEmail,
-      `Removed library resource: ${target?.title || id}`
-    );
+      await saveAuthoritativeState(
+        updatedState,
+        userEmail,
+        `Removed library resource: ${target?.title || id}`
+      );
 
-    await logAuditEvent({
-      actorUserId: userEmail || "admin",
-      entityType: "library_resource",
-      entityId: id,
-      action: "delete",
-      oldValues: target,
-    });
+      await logAuditEvent({
+        actorUserId: userEmail || "admin",
+        entityType: "library_resource",
+        entityId: id,
+        action: "delete",
+        oldValues: target,
+      });
 
-    return res.status(200).json({ status: "deleted", id });
-  } catch (err: any) {
-    logger.error("DELETE /api/library/:id error:", err);
-    return res.status(500).json({ error: "Failed to delete library resource" });
+      return res.status(200).json({ status: "deleted", id });
+    } catch (err: any) {
+      logger.error("DELETE /api/library/:id error:", err);
+      return res.status(500).json({ error: "Failed to delete library resource" });
+    }
   }
-});
+);
+

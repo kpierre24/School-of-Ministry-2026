@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { getAuthoritativeState } from "../services/supabaseServer";
 import { UserRole, Permission, AuthenticatedUser, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
+import { isDemoUser } from "../../data/guards";
 
 // Extend Express Request to include authenticated user
 declare global {
@@ -71,6 +72,13 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
   }
 
   const cleanEmail = email.toLowerCase().trim();
+
+  // Guard: Demo users cannot authenticate as real production users
+  if (isDemoUser(cleanEmail)) {
+    logger.warn(`Rejected real user authentication attempt for demo account: ${cleanEmail}`);
+    return null;
+  }
+
   const state = await getAuthoritativeState(cleanEmail);
 
   // Determine user role

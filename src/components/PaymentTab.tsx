@@ -63,6 +63,7 @@ import { uploadToSupabaseStorage } from '../lib/supabaseClient';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
+import { isDemoPayment } from '../data/guards';
 
 interface PaymentTabProps {
   availableStudents: { name: string; email?: string }[];
@@ -1521,14 +1522,15 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     }
   }, [availableStudents, removedStudentRecords]);
 
-  // Financial Statistics
+  // Financial Statistics (Strictly excludes demo/simulation payments from official financial reports)
   const stats = useMemo(() => {
-    const totalTuition = payments.reduce((acc, p) => acc + p.totalTuition, 0);
-    const totalCollected = payments.reduce((acc, p) => acc + p.amountPaid, 0);
+    const validPayments = payments.filter(p => !p.isDemo && !isDemoPayment(p));
+    const totalTuition = validPayments.reduce((acc, p) => acc + p.totalTuition, 0);
+    const totalCollected = validPayments.reduce((acc, p) => acc + p.amountPaid, 0);
     const totalOutstanding = Math.max(0, totalTuition - totalCollected);
-    const paidInFullCount = payments.filter(p => p.status === 'Paid In Full').length;
-    const pastDueCount = payments.filter(p => p.status === 'Past Due').length;
-    const partialCount = payments.filter(p => p.status === 'Partial').length;
+    const paidInFullCount = validPayments.filter(p => p.status === 'Paid In Full').length;
+    const pastDueCount = validPayments.filter(p => p.status === 'Past Due').length;
+    const partialCount = validPayments.filter(p => p.status === 'Partial').length;
     const collectionRate = totalTuition > 0 ? Math.round((totalCollected / totalTuition) * 100) : 0;
 
     return {
@@ -1539,7 +1541,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       pastDueCount,
       partialCount,
       collectionRate,
-      totalStudents: payments.length
+      totalStudents: validPayments.length
     };
   }, [payments]);
 
@@ -1867,7 +1869,8 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
   const handleExportCSV = () => {
     let csv = 'Student ID,Student Name,Email,Ministry Track,Total Tuition,Amount Paid,Balance Due,Status,Last Payment Date,Method,Notes\n';
-    payments.forEach(p => {
+    const validPayments = payments.filter(p => !p.isDemo && !isDemoPayment(p));
+    validPayments.forEach(p => {
       const balance = p.totalTuition - p.amountPaid;
       csv += `"${p.studentId}","${p.studentName}","${p.email || ''}","${p.moduleTrack}",$${p.totalTuition},$${p.amountPaid},$${balance},"${p.status}","${p.lastPaymentDate}","${p.paymentMethod}","${(p.notes || '').replace(/"/g, '""')}"\n`;
     });

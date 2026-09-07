@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../../lib/logger';
+import { sanitizeProductionState, isDemoRecord, isDemoUser } from '../../data/guards';
 
 let serverSupabaseClient: SupabaseClient | null = null;
 
@@ -85,12 +86,21 @@ export async function saveAuthoritativeState(
   const timestamp = new Date().toISOString();
   const updater = userEmail || 'system';
 
+  // Guard: Demo state must never be saved to production databases
+  if (state?.dataSource === 'demo' || state?.isDemo) {
+    logger.warn(`Blocked attempt to automatically save demo data into production database for ${docId}`);
+    return { success: false, updatedAt: new Date().toISOString() };
+  }
+
+  // Sanitize state to ensure no demo records, demo users, or demo payments leak into production
+  const sanitizedState = sanitizeProductionState(state);
+
   // 1. Update user state or default state in app_states table
   const { error: upsertErr } = await supabase
     .from('app_states')
     .upsert({
       id: docId,
-      state,
+      state: sanitizedState,
       updated_at: timestamp,
       updated_by: updater,
     });
@@ -104,7 +114,7 @@ export async function saveAuthoritativeState(
   if (docId !== 'shared_default_state') {
     await supabase.from('app_states').upsert({
       id: 'shared_default_state',
-      state,
+      state: sanitizedState,
       updated_at: timestamp,
       updated_by: updater,
     });
