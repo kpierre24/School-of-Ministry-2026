@@ -20,6 +20,13 @@ studentsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      const staffRoles = ["super_admin", "admin", "registrar", "lecturer", "teacher", "finance_officer"];
+      if (!staffRoles.includes(user.role)) {
+        return res.status(403).json({
+          error: "Access denied: Student directory is restricted to authorized staff. Use /api/me endpoints to retrieve personal student data.",
+        });
+      }
+
       const result = await studentsService.getStudents(user);
 
       return res.status(200).json({

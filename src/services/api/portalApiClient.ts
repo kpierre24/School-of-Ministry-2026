@@ -236,9 +236,11 @@ export const portalApi = {
   },
 
   async submitAssignment(submission: any) {
-    return fetchJson<{ status: string; submission: any }>('/assignments/submit', {
+    const assignmentId = submission?.assignmentId || submission?.id;
+    const endpoint = assignmentId ? `/assignments/${assignmentId}/submissions` : '/assignments/submit';
+    return fetchJson<{ status: string; submission: any }>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ submission }),
+      body: JSON.stringify(submission),
     });
   },
 
@@ -262,7 +264,63 @@ export const portalApi = {
     return fetchJson<{ logs: any[]; count: number }>(`/audit-logs?${params.toString()}`);
   },
 
-  // 9. Authoritative State Pipeline (PostgreSQL) - Derived from server-side req.user
+  // 9. Identity & Personal Data Endpoints (/api/me)
+  async getMe() {
+    return fetchJson<{ user: any; studentProfile: any }>('/me');
+  },
+
+  async getMeGrades() {
+    return fetchJson<{
+      studentId: string | null;
+      studentName: string;
+      averageGrade: number;
+      honorRoll: boolean;
+      standing: string;
+      submissions: any[];
+      rubricScores: any;
+    }>('/me/grades');
+  },
+
+  async getMeAttendance() {
+    return fetchJson<{
+      studentId: string | null;
+      studentName: string;
+      totalSessions: number;
+      presentCount: number;
+      excusedCount: number;
+      attendanceRate: number;
+      isAtRisk: boolean;
+      records: any[];
+    }>('/me/attendance');
+  },
+
+  async getMeAssignments() {
+    return fetchJson<{
+      assignments: any[];
+      submissions: any[];
+      count: number;
+    }>('/me/assignments');
+  },
+
+  async getMeInvoices() {
+    return fetchJson<{
+      invoices: any[];
+      total: number;
+      studentId: string | null;
+      studentName: string;
+    }>('/me/invoices');
+  },
+
+  async getMePayments() {
+    return fetchJson<{
+      payments: any[];
+      total: number;
+      studentId: string | null;
+      studentName: string;
+    }>('/me/payments');
+  },
+
+  // Authoritative State Pipeline (PostgreSQL) - Derived from server-side req.user
   async getMeState(): Promise<SyncedAppState | null> {
     try {
       const data = await fetchJson<{ state: SyncedAppState | null; source: string; user?: any }>('/me/state');

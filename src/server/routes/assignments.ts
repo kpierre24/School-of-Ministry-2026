@@ -62,42 +62,77 @@ assignmentsRouter.get(
 );
 
 /**
+ * POST /api/assignments/:id/submissions
+ * 9.1: Submits work for an assignment with studentId derived strictly from req.user context.
+ * 9.2: Validates assignment existence, course membership, enrollment, publication status, and submission window.
+ * 9.3: Strips grade fields and forces status='submitted' to prevent grade manipulation.
+ */
+assignmentsRouter.post(
+  "/:id/submissions",
+  requireAuth,
+  requirePermission(["assignments:submit", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const assignmentId = req.params.id;
+      const user = req.user!;
+      const payload = req.body || {};
+
+      if (!assignmentId) {
+        return res.status(400).json({ error: "assignmentId parameter is required" });
+      }
+
+      const result = await assignmentsService.submitAssignmentForUser(
+        assignmentId,
+        payload,
+        user
+      );
+
+      return res.status(201).json(result);
+    } catch (err: any) {
+      logger.error(`POST /api/assignments/${req.params.id}/submissions error:`, err);
+      const statusCode = err.message?.includes("not found") ? 404 : 400;
+      return res.status(statusCode).json({ error: err.message || "Failed to submit assignment" });
+    }
+  }
+);
+
+/**
  * POST /api/assignments/submit
- * Records a student assignment or quiz submission directly in PostgreSQL submissions table.
- * RBAC: Requires assignments:submit.
+ * Legacy submit endpoint enforcing identical server-derived student identity and sanitization rules.
  */
 assignmentsRouter.post(
   "/submit",
   requireAuth,
   requirePermission(["assignments:submit", "all:access"]),
-  requireResourceOwnership({
-    getTarget: (req) => ({
-      targetStudentName: req.body?.submission?.studentName,
-    }),
-    allowedRoles: ["super_admin", "admin", "lecturer"],
-  }),
   async (req: Request, res: Response) => {
     try {
-      const { submission } = req.body;
-      const actorUserId = req.user?.email || "student";
+      const user = req.user!;
+      const submission = req.body?.submission || req.body || {};
+      const assignmentId = submission.assignmentId || req.body?.assignmentId;
 
-      if (!submission || (!submission.studentName && !submission.studentId) || !submission.assignmentId) {
-        return res.status(400).json({ error: "studentId or studentName, and assignmentId are required" });
+      if (!assignmentId) {
+        return res.status(400).json({ error: "assignmentId is required" });
       }
 
-      const result = await assignmentsService.submitAssignment(submission, actorUserId);
+      const result = await assignmentsService.submitAssignmentForUser(
+        assignmentId,
+        submission,
+        user
+      );
+
       return res.status(201).json(result);
     } catch (err: any) {
       logger.error("POST /api/assignments/submit error:", err);
-      return res.status(500).json({ error: "Failed to submit assignment" });
+      const statusCode = err.message?.includes("not found") ? 404 : 400;
+      return res.status(statusCode).json({ error: err.message || "Failed to submit assignment" });
     }
   }
 );
 
 /**
  * POST /api/assignments/grade
- * Records teacher grading and feedback directly in relational grades table.
- * RBAC: Requires assignments:grade or grades:write
+ * 9.4: Records teacher grading verifying lecturer -> course -> assignment -> submission chain.
+ * 9.5: Validates score bounds (0 <= score <= maxScore).
  */
 assignmentsRouter.post(
   "/grade",
@@ -105,22 +140,29 @@ assignmentsRouter.post(
   requirePermission(["assignments:grade", "grades:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId, studentId, score, feedback, rubricScores, studentName } = req.body;
-      const actorUserId = req.user?.email || "teacher";
+      const { submissionId, assignmentId, studentId, score, feedback, rubricScores } = req.body;
+      const actorUser = req.user!;
 
-      if (!submissionId && !studentId && !studentName) {
-        return res.status(400).json({ error: "submissionId, studentId, or studentName is required" });
+      // 9.4 Staff check
+      const staffRoles = ["super_admin", "admin", "registrar", "lecturer", "teacher"];
+      if (!staffRoles.includes(actorUser.role)) {
+        return res.status(403).json({ error: "Access denied: Only faculty and lecturers can record grades" });
+      }
+
+      if (!submissionId) {
+        return res.status(400).json({ error: "submissionId is required" });
       }
 
       const result = await assignmentsService.gradeSubmission(
-        { submissionId, studentId, studentName, score: Number(score), feedback, rubricScores },
-        actorUserId
+        { submissionId, assignmentId, studentId, score: Number(score), feedback, rubricScores },
+        actorUser.email
       );
 
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/assignments/grade error:", err);
-      return res.status(500).json({ error: "Failed to record grade" });
+      const statusCode = err.message?.includes("not found") ? 404 : 400;
+      return res.status(statusCode).json({ error: err.message || "Failed to record grade" });
     }
   }
 );
