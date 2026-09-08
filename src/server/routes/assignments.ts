@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { getAuthoritativeState, getAuthorizedStateForUser, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
@@ -20,9 +20,8 @@ assignmentsRouter.get(
   requirePermission(["assignments:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const user = req.user;
-      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-      const state = await getAuthoritativeState(userEmail);
+      const user = req.user!;
+      const state = await getAuthorizedStateForUser(user);
 
       let assignments = (state?.customAssignments || []).filter((a: any) => !isDemoAssignment(a));
 
@@ -49,14 +48,12 @@ assignmentsRouter.get(
  */
 assignmentsRouter.get(
   "/submissions",
-  requireAuth,
   requirePermission(["assignments:read", "grades:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const user = req.user;
-      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      const user = req.user!;
       let studentName = (req.query.studentName as string) || undefined;
-      const state = await getAuthoritativeState(userEmail);
+      const state = await getAuthorizedStateForUser(user);
 
       let submissions = state?.submissions || [];
       let rubricScores = state?.rubricScores || {};

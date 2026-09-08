@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { getAuthoritativeState, getAuthorizedStateForUser, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
@@ -14,8 +14,8 @@ libraryRouter.use(requireAuth);
  */
 libraryRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const userEmail = (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+    const user = req.user!;
+    const state = await getAuthorizedStateForUser(user);
 
     const resources = state?.libraryResources || [];
     const classroomMedia = state?.classroomMedia || [];

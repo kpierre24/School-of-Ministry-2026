@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { getAuthoritativeState, getAuthorizedStateForUser, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
@@ -19,9 +19,8 @@ attendanceRouter.get(
   requirePermission(["attendance:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const user = req.user;
-      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-      const state = await getAuthoritativeState(userEmail);
+      const user = req.user!;
+      const state = await getAuthorizedStateForUser(user);
 
       if (!state) {
         return res.status(200).json({ records: [], classDays: [], excusedAbsences: {}, totalRecords: 0 });
@@ -391,12 +390,11 @@ attendanceRouter.post(
  */
 attendanceRouter.get(
   "/at-risk",
-  requireAuth,
   requirePermission(["attendance:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
-      const state = await getAuthoritativeState(userEmail);
+      const user = req.user!;
+      const state = await getAuthorizedStateForUser(user);
 
       if (!state) {
         return res.status(200).json({ atRiskStudents: [], count: 0 });

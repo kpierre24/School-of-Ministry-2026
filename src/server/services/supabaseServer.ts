@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../../lib/logger';
 import { sanitizeProductionState, isDemoRecord, isDemoUser } from '../../data/guards';
+import { AuthenticatedUser } from '../../types/rbac';
 
 let serverSupabaseClient: SupabaseClient | null = null;
 
@@ -33,12 +34,12 @@ export function getServerSupabase(): SupabaseClient {
 }
 
 /**
- * Loads authoritative application state from Supabase PostgreSQL.
+ * Loads raw authoritative application state from Supabase PostgreSQL by docId / key.
  */
-export async function getAuthoritativeState(userEmail?: string | null): Promise<any | null> {
+export async function getAuthoritativeState(userIdOrKey?: string | null): Promise<any | null> {
   const supabase = getServerSupabase();
-  const docId = userEmail 
-    ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` 
+  const docId = userIdOrKey 
+    ? (userIdOrKey.startsWith('user_') || userIdOrKey === 'shared_default_state' ? userIdOrKey : `user_${userIdOrKey.replace(/[^a-zA-Z0-9]/g, '_')}`)
     : 'shared_default_state';
 
   const { data, error } = await supabase
@@ -72,19 +73,221 @@ export async function getAuthoritativeState(userEmail?: string | null): Promise<
 }
 
 /**
+ * Loads authoritative state strictly scoped and authorized for the requesting user.
+ * 
+ * Flow:
+ * userId (from verified req.user)
+ *    ↓
+ * database (PostgreSQL app_states / entities)
+ *    ↓
+ * that user's authorized data
+ */
+export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promise<any | null> {
+  const supabase = getServerSupabase();
+  const userId = user.userId || user.uid;
+  const userDocId = `user_${userId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+  // 1. Fetch user-specific state or shared default state
+  let rawState: any = null;
+
+  const { data: userData } = await supabase
+    .from('app_states')
+    .select('state')
+    .eq('id', userDocId)
+    .single();
+
+  if (userData?.state) {
+    rawState = userData.state;
+  } else if (user.email) {
+    // Check legacy email key for migration continuity
+    const legacyDocId = `user_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const { data: legacyData } = await supabase
+      .from('app_states')
+      .select('state')
+      .eq('id', legacyDocId)
+      .single();
+    if (legacyData?.state) {
+      rawState = legacyData.state;
+    }
+  }
+
+  if (!rawState) {
+    const { data: defaultData } = await supabase
+      .from('app_states')
+      .select('state')
+      .eq('id', 'shared_default_state')
+      .single();
+    if (defaultData?.state) {
+      rawState = defaultData.state;
+    }
+  }
+
+  if (!rawState) {
+    return null;
+  }
+
+  const cleanState = sanitizeProductionState(rawState);
+
+  // 2. Apply strict role-based data scoping
+  if (user.role === 'student') {
+    const studentName = user.studentName ? user.studentName.toLowerCase().trim() : '';
+    const studentId = user.studentId || '';
+
+    const matchesStudent = (name?: string, id?: string) => {
+      if (studentId && id && id === studentId) return true;
+      if (studentName && name && name.toLowerCase().trim() === studentName) return true;
+      return false;
+    };
+
+    return {
+      ...cleanState,
+      // Scope attendance records to this student only
+      records: Array.isArray(cleanState.records)
+        ? cleanState.records.filter((r: any) => matchesStudent(r.studentName, r.studentId))
+        : [],
+      // Scope homework submissions to this student only
+      submissions: Array.isArray(cleanState.submissions)
+        ? cleanState.submissions.filter((s: any) => matchesStudent(s.studentName, s.studentId))
+        : [],
+      // Scope payments and ledger to this student only
+      payments: Array.isArray(cleanState.payments)
+        ? cleanState.payments.filter((p: any) => matchesStudent(p.studentName, p.studentId))
+        : [],
+      invoices: Array.isArray(cleanState.invoices)
+        ? cleanState.invoices.filter((i: any) => matchesStudent(i.studentName, i.studentId))
+        : [],
+      // Scope student profiles to this student only
+      students: Array.isArray(cleanState.students)
+        ? cleanState.students.filter((s: any) => matchesStudent(s.name, s.id))
+        : [],
+      // Only keep personal notifications
+      notifications: Array.isArray(cleanState.notifications)
+        ? cleanState.notifications.filter((n: any) => 
+            !n.recipient || n.recipient === 'all' || n.recipient === 'students' || matchesStudent(n.recipient, n.studentId)
+          )
+        : [],
+      // Student has no access to full administrative audit log history
+      auditHistory: [],
+    };
+  }
+
+  // Institutional users (admin, teacher, registrar, finance_officer) receive full institutional state
+  return cleanState;
+}
+
+/**
+ * Saves authoritative state authoritatively for the authenticated user based on req.user.
+ */
+export async function saveAuthoritativeStateForUser(
+  user: AuthenticatedUser,
+  state: any,
+  actionDescription?: string
+): Promise<{ success: boolean; updatedAt: string }> {
+  const supabase = getServerSupabase();
+  const userId = user.userId || user.uid;
+  const docId = `user_${userId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const timestamp = new Date().toISOString();
+  const updater = userId;
+
+  if (state?.dataSource === 'demo' || state?.isDemo) {
+    logger.warn(`Blocked attempt to automatically save demo data for user ${userId}`);
+    return { success: false, updatedAt: timestamp };
+  }
+
+  const sanitizedState = sanitizeProductionState(state);
+
+  // If the user is a student, ensure they cannot overwrite institutional records
+  let finalStateToSave = sanitizedState;
+  if (user.role === 'student') {
+    const existing = await getAuthoritativeState('shared_default_state');
+    if (existing) {
+      const studentName = user.studentName ? user.studentName.toLowerCase().trim() : '';
+      const studentId = user.studentId || '';
+      const matchesStudent = (name?: string, id?: string) => {
+        if (studentId && id && id === studentId) return true;
+        if (studentName && name && name.toLowerCase().trim() === studentName) return true;
+        return false;
+      };
+
+      // Merge student's submissions and self assessments into existing institutional state
+      const existingSubmissions = Array.isArray(existing.submissions) ? existing.submissions : [];
+      const newStudentSubmissions = (Array.isArray(sanitizedState.submissions) ? sanitizedState.submissions : [])
+        .filter((s: any) => matchesStudent(s.studentName, s.studentId));
+
+      const mergedSubmissions = [
+        ...existingSubmissions.filter((s: any) => !matchesStudent(s.studentName, s.studentId)),
+        ...newStudentSubmissions,
+      ];
+
+      finalStateToSave = {
+        ...existing,
+        submissions: mergedSubmissions,
+        lastSyncedAt: timestamp,
+      };
+    }
+  }
+
+  // 1. Update user state
+  const { error: upsertErr } = await supabase
+    .from('app_states')
+    .upsert({
+      id: docId,
+      state: finalStateToSave,
+      updated_at: timestamp,
+      updated_by: updater,
+    });
+
+  if (upsertErr) {
+    logger.error(`Failed to save authoritative state for user ${userId}:`, upsertErr);
+    throw upsertErr;
+  }
+
+  // 2. If user is an administrative role, also update shared_default_state
+  if (user.role !== 'student') {
+    await supabase.from('app_states').upsert({
+      id: 'shared_default_state',
+      state: finalStateToSave,
+      updated_at: timestamp,
+      updated_by: updater,
+    });
+  }
+
+  // 3. Log audit event
+  try {
+    await logAuditEvent({
+      actorUserId: user.userId,
+      entityType: 'app_state',
+      entityId: docId,
+      action: 'update',
+      newValues: {
+        recordsCount: finalStateToSave?.records?.length || 0,
+        paymentsCount: finalStateToSave?.payments?.length || 0,
+        submissionsCount: finalStateToSave?.submissions?.length || 0,
+        description: actionDescription || 'Authoritative state synchronized by authenticated user',
+        updatedAt: timestamp,
+      },
+    });
+  } catch (auditErr) {
+    logger.warn("Audit log record warning (non-fatal):", auditErr);
+  }
+
+  return { success: true, updatedAt: timestamp };
+}
+
+/**
  * Saves authoritative application state to Supabase PostgreSQL and appends an audit record.
  */
 export async function saveAuthoritativeState(
   state: any,
-  userEmail?: string | null,
+  actorUserId?: string | null,
   actionDescription?: string
 ): Promise<{ success: boolean; updatedAt: string }> {
   const supabase = getServerSupabase();
-  const docId = userEmail 
-    ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` 
+  const docId = actorUserId 
+    ? (actorUserId.startsWith('user_') || actorUserId === 'shared_default_state' ? actorUserId : `user_${actorUserId.replace(/[^a-zA-Z0-9]/g, '_')}`)
     : 'shared_default_state';
   const timestamp = new Date().toISOString();
-  const updater = userEmail || 'system';
+  const updater = actorUserId || 'system';
 
   // Guard: Demo state must never be saved to production databases
   if (state?.dataSource === 'demo' || state?.isDemo) {
@@ -123,7 +326,7 @@ export async function saveAuthoritativeState(
   // 3. Record in audit_history table
   try {
     await logAuditEvent({
-      actorUserId: userEmail || undefined,
+      actorUserId: actorUserId || undefined,
       entityType: 'app_state',
       entityId: docId,
       action: 'update',

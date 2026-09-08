@@ -65,36 +65,34 @@ export const portalApi = {
   },
 
   // 2. Student Management
-  async getStudents(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+  async getStudents() {
     return fetchJson<{
       students: any[];
       total: number;
       atRiskCount: number;
       threshold: string;
       updatedAt: string;
-    }>(`/students${query}`);
+    }>('/students');
   },
 
-  async getStudentProfile(name: string, userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+  async getStudentProfile(name: string) {
     return fetchJson<{
       student: any;
       attendanceHistory: any[];
       submissions: any[];
       payments: any[];
       rubricScores: any;
-    }>(`/students/${encodeURIComponent(name)}${query}`);
+    }>(`/students/${encodeURIComponent(name)}`);
   },
 
-  async enrollStudent(data: { name: string; level?: string; email?: string; photoUrl?: string; userEmail?: string }) {
+  async enrollStudent(data: { name: string; level?: string; email?: string; photoUrl?: string }) {
     return fetchJson<{ status: string; student: any }>('/students', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  async updateStudent(name: string, data: { level?: string; note?: string; photoUrl?: string; userEmail?: string }) {
+  async updateStudent(name: string, data: { level?: string; note?: string; photoUrl?: string }) {
     return fetchJson<{ status: string; student: any }>(`/students/${encodeURIComponent(name)}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -102,8 +100,7 @@ export const portalApi = {
   },
 
   // 3. Attendance Management
-  async getAttendance(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+  async getAttendance() {
     return fetchJson<{
       records: any[];
       classDays: any[];
@@ -111,7 +108,7 @@ export const portalApi = {
       totalRecords: number;
       totalSessions: number;
       policyThreshold: string;
-    }>(`/attendance${query}`);
+    }>('/attendance');
   },
 
   async recordCheckin(data: {
@@ -120,7 +117,6 @@ export const portalApi = {
     status: 'Present' | 'Absent' | 'Excused' | 'Tardy';
     notes?: string;
     studentEmail?: string;
-    userEmail?: string;
   }) {
     return fetchJson<{ status: string; record: any }>('/attendance/checkin', {
       method: 'POST',
@@ -131,7 +127,6 @@ export const portalApi = {
   async recordBatchAttendance(data: {
     date: string;
     records: any[];
-    userEmail?: string;
   }) {
     return fetchJson<{ status: string; count: number }>('/attendance/batch', {
       method: 'POST',
@@ -144,7 +139,6 @@ export const portalApi = {
     date: string;
     reason?: string;
     documentUrl?: string;
-    userEmail?: string;
   }) {
     return fetchJson<{ status: string; studentName: string; date: string }>('/attendance/excuse', {
       method: 'POST',
@@ -152,108 +146,99 @@ export const portalApi = {
     });
   },
 
-  async getAtRiskStudents(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+  async getAtRiskStudents() {
     return fetchJson<{
       atRiskStudents: any[];
       count: number;
       policyThreshold: string;
       criticalThreshold: string;
-    }>(`/attendance/at-risk${query}`);
+    }>('/attendance/at-risk');
   },
 
   // 4. Academic Management
-  async getCourses(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
-    return fetchJson<{ courses: any[]; count: number }>(`/academics/courses${query}`);
+  async getCourses() {
+    return fetchJson<{ courses: any[]; count: number }>('/academics/courses');
   },
 
   // Convenience: load full academic structure (years, terms, masterCourses, courseOfferings)
-  async getAcademicStructure(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+  async getAcademicStructure() {
     // Expected shape: { academicYears, terms, masterCourses, courseOfferings, activeTermId? }
-    return fetchJson<any>(`/academics/structure${query}`);
+    return fetchJson<any>('/academics/structure');
   },
 
-  async saveCourse(course: any, userEmail?: string) {
+  async saveCourse(course: any) {
     return fetchJson<{ status: string; course: any }>('/academics/courses', {
       method: 'POST',
-      body: JSON.stringify({ course, userEmail }),
+      body: JSON.stringify({ course }),
     });
   },
 
   // Save or update a course offering (CourseOffering)
-  async saveCourseOffering(offering: any, userEmail?: string) {
+  async saveCourseOffering(offering: any) {
     return fetchJson<{ status: string; offering: any }>('/academics/offerings', {
       method: 'POST',
-      body: JSON.stringify({ offering, userEmail }),
+      body: JSON.stringify({ offering }),
     });
   },
 
   // 5. Payments & Tuition
-  async getPayments(userEmail?: string, studentName?: string) {
+  async getPayments(studentName?: string) {
     const params = new URLSearchParams();
-    if (userEmail) params.set('userEmail', userEmail);
     if (studentName) params.set('studentName', studentName);
     const query = params.toString() ? `?${params.toString()}` : '';
     return fetchJson<{ payments: any[]; total: number }>(`/payments${query}`);
   },
 
-  async recordPayment(payment: any, userEmail?: string) {
+  async recordPayment(payment: any) {
     return fetchJson<{ status: string; payment: any }>('/payments', {
       method: 'POST',
-      body: JSON.stringify({ payment, userEmail }),
+      body: JSON.stringify({ payment }),
     });
   },
 
-  async getPaymentSummary(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
+  async getPaymentSummary() {
     return fetchJson<{
       totalPayments: number;
       totalCollected: number;
       pendingCount: number;
       currency: string;
-    }>(`/payments/summary${query}`);
+    }>('/payments/summary');
   },
 
   // 6. Digital Library
-  async getLibrary(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
-    return fetchJson<{ resources: any[]; classroomMedia: any[]; count: number }>(`/library${query}`);
+  async getLibrary() {
+    return fetchJson<{ resources: any[]; classroomMedia: any[]; count: number }>('/library');
   },
 
-  async addLibraryResource(resource: any, userEmail?: string) {
+  async addLibraryResource(resource: any) {
     return fetchJson<{ status: string; resource: any }>('/library', {
       method: 'POST',
-      body: JSON.stringify({ resource, userEmail }),
+      body: JSON.stringify({ resource }),
     });
   },
 
-  async deleteLibraryResource(id: string, userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
-    return fetchJson<{ status: string; id: string }>(`/library/${id}${query}`, {
+  async deleteLibraryResource(id: string) {
+    return fetchJson<{ status: string; id: string }>(`/library/${id}`, {
       method: 'DELETE',
     });
   },
 
   // 7. Assignments & Submissions
-  async getAssignments(userEmail?: string) {
-    const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
-    return fetchJson<{ assignments: any[]; count: number }>(`/assignments${query}`);
+  async getAssignments() {
+    return fetchJson<{ assignments: any[]; count: number }>('/assignments');
   },
 
-  async getSubmissions(userEmail?: string, studentName?: string) {
+  async getSubmissions(studentName?: string) {
     const params = new URLSearchParams();
-    if (userEmail) params.set('userEmail', userEmail);
     if (studentName) params.set('studentName', studentName);
     const query = params.toString() ? `?${params.toString()}` : '';
     return fetchJson<{ submissions: any[]; rubricScores: any; count: number }>(`/assignments/submissions${query}`);
   },
 
-  async submitAssignment(submission: any, userEmail?: string) {
+  async submitAssignment(submission: any) {
     return fetchJson<{ status: string; submission: any }>('/assignments/submit', {
       method: 'POST',
-      body: JSON.stringify({ submission, userEmail }),
+      body: JSON.stringify({ submission }),
     });
   },
 
@@ -263,7 +248,6 @@ export const portalApi = {
     score: number;
     feedback?: string;
     rubricScores?: any;
-    userEmail?: string;
   }) {
     return fetchJson<{ status: string; score: number }>('/assignments/grade', {
       method: 'POST',
@@ -278,27 +262,43 @@ export const portalApi = {
     return fetchJson<{ logs: any[]; count: number }>(`/audit-logs?${params.toString()}`);
   },
 
-  // 9. Authoritative State Pipeline (PostgreSQL)
-  async loadAuthoritativeState(userEmail?: string): Promise<SyncedAppState | null> {
+  // 9. Authoritative State Pipeline (PostgreSQL) - Derived from server-side req.user
+  async getMeState(): Promise<SyncedAppState | null> {
     try {
-      const query = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
-      const data = await fetchJson<{ state: SyncedAppState | null; source: string }>(`/state${query}`);
+      const data = await fetchJson<{ state: SyncedAppState | null; source: string; user?: any }>('/me/state');
       return data.state || null;
     } catch (err) {
-      logger.warn('Error loading state from Express /api/state:', err);
+      logger.warn('Error loading state from Express /api/me/state:', err);
       return null;
+    }
+  },
+
+  async loadAuthoritativeState(_legacyUserEmail?: string): Promise<SyncedAppState | null> {
+    try {
+      // Primary: identity-based /api/me/state
+      const data = await fetchJson<{ state: SyncedAppState | null; source: string }>('/me/state');
+      return data.state || null;
+    } catch (err) {
+      // Fallback: /api/state
+      try {
+        const fallback = await fetchJson<{ state: SyncedAppState | null; source: string }>('/state');
+        return fallback.state || null;
+      } catch (fallbackErr) {
+        logger.warn('Error loading state from Express /api/state:', fallbackErr);
+        return null;
+      }
     }
   },
 
   async saveAuthoritativeState(
     state: SyncedAppState,
-    userEmail?: string,
+    _legacyUserEmail?: string,
     actionDescription?: string
   ): Promise<boolean> {
     try {
       const res = await fetchJson<{ success: boolean; updatedAt: string }>('/state', {
         method: 'POST',
-        body: JSON.stringify({ state, userEmail, actionDescription }),
+        body: JSON.stringify({ state, actionDescription }),
       });
       return !!res.success;
     } catch (err) {

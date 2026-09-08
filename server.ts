@@ -17,6 +17,7 @@ import { libraryRouter } from "./src/server/routes/library";
 import { assignmentsRouter } from "./src/server/routes/assignments";
 import { auditLogsRouter } from "./src/server/routes/auditLogs";
 import { stateRouter } from "./src/server/routes/state";
+import { meRouter } from "./src/server/routes/me";
 import { notificationsRouter } from "./src/server/routes/notifications";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
@@ -79,6 +80,7 @@ async function startServer() {
   app.use("/api/assignments", assignmentsRouter);
   app.use("/api/audit-logs", auditLogsRouter);
   app.use("/api/state", stateRouter);
+  app.use("/api/me", meRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/github", githubRouter);
   app.use("/api/ai", aiRouter);

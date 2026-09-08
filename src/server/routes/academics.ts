@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { getAuthoritativeState, getAuthorizedStateForUser, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
@@ -17,8 +17,8 @@ academicsRouter.get(
   requirePermission(["students:read", "all:access"]),
   async (req: Request, res: Response) => {
   try {
-    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+    const user = req.user!;
+    const state = await getAuthorizedStateForUser(user);
 
     const courses = state?.courses || [];
     return res.status(200).json({
@@ -101,8 +101,8 @@ academicsRouter.get(
   requirePermission(["students:read", "all:access"]),
   async (req: Request, res: Response) => {
   try {
-    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+    const user = req.user!;
+    const state = await getAuthorizedStateForUser(user);
 
     const schedules = state?.schedules || [];
     return res.status(200).json({
@@ -125,8 +125,8 @@ academicsRouter.get(
   requirePermission(["students:read", "all:access"]),
   async (req: Request, res: Response) => {
   try {
-    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+    const user = req.user!;
+    const state = await getAuthorizedStateForUser(user);
 
     const payload = {
       academicYears: state?.academicYears || state?.years || [],
