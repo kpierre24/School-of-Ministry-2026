@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
-import { getAuthorizedStateForUser, saveAuthoritativeStateForUser } from "../services/supabaseServer";
+import { stateHydrationService } from "../services/domain";
+import { saveAuthoritativeStateForUser } from "../services/supabaseServer";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
@@ -10,33 +11,33 @@ stateRouter.use(requireAuth);
 
 /**
  * GET /api/state
- * Retrieves the authorized application state for the authenticated user (derived strictly from req.user.userId).
- * The userEmail query parameter model is abolished.
+ * Retrieves the authorized application state for the authenticated user (derived strictly from req.user.userId)
+ * dynamically composed from relational domain tables.
  */
 stateRouter.get("/", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const state = await getAuthorizedStateForUser(user);
+    const state = await stateHydrationService.getComposedStateForUser(user);
 
     if (!state) {
       return res.status(200).json({
         state: null,
-        source: "postgresql",
+        source: "relational_postgresql",
         userId: user.userId,
-        message: "No stored state found"
+        message: "No state found"
       });
     }
 
     return res.status(200).json({
       state,
-      source: "postgresql",
+      source: "relational_postgresql",
       userId: user.userId,
       role: user.role,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
     logger.error("GET /api/state error:", err);
-    return res.status(500).json({ error: "Failed to load state from PostgreSQL database" });
+    return res.status(500).json({ error: "Failed to load state from relational database" });
   }
 });
 
@@ -70,11 +71,10 @@ stateRouter.post(
       success: true,
       updatedAt: result.updatedAt,
       userId: user.userId,
-      source: "postgresql",
+      source: "relational_postgresql",
     });
   } catch (err: any) {
     logger.error("POST /api/state error:", err);
-    return res.status(500).json({ error: "Failed to persist state to PostgreSQL database" });
+    return res.status(500).json({ error: "Failed to persist state to database" });
   }
 });
-

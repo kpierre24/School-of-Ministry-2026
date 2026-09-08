@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { requireAuth, requirePermission } from "../middleware/rbac";
-import { getAuthorizedStateForUser, saveAuthoritativeStateForUser } from "../services/supabaseServer";
+import { stateHydrationService } from "../services/domain";
+import { saveAuthoritativeStateForUser } from "../services/supabaseServer";
 import { logger } from "../../lib/logger";
 
 export const meRouter = Router();
@@ -10,33 +11,34 @@ meRouter.use(requireAuth);
 
 /**
  * GET /api/me/state
- * Determines authenticated userId strictly from req.user and loads that user's authorized state.
+ * Determines authenticated userId strictly from req.user and dynamically composes
+ * that user's authorized state directly from relational domain tables.
  * The client never passes or selects whose private state it is retrieving.
  */
 meRouter.get("/state", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const state = await getAuthorizedStateForUser(user);
+    const state = await stateHydrationService.getComposedStateForUser(user);
 
     if (!state) {
       return res.status(200).json({
         state: null,
-        source: "postgresql",
+        source: "relational_postgresql",
         userId: user.userId,
-        message: "No stored state found"
+        message: "No state found"
       });
     }
 
     return res.status(200).json({
       state,
-      source: "postgresql",
+      source: "relational_postgresql",
       userId: user.userId,
       role: user.role,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
     logger.error("GET /api/me/state error:", err);
-    return res.status(500).json({ error: "Failed to load authorized state from PostgreSQL database" });
+    return res.status(500).json({ error: "Failed to load authorized state from relational database" });
   }
 });
 
@@ -69,11 +71,11 @@ meRouter.post(
         success: true,
         updatedAt: result.updatedAt,
         userId: user.userId,
-        source: "postgresql",
+        source: "relational_postgresql",
       });
     } catch (err: any) {
       logger.error("POST /api/me/state error:", err);
-      return res.status(500).json({ error: "Failed to save state to PostgreSQL database" });
+      return res.status(500).json({ error: "Failed to save state to database" });
     }
   }
 );

@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, getAuthorizedStateForUser, saveAuthoritativeState, saveAuthoritativeStateForUser, logAuditEvent } from "../services/supabaseServer";
+import { studentsService, attendanceService, assignmentsService, financeService } from "../services/domain";
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
-import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
 
 export const studentsRouter = Router();
@@ -10,75 +9,8 @@ export const studentsRouter = Router();
 studentsRouter.use(requireAuth);
 
 /**
- * Helper to calculate student metrics from attendance records and submissions
- */
-function calculateStudentSummary(
-  studentName: string,
-  records: any[],
-  classDays: any[],
-  studentLevels: Record<string, string>,
-  studentNotes: Record<string, string>,
-  studentPhotos: Record<string, string>,
-  submissions: any[]
-) {
-  const normName = studentName.toLowerCase().trim();
-  const studentRecords = (records || []).filter(
-    (r: any) => (r.student?.name || "").toLowerCase().trim() === normName
-  );
-
-  const totalSessions = classDays?.length || 0;
-  const presentCount = studentRecords.filter((r: any) => {
-    const s = (r.status || "").toLowerCase();
-    return s === "present" || s === "p" || s === "1" || s === "attended";
-  }).length;
-
-  const excusedCount = studentRecords.filter((r: any) => {
-    const s = (r.status || "").toLowerCase();
-    return s === "excused" || s === "e";
-  }).length;
-
-  const effectivePresent = presentCount + excusedCount;
-  const attendanceRate = totalSessions > 0
-    ? Math.round((effectivePresent / totalSessions) * 100)
-    : 100;
-
-  // Satisfactory threshold: >= 75% per AGENTS.md rule
-  const isAtRisk = attendanceRate < 75;
-  const isCritical = attendanceRate <= 50;
-
-  // Calculate student average grade from submissions
-  const studentSubs = (submissions || []).filter(
-    (s: any) => (s.studentName || "").toLowerCase().trim() === normName
-  );
-  let totalGrade = 0;
-  let gradedCount = 0;
-  for (const sub of studentSubs) {
-    if (typeof sub.score === "number" || typeof sub.grade === "number") {
-      totalGrade += sub.score ?? sub.grade;
-      gradedCount++;
-    }
-  }
-  const averageGrade = gradedCount > 0 ? Math.round(totalGrade / gradedCount) : 85;
-
-  return {
-    name: studentName,
-    level: studentLevels?.[studentName] || "Level 1 Foundation",
-    photoUrl: studentPhotos?.[normName] || null,
-    note: studentNotes?.[studentName] || "",
-    totalSessions,
-    presentCount,
-    excusedCount,
-    attendanceRate,
-    isAtRisk,
-    isCritical,
-    averageGrade,
-    submissionsCount: studentSubs.length,
-  };
-}
-
-/**
  * GET /api/students
- * Returns authoritative student roster.
+ * Returns authoritative student roster directly from relational PostgreSQL domain data.
  * RBAC Rule: Super Admin, Admin, Registrar, Lecturer, Finance Officer see full directory.
  * Students only receive their own profile record.
  */
@@ -86,81 +18,27 @@ studentsRouter.get(
   "/",
   requirePermission(["students:read", "all:access"]),
   async (req: Request, res: Response) => {
-  try {
-    const user = req.user!;
-    const state = await getAuthorizedStateForUser(user);
+    try {
+      const user = req.user!;
+      const result = await studentsService.getStudents(user);
 
-    if (!state) {
-      return res.status(200).json({ students: [], total: 0 });
+      return res.status(200).json({
+        students: result.students,
+        total: result.total,
+        atRiskCount: result.atRiskCount,
+        threshold: "75%",
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      logger.error("GET /api/students error:", err);
+      return res.status(500).json({ error: "Failed to fetch student directory" });
     }
-
-    const records = state.records || [];
-    const classDays = state.classDays || [];
-    const studentLevels = state.studentLevels || {};
-    const studentNotes = state.studentNotes || {};
-    const studentPhotos = state.studentPhotos || {};
-    const submissions = state.submissions || [];
-    const deletedStudentNames = new Set(
-      (state.deletedStudentNames || []).map((n: string) => n.toLowerCase().trim())
-    );
-
-    // Extract unique student names
-    const namesSet = new Set<string>();
-    for (const r of records) {
-      const name = r.student?.name?.trim();
-      if (name && !deletedStudentNames.has(name.toLowerCase())) {
-        namesSet.add(name);
-      }
-    }
-    for (const name of Object.keys(studentLevels)) {
-      if (name && !deletedStudentNames.has(name.toLowerCase().trim())) {
-        namesSet.add(name.trim());
-      }
-    }
-
-    let studentNames = Array.from(namesSet).sort((a, b) => a.localeCompare(b));
-
-    // RBAC: If requester is a student, restrict list to own profile
-    if (user && user.role === "student") {
-      const ownName = user.studentName || user.name || user.email.split("@")[0];
-      const match = studentNames.find((n) => n.toLowerCase().trim() === ownName.toLowerCase().trim());
-      studentNames = match ? [match] : [];
-    }
-
-    const students = studentNames.map((name) =>
-      calculateStudentSummary(
-        name,
-        records,
-        classDays,
-        studentLevels,
-        studentNotes,
-        studentPhotos,
-        submissions
-      )
-    );
-
-    return res.status(200).json({
-      students,
-      total: students.length,
-      atRiskCount: students.filter((s) => s.isAtRisk).length,
-      threshold: "75%",
-      updatedAt: state.updatedAt || new Date().toISOString(),
-    });
-  } catch (err: any) {
-    logger.error("GET /api/students error:", err);
-    return res.status(500).json({ error: "Failed to fetch student directory" });
   }
-});
+);
 
 /**
  * GET /api/students/:name/grades
- * Explicit Grade & Academic Performance Endpoint
- * 
- * RBAC & Ownership Pipeline:
- * 1. Is the user authenticated?
- * 2. Is the user allowed to view grades? (grades:read)
- * 3. Is the requested student the logged-in student, or an admin / assigned lecturer?
- * 4. Return only authorized data.
+ * Explicit Grade & Academic Performance Endpoint queried from relational domain tables.
  */
 studentsRouter.get(
   "/:name/grades",
@@ -176,20 +54,9 @@ studentsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
-      const state = await getAuthoritativeState(req.user?.email);
+      const subResult = await assignmentsService.getSubmissions({ studentName }, req.user);
 
-      if (!state) {
-        return res.status(404).json({ error: "Student academic records not found" });
-      }
-
-      const norm = studentName.toLowerCase();
-      const submissions = (state.submissions || []).filter(
-        (s: any) => (s.studentName || "").toLowerCase().trim() === norm
-      );
-
-      const rubricScores = state.rubricScores?.[studentName] || null;
-
-      // Calculate term GPA and module breakdown
+      const submissions = subResult.submissions || [];
       let totalGrade = 0;
       let gradedCount = 0;
       for (const s of submissions) {
@@ -207,7 +74,7 @@ studentsRouter.get(
         honorRoll,
         standing: honorRoll ? "High Distinction" : gpaPercent >= 75 ? "Satisfactory" : "At-Risk",
         submissions,
-        rubricScores,
+        rubricScores: subResult.rubricScores?.[studentName] || null,
         authorizedRequester: {
           email: req.user?.email,
           role: req.user?.role,
@@ -222,7 +89,7 @@ studentsRouter.get(
 
 /**
  * GET /api/students/:name/attendance
- * Explicit Student Attendance Endpoint
+ * Explicit Student Attendance Endpoint queried from relational attendance records.
  */
 studentsRouter.get(
   "/:name/attendance",
@@ -238,18 +105,14 @@ studentsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
-      const state = await getAuthoritativeState(req.user?.email);
+      const attData = await attendanceService.getAttendance(req.user);
+      const norm = studentName.toLowerCase().trim();
 
-      if (!state) {
-        return res.status(404).json({ error: "Attendance records not found" });
-      }
-
-      const norm = studentName.toLowerCase();
-      const studentRecords = (state.records || []).filter(
+      const studentRecords = (attData.records || []).filter(
         (r: any) => (r.student?.name || "").toLowerCase().trim() === norm
       );
 
-      const totalSessions = state.classDays?.length || 0;
+      const totalSessions = attData.totalSessions || Math.max(studentRecords.length, 1);
       const presentCount = studentRecords.filter((r: any) => {
         const s = (r.status || "").toLowerCase();
         return s === "present" || s === "p" || s === "1" || s === "attended";
@@ -279,7 +142,7 @@ studentsRouter.get(
 
 /**
  * GET /api/students/:name/financial-profile
- * Explicit Student Financial Ledger Endpoint
+ * Explicit Student Financial Ledger Endpoint queried from relational invoices & payments.
  */
 studentsRouter.get(
   "/:name/financial-profile",
@@ -295,28 +158,17 @@ studentsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
-      const state = await getAuthoritativeState(req.user?.email);
-
-      const norm = studentName.toLowerCase();
-      const invoices = (state?.invoices || []).filter(
-        (i: any) => (i.studentName || "").toLowerCase().trim() === norm
-      );
-      const transactions = (state?.transactions || state?.payments || []).filter(
-        (t: any) => (t.studentName || "").toLowerCase().trim() === norm
-      );
-      const receipts = (state?.receipts || []).filter(
-        (r: any) => (r.studentName || "").toLowerCase().trim() === norm
-      );
-      const adjustments = (state?.adjustments || []).filter(
-        (a: any) => (a.studentName || "").toLowerCase().trim() === norm
-      );
+      const [invRes, txnRes] = await Promise.all([
+        financeService.getInvoices(studentName, req.user),
+        financeService.getTransactions({ studentName }, req.user),
+      ]);
 
       return res.status(200).json({
         studentName,
-        invoices,
-        transactions,
-        receipts,
-        adjustments,
+        invoices: invRes.invoices,
+        transactions: txnRes.transactions,
+        receipts: [],
+        adjustments: [],
       });
     } catch (err: any) {
       logger.error("GET /api/students/:name/financial-profile error:", err);
@@ -342,40 +194,19 @@ studentsRouter.get(
   }),
   async (req: Request, res: Response) => {
     try {
-      const studentName = decodeURIComponent(req.params.name).trim();
-      const state = await getAuthoritativeState(req.user?.email);
+      const nameOrId = decodeURIComponent(req.params.name).trim();
+      const result = await studentsService.getStudentByNameOrId(nameOrId, req.user);
 
-      if (!state) {
+      if (!result) {
         return res.status(404).json({ error: "Student not found" });
       }
 
-      const norm = studentName.toLowerCase();
-      const records = (state.records || []).filter(
-        (r: any) => (r.student?.name || "").toLowerCase().trim() === norm
-      );
-      const submissions = (state.submissions || []).filter(
-        (s: any) => (s.studentName || "").toLowerCase().trim() === norm
-      );
-      const payments = (state.payments || []).filter(
-        (p: any) => (p.studentName || "").toLowerCase().trim() === norm
-      );
-
-      const summary = calculateStudentSummary(
-        studentName,
-        state.records || [],
-        state.classDays || [],
-        state.studentLevels || {},
-        state.studentNotes || {},
-        state.studentPhotos || {},
-        state.submissions || []
-      );
-
       return res.status(200).json({
-        student: summary,
-        attendanceHistory: records,
-        submissions,
-        payments,
-        rubricScores: state.rubricScores?.[studentName] || null,
+        student: result.student,
+        attendanceHistory: result.attendanceHistory,
+        submissions: result.submissions,
+        payments: result.payments,
+        rubricScores: null,
       });
     } catch (err: any) {
       logger.error("GET /api/students/:name error:", err);
@@ -386,7 +217,7 @@ studentsRouter.get(
 
 /**
  * POST /api/students
- * Enrolls a new student into authoritative state.
+ * Enrolls a new student directly into relational PostgreSQL tables.
  * RBAC: Requires students:write permission
  */
 studentsRouter.post(
@@ -396,54 +227,18 @@ studentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { name, level, email, photoUrl } = req.body;
-      const actorEmail = req.user?.email || "admin";
+      const actorUserId = req.user?.email || "admin";
 
       if (!name || typeof name !== "string") {
         return res.status(400).json({ error: "Student name is required" });
       }
 
-      const cleanName = name.trim();
-      const state = (await getAuthoritativeState(actorEmail)) || {};
-
-      const studentLevels = { ...(state.studentLevels || {}) };
-      studentLevels[cleanName] = level || "Level 1 Foundation";
-
-      const studentPhotos = { ...(state.studentPhotos || {}) };
-      if (photoUrl) {
-        studentPhotos[cleanName.toLowerCase().trim()] = photoUrl;
-      }
-
-      const deletedStudentNames = (state.deletedStudentNames || []).filter(
-        (n: string) => n.toLowerCase().trim() !== cleanName.toLowerCase().trim()
+      const result = await studentsService.enrollStudent(
+        { name, level, email, photoUrl },
+        actorUserId
       );
 
-      const updatedState = {
-        ...state,
-        studentLevels,
-        studentPhotos,
-        deletedStudentNames,
-        updatedAt: new Date().toISOString(),
-        updatedBy: actorEmail,
-      };
-
-      await saveAuthoritativeState(
-        updatedState,
-        actorEmail,
-        `Enrolled student: ${cleanName}`
-      );
-
-      await logAuditEvent({
-        actorUserId: actorEmail,
-        entityType: "student",
-        entityId: cleanName,
-        action: "create",
-        newValues: { name: cleanName, level, email },
-      });
-
-      return res.status(201).json({
-        status: "enrolled",
-        student: { name: cleanName, level: studentLevels[cleanName], photoUrl },
-      });
+      return res.status(201).json(result);
     } catch (err: any) {
       logger.error("POST /api/students error:", err);
       return res.status(500).json({ error: "Failed to enroll student" });
@@ -453,7 +248,7 @@ studentsRouter.post(
 
 /**
  * PUT /api/students/:name
- * Updates student attributes.
+ * Updates student attributes in relational database.
  * RBAC: Requires students:write permission
  */
 studentsRouter.put(
@@ -464,50 +259,15 @@ studentsRouter.put(
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
       const { level, note, photoUrl } = req.body;
-      const actorEmail = req.user?.email || "admin";
-      const state = (await getAuthoritativeState(actorEmail)) || {};
+      const actorUserId = req.user?.email || "admin";
 
-      const studentLevels = { ...(state.studentLevels || {}) };
-      if (level) studentLevels[studentName] = level;
-
-      const studentNotes = { ...(state.studentNotes || {}) };
-      if (note !== undefined) studentNotes[studentName] = note;
-
-      const studentPhotos = { ...(state.studentPhotos || {}) };
-      if (photoUrl) studentPhotos[studentName.toLowerCase().trim()] = photoUrl;
-
-      const updatedState = {
-        ...state,
-        studentLevels,
-        studentNotes,
-        studentPhotos,
-        updatedAt: new Date().toISOString(),
-        updatedBy: actorEmail,
-      };
-
-      await saveAuthoritativeState(
-        updatedState,
-        actorEmail,
-        `Updated student: ${studentName}`
+      const result = await studentsService.updateStudent(
+        studentName,
+        { level, note, photoUrl },
+        actorUserId
       );
 
-      await logAuditEvent({
-        actorUserId: actorEmail,
-        entityType: "student",
-        entityId: studentName,
-        action: "update",
-        newValues: { level, note: note ? "updated" : undefined, photoUrl },
-      });
-
-      return res.status(200).json({
-        status: "updated",
-        student: {
-          name: studentName,
-          level: studentLevels[studentName],
-          note: studentNotes[studentName],
-          photoUrl: studentPhotos[studentName.toLowerCase().trim()],
-        },
-      });
+      return res.status(200).json(result);
     } catch (err: any) {
       logger.error("PUT /api/students/:name error:", err);
       return res.status(500).json({ error: "Failed to update student" });

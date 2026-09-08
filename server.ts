@@ -19,6 +19,7 @@ import { auditLogsRouter } from "./src/server/routes/auditLogs";
 import { stateRouter } from "./src/server/routes/state";
 import { meRouter } from "./src/server/routes/me";
 import { notificationsRouter } from "./src/server/routes/notifications";
+import { initializeRelationalSchema, stateHydrationService } from "./src/server/services/domain";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
 import { authenticate } from "./src/server/middleware/rbac";
@@ -69,6 +70,9 @@ async function startServer() {
 
   // Role-Based Access Control authentication context
   app.use("/api", authenticate);
+
+  // Initialize relational PostgreSQL database tables
+  initializeRelationalSchema().catch((e) => logger.warn("Relational init warning:", e));
 
   // Mount API routers
   app.use("/api/auth", authRouter);

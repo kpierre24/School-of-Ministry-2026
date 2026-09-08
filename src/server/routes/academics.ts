@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, getAuthorizedStateForUser, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { academicsService } from "../services/domain";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
@@ -10,31 +10,29 @@ academicsRouter.use(requireAuth);
 
 /**
  * GET /api/academics/courses
- * Retrieves courses and curriculum tracks.
+ * Retrieves courses and curriculum tracks from relational catalog.
  */
 academicsRouter.get(
   "/courses",
   requirePermission(["students:read", "all:access"]),
   async (req: Request, res: Response) => {
-  try {
-    const user = req.user!;
-    const state = await getAuthorizedStateForUser(user);
-
-    const courses = state?.courses || [];
-    return res.status(200).json({
-      courses,
-      count: courses.length,
-      updatedAt: state?.updatedAt || new Date().toISOString(),
-    });
-  } catch (err: any) {
-    logger.error("GET /api/academics/courses error:", err);
-    return res.status(500).json({ error: "Failed to fetch courses" });
+    try {
+      const data = await academicsService.getCourses();
+      return res.status(200).json({
+        courses: data.courses,
+        count: data.count,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      logger.error("GET /api/academics/courses error:", err);
+      return res.status(500).json({ error: "Failed to fetch courses" });
+    }
   }
-});
+);
 
 /**
  * POST /api/academics/courses
- * Creates or updates a course in authoritative state.
+ * Creates or updates a course in relational course definitions table.
  * RBAC: Requires students:write or roles:manage
  */
 academicsRouter.post(
@@ -44,47 +42,14 @@ academicsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { course } = req.body;
-      const actorEmail = req.user?.email || "admin";
+      const actorUserId = req.user?.email || "admin";
 
       if (!course || !course.code || !course.title) {
         return res.status(400).json({ error: "Course code and title are required" });
       }
 
-      const state = (await getAuthoritativeState(actorEmail)) || {};
-      const courses = [...(state.courses || [])];
-
-      const idx = courses.findIndex(
-        (c: any) => (c.code || "").toLowerCase() === course.code.toLowerCase() || c.id === course.id
-      );
-
-      if (idx >= 0) {
-        courses[idx] = { ...courses[idx], ...course, updatedAt: new Date().toISOString() };
-      } else {
-        courses.push({
-          id: course.id || `CRS-${Date.now()}`,
-          ...course,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      const updatedState = {
-        ...state,
-        courses,
-        updatedAt: new Date().toISOString(),
-        updatedBy: actorEmail,
-      };
-
-      await saveAuthoritativeState(updatedState, actorEmail, `Updated course: ${course.code}`);
-
-      await logAuditEvent({
-        actorUserId: actorEmail,
-        entityType: "course",
-        entityId: course.code,
-        action: idx >= 0 ? "update" : "create",
-        newValues: course,
-      });
-
-      return res.status(200).json({ status: "saved", course });
+      const result = await academicsService.saveCourse(course, actorUserId);
+      return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/academics/courses error:", err);
       return res.status(500).json({ error: "Failed to save course" });
@@ -93,59 +58,26 @@ academicsRouter.post(
 );
 
 /**
- * GET /api/academics/schedules
- * Retrieves term schedules.
- */
-academicsRouter.get(
-  "/schedules",
-  requirePermission(["students:read", "all:access"]),
-  async (req: Request, res: Response) => {
-  try {
-    const user = req.user!;
-    const state = await getAuthorizedStateForUser(user);
-
-    const schedules = state?.schedules || [];
-    return res.status(200).json({
-      schedules,
-      count: schedules.length,
-    });
-  } catch (err: any) {
-    logger.error("GET /api/academics/schedules error:", err);
-    return res.status(500).json({ error: "Failed to fetch schedules" });
-  }
-});
-
-/**
  * GET /api/academics/structure
- * Returns the complete academic structure (years, terms, master courses, course offerings).
- * This is used by the client as the authoritative hierarchical snapshot for the Academic Engine.
+ * Returns the complete relational academic structure (years, terms, master courses, course offerings).
  */
 academicsRouter.get(
   "/structure",
   requirePermission(["students:read", "all:access"]),
   async (req: Request, res: Response) => {
-  try {
-    const user = req.user!;
-    const state = await getAuthorizedStateForUser(user);
-
-    const payload = {
-      academicYears: state?.academicYears || state?.years || [],
-      terms: state?.terms || state?.semesters || [],
-      masterCourses: state?.masterCourses || state?.courses || [],
-      courseOfferings: state?.courseOfferings || state?.offerings || [],
-      activeTermId: state?.activeTermId || null,
-    };
-
-    return res.status(200).json(payload);
-  } catch (err: any) {
-    logger.error("GET /api/academics/structure error:", err);
-    return res.status(500).json({ error: "Failed to fetch academic structure" });
+    try {
+      const structure = await academicsService.getAcademicStructure();
+      return res.status(200).json(structure);
+    } catch (err: any) {
+      logger.error("GET /api/academics/structure error:", err);
+      return res.status(500).json({ error: "Failed to fetch academic structure" });
+    }
   }
-});
+);
 
 /**
  * POST /api/academics/offerings
- * Create or update a CourseOffering in the authoritative state.
+ * Create or update a CourseOffering in relational tables.
  * RBAC: Requires students:write or roles:manage
  */
 academicsRouter.post(
@@ -155,40 +87,14 @@ academicsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const offering = req.body.offering || req.body;
-      const actorEmail = req.user?.email || "admin";
+      const actorUserId = req.user?.email || "admin";
 
       if (!offering || !offering.id || !offering.courseId) {
         return res.status(400).json({ error: "Offering id and courseId are required" });
       }
 
-      const state = (await getAuthoritativeState(actorEmail)) || {};
-      const offerings = [...(state.courseOfferings || state.offerings || [])];
-
-      const idx = offerings.findIndex((o: any) => o.id === offering.id);
-      if (idx >= 0) {
-        offerings[idx] = { ...offerings[idx], ...offering, updatedAt: new Date().toISOString() };
-      } else {
-        offerings.unshift({ ...offering, createdAt: new Date().toISOString() });
-      }
-
-      const updatedState = {
-        ...state,
-        courseOfferings: offerings,
-        updatedAt: new Date().toISOString(),
-        updatedBy: actorEmail,
-      };
-
-      await saveAuthoritativeState(updatedState, actorEmail, `Saved offering: ${offering.id}`);
-
-      await logAuditEvent({
-        actorUserId: actorEmail,
-        entityType: "course_offering",
-        entityId: offering.id,
-        action: idx >= 0 ? "update" : "create",
-        newValues: offering,
-      });
-
-      return res.status(200).json({ status: "saved", offering });
+      const result = await academicsService.saveCourseOffering(offering, actorUserId);
+      return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/academics/offerings error:", err);
       return res.status(500).json({ error: "Failed to save course offering" });
