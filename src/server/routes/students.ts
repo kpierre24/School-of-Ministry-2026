@@ -391,14 +391,14 @@ studentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { name, level, email, photoUrl } = req.body;
-      const userEmail = req.user?.email || req.body?.userEmail || "admin";
+      const actorEmail = req.user?.email || "admin";
 
       if (!name || typeof name !== "string") {
         return res.status(400).json({ error: "Student name is required" });
       }
 
       const cleanName = name.trim();
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
 
       const studentLevels = { ...(state.studentLevels || {}) };
       studentLevels[cleanName] = level || "Level 1 Foundation";
@@ -418,17 +418,17 @@ studentsRouter.post(
         studentPhotos,
         deletedStudentNames,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Enrolled student: ${cleanName}`
       );
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "student",
         entityId: cleanName,
         action: "create",
@@ -459,8 +459,8 @@ studentsRouter.put(
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
       const { level, note, photoUrl } = req.body;
-      const userEmail = req.user?.email || req.body?.userEmail || "admin";
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const actorEmail = req.user?.email || "admin";
+      const state = (await getAuthoritativeState(actorEmail)) || {};
 
       const studentLevels = { ...(state.studentLevels || {}) };
       if (level) studentLevels[studentName] = level;
@@ -477,17 +477,17 @@ studentsRouter.put(
         studentNotes,
         studentPhotos,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Updated student: ${studentName}`
       );
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "student",
         entityId: studentName,
         action: "update",

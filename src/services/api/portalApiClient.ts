@@ -8,16 +8,30 @@
 
 import { logger } from '../../lib/logger';
 import { SyncedAppState } from '../../lib/firebaseSync';
+import { getAuthoritativeFirebaseIdToken } from '../firebaseAdapter';
 
 const API_BASE = '/api';
 
 async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
+
+  // Attach authoritative Firebase ID Token in Authorization header if available
+  const authHeaders: Record<string, string> = {};
+  try {
+    const idToken = await getAuthoritativeFirebaseIdToken();
+    if (idToken) {
+      authHeaders['Authorization'] = `Bearer ${idToken}`;
+    }
+  } catch {
+    // Non-blocking
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...authHeaders,
       ...options.headers,
     },
   });

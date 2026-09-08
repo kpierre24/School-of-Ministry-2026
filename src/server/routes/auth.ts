@@ -12,81 +12,31 @@ export const authRouter = Router();
  */
 authRouter.post("/session", async (req: Request, res: Response) => {
   try {
-    const { email, requestedRole, name } = req.body;
-
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "Valid email is required" });
-    }
-
-    const cleanEmail = email.toLowerCase().trim();
-
-    // Guard: Demo users cannot authenticate as real users
-    if (isDemoUser(cleanEmail)) {
-      return res.status(403).json({
-        error: "Demo accounts are for preview simulation only and cannot authenticate as real users."
+    // Identity must come strictly from authoritative req.user (established via Firebase ID Token)
+    if (!req.user) {
+      return res.status(401).json({
+        error: "Authentication required",
+        code: "UNAUTHENTICATED",
+        message: "A valid Firebase ID token is required to establish identity."
       });
     }
-    const state = await getAuthoritativeState(cleanEmail);
 
-    // Default admin accounts per HTEIM portal rules
-    const defaultSuperAdmins = ["kpierre24@gmail.com", "pastor@hteim.org"];
-    const defaultAdmins = ["admin@hteim.edu", "director@hteim.edu"];
-    const defaultFinance = ["finance@hteim.edu", "bursar@hteim.edu"];
-    const defaultRegistrars = ["registrar@hteim.edu", "admissions@hteim.edu"];
-    const defaultLibrarians = ["librarian@hteim.edu", "library@hteim.edu"];
-
-    let assignedRole: UserRole = "student";
-    let studentName = name || cleanEmail.split("@")[0];
-    let studentId: string | undefined = undefined;
-    let assignedCourses: string[] = [];
-
-    if (defaultSuperAdmins.includes(cleanEmail)) {
-      assignedRole = "super_admin";
-    } else if (defaultAdmins.includes(cleanEmail)) {
-      assignedRole = "admin";
-    } else if (defaultFinance.includes(cleanEmail)) {
-      assignedRole = "finance_officer";
-    } else if (defaultRegistrars.includes(cleanEmail)) {
-      assignedRole = "registrar";
-    } else if (defaultLibrarians.includes(cleanEmail)) {
-      assignedRole = "librarian";
-    } else if (cleanEmail.includes("lecturer") || cleanEmail.includes("teacher") || cleanEmail.endsWith("@hteim.edu")) {
-      assignedRole = "lecturer";
-    } else if (requestedRole) {
-      assignedRole = normalizeUserRole(requestedRole);
-    }
-
-    // Check credentials saved in authoritative state
-    if (state?.userCredentials && Array.isArray(state.userCredentials)) {
-      const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
-      if (match) {
-        if (match.role) assignedRole = normalizeUserRole(match.role);
-        if (match.studentName) studentName = match.studentName;
-        if (match.studentId) studentId = match.studentId;
-        if (match.assignedCourses) assignedCourses = match.assignedCourses;
-      }
-    }
-
-    // Check records in state for student mapping
-    if (!studentId && state?.records && Array.isArray(state.records)) {
-      const rec = state.records.find((r: any) => r.student?.email?.toLowerCase().trim() === cleanEmail);
-      if (rec?.student?.id) studentId = rec.student.id;
-      if (rec?.student?.name) studentName = rec.student.name;
-    }
-
-    const roleDef = ROLE_DEFINITIONS[assignedRole] || ROLE_DEFINITIONS.student;
+    const user = req.user;
+    const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.student;
 
     return res.status(200).json({
       status: "authenticated",
       user: {
-        id: cleanEmail,
-        email: cleanEmail,
-        name: studentName,
-        role: assignedRole,
-        studentId,
-        studentName,
-        assignedCourses,
-        permissions: roleDef.permissions,
+        uid: user.uid,
+        userId: user.userId,
+        id: user.userId,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        studentId: user.studentId,
+        studentName: user.studentName,
+        assignedCourses: user.assignedCourses,
+        permissions: user.permissions,
         accessibleTabs: roleDef.accessibleTabs,
         roleDefinition: {
           id: roleDef.id,
@@ -103,6 +53,46 @@ authRouter.post("/session", async (req: Request, res: Response) => {
     logger.error("Auth session error:", err);
     return res.status(500).json({ error: "Authentication session verification failed" });
   }
+});
+
+/**
+ * GET /api/auth/me
+ * Returns the currently authenticated user from req.user
+ */
+authRouter.get("/me", (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: "Authentication required",
+      code: "UNAUTHENTICATED",
+      message: "No active authenticated session."
+    });
+  }
+
+  const roleDef = ROLE_DEFINITIONS[req.user.role] || ROLE_DEFINITIONS.student;
+  return res.status(200).json({
+    status: "authenticated",
+    user: {
+      uid: req.user.uid,
+      userId: req.user.userId,
+      id: req.user.userId,
+      email: req.user.email,
+      name: req.user.name,
+      role: req.user.role,
+      studentId: req.user.studentId,
+      studentName: req.user.studentName,
+      assignedCourses: req.user.assignedCourses,
+      permissions: req.user.permissions,
+      accessibleTabs: roleDef.accessibleTabs,
+      roleDefinition: {
+        id: roleDef.id,
+        title: roleDef.title,
+        badge: roleDef.badge,
+        description: roleDef.description,
+        color: roleDef.color,
+        badgeBg: roleDef.badgeBg
+      }
+    }
+  });
 });
 
 /**

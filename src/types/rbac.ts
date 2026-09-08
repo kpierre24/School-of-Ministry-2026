@@ -70,7 +70,9 @@ export type Permission =
   | 'roles:manage';
 
 export interface AuthenticatedUser {
-  id: string;
+  uid: string;           // Firebase UID
+  userId: string;        // Database users table ID
+  id: string;            // Aliased to userId for backward compatibility
   email: string;
   name: string;
   role: UserRole;

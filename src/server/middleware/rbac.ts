@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { getAuthoritativeState } from "../services/supabaseServer";
+import { getAuthoritativeState, getServerSupabase } from "../services/supabaseServer";
+import { verifyIdToken } from "../services/firebaseAuth";
 import { UserRole, Permission, AuthenticatedUser, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
 import { isDemoUser } from "../../data/guards";
@@ -23,70 +24,97 @@ const DEFAULT_REGISTRARS = ["registrar@hteim.edu", "admissions@hteim.edu"];
 const DEFAULT_LIBRARIANS = ["librarian@hteim.edu", "library@hteim.edu"];
 
 /**
- * Resolves authoritative user profile from email, state, and headers
+ * Maps application UserRole to PostgreSQL users table check constraint:
+ * ('admin' | 'teacher' | 'student' | 'staff')
+ */
+export function toDbUserRole(role: UserRole): "admin" | "teacher" | "student" | "staff" {
+  if (role === "super_admin" || role === "admin") return "admin";
+  if (role === "lecturer" || role === "teacher") return "teacher";
+  if (role === "registrar" || role === "finance_officer" || role === "librarian" || role === "staff") return "staff";
+  return "student";
+}
+
+/**
+ * Authoritative Authentication Pipeline:
+ * 
+ * Firebase ID Token
+ *         ↓
+ *  verifyIdToken()
+ *         ↓
+ *   Firebase UID
+ *         ↓
+ * database users table
+ *         ↓
+ *      req.user
+ * 
+ * Insecure identity sources (req.query.userEmail, req.body.userEmail,
+ * x-user-role, x-user-email) are strictly prohibited from establishing identity.
+ * They are informational at most.
  */
 export async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
-  // 1. Extract credentials from headers or query/body
   const authHeader = req.headers.authorization;
-  const headerEmail = (req.headers["x-user-email"] as string) || (req.headers["x-auth-email"] as string);
-  const headerRole = (req.headers["x-user-role"] as string);
-  const headerStudentId = (req.headers["x-student-id"] as string);
-  const headerStudentName = (req.headers["x-student-name"] as string);
-
-  let email = headerEmail;
-  if (!email && authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7).trim();
-    // Support base64 JSON token or plain email in Bearer
-    if (token.includes("@")) {
-      email = token;
-    } else {
-      try {
-        const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-        if (decoded.email) email = decoded.email;
-      } catch {
-        // Not a base64 json token
-      }
-    }
-  }
-
-  if (!email) {
-    email = (req.query.userEmail as string) || req.body?.userEmail || req.body?.email;
-  }
-
-  if (!email || typeof email !== "string") {
-    // If no email provided, check if client provided explicit dev role for preview sandbox
-    if (headerRole) {
-      const canonicalRole = normalizeUserRole(headerRole);
-      const roleDef = ROLE_DEFINITIONS[canonicalRole];
-      return {
-        id: `dev-${canonicalRole}`,
-        email: `${canonicalRole}@hteim.edu`,
-        name: roleDef?.title || canonicalRole,
-        role: canonicalRole,
-        studentId: headerStudentId || undefined,
-        studentName: headerStudentName || undefined,
-        permissions: roleDef?.permissions || []
-      };
-    }
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
 
-  const cleanEmail = email.toLowerCase().trim();
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    return null;
+  }
 
-  // Guard: Demo users cannot authenticate as real production users
-  if (isDemoUser(cleanEmail)) {
+  // 1. Firebase ID Token -> verifyIdToken()
+  let decoded;
+  try {
+    decoded = await verifyIdToken(token);
+  } catch (err: any) {
+    logger.warn(`Authoritative token verification rejected request to ${req.path}: ${err.message || err}`);
+    return null;
+  }
+
+  if (!decoded || !decoded.uid) {
+    return null;
+  }
+
+  const firebaseUid = decoded.uid;
+  const cleanEmail = (decoded.email || "").toLowerCase().trim();
+
+  // Guard: Demo accounts are simulation-only and cannot authenticate as real users
+  if (cleanEmail && isDemoUser(cleanEmail)) {
     logger.warn(`Rejected real user authentication attempt for demo account: ${cleanEmail}`);
     return null;
   }
 
-  const state = await getAuthoritativeState(cleanEmail);
+  // 2. Firebase UID -> database users table
+  const supabase = getServerSupabase();
+  let dbUser: any = null;
 
-  // Determine user role
+  if (cleanEmail) {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, role, is_active")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (!error && data) {
+        dbUser = data;
+      }
+    } catch (dbErr: any) {
+      logger.error("Error querying database users table:", dbErr);
+    }
+  }
+
+  // Guard: Suspended or inactive accounts are rejected
+  if (dbUser && dbUser.is_active === false) {
+    logger.warn(`Authentication rejected for deactivated account: ${cleanEmail}`);
+    return null;
+  }
+
+  // Authoritative State for supplemental profile attributes
+  const state = cleanEmail ? await getAuthoritativeState(cleanEmail) : null;
+
+  // Determine initial role mapping
   let assignedRole: UserRole = "student";
-  let studentName: string | undefined = headerStudentName;
-  let studentId: string | undefined = headerStudentId;
-  let assignedCourses: string[] = [];
-
   if (DEFAULT_SUPER_ADMINS.includes(cleanEmail)) {
     assignedRole = "super_admin";
   } else if (DEFAULT_ADMINS.includes(cleanEmail)) {
@@ -97,19 +125,75 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     assignedRole = "registrar";
   } else if (DEFAULT_LIBRARIANS.includes(cleanEmail)) {
     assignedRole = "librarian";
-  } else if (cleanEmail.includes("lecturer") || cleanEmail.includes("teacher") || cleanEmail.includes("faculty")) {
+  } else if (cleanEmail.includes("lecturer") || cleanEmail.includes("teacher") || cleanEmail.endsWith("@hteim.edu")) {
     assignedRole = "lecturer";
-  } else if (headerRole) {
-    assignedRole = normalizeUserRole(headerRole);
   }
 
-  // Check state database for explicit user record
+  // If user does not exist in database users table, provision an authoritative row
+  if (!dbUser && cleanEmail) {
+    try {
+      const dbRole = toDbUserRole(assignedRole);
+      const { data: createdUser, error: insertErr } = await supabase
+        .from("users")
+        .insert({
+          email: cleanEmail,
+          role: dbRole,
+          is_active: true,
+        })
+        .select("id, email, role, is_active")
+        .maybeSingle();
+
+      if (!insertErr && createdUser) {
+        dbUser = createdUser;
+        logger.info(`Provisioned new database users record for ${cleanEmail} (role: ${dbRole})`);
+      }
+    } catch (insertErr) {
+      logger.warn("Could not insert user into database users table (continuing with default):", insertErr);
+    }
+  }
+
+  // Resolve role from database users table
+  if (dbUser?.role && !DEFAULT_SUPER_ADMINS.includes(cleanEmail) && !DEFAULT_ADMINS.includes(cleanEmail) && !DEFAULT_FINANCE.includes(cleanEmail) && !DEFAULT_REGISTRARS.includes(cleanEmail) && !DEFAULT_LIBRARIANS.includes(cleanEmail)) {
+    assignedRole = normalizeUserRole(dbUser.role);
+  }
+
+  // Check state database credentials for granular role overrides
+  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
+    const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
+    if (match?.role) {
+      assignedRole = normalizeUserRole(match.role);
+    }
+  }
+
+  // Look up studentId from database students table
+  let studentId: string | undefined = undefined;
+  let studentName: string | undefined = decoded.name;
+  let assignedCourses: string[] = [];
+
+  const userId = dbUser?.id || firebaseUid;
+
+  if (dbUser?.id) {
+    try {
+      const { data: studentRecord } = await supabase
+        .from("students")
+        .select("id, student_number")
+        .eq("user_id", dbUser.id)
+        .maybeSingle();
+
+      if (studentRecord?.student_number) {
+        studentId = studentRecord.student_number;
+      }
+    } catch (studentErr) {
+      logger.warn("Error querying database students table:", studentErr);
+    }
+  }
+
+  // Check state userCredentials for student attributes
   if (state?.userCredentials && Array.isArray(state.userCredentials)) {
     const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
     if (match) {
-      if (match.role) assignedRole = normalizeUserRole(match.role);
-      if (match.studentName) studentName = match.studentName;
-      if (match.studentId) studentId = match.studentId;
+      if (match.studentName && !studentName) studentName = match.studentName;
+      if (match.studentId && !studentId) studentId = match.studentId;
       if (match.assignedCourses) assignedCourses = match.assignedCourses;
     }
   }
@@ -122,7 +206,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     }
   }
 
-  // Also check invoices / payments for student ID / name match
+  // Check invoices / payments for student ID / name match
   if ((!studentId || !studentName) && state?.invoices && Array.isArray(state.invoices)) {
     const inv = state.invoices.find((i: any) => (i.email || "").toLowerCase().trim() === cleanEmail);
     if (inv) {
@@ -131,18 +215,21 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     }
   }
 
-  const roleDef = ROLE_DEFINITIONS[assignedRole];
+  const roleDef = ROLE_DEFINITIONS[assignedRole] || ROLE_DEFINITIONS.student;
   const permissions: Permission[] = roleDef ? roleDef.permissions : [];
 
+  // 3. req.user: authoritative user object containing uid, userId, email, role, studentId
   return {
-    id: cleanEmail,
+    uid: firebaseUid,
+    userId: userId,
+    id: userId,
     email: cleanEmail,
     name: studentName || cleanEmail.split("@")[0],
     role: assignedRole,
     studentId,
     studentName,
     assignedCourses,
-    permissions
+    permissions,
   };
 }
 

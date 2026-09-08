@@ -68,12 +68,13 @@ paymentsRouter.post(
   requirePermission(["finance:record_payment", "finance:adjustments", "all:access"]),
   async (req: Request, res: Response) => {
   try {
-    const { invoice, userEmail } = req.body;
+    const { invoice } = req.body;
+    const actorEmail = req.user?.email || "finance";
     if (!invoice || !invoice.studentName || !invoice.totalTuition) {
       return res.status(400).json({ error: "studentName and totalTuition are required" });
     }
 
-    const state = (await getAuthoritativeState(userEmail)) || {};
+    const state = (await getAuthoritativeState(actorEmail)) || {};
     const fin = getFinancialState(state);
     const invoices = [...fin.invoices];
 
@@ -133,12 +134,12 @@ paymentsRouter.post(
       ...state,
       invoices,
       updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "admin"
+      updatedBy: actorEmail
     };
 
     await saveAuthoritativeState(
       updatedState,
-      userEmail,
+      actorEmail,
       `Created/Updated tuition invoice ${newInvoice.id} for ${newInvoice.studentName}`
     );
 
@@ -200,12 +201,13 @@ paymentsRouter.post(
   requirePermission(["finance:record_payment", "all:access"]),
   async (req: Request, res: Response) => {
   try {
-    const { transaction, userEmail } = req.body;
+    const { transaction } = req.body;
+    const actorEmail = req.user?.email || "finance";
     if (!transaction || !transaction.invoiceId || !transaction.amount) {
       return res.status(400).json({ error: "invoiceId and amount are required" });
     }
 
-    const state = (await getAuthoritativeState(userEmail)) || {};
+    const state = (await getAuthoritativeState(actorEmail)) || {};
     const fin = getFinancialState(state);
     const invoices = [...fin.invoices];
     const transactions = [...fin.transactions];
@@ -234,7 +236,7 @@ paymentsRouter.post(
       receiptNumber,
       status: 'Completed',
       notes: transaction.notes || '',
-      recordedBy: userEmail || 'Finance Office',
+      recordedBy: actorEmail,
       reconciliationStatus: 'Unreconciled',
       createdAt: new Date().toISOString()
     };
@@ -271,7 +273,7 @@ paymentsRouter.post(
       paymentMethod: newTransaction.paymentMethod,
       paymentReference: newTransaction.paymentReference,
       issuedAt: new Date().toISOString(),
-      issuedBy: userEmail || 'HTEIM Bursar & Finance Office',
+      issuedBy: actorEmail || 'HTEIM Bursar & Finance Office',
       academicTerm: targetInvoice.term || '2026 Semester 1',
       courseOrModule: targetInvoice.moduleTrack,
       totalTuitionBilled: targetInvoice.totalTuition,
@@ -289,17 +291,17 @@ paymentsRouter.post(
       receipts,
       payments: transactions, // maintain backward compatibility
       updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "admin"
+      updatedBy: actorEmail
     };
 
     await saveAuthoritativeState(
       updatedState,
-      userEmail,
+      actorEmail,
       `Recorded transaction of $${newTransaction.amount} for ${newTransaction.studentName} (Receipt ${receiptNumber})`
     );
 
     await logAuditEvent({
-      actorUserId: userEmail || "admin",
+      actorUserId: actorEmail,
       entityType: "payment_transaction",
       entityId: newTransaction.id,
       action: "create",
@@ -362,12 +364,13 @@ paymentsRouter.post(
   requirePermission(["finance:adjustments", "all:access"]),
   async (req: Request, res: Response) => {
   try {
-    const { adjustment, userEmail } = req.body;
+    const { adjustment } = req.body;
+    const actorEmail = req.user?.email || "finance";
     if (!adjustment || !adjustment.invoiceId || !adjustment.amount || !adjustment.type) {
       return res.status(400).json({ error: "invoiceId, amount, and type are required" });
     }
 
-    const state = (await getAuthoritativeState(userEmail)) || {};
+    const state = (await getAuthoritativeState(actorEmail)) || {};
     const fin = getFinancialState(state);
     const invoices = [...fin.invoices];
     const adjustments = [...fin.adjustments];
@@ -390,7 +393,7 @@ paymentsRouter.post(
       categoryName: adjustment.categoryName || `${adjustment.type.toUpperCase()} Applied`,
       amount: Number(adjustment.amount),
       appliedDate: adjustment.appliedDate || new Date().toISOString().split('T')[0],
-      authorizedBy: adjustment.authorizedBy || userEmail || 'Bursar',
+      authorizedBy: adjustment.authorizedBy || actorEmail || 'Bursar',
       notes: adjustment.notes || ''
     };
     adjustments.unshift(newAdjustment);
@@ -438,12 +441,12 @@ paymentsRouter.post(
       invoices,
       adjustments,
       updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "admin"
+      updatedBy: actorEmail
     };
 
     await saveAuthoritativeState(
       updatedState,
-      userEmail,
+      actorEmail,
       `Applied ${newAdjustment.type} of $${newAdjustment.amount} to invoice ${targetInvoice.id}`
     );
 

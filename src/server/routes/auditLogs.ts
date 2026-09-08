@@ -30,13 +30,14 @@ auditLogsRouter.get("/", async (req: Request, res: Response) => {
  */
 auditLogsRouter.post("/", async (req: Request, res: Response) => {
   try {
-    const { action, entityType, entityId, notes, userEmail } = req.body;
+    const { action, entityType, entityId, notes } = req.body;
+    const actorEmail = req.user?.email || "system";
     if (!action || !entityType || !entityId) {
       return res.status(400).json({ error: "action, entityType, and entityId are required" });
     }
 
     const ok = await logAuditEvent({
-      actorUserId: userEmail || "admin",
+      actorUserId: actorEmail,
       entityType,
       entityId,
       action: action || "update",

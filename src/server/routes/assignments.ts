@@ -94,13 +94,13 @@ assignmentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { submission } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "student";
+      const actorEmail = req.user?.email || "student";
 
       if (!submission || !submission.studentName || !submission.assignmentId) {
         return res.status(400).json({ error: "studentName and assignmentId are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const submissions = [...(state.submissions || [])];
 
       const newSub = {
@@ -123,12 +123,12 @@ assignmentsRouter.post(
         ...state,
         submissions,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Submitted assignment ${submission.assignmentId} for ${submission.studentName}`
       );
 
@@ -152,13 +152,13 @@ assignmentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { submissionId, score, feedback, rubricScores, studentName } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "teacher";
+      const actorEmail = req.user?.email || "teacher";
 
       if (!submissionId && !studentName) {
         return res.status(400).json({ error: "submissionId or studentName is required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const submissions = [...(state.submissions || [])];
       const subIdx = submissions.findIndex((s: any) => s.id === submissionId);
 
@@ -170,7 +170,7 @@ assignmentsRouter.post(
           feedback: feedback || submissions[subIdx].feedback,
           status: "graded",
           gradedAt: new Date().toISOString(),
-          gradedBy: userEmail,
+          gradedBy: actorEmail,
         };
       }
 
@@ -184,17 +184,17 @@ assignmentsRouter.post(
         submissions,
         rubricScores: updatedRubrics,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Graded submission ${submissionId || studentName}: ${score} points`
       );
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "grade",
         entityId: submissionId || studentName,
         action: "grade_override",

@@ -64,13 +64,13 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { studentName, date, status, notes } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "teacher";
+      const actorEmail = req.user?.email || "teacher";
 
       if (!studentName || !date) {
         return res.status(400).json({ error: "studentName and date are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const records = [...(state.records || [])];
       const normName = studentName.toLowerCase().trim();
 
@@ -96,7 +96,7 @@ attendanceRouter.post(
           photoUrl: state.studentPhotos?.[normName] || undefined,
         },
         updatedAt: timestamp,
-        recordedBy: userEmail,
+        recordedBy: actorEmail,
       };
 
       if (existingIndex >= 0) {
@@ -109,17 +109,17 @@ attendanceRouter.post(
         ...state,
         records,
         updatedAt: timestamp,
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Attendance recorded for ${studentName} on ${date}: ${checkinStatus}`
       );
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "attendance",
         entityId: `${studentName}_${date}`,
         action: "attendance_override",
@@ -149,13 +149,13 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { date, records: incomingRecords } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "teacher";
+      const actorEmail = req.user?.email || "teacher";
 
       if (!date || !Array.isArray(incomingRecords)) {
         return res.status(400).json({ error: "date and records array are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       let existingRecords = [...(state.records || [])];
 
       // Remove old records for this exact date to replace with batch
@@ -171,24 +171,24 @@ attendanceRouter.post(
         notes: r.notes || "",
         student: r.student || { name: r.studentName },
         updatedAt: timestamp,
-        recordedBy: userEmail,
+        recordedBy: actorEmail,
       }));
 
       const updatedState = {
         ...state,
         records: [...existingRecords, ...formatted],
         updatedAt: timestamp,
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Batch attendance saved for ${date} (${formatted.length} records)`
       );
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "attendance",
         entityId: date,
         action: "update",
@@ -219,13 +219,13 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { studentName, date, status, reason } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "admin";
+      const actorEmail = req.user?.email || "admin";
 
       if (!studentName || !date || !status) {
         return res.status(400).json({ error: "studentName, date, and status are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const records = [...(state.records || [])];
       const norm = studentName.toLowerCase().trim();
 
@@ -241,17 +241,17 @@ attendanceRouter.post(
         date,
         sessionDate: date,
         status,
-        notes: reason ? `[Override by ${userEmail}]: ${reason}` : (idx >= 0 ? records[idx].notes : ""),
+        notes: reason ? `[Override by ${actorEmail}]: ${reason}` : (idx >= 0 ? records[idx].notes : ""),
         student: {
           name: studentName,
           photoUrl: state.studentPhotos?.[norm] || undefined,
         },
         updatedAt: new Date().toISOString(),
-        recordedBy: userEmail,
+        recordedBy: actorEmail,
         override: {
           previousStatus: oldStatus,
           reason: reason || "Administrative override",
-          by: userEmail,
+          by: actorEmail,
           at: new Date().toISOString(),
         },
       };
@@ -266,17 +266,17 @@ attendanceRouter.post(
         ...state,
         records,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Attendance override: ${studentName} on ${date} -> ${status}`
       );
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "attendance",
         entityId: `${studentName}_${date}`,
         action: "attendance_override",
@@ -311,13 +311,13 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { studentName, date, reason, documentUrl } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "student";
+      const actorEmail = req.user?.email || "student";
 
       if (!studentName || !date) {
         return res.status(400).json({ error: "studentName and date are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const excusedAbsences = { ...(state.excusedAbsences || {}) };
       const records = [...(state.records || [])];
       const norm = studentName.toLowerCase().trim();
@@ -329,7 +329,7 @@ attendanceRouter.post(
         reason: reason || "Medical / Ministry Duty",
         documentUrl: documentUrl || null,
         status: "approved",
-        approvedBy: userEmail,
+        approvedBy: actorEmail,
         approvedAt: new Date().toISOString(),
       };
 
@@ -354,12 +354,12 @@ attendanceRouter.post(
         excusedAbsences,
         records,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
       await saveAuthoritativeState(
         updatedState,
-        userEmail,
+        actorEmail,
         `Excused absence for ${studentName} on ${date}`
       );
 

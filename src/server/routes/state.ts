@@ -10,8 +10,10 @@ export const stateRouter = Router();
  */
 stateRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const userEmail = (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+    // Identity is established strictly by req.user; req.query.userEmail is purely informational
+    const authenticatedEmail = req.user?.email;
+    const targetEmail = (req.query.userEmail as string) || authenticatedEmail || undefined;
+    const state = await getAuthoritativeState(targetEmail);
 
     if (!state) {
       return res.status(200).json({ state: null, source: "postgresql", message: "No stored state found" });
@@ -34,13 +36,15 @@ stateRouter.get("/", async (req: Request, res: Response) => {
  */
 stateRouter.post("/", async (req: Request, res: Response) => {
   try {
-    const { state, userEmail, actionDescription } = req.body;
+    const { state, actionDescription } = req.body;
+    // Actor identity is derived strictly from req.user; req.body.userEmail cannot establish identity
+    const actorEmail = req.user?.email || "system";
 
     if (!state || typeof state !== "object") {
       return res.status(400).json({ error: "State object is required" });
     }
 
-    const result = await saveAuthoritativeState(state, userEmail, actionDescription);
+    const result = await saveAuthoritativeState(state, actorEmail, actionDescription);
     return res.status(200).json({
       success: true,
       updatedAt: result.updatedAt,

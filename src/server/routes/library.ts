@@ -34,12 +34,13 @@ libraryRouter.get("/", async (req: Request, res: Response) => {
  */
 libraryRouter.post("/", async (req: Request, res: Response) => {
   try {
-    const { resource, userEmail } = req.body;
+    const { resource } = req.body;
+    const actorEmail = req.user?.email || "teacher";
     if (!resource || !resource.title) {
       return res.status(400).json({ error: "Resource title is required" });
     }
 
-    const state = (await getAuthoritativeState(userEmail)) || {};
+    const state = (await getAuthoritativeState(actorEmail)) || {};
     const resources = [...(state.libraryResources || [])];
 
     const newResource = {
@@ -60,17 +61,17 @@ libraryRouter.post("/", async (req: Request, res: Response) => {
       ...state,
       libraryResources: resources,
       updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "teacher",
+      updatedBy: actorEmail,
     };
 
     await saveAuthoritativeState(
       updatedState,
-      userEmail,
+      actorEmail,
       `Added library resource: ${newResource.title}`
     );
 
     await logAuditEvent({
-      actorUserId: userEmail || "teacher",
+      actorUserId: actorEmail,
       entityType: "library_resource",
       entityId: newResource.id,
       action: "create",
@@ -94,8 +95,8 @@ libraryRouter.post("/", async (req: Request, res: Response) => {
 libraryRouter.delete("/:id", async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
-    const userEmail = (req.query.userEmail as string) || undefined;
-    const state = (await getAuthoritativeState(userEmail)) || {};
+    const actorEmail = req.user?.email || "admin";
+    const state = (await getAuthoritativeState(actorEmail)) || {};
 
     let resources = [...(state.libraryResources || [])];
     const target = resources.find((r: any) => r.id === id);
@@ -105,17 +106,17 @@ libraryRouter.delete("/:id", async (req: Request, res: Response) => {
       ...state,
       libraryResources: resources,
       updatedAt: new Date().toISOString(),
-      updatedBy: userEmail || "admin",
+      updatedBy: actorEmail,
     };
 
     await saveAuthoritativeState(
       updatedState,
-      userEmail,
+      actorEmail,
       `Removed library resource: ${target?.title || id}`
     );
 
     await logAuditEvent({
-      actorUserId: userEmail || "admin",
+      actorUserId: actorEmail,
       entityType: "library_resource",
       entityId: id,
       action: "delete",

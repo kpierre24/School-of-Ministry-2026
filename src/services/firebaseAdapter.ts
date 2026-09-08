@@ -95,6 +95,20 @@ export function subscribeToGoogleOAuthState(
 }
 
 /**
+ * Retrieves the authoritative Firebase ID token for the currently authenticated user.
+ */
+export async function getAuthoritativeFirebaseIdToken(): Promise<string | null> {
+  try {
+    const user = firebaseAuth.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch (err) {
+    logger.warn('Error obtaining Firebase ID token:', err);
+    return null;
+  }
+}
+
+/**
  * Signs out of Firebase Auth session cleanly.
  */
 export async function logoutGoogleOAuth(): Promise<void> {

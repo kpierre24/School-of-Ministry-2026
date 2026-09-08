@@ -38,13 +38,13 @@ academicsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { course } = req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "admin";
+      const actorEmail = req.user?.email || "admin";
 
       if (!course || !course.code || !course.title) {
         return res.status(400).json({ error: "Course code and title are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const courses = [...(state.courses || [])];
 
       const idx = courses.findIndex(
@@ -65,13 +65,13 @@ academicsRouter.post(
         ...state,
         courses,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
-      await saveAuthoritativeState(updatedState, userEmail, `Updated course: ${course.code}`);
+      await saveAuthoritativeState(updatedState, actorEmail, `Updated course: ${course.code}`);
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "course",
         entityId: course.code,
         action: idx >= 0 ? "update" : "create",
@@ -143,13 +143,13 @@ academicsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const offering = req.body.offering || req.body;
-      const userEmail = req.user?.email || req.body.userEmail || "admin";
+      const actorEmail = req.user?.email || "admin";
 
       if (!offering || !offering.id || !offering.courseId) {
         return res.status(400).json({ error: "Offering id and courseId are required" });
       }
 
-      const state = (await getAuthoritativeState(userEmail)) || {};
+      const state = (await getAuthoritativeState(actorEmail)) || {};
       const offerings = [...(state.courseOfferings || state.offerings || [])];
 
       const idx = offerings.findIndex((o: any) => o.id === offering.id);
@@ -163,13 +163,13 @@ academicsRouter.post(
         ...state,
         courseOfferings: offerings,
         updatedAt: new Date().toISOString(),
-        updatedBy: userEmail,
+        updatedBy: actorEmail,
       };
 
-      await saveAuthoritativeState(updatedState, userEmail, `Saved offering: ${offering.id}`);
+      await saveAuthoritativeState(updatedState, actorEmail, `Saved offering: ${offering.id}`);
 
       await logAuditEvent({
-        actorUserId: userEmail,
+        actorUserId: actorEmail,
         entityType: "course_offering",
         entityId: offering.id,
         action: idx >= 0 ? "update" : "create",
