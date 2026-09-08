@@ -7,6 +7,9 @@ import { isDemoPayment } from "../../data/guards";
 
 export const paymentsRouter = Router();
 
+// Default-deny at the router level: All routes require authentication
+paymentsRouter.use(requireAuth);
+
 /**
  * Helper to ensure state has financial sub-collections with strict exclusion of demo payments
  */

@@ -8,21 +8,38 @@ import { isDemoUser } from "../../data/guards";
 export const authRouter = Router();
 
 /**
+ * GET /api/auth/roles
+ * Lists all defined roles and their granular access scopes (public schema discovery).
+ */
+authRouter.get("/roles", (_req: Request, res: Response) => {
+  const roles = Object.values(ROLE_DEFINITIONS).filter((r, index, self) => 
+    index === self.findIndex((t) => t.id === r.id)
+  );
+
+  return res.status(200).json({
+    roles: roles.map((r) => ({
+      role: r.id,
+      title: r.title,
+      badge: r.badge,
+      color: r.color,
+      badgeBg: r.badgeBg,
+      description: r.description,
+      accessibleTabs: r.accessibleTabs,
+      permissions: r.permissions,
+    })),
+  });
+});
+
+// Default-deny at the router level for all remaining auth operations
+authRouter.use(requireAuth);
+
+/**
  * POST /api/auth/session
  * Verifies or initializes a session for the current user and returns authoritative roles/permissions.
  */
 authRouter.post("/session", async (req: Request, res: Response) => {
   try {
-    // Identity must come strictly from authoritative req.user (established via Firebase ID Token)
-    if (!req.user) {
-      return res.status(401).json({
-        error: "Authentication required",
-        code: "UNAUTHENTICATED",
-        message: "A valid Firebase ID token is required to establish identity."
-      });
-    }
-
-    const user = req.user;
+    const user = req.user!;
     const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.student;
 
     return res.status(200).json({
@@ -61,28 +78,21 @@ authRouter.post("/session", async (req: Request, res: Response) => {
  * Returns the currently authenticated user from req.user
  */
 authRouter.get("/me", (req: Request, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({
-      error: "Authentication required",
-      code: "UNAUTHENTICATED",
-      message: "No active authenticated session."
-    });
-  }
-
-  const roleDef = ROLE_DEFINITIONS[req.user.role] || ROLE_DEFINITIONS.student;
+  const user = req.user!;
+  const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.student;
   return res.status(200).json({
     status: "authenticated",
     user: {
-      uid: req.user.uid,
-      userId: req.user.userId,
-      id: req.user.userId,
-      email: req.user.email,
-      name: req.user.name,
-      role: req.user.role,
-      studentId: req.user.studentId,
-      studentName: req.user.studentName,
-      assignedCourses: req.user.assignedCourses,
-      permissions: req.user.permissions,
+      uid: user.uid,
+      userId: user.userId,
+      id: user.userId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      studentId: user.studentId,
+      studentName: user.studentName,
+      assignedCourses: user.assignedCourses,
+      permissions: user.permissions,
       accessibleTabs: roleDef.accessibleTabs,
       roleDefinition: {
         id: roleDef.id,
@@ -97,36 +107,12 @@ authRouter.get("/me", (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/auth/roles
- * Lists all defined roles and their granular access scopes.
- */
-authRouter.get("/roles", (_req: Request, res: Response) => {
-  const roles = Object.values(ROLE_DEFINITIONS).filter((r, index, self) => 
-    index === self.findIndex((t) => t.id === r.id)
-  );
-
-  return res.status(200).json({
-    roles: roles.map((r) => ({
-      role: r.id,
-      title: r.title,
-      badge: r.badge,
-      color: r.color,
-      badgeBg: r.badgeBg,
-      description: r.description,
-      accessibleTabs: r.accessibleTabs,
-      permissions: r.permissions,
-    })),
-  });
-});
-
-/**
  * GET /api/auth/users
  * Returns list of registered users in the database.
  * RBAC: Requires users:manage
  */
 authRouter.get(
   "/users",
-  requireAuth,
   requirePermission(["users:manage", "all:access"]),
   async (_req: Request, res: Response) => {
     try {
@@ -149,7 +135,6 @@ authRouter.get(
  */
 authRouter.patch(
   "/users/:userId/role",
-  requireAuth,
   requirePermission(["roles:manage", "all:access"]),
   async (req: Request, res: Response) => {
     try {

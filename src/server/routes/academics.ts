@@ -5,11 +5,17 @@ import { logger } from "../../lib/logger";
 
 export const academicsRouter = Router();
 
+// Default-deny at the router level: All routes require authentication
+academicsRouter.use(requireAuth);
+
 /**
  * GET /api/academics/courses
  * Retrieves courses and curriculum tracks.
  */
-academicsRouter.get("/courses", async (req: Request, res: Response) => {
+academicsRouter.get(
+  "/courses",
+  requirePermission(["students:read", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
     const state = await getAuthoritativeState(userEmail);
@@ -90,7 +96,10 @@ academicsRouter.post(
  * GET /api/academics/schedules
  * Retrieves term schedules.
  */
-academicsRouter.get("/schedules", async (req: Request, res: Response) => {
+academicsRouter.get(
+  "/schedules",
+  requirePermission(["students:read", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
     const state = await getAuthoritativeState(userEmail);
@@ -111,7 +120,10 @@ academicsRouter.get("/schedules", async (req: Request, res: Response) => {
  * Returns the complete academic structure (years, terms, master courses, course offerings).
  * This is used by the client as the authoritative hierarchical snapshot for the Academic Engine.
  */
-academicsRouter.get("/structure", async (req: Request, res: Response) => {
+academicsRouter.get(
+  "/structure",
+  requirePermission(["students:read", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
     const state = await getAuthoritativeState(userEmail);

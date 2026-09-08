@@ -5,6 +5,9 @@ import { logger } from "../../lib/logger";
 
 export const auditLogsRouter = Router();
 
+// Default-deny at the router level: All routes require authentication
+auditLogsRouter.use(requireAuth);
+
 /**
  * GET /api/audit-logs
  * Retrieves audit history log entries from PostgreSQL.
@@ -12,7 +15,6 @@ export const auditLogsRouter = Router();
  */
 auditLogsRouter.get(
   "/",
-  requireAuth,
   requirePermission(["audit:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {

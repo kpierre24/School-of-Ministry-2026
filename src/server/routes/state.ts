@@ -1,8 +1,12 @@
 import { Router, Request, Response } from "express";
 import { getAuthoritativeState, saveAuthoritativeState } from "../services/supabaseServer";
+import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
 export const stateRouter = Router();
+
+// Default-deny at the router level: All routes require authentication
+stateRouter.use(requireAuth);
 
 /**
  * GET /api/state
@@ -33,8 +37,12 @@ stateRouter.get("/", async (req: Request, res: Response) => {
 /**
  * POST /api/state
  * Saves the full authoritative application state to Supabase PostgreSQL.
+ * RBAC: Requires write permission
  */
-stateRouter.post("/", async (req: Request, res: Response) => {
+stateRouter.post(
+  "/",
+  requirePermission(["students:write", "attendance:write", "grades:write", "finance:write", "roles:manage", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const { state, actionDescription } = req.body;
     // Actor identity is derived strictly from req.user; req.body.userEmail cannot establish identity

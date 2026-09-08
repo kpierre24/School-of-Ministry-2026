@@ -6,6 +6,9 @@ import { logger } from "../../lib/logger";
 
 export const attendanceRouter = Router();
 
+// Default-deny at the router level: All routes require authentication
+attendanceRouter.use(requireAuth);
+
 /**
  * GET /api/attendance
  * Retrieves authoritative attendance records.
@@ -13,7 +16,6 @@ export const attendanceRouter = Router();
  */
 attendanceRouter.get(
   "/",
-  requireAuth,
   requirePermission(["attendance:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {

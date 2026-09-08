@@ -6,6 +6,9 @@ import { logger } from "../../lib/logger";
 
 export const studentsRouter = Router();
 
+// Default-deny at the router level: All routes require authentication
+studentsRouter.use(requireAuth);
+
 /**
  * Helper to calculate student metrics from attendance records and submissions
  */
@@ -79,7 +82,10 @@ function calculateStudentSummary(
  * RBAC Rule: Super Admin, Admin, Registrar, Lecturer, Finance Officer see full directory.
  * Students only receive their own profile record.
  */
-studentsRouter.get("/", async (req: Request, res: Response) => {
+studentsRouter.get(
+  "/",
+  requirePermission(["students:read", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const userEmail = user?.email || (req.query.userEmail as string) || undefined;
@@ -327,7 +333,7 @@ studentsRouter.get(
  */
 studentsRouter.get(
   "/:name",
-  requireAuth,
+  requirePermission(["students:read", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),

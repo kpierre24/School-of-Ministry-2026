@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { requireAuth } from '../middleware/rbac';
 import { 
   CentralNotification, 
   NotificationChannel, 
@@ -12,6 +13,9 @@ import {
 import { TabType } from '../../types';
 
 export const notificationsRouter = Router();
+
+// Default-deny at the router level: All routes require authentication
+notificationsRouter.use(requireAuth);
 
 // In-memory fallback notifications when Supabase is not connected
 let memoryNotifications: CentralNotification[] = [

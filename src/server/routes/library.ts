@@ -1,8 +1,12 @@
 import { Router, Request, Response } from "express";
 import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "../services/supabaseServer";
+import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
 export const libraryRouter = Router();
+
+// Default-deny at the router level: All routes require authentication
+libraryRouter.use(requireAuth);
 
 /**
  * GET /api/library
@@ -31,8 +35,12 @@ libraryRouter.get("/", async (req: Request, res: Response) => {
 /**
  * POST /api/library
  * Adds a new resource to the digital library.
+ * RBAC: Requires students:write or roles:manage
  */
-libraryRouter.post("/", async (req: Request, res: Response) => {
+libraryRouter.post(
+  "/",
+  requirePermission(["students:write", "roles:manage", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const { resource } = req.body;
     const actorEmail = req.user?.email || "teacher";
@@ -91,8 +99,12 @@ libraryRouter.post("/", async (req: Request, res: Response) => {
 /**
  * DELETE /api/library/:id
  * Removes a resource from the library.
+ * RBAC: Requires students:write or roles:manage
  */
-libraryRouter.delete("/:id", async (req: Request, res: Response) => {
+libraryRouter.delete(
+  "/:id",
+  requirePermission(["students:write", "roles:manage", "all:access"]),
+  async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
     const actorEmail = req.user?.email || "admin";

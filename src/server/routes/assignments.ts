@@ -7,6 +7,9 @@ import { isDemoAssignment } from "../../data/guards";
 
 export const assignmentsRouter = Router();
 
+// Default-deny at the router level: All routes require authentication
+assignmentsRouter.use(requireAuth);
+
 /**
  * GET /api/assignments
  * Retrieves assignments and quizzes, strictly excluding demo assignments.
@@ -14,7 +17,6 @@ export const assignmentsRouter = Router();
  */
 assignmentsRouter.get(
   "/",
-  requireAuth,
   requirePermission(["assignments:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {

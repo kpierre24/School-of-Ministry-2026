@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { GoogleGenAI, Type } from "@google/genai";
+import { requireAuth } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
 export const aiRouter = Router();
+
+// Default-deny at the router level: All AI endpoints require authentication
+aiRouter.use(requireAuth);
 
 function getGenAI(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
