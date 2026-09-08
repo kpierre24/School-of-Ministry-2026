@@ -4607,6 +4607,7 @@ create policy "Allow public update" on app_states for update using (true) with c
               </Suspense>
             </motion.div>
           )}
+        </AnimatePresence>
 
         {/* Error notification if any */}
         {(activeErpTab === 'attendance' || activeErpTab === 'exams') && appUser?.role !== 'student' && error && (
@@ -4659,7 +4660,6 @@ create policy "Allow public update" on app_states for update using (true) with c
             })}
           </AnimatePresence>
         </div>
-        </AnimatePresence>
       </main>
 
       {/* Student Detail Modal */}
