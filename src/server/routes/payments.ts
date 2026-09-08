@@ -25,11 +25,7 @@ function getFinancialState(state: any) {
  * Retrieves invoices, optionally filtered by studentName.
  * RBAC: Students can only view their own invoices.
  */
-paymentsRouter.get(
-  "/invoices",
-  requireAuth,
-  requirePermission(["finance:view_all", "finance:view_own", "all:access"]),
-  async (req: Request, res: Response) => {
+paymentsRouter.get("/invoices", async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const userEmail = user?.email || (req.query.userEmail as string) || undefined;
@@ -158,11 +154,7 @@ paymentsRouter.post(
  * Retrieves payment transactions
  * RBAC: Students only retrieve their own transactions.
  */
-paymentsRouter.get(
-  "/transactions",
-  requireAuth,
-  requirePermission(["finance:view_all", "finance:view_own", "all:access"]),
-  async (req: Request, res: Response) => {
+paymentsRouter.get("/transactions", async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const userEmail = user?.email || (req.query.userEmail as string) || undefined;
@@ -331,11 +323,7 @@ paymentsRouter.post(
  * Retrieves receipts.
  * RBAC: Students only retrieve their own receipts.
  */
-paymentsRouter.get(
-  "/receipts",
-  requireAuth,
-  requirePermission(["finance:view_all", "finance:view_own", "all:access"]),
-  async (req: Request, res: Response) => {
+paymentsRouter.get("/receipts", async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const userEmail = user?.email || (req.query.userEmail as string) || undefined;
@@ -473,15 +461,10 @@ paymentsRouter.post(
 /**
  * GET /api/payments/summary
  * Returns overall tuition analytics and metrics.
- * RBAC: Super Admin, Admin, Finance Officer (finance:view_all, finance:reports)
  */
-paymentsRouter.get(
-  "/summary",
-  requireAuth,
-  requirePermission(["finance:view_all", "finance:reports", "all:access"]),
-  async (req: Request, res: Response) => {
+paymentsRouter.get("/summary", async (req: Request, res: Response) => {
   try {
-    const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;
+    const userEmail = (req.query.userEmail as string) || undefined;
     const state = await getAuthoritativeState(userEmail);
     const fin = getFinancialState(state);
 
@@ -518,47 +501,6 @@ paymentsRouter.get(
     return res.status(500).json({ error: "Failed to fetch payment summary" });
   }
 });
-
-/**
- * GET /api/payments
- * Root alias for fetching financial transactions
- */
-paymentsRouter.get(
-  "/",
-  requireAuth,
-  requirePermission(["finance:view_all", "finance:view_own", "all:access"]),
-  async (req: Request, res: Response) => {
-    try {
-      const user = req.user;
-      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-      let studentName = (req.query.studentName as string) || undefined;
-      const state = await getAuthoritativeState(userEmail);
-      const fin = getFinancialState(state);
-
-      let transactions = fin.transactions;
-
-      if (user && user.role === "student" && !roleHasPermission(user.role, "finance:view_all")) {
-        const ownName = user.studentName || user.name || user.email.split("@")[0];
-        studentName = ownName;
-      }
-
-      if (studentName) {
-        const norm = studentName.toLowerCase().trim();
-        transactions = transactions.filter((t: any) => (t.studentName || "").toLowerCase().trim() === norm);
-      }
-
-      return res.status(200).json({
-        payments: transactions,
-        transactions,
-        total: transactions.length,
-        updatedAt: state?.updatedAt || new Date().toISOString()
-      });
-    } catch (err: any) {
-      logger.error("GET /api/payments error:", err);
-      return res.status(500).json({ error: "Failed to fetch payments" });
-    }
-  }
-);
 
 /**
  * GET /api/payments/profile/:studentName

@@ -217,9 +217,3 @@ export async function testDatabaseConnection(): Promise<boolean> {
     return false;
   }
 }
-
-// Single-source-of-truth export aliases
-export const testSupabaseConnection = testDatabaseConnection;
-export const loadFromSupabase = loadAuthoritativeState;
-export const saveToSupabase = saveAuthoritativeState;
-export const subscribeToAppState = subscribeToRealtimeStateChanges;

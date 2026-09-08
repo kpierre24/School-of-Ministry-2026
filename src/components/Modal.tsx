@@ -11,7 +11,6 @@ export interface ModalProps {
   icon?: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full';
-  maxWidth?: string;
   className?: string;
   showCloseButton?: boolean;
   closeOnOverlayClick?: boolean;
@@ -47,7 +46,6 @@ export const Modal: React.FC<ModalProps> = ({
   icon,
   children,
   size = 'lg',
-  maxWidth,
   className = '',
   showCloseButton = true,
   closeOnOverlayClick = true,
@@ -107,7 +105,7 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
 
-  const sizeClass = maxWidth || SIZE_CLASSES[size] || SIZE_CLASSES.lg;
+  const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES.lg;
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (closeOnOverlayClick && e.target === e.currentTarget && !isDragging) {

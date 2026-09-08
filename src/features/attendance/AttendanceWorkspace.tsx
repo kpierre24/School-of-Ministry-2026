@@ -1,4 +1,4 @@
-import React, { Fragment, useState, useEffect, useCallback } from 'react';
+import React, { Fragment } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   FileSpreadsheet,
@@ -27,40 +27,20 @@ import {
   Edit3,
   Plus,
   Lock,
-  Unlock,
   Clock,
   ShieldCheck,
   MessageCircle,
   CheckCheck,
   Download,
-  History,
-  ClipboardCheck,
-  FileEdit,
-  ShieldAlert,
-  Send,
-  ExternalLink
 } from 'lucide-react';
 
 import { StudentAttendancePortal } from '../../components/StudentAttendancePortal';
 import { SwipeableAttendanceCard } from '../../components/SwipeableAttendanceCard';
 import { ManageClassDaysModal } from '../../components/ManageClassDaysModal';
-import { AttendanceCorrectionModal } from './AttendanceCorrectionModal';
-import { AttendanceApprovalsDrawer } from './AttendanceApprovalsDrawer';
-import { AttendanceAuditHistoryModal } from './AttendanceAuditHistoryModal';
-import { LecturerSessionSubmissionModal } from './LecturerSessionSubmissionModal';
-import { AdminOverrideModal } from './AdminOverrideModal';
 import { EmptyState } from '../../components/UXPrimitives';
 import { logActivity } from '../../lib/auditLogger';
 import { getStudentPaymentDetails } from '../../lib/paymentUtils';
 import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from '../../lib/attendanceLock';
-import { attendanceService } from '../../services/attendanceService';
-import { 
-  AttendanceStatus, 
-  AttendanceCorrectionRequest, 
-  AttendanceAuditEntry, 
-  SessionLockState 
-} from '../../types/attendance';
-import { toast } from 'sonner';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -234,448 +214,6 @@ export function AttendanceTab({
   setRecords,
   setExcusedAbsences,
 }: AttendanceTabProps) {
-  // Correction, Approval & Audit State
-  const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
-  const [initialCorrectionStudent, setInitialCorrectionStudent] = useState('');
-  const [initialCorrectionDay, setInitialCorrectionDay] = useState('');
-  const [initialCorrectionStatus, setInitialCorrectionStatus] = useState<AttendanceStatus>('Absent');
-
-  const [approvalsModalOpen, setApprovalsModalOpen] = useState(false);
-  const [correctionRequests, setCorrectionRequests] = useState<AttendanceCorrectionRequest[]>(() => {
-    const saved = localStorage.getItem('hteim_attendance_corrections_v1');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [auditHistoryModalOpen, setAuditHistoryModalOpen] = useState(false);
-  const [auditLogs, setAuditLogs] = useState<AttendanceAuditEntry[]>(() => {
-    const saved = localStorage.getItem('hteim_attendance_audit_v1');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [sessionSubmissionModalOpen, setSessionSubmissionModalOpen] = useState(false);
-  const [submissionClassDayId, setSubmissionClassDayId] = useState('');
-
-  const [adminOverrideModalOpen, setAdminOverrideModalOpen] = useState(false);
-  const [overrideStudent, setOverrideStudent] = useState('');
-  const [overrideClassDay, setOverrideClassDay] = useState('');
-  const [overrideClassDayName, setOverrideClassDayName] = useState('');
-  const [overrideCurrentStatus, setOverrideCurrentStatus] = useState<AttendanceStatus>('Absent');
-
-  const [sessionLocks, setSessionLocks] = useState<Record<string, SessionLockState>>(() => {
-    const saved = localStorage.getItem('hteim_session_locks_v1');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  // Save changes to localStorage
-  useEffect(() => {
-    localStorage.setItem('hteim_attendance_corrections_v1', JSON.stringify(correctionRequests));
-  }, [correctionRequests]);
-
-  useEffect(() => {
-    localStorage.setItem('hteim_attendance_audit_v1', JSON.stringify(auditLogs));
-  }, [auditLogs]);
-
-  useEffect(() => {
-    localStorage.setItem('hteim_session_locks_v1', JSON.stringify(sessionLocks));
-  }, [sessionLocks]);
-
-  // Load latest data from server when mounted
-  useEffect(() => {
-    const loadServerAttendanceData = async () => {
-      try {
-        const [corrRes, auditRes] = await Promise.all([
-          attendanceService.getCorrectionRequests().catch(() => null),
-          attendanceService.getAuditHistory().catch(() => null)
-        ]);
-
-        if (corrRes && Array.isArray(corrRes.requests)) {
-          setCorrectionRequests(corrRes.requests);
-        }
-        if (auditRes && Array.isArray(auditRes.logs)) {
-          setAuditLogs(auditRes.logs);
-        }
-      } catch (e) {
-        console.warn('Could not sync attendance corrections/audits from API:', e);
-      }
-    };
-
-    loadServerAttendanceData();
-  }, []);
-
-  const pendingCorrectionCount = correctionRequests.filter(r => r.status === 'pending').length;
-
-  // Handle Lecturer Session Submission
-  const handleLecturerSubmitSession = async (payload: {
-    classDayId: string;
-    classDayName: string;
-    records: { studentName: string; status: AttendanceStatus; notes?: string }[];
-    lockAfterSubmission: boolean;
-    lockDeadlineHours: number;
-  }) => {
-    const nowIso = new Date().toISOString();
-
-    // 1. Update local records state
-    setRecords(prev => {
-      let updated = [...prev];
-      payload.records.forEach(item => {
-        const studentKey = item.studentName.toLowerCase().trim();
-        const existingIdx = updated.findIndex(
-          r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === payload.classDayId
-        );
-
-        const isPresent = item.status === 'Present' || item.status === 'Late';
-
-        if (existingIdx >= 0) {
-          updated[existingIdx] = {
-            ...updated[existingIdx],
-            present: isPresent,
-            status: item.status,
-            manualOverride: true,
-            timestamp: nowIso,
-            capturedAt: updated[existingIdx].capturedAt || nowIso
-          };
-        } else {
-          updated.push({
-            studentName: item.studentName,
-            name: item.studentName,
-            classDay: payload.classDayId,
-            present: isPresent,
-            status: item.status,
-            score: '',
-            timestamp: nowIso,
-            capturedAt: nowIso,
-            manualOverride: true
-          });
-        }
-      });
-      return updated;
-    });
-
-    // 2. Lock session if requested
-    if (payload.lockAfterSubmission) {
-      const deadline = new Date(Date.now() + (payload.lockDeadlineHours || 24) * 3600 * 1000).toISOString();
-      setSessionLocks(prev => ({
-        ...prev,
-        [payload.classDayId]: {
-          classDayId: payload.classDayId,
-          isLocked: true,
-          lockedAt: nowIso,
-          lockedBy: appUser?.email || 'lecturer@hteim.org',
-          lockedByRole: appUser?.role || 'lecturer',
-          lockDeadline: deadline
-        }
-      }));
-    }
-
-    // 3. Log audit entries
-    const newLogs: AttendanceAuditEntry[] = payload.records.map(r => ({
-      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      timestamp: nowIso,
-      studentName: r.studentName,
-      classDayId: payload.classDayId,
-      classDayName: payload.classDayName,
-      previousStatus: 'Unmarked',
-      newStatus: r.status,
-      actorEmail: appUser?.email || 'lecturer@hteim.org',
-      actorName: appUser?.name || 'Faculty Lecturer',
-      actorRole: appUser?.role || 'lecturer',
-      actionType: 'lecturer_submission',
-      reason: `Batch session roll-call submitted (${payload.classDayName})`
-    }));
-
-    setAuditLogs(prev => [...newLogs, ...prev]);
-
-    // 4. Also attempt server API submission
-    try {
-      await attendanceService.submitSessionAttendance({
-        classDayId: payload.classDayId,
-        records: payload.records,
-        lockAfterSubmission: payload.lockAfterSubmission,
-        lockDeadlineHours: payload.lockDeadlineHours
-      });
-    } catch (e) {
-      console.warn('Backend session submission saved locally, server offline:', e);
-    }
-  };
-
-  // Handle Correction Request Submission (Lecturer / Student)
-  const handleSubmitCorrectionRequest = async (payload: {
-    studentName: string;
-    classDayId: string;
-    classDayName: string;
-    currentStatus: AttendanceStatus;
-    requestedStatus: AttendanceStatus;
-    reason: string;
-    evidenceUrl?: string;
-  }) => {
-    const newReq: AttendanceCorrectionRequest = {
-      id: `corr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      studentName: payload.studentName,
-      classDayId: payload.classDayId,
-      classDayName: payload.classDayName,
-      currentStatus: payload.currentStatus,
-      requestedStatus: payload.requestedStatus,
-      reason: payload.reason,
-      evidenceUrl: payload.evidenceUrl,
-      submittedBy: appUser?.name || appUser?.email || 'Faculty User',
-      submittedByRole: appUser?.role || 'lecturer',
-      submittedAt: new Date().toISOString(),
-      status: 'pending'
-    };
-
-    setCorrectionRequests(prev => [newReq, ...prev]);
-
-    // Try server sync
-    try {
-      await attendanceService.submitCorrectionRequest(payload);
-    } catch (e) {
-      console.warn('Correction request saved locally:', e);
-    }
-  };
-
-  // Handle Admin Approval of Correction
-  const handleApproveCorrection = async (requestId: string, reviewNotes?: string) => {
-    const req = correctionRequests.find(r => r.id === requestId);
-    if (!req) return;
-
-    const nowIso = new Date().toISOString();
-
-    // 1. Update correction request status
-    setCorrectionRequests(prev => prev.map(r => r.id === requestId ? {
-      ...r,
-      status: 'approved',
-      reviewedBy: appUser?.name || appUser?.email || 'Administrator',
-      reviewedAt: nowIso,
-      reviewNotes: reviewNotes || 'Approved by academic administration'
-    } : r));
-
-    // 2. Update authoritative attendance record
-    setRecords(prev => {
-      let updated = [...prev];
-      const studentKey = req.studentName.toLowerCase().trim();
-      const existingIdx = updated.findIndex(
-        r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === req.classDayId
-      );
-
-      const isPresent = req.requestedStatus === 'Present' || req.requestedStatus === 'Late';
-
-      if (existingIdx >= 0) {
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          present: isPresent,
-          status: req.requestedStatus,
-          manualOverride: true,
-          timestamp: nowIso
-        };
-      } else {
-        updated.push({
-          studentName: req.studentName,
-          name: req.studentName,
-          classDay: req.classDayId,
-          present: isPresent,
-          status: req.requestedStatus,
-          score: '',
-          timestamp: nowIso,
-          manualOverride: true
-        });
-      }
-      return updated;
-    });
-
-    // 3. Add audit entry
-    const auditEntry: AttendanceAuditEntry = {
-      id: `audit-${Date.now()}`,
-      timestamp: nowIso,
-      studentName: req.studentName,
-      classDayId: req.classDayId,
-      classDayName: req.classDayName,
-      previousStatus: req.currentStatus,
-      newStatus: req.requestedStatus,
-      actorEmail: appUser?.email || 'admin@hteim.org',
-      actorName: appUser?.name || 'Administrator',
-      actorRole: 'admin',
-      actionType: 'correction_approved',
-      reason: `Correction approved: ${req.reason}${reviewNotes ? ` (Notes: ${reviewNotes})` : ''}`,
-      isOverride: true
-    };
-
-    setAuditLogs(prev => [auditEntry, ...prev]);
-
-    // 4. Send to server
-    try {
-      await attendanceService.approveCorrectionRequest(requestId, reviewNotes);
-    } catch (e) {
-      console.warn('API approval synced locally:', e);
-    }
-  };
-
-  // Handle Admin Rejection of Correction
-  const handleRejectCorrection = async (requestId: string, reviewNotes: string) => {
-    const req = correctionRequests.find(r => r.id === requestId);
-    if (!req) return;
-
-    const nowIso = new Date().toISOString();
-
-    setCorrectionRequests(prev => prev.map(r => r.id === requestId ? {
-      ...r,
-      status: 'rejected',
-      reviewedBy: appUser?.name || appUser?.email || 'Administrator',
-      reviewedAt: nowIso,
-      reviewNotes: reviewNotes
-    } : r));
-
-    const auditEntry: AttendanceAuditEntry = {
-      id: `audit-${Date.now()}`,
-      timestamp: nowIso,
-      studentName: req.studentName,
-      classDayId: req.classDayId,
-      classDayName: req.classDayName,
-      previousStatus: req.currentStatus,
-      newStatus: req.currentStatus,
-      actorEmail: appUser?.email || 'admin@hteim.org',
-      actorName: appUser?.name || 'Administrator',
-      actorRole: 'admin',
-      actionType: 'correction_rejected',
-      reason: `Correction rejected: ${reviewNotes}`
-    };
-
-    setAuditLogs(prev => [auditEntry, ...prev]);
-
-    try {
-      await attendanceService.rejectCorrectionRequest(requestId, reviewNotes);
-    } catch (e) {
-      console.warn('API rejection synced locally:', e);
-    }
-  };
-
-  // Handle Admin Direct Override on locked record
-  const handleConfirmAdminOverride = async (payload: {
-    studentName: string;
-    classDayId: string;
-    newStatus: AttendanceStatus;
-    overrideReason: string;
-  }) => {
-    const nowIso = new Date().toISOString();
-    const studentKey = payload.studentName.toLowerCase().trim();
-
-    // 1. Update record
-    setRecords(prev => {
-      let updated = [...prev];
-      const existingIdx = updated.findIndex(
-        r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === payload.classDayId
-      );
-
-      const isPresent = payload.newStatus === 'Present' || payload.newStatus === 'Late';
-
-      if (existingIdx >= 0) {
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          present: isPresent,
-          status: payload.newStatus,
-          manualOverride: true,
-          timestamp: nowIso
-        };
-      } else {
-        updated.push({
-          studentName: payload.studentName,
-          name: payload.studentName,
-          classDay: payload.classDayId,
-          present: isPresent,
-          status: payload.newStatus,
-          score: '',
-          timestamp: nowIso,
-          manualOverride: true
-        });
-      }
-      return updated;
-    });
-
-    // 2. Add audit entry
-    const auditEntry: AttendanceAuditEntry = {
-      id: `audit-${Date.now()}`,
-      timestamp: nowIso,
-      studentName: payload.studentName,
-      classDayId: payload.classDayId,
-      classDayName: overrideClassDayName || payload.classDayId,
-      previousStatus: overrideCurrentStatus,
-      newStatus: payload.newStatus,
-      actorEmail: appUser?.email || 'admin@hteim.org',
-      actorName: appUser?.name || 'Administrator',
-      actorRole: 'admin',
-      actionType: 'admin_override',
-      reason: payload.overrideReason,
-      isOverride: true
-    };
-
-    setAuditLogs(prev => [auditEntry, ...prev]);
-  };
-
-  // Handle column header lock / unlock
-  const handleToggleSessionLock = async (dayId: string, dayName: string) => {
-    const current = sessionLocks[dayId]?.isLocked;
-    const nowIso = new Date().toISOString();
-
-    if (current) {
-      // Unlock session
-      setSessionLocks(prev => ({
-        ...prev,
-        [dayId]: {
-          ...prev[dayId],
-          isLocked: false,
-          unlockedAt: nowIso,
-          unlockedBy: appUser?.name || 'Administrator'
-        }
-      }));
-
-      const auditEntry: AttendanceAuditEntry = {
-        id: `audit-${Date.now()}`,
-        timestamp: nowIso,
-        studentName: 'Entire Class Session',
-        classDayId: dayId,
-        classDayName: dayName,
-        previousStatus: 'Locked',
-        newStatus: 'Unlocked',
-        actorEmail: appUser?.email || 'admin@hteim.org',
-        actorName: appUser?.name || 'Administrator',
-        actorRole: 'admin',
-        actionType: 'session_unlocked',
-        reason: `Session unlocked for grading alterations by administrator.`
-      };
-      setAuditLogs(prev => [auditEntry, ...prev]);
-      toast.success(`Session "${dayName}" unlocked for alterations.`);
-    } else {
-      // Lock session
-      setSessionLocks(prev => ({
-        ...prev,
-        [dayId]: {
-          classDayId: dayId,
-          isLocked: true,
-          lockedAt: nowIso,
-          lockedBy: appUser?.name || 'Administrator',
-          lockedByRole: 'admin',
-          lockDeadline: nowIso
-        }
-      }));
-
-      const auditEntry: AttendanceAuditEntry = {
-        id: `audit-${Date.now()}`,
-        timestamp: nowIso,
-        studentName: 'Entire Class Session',
-        classDayId: dayId,
-        classDayName: dayName,
-        previousStatus: 'Unlocked',
-        newStatus: 'Locked',
-        actorEmail: appUser?.email || 'admin@hteim.org',
-        actorName: appUser?.name || 'Administrator',
-        actorRole: 'admin',
-        actionType: 'session_locked',
-        reason: `Session locked by administrator.`
-      };
-      setAuditLogs(prev => [auditEntry, ...prev]);
-      toast.info(`Session "${dayName}" finalized and locked.`);
-    }
-  };
-
   // Batch mark all displayed / selected students present for a specific class day
   const handleMarkAllPresentForDay = (dayId: string) => {
     const targetStudents = selectedStudentNames.length > 0
@@ -695,6 +233,7 @@ export function AttendanceTab({
     if (appUser?.role === 'student') return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is currently typing in an input, textarea or select
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -851,67 +390,24 @@ export function AttendanceTab({
                   </button>
                 </div>
 
-                {/* Action Buttons: Roll-call submission, Corrections Approval, Audit History, Add Class Day & Manage Class Days */}
+                {/* Add Class Day & Manage Class Days Action Buttons */}
                 {(appUser?.role as string) !== 'student' && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* Lecturer Session Roll-Call Submission Modal Trigger */}
-                    <button
-                      onClick={() => {
-                        const targetDay = liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '');
-                        setSubmissionClassDayId(targetDay);
-                        setSessionSubmissionModalOpen(true);
-                      }}
-                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
-                      title="Open full class session roll-call submission workflow"
-                    >
-                      <ClipboardCheck className="w-3.5 h-3.5 text-emerald-100" />
-                      <span>Submit Roll-Call</span>
-                    </button>
-
-                    {/* Correction Requests & Approvals Drawer Trigger */}
-                    <button
-                      onClick={() => setApprovalsModalOpen(true)}
-                      className="relative px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
-                      title="Review student & lecturer attendance correction requests"
-                    >
-                      <FileEdit className="w-3.5 h-3.5" />
-                      <span>Approvals</span>
-                      {pendingCorrectionCount > 0 && (
-                        <span className="px-1.5 py-0.2 bg-rose-600 text-white text-[9px] font-black rounded-full animate-pulse">
-                          {pendingCorrectionCount}
-                        </span>
-                      )}
-                    </button>
-
-                    {/* Immutable Audit Ledger Modal Trigger */}
-                    <button
-                      onClick={() => setAuditHistoryModalOpen(true)}
-                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
-                      title="View immutable attendance audit ledger & change logs"
-                    >
-                      <History className="w-3.5 h-3.5 text-indigo-400" />
-                      <span className="hidden sm:inline">Audit Trail</span>
-                      <span className="px-1.5 py-0.2 bg-slate-700 text-slate-300 text-[9px] font-mono rounded-full">
-                        {auditLogs.length}
-                      </span>
-                    </button>
-
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleAddClassDay()}
                       className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
                       title="Add a new class session"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">+ Session</span>
+                      <span className="hidden sm:inline">+ Class Day</span>
                     </button>
-
                     <button
                       onClick={() => setShowClassDaysModal(true)}
                       className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
                       title="Manage class session titles"
                     >
                       <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                      <span className="text-xs font-bold">Days ({classDays.length})</span>
+                      <span className="text-xs font-bold">Manage Days ({classDays.length})</span>
                     </button>
                   </div>
                 )}
@@ -1289,26 +785,13 @@ export function AttendanceTab({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleToggleSessionLock(day.id, day.name);
+                                        alert(`Admin Quick Override: Unlocked 24h attendance editing window for session "${day.name}". Records can now be modified.`);
                                       }}
-                                      className={`p-0.5 px-1.5 text-[9px] rounded border flex items-center gap-0.5 cursor-pointer shadow-2xs ${
-                                        sessionLocks[day.id]?.isLocked
-                                          ? 'text-amber-800 bg-amber-100 border-amber-300 dark:bg-amber-950/80 dark:border-amber-700'
-                                          : 'text-slate-600 bg-slate-100 border-slate-300 dark:bg-slate-800 dark:border-slate-700'
-                                      }`}
-                                      title={sessionLocks[day.id]?.isLocked ? "Session Locked by Admin. Click to unlock." : "Session Unlocked. Click to finalize & lock."}
+                                      className="p-0.5 px-1.5 text-[9px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                                      title="Admin Quick Override: Click to unlock 24h editing window for this session"
                                     >
-                                      {sessionLocks[day.id]?.isLocked ? (
-                                        <>
-                                          <Lock className="w-2.5 h-2.5 text-amber-600" />
-                                          <span className="font-extrabold text-[8px] uppercase">Locked</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Unlock className="w-2.5 h-2.5 text-slate-500" />
-                                          <span className="font-extrabold text-[8px] uppercase">Lock</span>
-                                        </>
-                                      )}
+                                      <Lock className="w-2.5 h-2.5" />
+                                      <span className="font-extrabold text-[8px] uppercase">Unlock</span>
                                     </button>
                                   </div>
                                 )}
@@ -1376,114 +859,54 @@ export function AttendanceTab({
                               const isPresent = attendance?.present;
                               const isExcused = !isPresent && !!isExcusedMap[day.id];
                               const lockInfo = getAttendanceLockInfo(attendance, day);
-                              const isSessionLocked = sessionLocks[day.id]?.isLocked || lockInfo.isLocked;
-
-                              // Derive current display status
-                              const currentStatus: AttendanceStatus = attendance?.status 
-                                ? (attendance.status as AttendanceStatus)
-                                : isPresent 
-                                ? 'Present' 
-                                : isExcused 
-                                ? 'Excused' 
-                                : 'Absent';
+                              const isLocked = lockInfo.isLocked;
 
                               return (
                                 <td
                                   key={day.id}
                                   className={`${densityMode === 'dense' ? 'py-1 px-1.5' : 'p-3'} border-r border-slate-100 text-center min-w-[110px] max-w-[150px] ${
-                                    isSessionLocked ? 'bg-slate-50/40' : ''
+                                    isLocked ? 'bg-slate-50/40' : ''
                                   }`}
                                   onClick={(e) => {
                                     if (appUser?.role === 'student') return;
                                     e.stopPropagation();
-
-                                    const isFacultyLecturer = (appUser?.role === 'lecturer' || appUser?.role === 'teacher');
-                                    const isAdmin = (appUser?.role === 'admin' || appUser?.role === 'superadmin');
-
-                                    if (isSessionLocked) {
-                                      if (isFacultyLecturer) {
-                                        // Lecturers cannot alter locked attendance directly; trigger correction workflow
-                                        setInitialCorrectionStudent(student.name);
-                                        setInitialCorrectionDay(day.id);
-                                        setInitialCorrectionStatus(currentStatus);
-                                        setCorrectionModalOpen(true);
-                                        toast.info(`Record is locked. Opening formal correction request for student "${student.name}".`);
-                                        return;
-                                      } else if (isAdmin && e.shiftKey) {
-                                        // Shift-click opens administrative override dialog
-                                        setOverrideStudent(student.name);
-                                        setOverrideClassDay(day.id);
-                                        setOverrideClassDayName(day.name);
-                                        setOverrideCurrentStatus(currentStatus);
-                                        setAdminOverrideModalOpen(true);
-                                        return;
-                                      }
-                                    }
-
-                                    // Normal active cycle: Present -> Late -> Excused -> Medical -> Absent
-                                    const nextStatus = currentStatus === 'Present' 
-                                      ? 'Late' 
-                                      : currentStatus === 'Late' 
-                                      ? 'Excused' 
-                                      : currentStatus === 'Excused' 
-                                      ? 'Medical / Approved Leave' 
-                                      : currentStatus === 'Medical / Approved Leave' 
-                                      ? 'Absent' 
-                                      : 'Present';
-
                                     handleToggleStudentAttendance(
                                       student.name,
                                       day.id,
-                                      nextStatus === 'Present' || nextStatus === 'Late' ? 'present' : nextStatus === 'Excused' || nextStatus === 'Medical / Approved Leave' ? 'excused' : 'absent'
+                                      isPresent ? 'excused' : isExcused ? 'absent' : 'present'
                                     );
                                   }}
                                   title={
                                     appUser?.role === 'student'
                                       ? undefined
-                                      : isSessionLocked
-                                      ? `🔒 Record Locked. Lecturers click to submit Correction Request; Admins Shift+Click for Override.`
-                                      : `⏱ Editable (${lockInfo.hoursRemaining}h remaining). Click to toggle attendance status.`
+                                      : isLocked
+                                      ? `🔒 Record Locked: Captured >24 hours ago. Cannot be modified.`
+                                      : `⏱ Editable (${lockInfo.hoursRemaining}h left in 24h window). Click to toggle attendance.`
                                   }
                                 >
-                                  {currentStatus === 'Present' ? (
+                                  {isPresent ? (
                                     <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-bold ${
-                                      isSessionLocked ? 'opacity-90 cursor-pointer' : 'hover:bg-emerald-100 cursor-pointer'
+                                      isLocked ? 'opacity-90 cursor-not-allowed' : 'hover:bg-emerald-100 cursor-pointer'
                                     } transition-colors`}>
                                       <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                                       <span>Present</span>
-                                      {isSessionLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
+                                      {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
                                     </div>
-                                  ) : currentStatus === 'Late' ? (
-                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-bold ${
-                                      isSessionLocked ? 'opacity-90 cursor-pointer' : 'hover:bg-blue-100 cursor-pointer'
-                                    } transition-colors`}>
-                                      <Clock className="w-3 h-3 text-blue-600 shrink-0" />
-                                      <span>Late</span>
-                                      {isSessionLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
-                                    </div>
-                                  ) : currentStatus === 'Medical / Approved Leave' ? (
-                                    <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-purple-50 border border-purple-200 text-purple-700 font-bold ${
-                                      isSessionLocked ? 'opacity-90 cursor-pointer' : 'hover:bg-purple-100 cursor-pointer'
-                                    } transition-colors`}>
-                                      <ShieldCheck className="w-3 h-3 text-purple-600 shrink-0" />
-                                      <span>Medical Leave</span>
-                                      {isSessionLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
-                                    </div>
-                                  ) : currentStatus === 'Excused' ? (
+                                  ) : isExcused ? (
                                     <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold ${
-                                      isSessionLocked ? 'opacity-90 cursor-pointer' : 'hover:bg-amber-100 cursor-pointer'
+                                      isLocked ? 'opacity-90 cursor-not-allowed' : 'hover:bg-amber-100 cursor-pointer'
                                     } transition-colors`}>
                                       <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
                                       <span>Excused</span>
-                                      {isSessionLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
+                                      {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
                                     </div>
                                   ) : (
                                     <div className={`inline-flex items-center gap-1 ${densityMode === 'dense' ? 'px-2 py-0.2 text-[9px]' : 'px-2.5 py-0.5 text-[10px]'} rounded-full bg-rose-50/60 border border-rose-200/50 text-rose-400 font-medium ${
-                                      isSessionLocked ? 'opacity-90 cursor-pointer' : 'hover:bg-rose-100 cursor-pointer'
+                                      isLocked ? 'opacity-90 cursor-not-allowed' : 'hover:bg-rose-100 cursor-pointer'
                                     } transition-colors`}>
                                       <XCircle className="w-3 h-3 text-rose-300 shrink-0" />
                                       <span>Absent</span>
-                                      {isSessionLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
+                                      {isLocked && <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0 ml-0.5" />}
                                     </div>
                                   )}
                                 </td>
@@ -1718,50 +1141,6 @@ export function AttendanceTab({
           />
         </div>
       )}
-
-      {/* Modals and Drawers for Attendance Corrections, Approvals, Session Submission, Audit Ledger, and Overrides */}
-      <AttendanceCorrectionModal
-        isOpen={correctionModalOpen}
-        onClose={() => setCorrectionModalOpen(false)}
-        onSubmit={handleSubmitCorrectionRequest}
-        initialStudentName={initialCorrectionStudent}
-        initialClassDayId={initialCorrectionDay}
-        initialCurrentStatus={initialCorrectionStatus}
-        classDays={classDays}
-      />
-
-      <AttendanceApprovalsDrawer
-        isOpen={approvalsModalOpen}
-        onClose={() => setApprovalsModalOpen(false)}
-        requests={correctionRequests}
-        onApprove={handleApproveCorrection}
-        onReject={handleRejectCorrection}
-      />
-
-      <AttendanceAuditHistoryModal
-        isOpen={auditHistoryModalOpen}
-        onClose={() => setAuditHistoryModalOpen(false)}
-        logs={auditLogs}
-      />
-
-      <LecturerSessionSubmissionModal
-        isOpen={sessionSubmissionModalOpen}
-        onClose={() => setSessionSubmissionModalOpen(false)}
-        classDays={classDays}
-        students={uniqueStudents}
-        onSubmit={handleLecturerSubmitSession}
-        initialClassDayId={submissionClassDayId}
-      />
-
-      <AdminOverrideModal
-        isOpen={adminOverrideModalOpen}
-        onClose={() => setAdminOverrideModalOpen(false)}
-        onConfirm={handleConfirmAdminOverride}
-        studentName={overrideStudent}
-        classDayId={overrideClassDay}
-        classDayName={overrideClassDayName}
-        currentStatus={overrideCurrentStatus}
-      />
 
     </Fragment>
   );

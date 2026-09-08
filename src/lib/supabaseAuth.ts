@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 import { AppUser, UserRole, UserCredential, generateStudentUsername, getStudentEmailFromName, isMatchingCredential, mergeUserCredentials, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME, DEFAULT_USER_PASSWORD } from './userAuth';
-import { loadFromSupabase, saveToSupabase } from '../services/dataSyncService';
+import { loadFromSupabase, saveToSupabase } from './supabaseSync';
 import { logger } from './logger';
 import { handleError } from './errorHandler';
 import { isDemoUser } from '../data/guards';

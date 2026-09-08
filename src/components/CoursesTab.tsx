@@ -11,32 +11,23 @@ import {
   GraduationCap, 
   Layers, 
   Calendar, 
-  ChevronRight, 
-  Award, 
-  Sparkles, 
-  Edit3, 
-  Trash2, 
-  X, 
-  MapPin, 
-  Save, 
-  Tag, 
-  Lock, 
-  ShieldAlert, 
-  BrainCircuit, 
-  Filter, 
-  UserCheck, 
-  AlertTriangle 
+  ChevronRight,
+  Award,
+  Sparkles,
+  Edit3,
+  Trash2,
+  X,
+  MapPin,
+  Save,
+  Tag,
+  Lock,
+  ShieldAlert,
+  BrainCircuit,
+  Filter,
+  UserCheck,
+  AlertTriangle
 } from 'lucide-react';
-import { 
-  PageHeader, 
-  LoadingState, 
-  EmptyState, 
-  ErrorState, 
-  PermissionDeniedState, 
-  Button, 
-  StatusPill,
-  showToast 
-} from './UXPrimitives';
+import { EmptyState } from './UXPrimitives';
 import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { Course } from '../types';
 import { UserRole } from '../lib/userAuth';
@@ -65,9 +56,6 @@ interface CoursesTabProps {
   courses?: Course[];
   setCourses?: React.Dispatch<React.SetStateAction<Course[]>>;
   uniqueStudents?: { name: string; email?: string; photoUrl?: string; levelId?: string }[];
-  isLoading?: boolean;
-  error?: string | null;
-  onRetry?: () => void;
 }
 
 export const INITIAL_COURSES: Course[] = [
@@ -168,10 +156,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
   userRole = 'admin',
   courses: propCourses,
   setCourses: propSetCourses,
-  uniqueStudents = [],
-  isLoading = false,
-  error = null,
-  onRetry
+  uniqueStudents = []
 }) => {
   const isStudent = userRole === 'student';
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
@@ -278,205 +263,154 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
     });
   };
 
-  // 1. Error State
-  if (error) {
-    return (
-      <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-4">
-        <PageHeader
-          breadcrumbs={[
-            { label: 'Portal' },
-            { label: 'Courses & Curriculum', active: true }
-          ]}
-          title="Academic Curriculum & Course Management"
-          description="Curriculum catalog, course offerings, syllabus materials, and gradebooks."
-        />
-        <ErrorState
-          title="We could not load course records. Try again."
-          description={error}
-          onRetry={onRetry}
-        />
-      </div>
-    );
-  }
-
-  // 2. Loading State
-  if (isLoading) {
-    return (
-      <div className="space-y-6 pb-12">
-        <PageHeader
-          breadcrumbs={[
-            { label: 'Portal' },
-            { label: 'Courses & Curriculum', active: true }
-          ]}
-          title="Academic Curriculum & Course Management"
-          description="Curriculum catalog, course offerings, syllabus materials, and gradebooks."
-          badge={<StatusPill tone="info" label="Loading curriculum…" />}
-        />
-        <LoadingState
-          label="Loading course offerings and curriculum modules…"
-          description="Retrieving course catalog, assigned faculty lecturers, and enrollment rosters…"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4 sm:space-y-6 pb-12 animate-fadeIn w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 pb-12">
       
-      {/* Standardized Page Header */}
-      <PageHeader
-        breadcrumbs={[
-          { label: 'Portal' },
-          { label: 'Courses & Curriculum', active: true }
-        ]}
-        title="Academic Curriculum & Course Management"
-        description="Distinguishing reusable Master Courses from term-specific Course Offerings with appointed Lecturers, Enrolled Students, Attendance, Assignments, Exams, and Gradebooks."
-        badge={
-          <StatusPill
-            tone="info"
-            icon={<Sparkles className="w-3.5 h-3.5 text-indigo-500" />}
-            label={`${activeYear?.name || '2026'} • ${activeTerm?.name || 'Semester 1'}`}
-          />
-        }
-        action={
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
+      {/* Top Academic Hierarchy Header */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80">
+                Academic Engine
+              </span>
+              <span className="text-xs text-slate-400 font-medium">
+                {activeYear?.name}
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">&bull;</span>
+              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                {activeTerm?.name}
+              </span>
+            </div>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Academic Curriculum & Course Management
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+              Distinguishing reusable <strong>Master Courses</strong> from term-specific <strong>Course Offerings</strong> with appointed Lecturers, Enrolled Students, Attendance, Assignments, Exams, and Gradebooks.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
               onClick={() => setShowFlashcards(true)}
-              leftIcon={<BrainCircuit className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors"
             >
+              <BrainCircuit className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Scripture Flashcards
-            </Button>
+            </button>
 
             {isTeacherOrAdmin && (
-              <Button
-                variant="primary"
-                size="sm"
+              <button
                 onClick={() => {
                   setPreselectedCourseForSchedule(null);
                   setShowScheduleModal(true);
                 }}
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all"
               >
-                Schedule Offering
-              </Button>
+                <Plus className="w-4 h-4" />
+                Schedule Course Offering
+              </button>
             )}
           </div>
-        }
-      />
-
-      {/* View Mode Navigation Tabs */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 shadow-xs flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-lg overflow-x-auto no-scrollbar max-w-full">
-          <button
-            type="button"
-            onClick={() => setActiveTabMode('offerings')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabMode === 'offerings'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Course Offerings ({courseOfferings.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabMode('catalog')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabMode === 'catalog'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Master Curriculum Catalog ({masterCourses.length} Modules)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabMode('calendar')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabMode === 'calendar'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Academic Calendar</span>
-          </button>
         </div>
 
-        {/* Term Filter Dropdown when in Offerings view */}
-        {activeTabMode === 'offerings' && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Viewing Term:</span>
-            <select
-              value={selectedTermId}
-              onChange={(e) => setSelectedTermId(e.target.value)}
-              aria-label="Filter courses by academic term"
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+        {/* View Mode Switcher */}
+        <div className="flex items-center justify-between gap-4 mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveTabMode('offerings')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTabMode === 'offerings'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
             >
-              <option value="all">All Semesters &amp; Terms</option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              <GraduationCap className="w-4 h-4" />
+              Course Offerings ({courseOfferings.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTabMode('catalog')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTabMode === 'catalog'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              Master Curriculum Catalog (6 Modules)
+            </button>
+
+            <button
+              onClick={() => setActiveTabMode('calendar')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTabMode === 'calendar'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Academic Calendar & Terms
+            </button>
           </div>
-        )}
+
+          {/* Term Filter dropdown when in Offerings view */}
+          {activeTabMode === 'offerings' && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Viewing Term:</span>
+              <select
+                value={selectedTermId}
+                onChange={(e) => setSelectedTermId(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Semesters & Terms</option>
+                {terms.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* VIEW 1: COURSE OFFERINGS */}
+      {/* VIEW 1: COURSE OFFERINGS (The Heart of the Engine) */}
       {activeTabMode === 'offerings' && (
         <div className="space-y-4">
           
           {/* Search bar */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
               type="text"
               placeholder="Search scheduled course offerings, lecturers, or sections..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-8 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xs"
+              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
 
           {filteredOfferings.length === 0 ? (
-            <EmptyState
-              icon={<GraduationCap className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />}
-              title="No course offerings scheduled for this term."
-              description="Schedule an offering from the Master Curriculum Catalog to appoint a Lecturer, enroll candidates, and begin tracking attendance and grades."
-              action={
-                isTeacherOrAdmin ? (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setShowScheduleModal(true)}
-                    leftIcon={<Plus className="w-3.5 h-3.5" />}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  >
-                    Schedule Offering
-                  </Button>
-                ) : undefined
-              }
-            />
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-3">
+              <GraduationCap className="w-10 h-10 mx-auto text-slate-400" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                No course offerings scheduled for this term
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Schedule an offering from the Master Curriculum Catalog to appoint a Lecturer, enroll students, and begin tracking attendance and grades.
+              </p>
+              {isTeacherOrAdmin && (
+                <button
+                  onClick={() => setShowScheduleModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 mt-2"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Schedule Offering
+                </button>
+              )}
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredOfferings.map((offering) => {
                 const atRiskEnrolled = offering.enrolledStudents.filter(
                   s => s.standing === 'at_risk' || s.attendanceRate < 75
@@ -485,19 +419,21 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                 return (
                   <div
                     key={offering.id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col justify-between group"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:border-indigo-400 dark:hover:border-indigo-700 transition-all flex flex-col justify-between group"
                   >
                     <div>
                       {/* Top Badges */}
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <StatusPill tone="info" label={offering.courseCode} />
-                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80">
+                          {offering.courseCode}
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                           {offering.termName}
                         </span>
                       </div>
 
                       {/* Course Title */}
-                      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
                         {offering.courseTitle}
                       </h3>
 
@@ -506,52 +442,55 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
                       </p>
 
                       {/* Lecturer Card snippet */}
-                      <div className="mt-3 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
+                      <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
                         <img
                           src={offering.lecturer.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150'}
                           alt={offering.lecturer.name}
-                          className="w-8 h-8 rounded-full object-cover border border-indigo-200 dark:border-indigo-800 shrink-0"
+                          className="w-10 h-10 rounded-full object-cover border border-indigo-200 dark:border-indigo-800 flex-shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <span className="text-[9px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
                             Appointed Lecturer
                           </span>
                           <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                             {offering.lecturer.name}
                           </h4>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {offering.lecturer.title}
+                          </p>
                         </div>
                       </div>
 
                       {/* Schedule & Location */}
-                      <div className="mt-2.5 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="mt-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
                         <div className="flex items-center gap-1.5 truncate">
-                          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate text-[11px]">{offering.scheduleDays}</span>
+                          <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{offering.scheduleDays}</span>
                         </div>
                         <div className="flex items-center gap-1.5 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate text-[11px]">{offering.location}</span>
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{offering.location}</span>
                         </div>
                       </div>
 
                       {/* Facet Summary stats */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-1.5 text-center">
-                        <div className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-800/40">
-                          <span className="text-[9px] text-slate-400 block">Enrolled</span>
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center">
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                          <span className="text-[10px] text-slate-400 block">Enrolled</span>
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {offering.enrolledStudents.length}/{offering.capacity}
+                            {offering.enrolledStudents.length} / {offering.capacity}
                           </span>
                         </div>
 
-                        <div className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-800/40">
-                          <span className="text-[9px] text-slate-400 block">Sessions</span>
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                          <span className="text-[10px] text-slate-400 block">Sessions</span>
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                             {offering.attendance.length}
                           </span>
                         </div>
 
-                        <div className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-800/40">
-                          <span className="text-[9px] text-slate-400 block">Coursework</span>
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                          <span className="text-[10px] text-slate-400 block">Coursework</span>
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                             {offering.assignments.length + offering.exams.length}
                           </span>
@@ -560,24 +499,22 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
 
                       {/* At-risk student badge if any */}
                       {atRiskEnrolled > 0 && (
-                        <div className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <div className="mt-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
                           <span>{atRiskEnrolled} student(s) below 75% attendance threshold</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Action button */}
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-                      <Button
-                        variant="primary"
-                        size="sm"
+                    {/* Action button: Open Deep Dive Workspace */}
+                    <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <button
                         onClick={() => setSelectedOffering(offering)}
-                        rightIcon={<ChevronRight className="w-3.5 h-3.5" />}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 shadow-sm transition-all"
                       >
-                        Course Workspace
-                      </Button>
+                        <span>Open Course Offering Workspace</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                   </div>
@@ -589,7 +526,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
         </div>
       )}
 
-      {/* VIEW 2: MASTER CURRICULUM CATALOG */}
+      {/* VIEW 2: MASTER CURRICULUM CATALOG (6 Core Modules) */}
       {activeTabMode === 'catalog' && (
         <MasterCourseCatalogView
           masterCourses={masterCourses}
@@ -618,7 +555,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
         />
       )}
 
-      {/* Course Offering Detail Deep-Dive Modal */}
+      {/* Course Offering Detail Deep-Dive Modal (The 6 Facets) */}
       {selectedOffering && (
         <CourseOfferingDetailModal
           offering={selectedOffering}
@@ -648,9 +585,8 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
             <button
-              type="button"
               onClick={() => setShowFlashcards(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <X className="w-5 h-5" />
             </button>

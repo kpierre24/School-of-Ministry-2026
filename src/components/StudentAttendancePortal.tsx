@@ -7,7 +7,6 @@ import {
   FileText, 
   Trophy, 
   AlertCircle, 
-  AlertTriangle,
   GraduationCap, 
   Sparkles, 
   Calendar,
@@ -34,14 +33,9 @@ import {
   ShieldCheck,
   QrCode,
   Zap,
-  Key,
-  FileEdit,
-  Info
+  Key
 } from 'lucide-react';
 import { downloadICSFile } from '../lib/calendarExport';
-import { attendanceService } from '../services/attendanceService';
-import { AttendanceCorrectionModal } from '../features/attendance/AttendanceCorrectionModal';
-import { AttendanceStatus, AttendanceCorrectionRequest } from '../types/attendance';
 
 export type StudentPortalSummary = {
   name: string;
@@ -99,50 +93,6 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
     return saved ? JSON.parse(saved) : {};
   });
   const [excuseSubmittedToast, setExcuseSubmittedToast] = useState(false);
-
-  // Formal Attendance Correction / Appeal Modal state
-  const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
-  const [correctionClassDayId, setCorrectionClassDayId] = useState('');
-  const [correctionCurrentStatus, setCorrectionCurrentStatus] = useState<AttendanceStatus>('Absent');
-  const [toastMessage, setToastMessage] = useState('');
-
-  const handleOpenCorrection = (dayId?: string, currentStatus?: AttendanceStatus) => {
-    setCorrectionClassDayId(dayId || (classDays.length > 0 ? classDays[0].id : ''));
-    setCorrectionCurrentStatus(currentStatus || 'Absent');
-    setCorrectionModalOpen(true);
-  };
-
-  const handleStudentSubmitCorrection = async (payload: {
-    studentName: string;
-    classDayId: string;
-    classDayName: string;
-    currentStatus: AttendanceStatus;
-    requestedStatus: AttendanceStatus;
-    reason: string;
-    evidenceUrl?: string;
-  }) => {
-    try {
-      const newReq = await attendanceService.submitCorrectionRequest({
-        ...payload,
-        studentName: safeName,
-        submittedBy: safeName,
-        submittedByRole: 'student'
-      });
-
-      // Update local storage backup
-      const existingRaw = localStorage.getItem('hteim_attendance_correction_requests');
-      const existingList = existingRaw ? JSON.parse(existingRaw) : [];
-      localStorage.setItem('hteim_attendance_correction_requests', JSON.stringify([newReq, ...existingList]));
-
-      setToastMessage('Attendance correction request submitted to faculty and administrators for review.');
-      setExcuseSubmittedToast(true);
-      setTimeout(() => setExcuseSubmittedToast(false), 4000);
-    } catch (err: any) {
-      setToastMessage('Attendance correction request logged locally for review.');
-      setExcuseSubmittedToast(true);
-      setTimeout(() => setExcuseSubmittedToast(false), 4000);
-    }
-  };
 
   // Tab Segmented Control state
   const [activePortalTab, setActivePortalTab] = useState<'overview' | 'log' | 'modules'>('overview');
@@ -388,50 +338,11 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
         <div className="p-3 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-between gap-2 animate-bounce">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-            <span>{toastMessage || 'Absence excuse submitted successfully to HTEIM Faculty!'}</span>
+            <span>Absence excuse submitted successfully to HTEIM Faculty!</span>
           </div>
           <button onClick={() => setExcuseSubmittedToast(false)} className="hover:opacity-80">
             <X className="w-4 h-4" />
           </button>
-        </div>
-      )}
-
-      {/* At-Risk Attendance Warning Banner (< 75% Requirement) */}
-      {safeRate < atRiskThreshold && (
-        <div className={`p-4 rounded-xl border flex items-start gap-3.5 shadow-xs ${
-          safeRate <= 50 
-            ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200' 
-            : 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-        }`}>
-          <div className={`p-2 rounded-lg shrink-0 ${safeRate <= 50 ? 'bg-rose-100 text-rose-600 dark:bg-rose-900' : 'bg-amber-100 text-amber-600 dark:bg-amber-900'}`}>
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-          <div className="space-y-1 text-xs flex-1">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h4 className="font-extrabold text-sm tracking-tight">
-                {safeRate <= 50 ? 'Critical Attendance Warning' : 'At-Risk Attendance Notification'}
-              </h4>
-              <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[11px] bg-white/80 dark:bg-slate-900/80 border border-current">
-                Current: {Math.round(safeRate)}% (Required: &ge; {atRiskThreshold}%)
-              </span>
-            </div>
-            <p className="leading-relaxed font-medium">
-              HTEIM School of Ministry requires a minimum <strong>{atRiskThreshold}% attendance rate</strong> for academic standing and ordination graduation eligibility. If any of your absences were due to approved ministry missions, illness, or bereavement, please submit an official correction request with justification.
-            </p>
-            <div className="pt-1.5 flex items-center gap-2">
-              <button
-                onClick={() => handleOpenCorrection()}
-                className={`px-3 py-1 rounded-lg font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
-                  safeRate <= 50
-                    ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                    : 'bg-amber-600 hover:bg-amber-700 text-white'
-                }`}
-              >
-                <FileEdit className="w-3.5 h-3.5" />
-                <span>Submit Attendance Correction / Appeal</span>
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -902,27 +813,18 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 </div>
 
                 {!isPresent && (
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2 text-[11px] flex-wrap">
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2 text-[11px]">
                     {excuse ? (
                       <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
                         <MessageSquare className="w-3 h-3" /> Excuse Note: {excuse.reason}
                       </span>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setExcuseModalDay(day)}
-                          className="min-h-11 text-left text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Send className="w-3 h-3" /> Quick Excuse
-                        </button>
-                        <span>•</span>
-                        <button
-                          onClick={() => handleOpenCorrection(day.id, 'Absent')}
-                          className="min-h-11 text-left text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <FileEdit className="w-3 h-3" /> Formal Correction
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setExcuseModalDay(day)}
+                        className="min-h-11 text-left text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Send className="w-3 h-3" /> Submit Absence Reason
+                      </button>
                     )}
                   </div>
                 )}
@@ -939,7 +841,7 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                 <th className="p-3.5 rounded-l-xl">Class Day / Session</th>
                 <th className="p-3.5">Attendance Status</th>
                 <th className="p-3.5">Attendance Date / Time</th>
-                <th className="p-3.5 rounded-r-xl text-right">Faculty Actions & Correction</th>
+                <th className="p-3.5 rounded-r-xl text-right">Faculty Actions / Excuse</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -975,30 +877,20 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
                       )}
                     </td>
                     <td className="p-3.5 text-right font-mono">
-                      <div className="flex items-center justify-end gap-2">
-                        {!isPresent && (
-                          excuse ? (
-                            <span className="text-amber-600 dark:text-amber-400 font-bold text-[11px] flex items-center gap-1">
-                              <MessageSquare className="w-3.5 h-3.5" /> {excuse.reason}
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => setExcuseModalDay(day)}
-                              className="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-lg text-[11px] font-extrabold border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
-                            >
-                              Quick Reason
-                            </button>
-                          )
-                        )}
-                        <button
-                          onClick={() => handleOpenCorrection(day.id, isPresent ? 'Present' : 'Absent')}
-                          className="px-2 py-1 bg-amber-50 dark:bg-amber-950/80 hover:bg-amber-100 text-amber-800 dark:text-amber-300 rounded-lg text-[11px] font-extrabold border border-amber-200 dark:border-amber-800 transition-all cursor-pointer flex items-center gap-1"
-                          title="Submit a formal attendance correction request with justification/evidence to faculty"
-                        >
-                          <FileEdit className="w-3 h-3" />
-                          <span>Correction</span>
-                        </button>
-                      </div>
+                      {!isPresent && (
+                        excuse ? (
+                          <span className="text-amber-600 dark:text-amber-400 font-bold text-[11px] flex items-center justify-end gap-1">
+                            <MessageSquare className="w-3.5 h-3.5" /> {excuse.reason}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setExcuseModalDay(day)}
+                            className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-lg text-[11px] font-extrabold border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+                          >
+                            Submit Reason
+                          </button>
+                        )
+                      )}
                     </td>
                   </tr>
                 );
@@ -1079,17 +971,6 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
           </div>
         </div>
       )}
-
-      {/* Formal Attendance Correction / Appeal Modal */}
-      <AttendanceCorrectionModal
-        isOpen={correctionModalOpen}
-        onClose={() => setCorrectionModalOpen(false)}
-        onSubmit={handleStudentSubmitCorrection}
-        initialStudentName={safeName}
-        initialClassDayId={correctionClassDayId}
-        initialCurrentStatus={correctionCurrentStatus}
-        classDays={classDays}
-      />
 
     </div>
   );
