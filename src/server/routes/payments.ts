@@ -19,8 +19,9 @@ paymentsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      const studentId = (req.query.studentId as string) || undefined;
       const studentName = (req.query.studentName as string) || undefined;
-      const result = await financeService.getInvoices(studentName, user);
+      const result = await financeService.getInvoices({ studentId, studentName }, user);
 
       return res.status(200).json({
         invoices: result.invoices,
@@ -48,8 +49,8 @@ paymentsRouter.post(
       const { invoice } = req.body;
       const actorUserId = req.user?.email || "finance";
 
-      if (!invoice || !invoice.studentName || !invoice.totalTuition) {
-        return res.status(400).json({ error: "studentName and totalTuition are required" });
+      if (!invoice || (!invoice.studentName && !invoice.studentId) || !invoice.totalTuition) {
+        return res.status(400).json({ error: "studentId or studentName, and totalTuition are required" });
       }
 
       const result = await financeService.saveInvoice(invoice, actorUserId);
@@ -73,9 +74,10 @@ paymentsRouter.get(
     try {
       const user = req.user!;
       const invoiceId = (req.query.invoiceId as string) || undefined;
+      const studentId = (req.query.studentId as string) || undefined;
       const studentName = (req.query.studentName as string) || undefined;
 
-      const result = await financeService.getTransactions({ invoiceId, studentName }, user);
+      const result = await financeService.getTransactions({ invoiceId, studentId, studentName }, user);
 
       return res.status(200).json({
         transactions: result.transactions,
@@ -102,8 +104,8 @@ paymentsRouter.post(
       const { transaction } = req.body;
       const actorUserId = req.user?.email || "finance";
 
-      if (!transaction || !transaction.studentName || !transaction.amount) {
-        return res.status(400).json({ error: "studentName and amount are required" });
+      if (!transaction || (!transaction.studentName && !transaction.studentId) || !transaction.amount) {
+        return res.status(400).json({ error: "studentId or studentName, and amount are required" });
       }
 
       const result = await financeService.recordPayment(transaction, actorUserId);

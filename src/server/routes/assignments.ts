@@ -43,10 +43,11 @@ assignmentsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      const studentId = (req.query.studentId as string) || undefined;
       const studentName = (req.query.studentName as string) || undefined;
       const assignmentId = (req.query.assignmentId as string) || undefined;
 
-      const result = await assignmentsService.getSubmissions({ studentName, assignmentId }, user);
+      const result = await assignmentsService.getSubmissions({ studentId, studentName, assignmentId }, user);
 
       return res.status(200).json({
         submissions: result.submissions,
@@ -80,8 +81,8 @@ assignmentsRouter.post(
       const { submission } = req.body;
       const actorUserId = req.user?.email || "student";
 
-      if (!submission || !submission.studentName || !submission.assignmentId) {
-        return res.status(400).json({ error: "studentName and assignmentId are required" });
+      if (!submission || (!submission.studentName && !submission.studentId) || !submission.assignmentId) {
+        return res.status(400).json({ error: "studentId or studentName, and assignmentId are required" });
       }
 
       const result = await assignmentsService.submitAssignment(submission, actorUserId);
@@ -104,15 +105,15 @@ assignmentsRouter.post(
   requirePermission(["assignments:grade", "grades:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId, score, feedback, rubricScores, studentName } = req.body;
+      const { submissionId, studentId, score, feedback, rubricScores, studentName } = req.body;
       const actorUserId = req.user?.email || "teacher";
 
-      if (!submissionId && !studentName) {
-        return res.status(400).json({ error: "submissionId or studentName is required" });
+      if (!submissionId && !studentId && !studentName) {
+        return res.status(400).json({ error: "submissionId, studentId, or studentName is required" });
       }
 
       const result = await assignmentsService.gradeSubmission(
-        { submissionId, studentName, score: Number(score), feedback, rubricScores },
+        { submissionId, studentId, studentName, score: Number(score), feedback, rubricScores },
         actorUserId
       );
 

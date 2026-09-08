@@ -58,8 +58,8 @@ attendanceRouter.post(
       const { studentName, studentId, date, status, notes, studentEmail } = req.body;
       const actorUserId = req.user?.email || "teacher";
 
-      if (!studentName || !date) {
-        return res.status(400).json({ error: "studentName and date are required" });
+      if ((!studentName && !studentId) || !date) {
+        return res.status(400).json({ error: "studentId or studentName, and date are required" });
       }
 
       const result = await attendanceService.recordCheckin(
@@ -161,15 +161,15 @@ attendanceRouter.post(
   }),
   async (req: Request, res: Response) => {
     try {
-      const { studentName, date, reason, documentUrl } = req.body;
+      const { studentName, studentId, date, reason, documentUrl } = req.body;
       const actorUserId = req.user?.email || "student";
 
-      if (!studentName || !date) {
-        return res.status(400).json({ error: "studentName and date are required" });
+      if ((!studentName && !studentId) || !date) {
+        return res.status(400).json({ error: "studentId or studentName, and date are required" });
       }
 
       const result = await attendanceService.recordExcuse(
-        { studentName, date, reason, documentUrl },
+        { studentName, studentId, date, reason, documentUrl },
         actorUserId
       );
 

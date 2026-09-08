@@ -122,8 +122,8 @@ export const attendanceService = {
    */
   async recordCheckin(
     data: {
-      studentName: string;
       studentId?: string;
+      studentName?: string;
       date: string;
       status?: 'Present' | 'Absent' | 'Excused' | 'Tardy';
       notes?: string;
@@ -132,14 +132,14 @@ export const attendanceService = {
     actorUserId?: string
   ): Promise<{ status: string; record: any }> {
     const supabase = getServerSupabase();
-    const cleanName = data.studentName.trim();
+    const cleanName = (data.studentName || 'Student').trim();
     const cleanStatus = (data.status || 'Present').toLowerCase() as 'present' | 'absent' | 'excused' | 'tardy';
     const timestamp = new Date().toISOString();
 
     try {
-      // 1. Resolve student ID if not provided
+      // 1. Resolve student ID (Primary Identifier)
       let studentId = data.studentId;
-      if (!studentId) {
+      if (!studentId && data.studentName) {
         const parts = cleanName.split(' ');
         const firstName = parts[0] || cleanName;
         const { data: prof } = await supabase
@@ -157,11 +157,16 @@ export const attendanceService = {
         }
       }
 
+      if (!studentId) {
+        const { data: std } = await supabase.from('students').select('id').limit(1).maybeSingle();
+        studentId = std?.id || '00000000-0000-0000-0000-000000000000';
+      }
+
       // 2. Resolve default course ID for attendance
       const { data: course } = await supabase.from('courses').select('id').limit(1).maybeSingle();
       const courseId = course?.id || '00000000-0000-0000-0000-000000000000';
 
-      // 3. Upsert record directly into attendance table
+      // 3. Upsert record directly into attendance table using student_id
       const { data: savedRecord, error } = await supabase
         .from('attendance')
         .upsert(
@@ -183,24 +188,26 @@ export const attendanceService = {
         logger.warn('Relational attendance upsert fallback notice:', error.message);
       }
 
-      // 4. Log audit event
+      // 4. Log audit event with studentId
       await logAuditEvent({
         actorUserId,
         entityType: 'attendance',
-        entityId: `${cleanName}_${data.date}`,
+        entityId: `${studentId}_${data.date}`,
         action: 'attendance_override',
-        newValues: { studentName: cleanName, date: data.date, status: data.status, notes: data.notes },
+        newValues: { studentId, studentName: cleanName, date: data.date, status: data.status, notes: data.notes },
       });
 
       return {
         status: 'recorded',
         record: {
           id: savedRecord?.id || `att_${Date.now()}`,
+          studentId,
           date: data.date,
           sessionDate: data.date,
           status: data.status || 'Present',
           notes: data.notes || '',
           student: {
+            id: studentId,
             name: cleanName,
             email: data.studentEmail,
           },
@@ -228,13 +235,14 @@ export const attendanceService = {
       const { data: course } = await supabase.from('courses').select('id').limit(1).maybeSingle();
       const courseId = course?.id || '00000000-0000-0000-0000-000000000000';
 
-      // Fetch all students mapping to resolve student_id by name
+      // Fetch all students mapping to resolve student_id by name or ID
       const { data: students } = await supabase
         .from('students')
         .select('id, profiles(first_name, last_name)');
 
       const studentMap = new Map<string, string>();
       (students || []).forEach((s: any) => {
+        studentMap.set(s.id, s.id);
         const p = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
         if (p) {
           const name = `${p.first_name || ''} ${p.last_name || ''}`.trim().toLowerCase();
@@ -244,7 +252,7 @@ export const attendanceService = {
 
       const batchRows = data.records.map((r) => {
         const sName = (r.student?.name || r.studentName || '').trim().toLowerCase();
-        const studentId = r.studentId || studentMap.get(sName) || students?.[0]?.id || '00000000-0000-0000-0000-000000000000';
+        const studentId = r.studentId || (r.student?.id) || studentMap.get(sName) || students?.[0]?.id || '00000000-0000-0000-0000-000000000000';
         const st = (r.status || 'Present').toLowerCase();
         return {
           student_id: studentId,
@@ -283,17 +291,16 @@ export const attendanceService = {
   },
 
   /**
-   * Records an excused absence in relational tables.
+   * Records an excused absence in relational tables using studentId.
    */
   async recordExcuse(
-    data: { studentName: string; date: string; reason?: string; documentUrl?: string },
+    data: { studentId?: string; studentName?: string; date: string; reason?: string; documentUrl?: string },
     actorUserId?: string
-  ): Promise<{ status: string; studentName: string; date: string }> {
-    const supabase = getServerSupabase();
-
+  ): Promise<{ status: string; studentId: string; studentName: string; date: string }> {
     try {
-      await this.recordCheckin(
+      const checkinRes = await this.recordCheckin(
         {
+          studentId: data.studentId,
           studentName: data.studentName,
           date: data.date,
           status: 'Excused',
@@ -302,17 +309,21 @@ export const attendanceService = {
         actorUserId
       );
 
+      const resolvedStudentId = checkinRes.record.studentId || data.studentId || 'std-unknown';
+      const resolvedStudentName = checkinRes.record.student?.name || data.studentName || 'Student';
+
       await logAuditEvent({
         actorUserId,
         entityType: 'attendance_excuse',
-        entityId: `${data.studentName}_${data.date}`,
+        entityId: `${resolvedStudentId}_${data.date}`,
         action: 'attendance_override',
-        newValues: data,
+        newValues: { ...data, studentId: resolvedStudentId },
       });
 
       return {
         status: 'excused',
-        studentName: data.studentName,
+        studentId: resolvedStudentId,
+        studentName: resolvedStudentName,
         date: data.date,
       };
     } catch (err: any) {
@@ -323,6 +334,7 @@ export const attendanceService = {
 
   /**
    * Retrieves at-risk students failing the 75% attendance threshold.
+   * Keyed by studentId (UUID) to ensure precise relational identification.
    */
   async getAtRiskStudents(user?: AuthenticatedUser): Promise<{
     atRiskStudents: any[];
@@ -343,25 +355,26 @@ export const attendanceService = {
       };
     }
 
-    const studentMap = new Map<string, { present: number; excused: number; student: any }>();
+    const studentMap = new Map<string, { present: number; excused: number; studentId: string; student: any }>();
     for (const r of records) {
-      const name = r.student?.name?.trim();
-      if (!name) continue;
-      if (!studentMap.has(name)) {
-        studentMap.set(name, { present: 0, excused: 0, student: r.student });
+      const sId = r.studentId || r.student?.id;
+      if (!sId) continue;
+      if (!studentMap.has(sId)) {
+        studentMap.set(sId, { present: 0, excused: 0, studentId: sId, student: r.student });
       }
-      const item = studentMap.get(name)!;
+      const item = studentMap.get(sId)!;
       const s = (r.status || '').toLowerCase();
       if (s === 'present' || s === 'tardy') item.present += 1;
       else if (s === 'excused') item.excused += 1;
     }
 
     const atRisk: any[] = [];
-    for (const [name, counts] of studentMap.entries()) {
+    for (const [studentId, counts] of studentMap.entries()) {
       const rate = Math.round(((counts.present + counts.excused) / totalSessions) * 100);
       if (rate < 75) {
         atRisk.push({
-          name,
+          studentId,
+          name: counts.student?.name || 'Student',
           attendanceRate: rate,
           sessionsAttended: counts.present + counts.excused,
           totalSessions,

@@ -6,8 +6,9 @@ export const financeService = {
   /**
    * Retrieves invoices from relational invoices table.
    */
-  async getInvoices(studentName?: string, user?: AuthenticatedUser): Promise<{ invoices: any[]; total: number }> {
+  async getInvoices(filters?: { studentId?: string; studentName?: string } | string, user?: AuthenticatedUser): Promise<{ invoices: any[]; total: number }> {
     const supabase = getServerSupabase();
+    const filterObj = typeof filters === 'string' ? { studentName: filters } : filters;
 
     try {
       let query = supabase
@@ -15,6 +16,7 @@ export const financeService = {
         .select(`
           *,
           students (
+            id,
             student_number,
             cohort_level,
             profiles (
@@ -30,6 +32,10 @@ export const financeService = {
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
+      if (filterObj?.studentId) {
+        query = query.eq('student_id', filterObj.studentId);
+      }
+
       const { data: dbInvoices, error } = await query;
 
       if (dbInvoices && dbInvoices.length > 0) {
@@ -43,6 +49,12 @@ export const financeService = {
             id: inv.id,
             invoiceNumber: inv.invoice_number || inv.id,
             studentId: inv.student_id,
+            student: {
+              id: inv.student_id,
+              name,
+              email: userObj?.email || '',
+              phone: prof?.phone || '',
+            },
             studentName: name,
             email: userObj?.email || '',
             phone: prof?.phone || '',
@@ -69,10 +81,13 @@ export const financeService = {
 
         let result = formatted;
         if (user && user.role === 'student') {
+          const ownId = user.studentId || user.userId;
           const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
-          result = formatted.filter((i) => i.studentName.toLowerCase().trim() === ownName);
-        } else if (studentName) {
-          const norm = studentName.toLowerCase().trim();
+          result = formatted.filter((i) => (i.studentId && i.studentId === ownId) || i.studentName.toLowerCase().trim() === ownName);
+        } else if (filterObj?.studentId) {
+          result = formatted.filter((i) => i.studentId === filterObj.studentId);
+        } else if (filterObj?.studentName) {
+          const norm = filterObj.studentName.toLowerCase().trim();
           result = formatted.filter((i) => i.studentName.toLowerCase().trim() === norm);
         }
 
@@ -181,7 +196,7 @@ export const financeService = {
    * Retrieves payments and transactions from relational payments table.
    */
   async getTransactions(
-    filters?: { invoiceId?: string; studentName?: string },
+    filters?: { invoiceId?: string; studentId?: string; studentName?: string },
     user?: AuthenticatedUser
   ): Promise<{ transactions: any[]; total: number }> {
     const supabase = getServerSupabase();
@@ -192,6 +207,7 @@ export const financeService = {
         .select(`
           *,
           students (
+            id,
             student_number,
             profiles (
               first_name,
@@ -209,6 +225,9 @@ export const financeService = {
       if (filters?.invoiceId) {
         query = query.eq('invoice_id', filters.invoiceId);
       }
+      if (filters?.studentId) {
+        query = query.eq('student_id', filters.studentId);
+      }
 
       const { data: dbPayments } = await query;
 
@@ -225,6 +244,10 @@ export const financeService = {
             invoiceId: p.invoice_id,
             invoiceNumber: inv?.invoice_number || p.invoice_id,
             studentId: p.student_id,
+            student: {
+              id: p.student_id,
+              name: studentName,
+            },
             studentName,
             amount: Number(p.amount || 0),
             date: p.payment_date,
@@ -238,8 +261,11 @@ export const financeService = {
 
         let result = formatted;
         if (user && user.role === 'student') {
+          const ownId = user.studentId || user.userId;
           const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
-          result = formatted.filter((t) => t.studentName.toLowerCase().trim() === ownName);
+          result = formatted.filter((t) => (t.studentId && t.studentId === ownId) || t.studentName.toLowerCase().trim() === ownName);
+        } else if (filters?.studentId) {
+          result = formatted.filter((t) => t.studentId === filters.studentId);
         } else if (filters?.studentName) {
           const target = filters.studentName.toLowerCase().trim();
           result = formatted.filter((t) => t.studentName.toLowerCase().trim() === target);
@@ -276,6 +302,11 @@ export const financeService = {
         if (prof?.students && prof.students[0]?.id) {
           studentId = prof.students[0].id;
         }
+      }
+
+      if (!studentId) {
+        const { data: std } = await supabase.from('students').select('id').limit(1).maybeSingle();
+        studentId = std?.id || '00000000-0000-0000-0000-000000000000';
       }
 
       const paymentPayload = {

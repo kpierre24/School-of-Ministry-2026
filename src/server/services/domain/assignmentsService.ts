@@ -34,7 +34,7 @@ export const assignmentsService = {
    * Retrieves submissions joined with grades and rubric evaluations from relational tables.
    */
   async getSubmissions(
-    filters?: { studentName?: string; assignmentId?: string },
+    filters?: { studentId?: string; studentName?: string; assignmentId?: string },
     user?: AuthenticatedUser
   ): Promise<{ submissions: any[]; rubricScores: Record<string, any>; count: number }> {
     const supabase = getServerSupabase();
@@ -60,10 +60,12 @@ export const assignmentsService = {
             graded_by_user_id
           ),
           students (
+            id,
             student_number,
             profiles (
               first_name,
-              last_name
+              last_name,
+              avatar_url
             )
           ),
           assignments (
@@ -76,6 +78,10 @@ export const assignmentsService = {
 
       if (filters?.assignmentId) {
         query = query.eq('assignment_id', filters.assignmentId);
+      }
+
+      if (filters?.studentId) {
+        query = query.eq('student_id', filters.studentId);
       }
 
       const { data: dbSubmissions } = await query;
@@ -95,6 +101,11 @@ export const assignmentsService = {
             assignmentId: s.assignment_id,
             assignmentTitle: asg?.title || 'Assignment',
             studentId: s.student_id,
+            student: {
+              id: s.student_id,
+              name: studentName,
+              photoUrl: p?.avatar_url || null,
+            },
             studentName,
             status: s.status,
             submittedAt: s.submitted_at,
@@ -111,8 +122,11 @@ export const assignmentsService = {
 
         let result = formatted;
         if (user && user.role === 'student') {
+          const ownId = user.studentId || user.userId;
           const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
-          result = formatted.filter((sub) => sub.studentName.toLowerCase().trim() === ownName);
+          result = formatted.filter((sub) => (sub.studentId && sub.studentId === ownId) || sub.studentName.toLowerCase().trim() === ownName);
+        } else if (filters?.studentId) {
+          result = formatted.filter((sub) => sub.studentId === filters.studentId);
         } else if (filters?.studentName) {
           const target = filters.studentName.toLowerCase().trim();
           result = formatted.filter((sub) => sub.studentName.toLowerCase().trim() === target);
@@ -139,7 +153,7 @@ export const assignmentsService = {
     const timestamp = new Date().toISOString();
 
     try {
-      // Resolve student ID
+      // Resolve student ID (Primary Identifier)
       let studentId = submission.studentId;
       if (!studentId && submission.studentName) {
         const parts = submission.studentName.trim().split(' ');
@@ -151,6 +165,11 @@ export const assignmentsService = {
         if (prof?.students && prof.students[0]?.id) {
           studentId = prof.students[0].id;
         }
+      }
+
+      if (!studentId) {
+        const { data: std } = await supabase.from('students').select('id').limit(1).maybeSingle();
+        studentId = std?.id || '00000000-0000-0000-0000-000000000000';
       }
 
       const submissionPayload = {
@@ -182,6 +201,7 @@ export const assignmentsService = {
         action: 'create',
         newValues: {
           assignmentId: submission.assignmentId,
+          studentId,
           studentName: submission.studentName,
           submittedAt: timestamp,
         },
@@ -192,6 +212,7 @@ export const assignmentsService = {
         submission: {
           ...submission,
           id: saved?.id || submissionPayload.id,
+          studentId,
           submittedAt: timestamp,
         },
       };
@@ -205,7 +226,7 @@ export const assignmentsService = {
    * Records instructor grading and feedback directly in relational grades table.
    */
   async gradeSubmission(
-    data: { submissionId?: string; studentName?: string; score: number; feedback?: string; rubricScores?: any },
+    data: { submissionId?: string; studentId?: string; studentName?: string; score: number; feedback?: string; rubricScores?: any },
     actorUserId?: string
   ): Promise<{ status: string; score: number; feedback?: string }> {
     const supabase = getServerSupabase();
@@ -242,9 +263,9 @@ export const assignmentsService = {
       await logAuditEvent({
         actorUserId,
         entityType: 'grade',
-        entityId: data.submissionId || data.studentName || 'grade',
+        entityId: data.submissionId || data.studentId || 'grade',
         action: 'grade_override',
-        newValues: { score: data.score, feedback: data.feedback, rubricScores: data.rubricScores },
+        newValues: { score: data.score, feedback: data.feedback, rubricScores: data.rubricScores, studentId: data.studentId },
       });
 
       return {

@@ -89,8 +89,13 @@ export const getDefaultLevelForStudent = (studentName: string, index: number = 0
 
 export type PaymentRecord = {
   id: string;
-  studentName: string;
-  studentId: string;
+  studentId: string; // Foreign Key / UUID
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
   cohortId?: string;
   email?: string;
   phone?: string;
@@ -113,8 +118,12 @@ export type FinancialAdjustmentType = 'discount' | 'scholarship' | 'refund' | 'a
 export type FinancialAdjustment = {
   id: string; // ADJ-2026-XXXX
   invoiceId: string;
-  studentId: string;
-  studentName: string;
+  studentId: string; // Foreign Key / UUID
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+  };
   type: FinancialAdjustmentType;
   categoryName: string; // e.g. "Five-Fold Ministry Scholarship", "Early Bird Discount", "Course Drop Refund"
   amount: number; // positive reduces invoice balance, negative increases
@@ -126,8 +135,14 @@ export type FinancialAdjustment = {
 
 export type Invoice = {
   id: string; // INV-2026-XXXX
-  studentId: string;
-  studentName: string;
+  studentId: string; // Foreign Key / UUID PK
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  };
   email?: string;
   phone?: string;
   moduleTrack: string;
@@ -153,8 +168,12 @@ export type Invoice = {
 export type PaymentTransaction = {
   id: string; // TXN-2026-XXXX
   invoiceId: string;
-  studentName: string;
-  studentId: string;
+  studentId: string; // Foreign Key / UUID
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+  };
   amount: number;
   paymentDate: string;
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe' | string;
@@ -175,8 +194,12 @@ export type Receipt = {
   receiptNumber: string;
   paymentId: string; // Links to transaction ID
   invoiceId: string;
-  studentName: string;
-  studentId: string;
+  studentId: string; // Foreign Key / UUID
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+  };
   amountPaid: number;
   paymentDate: string;
   paymentMethod: string;
@@ -396,7 +419,13 @@ export type CustomAssignment = {
 export type AssignmentSubmission = {
   id: string;
   assignmentId: string;
-  studentName: string;
+  studentId?: string; // Primary Foreign Key (UUID)
+  studentName?: string; // Display Attribute
+  student?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
   submittedAt: string;
   
   // Student's response upload
@@ -428,6 +457,7 @@ export type AppNotification = {
   eventType?: string;
   category?: string;
   targetRole?: 'admin' | 'teacher' | 'student' | 'all';
+  studentId?: string;
   studentName?: string;
   assignmentId?: string;
   courseOfferingId?: string;
@@ -443,9 +473,18 @@ export type AppNotification = {
 };
 
 export type AttendanceRecord = {
-  name: string;
-  studentName?: string;
+  id?: string;
+  studentId?: string; // Primary Foreign Key (UUID)
+  name?: string; // Display Attribute
+  studentName?: string; // Display Attribute
+  student?: {
+    id: string;
+    name: string;
+    email?: string;
+    photoUrl?: string | null;
+  };
   timestamp: string;
+  sessionDate?: string;
   capturedAt?: string;
   score: string;
   classDay: string;
@@ -453,6 +492,8 @@ export type AttendanceRecord = {
   manualOverride?: boolean;
   locked?: boolean;
   cohortId?: string;
+  notes?: string;
+  status?: string;
 };
 
 export type ClassDay = {
@@ -463,7 +504,9 @@ export type ClassDay = {
 };
 
 export type StudentSummary = {
-  name: string;
+  id?: string; // Primary Key (UUID)
+  name: string; // Display Attribute
+  studentNumber?: string;
   totalDays: number;
   attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }>;
   rate: number;
@@ -525,7 +568,12 @@ export type PaymentPlanType = 'full' | 'monthly' | 'scholarship' | 'custom' | 'M
 
 export type ExcusedAbsenceRequest = {
   id: string;
-  studentName: string;
+  studentId?: string; // Foreign Key / UUID
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+  };
   classDayId: string;
   classDayName?: string;
   date?: string;
@@ -541,7 +589,12 @@ export type ExcusedAbsenceRequest = {
 
 export type AttendanceCorrectionAudit = {
   id: string;
-  studentName: string;
+  studentId?: string; // Foreign Key / UUID
+  studentName?: string;
+  student?: {
+    id: string;
+    name: string;
+  };
   classDayId: string;
   previousStatus: string;
   newStatus: string;
