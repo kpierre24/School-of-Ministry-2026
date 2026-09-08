@@ -88,51 +88,6 @@ export const getDefaultLevelForStudent = (studentName: string, index: number = 0
   return 'level_4';
 };
 
-export type PaymentPlanType = 
-  | 'Pay In Full' 
-  | 'Monthly Installments' 
-  | 'Custom Plan' 
-  | 'Financial Aid / Scholarship'
-  | 'full' 
-  | 'monthly' 
-  | 'scholarship' 
-  | 'custom';
-
-export type PaymentMethod = 
-  | 'Credit Card' 
-  | 'Bank Transfer' 
-  | 'Zelle' 
-  | 'Check' 
-  | 'Scholarship' 
-  | 'Cash' 
-  | 'PayPal' 
-  | 'Stripe';
-
-export type InvoiceStatus = 
-  | 'Paid' 
-  | 'Partially Paid' 
-  | 'Unpaid' 
-  | 'Past Due' 
-  | 'Refunded' 
-  | 'Cancelled';
-
-export type PaymentTransactionStatus = 
-  | 'Completed' 
-  | 'Pending' 
-  | 'Failed' 
-  | 'Refunded'
-  | 'Voided';
-
-export type PaymentAllocation = {
-  id: string; // ALLOC-2026-XXXX
-  transactionId: string;
-  invoiceId: string;
-  amount: number;
-  allocatedAt: string;
-  allocatedBy?: string;
-  notes?: string;
-};
-
 export type PaymentRecord = {
   id: string;
   studentName: string;
@@ -145,7 +100,7 @@ export type PaymentRecord = {
   amountPaid: number;
   status: 'Paid In Full' | 'Partial' | 'Past Due' | 'Pending Review';
   lastPaymentDate: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe';
   notes?: string;
   receiptUrl?: string;
   receiptName?: string;
@@ -181,27 +136,16 @@ export type Invoice = {
   academicYear?: string;
   issueDate: string;
   dueDate: string;
-  
-  // Base Billed Tuition (Authoritative input)
   totalTuition: number;
-
-  // Derived Financial Properties (Calculated deterministically from adjustments & transactions)
-  readonly discounts: number;
-  readonly scholarships: number;
-  readonly refunds?: number;
-  readonly adjustments?: number;
-  readonly netTuition: number; // totalTuition - discounts - scholarships - adjustments + refunds
-  readonly amountPaid: number; // sum of completed allocated transaction amounts
-  readonly outstandingBalance: number; // max(0, netTuition - amountPaid)
-
-  // Strict Hierarchical Relationships
-  adjustmentsList?: FinancialAdjustment[];
-  transactionsList?: PaymentTransaction[];
-  allocationsList?: PaymentAllocation[];
-  receiptsList?: Receipt[];
-
-  paymentPlan: PaymentPlanType;
-  status: InvoiceStatus;
+  discounts: number;
+  scholarships: number;
+  refunds?: number;
+  adjustments?: number;
+  netTuition: number; // totalTuition - discounts - scholarships - adjustments + refunds
+  amountPaid: number; // sum of completed transactions
+  outstandingBalance: number; // netTuition - amountPaid
+  paymentPlan: 'Pay In Full' | 'Monthly Installments' | 'Custom Plan' | string;
+  status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Past Due' | 'Refunded' | 'Cancelled';
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -214,10 +158,10 @@ export type PaymentTransaction = {
   studentId: string;
   amount: number;
   paymentDate: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe' | string;
   paymentReference?: string; // wire confirmation, check #, transaction reference
   receiptNumber: string; // REC-2026-XXXX
-  status: PaymentTransactionStatus;
+  status: 'Completed' | 'Pending' | 'Failed' | 'Refunded';
   notes?: string;
   recordedBy?: string;
   reconciliationStatus?: 'Reconciled' | 'Unreconciled' | 'Discrepancy';
@@ -225,7 +169,6 @@ export type PaymentTransaction = {
   reconciledBy?: string;
   depositBatchId?: string;
   createdAt?: string;
-  allocations?: PaymentAllocation[];
 };
 
 export type Receipt = {
@@ -237,7 +180,7 @@ export type Receipt = {
   studentId: string;
   amountPaid: number;
   paymentDate: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: string;
   paymentReference?: string;
   issuedAt: string;
   issuedBy?: string;
@@ -578,6 +521,8 @@ export type AppMessage = {
   status: 'open' | 'in_progress' | 'resolved' | 'archived';
   replies: MessageReply[];
 };
+
+export type PaymentPlanType = 'full' | 'monthly' | 'scholarship' | 'custom' | 'Monthly Installments' | 'Pay In Full' | 'Financial Aid / Scholarship';
 
 export type ExcusedAbsenceRequest = {
   id: string;

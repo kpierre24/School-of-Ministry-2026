@@ -53,14 +53,14 @@ import {
   DEFAULT_MASTER_COURSES, 
   DEFAULT_COURSE_OFFERINGS,
   INITIAL_ACADEMIC_STRUCTURE
-} from '../data/constants';
+} from '../data/defaultAcademicData';
 import { CourseOfferingDetailModal } from '../features/academics/CourseOfferingDetailModal';
 import { ScheduleOfferingModal } from '../features/academics/ScheduleOfferingModal';
 import { MasterCourseCatalogView } from '../features/academics/MasterCourseCatalogView';
 import { AcademicCalendarView } from '../features/academics/AcademicCalendarView';
 import { portalApi } from '../services/api/portalApiClient';
 
-export interface CoursesTabProps {
+interface CoursesTabProps {
   userRole?: UserRole;
   courses?: Course[];
   setCourses?: React.Dispatch<React.SetStateAction<Course[]>>;

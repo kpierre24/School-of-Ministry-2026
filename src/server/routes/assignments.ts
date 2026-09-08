@@ -4,7 +4,6 @@ import { requireAuth, requirePermission, requireResourceOwnership } from "../mid
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
 import { isDemoAssignment } from "../../data/guards";
-import { GradeSubmissionSchema, AssignmentSubmissionSchema, validateBody } from "../middleware/validation";
 
 export const assignmentsRouter = Router();
 
@@ -92,11 +91,14 @@ assignmentsRouter.post(
     }),
     allowedRoles: ["super_admin", "admin", "lecturer"],
   }),
-  validateBody(AssignmentSubmissionSchema),
   async (req: Request, res: Response) => {
     try {
       const { submission } = req.body;
       const userEmail = req.user?.email || req.body.userEmail || "student";
+
+      if (!submission || !submission.studentName || !submission.assignmentId) {
+        return res.status(400).json({ error: "studentName and assignmentId are required" });
+      }
 
       const state = (await getAuthoritativeState(userEmail)) || {};
       const submissions = [...(state.submissions || [])];
@@ -147,11 +149,14 @@ assignmentsRouter.post(
   "/grade",
   requireAuth,
   requirePermission(["grades:submit_grade", "assignments:grade_assigned", "all:access"]),
-  validateBody(GradeSubmissionSchema),
   async (req: Request, res: Response) => {
     try {
       const { submissionId, score, feedback, rubricScores, studentName } = req.body;
       const userEmail = req.user?.email || req.body.userEmail || "teacher";
+
+      if (!submissionId && !studentName) {
+        return res.status(400).json({ error: "submissionId or studentName is required" });
+      }
 
       const state = (await getAuthoritativeState(userEmail)) || {};
       const submissions = [...(state.submissions || [])];

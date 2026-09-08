@@ -3,7 +3,6 @@ import { getAuthoritativeState, saveAuthoritativeState, logAuditEvent } from "..
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
-import { StudentCreateSchema, validateBody } from "../middleware/validation";
 
 export const studentsRouter = Router();
 
@@ -392,11 +391,14 @@ studentsRouter.post(
   "/",
   requireAuth,
   requirePermission(["students:enroll", "all:access"]),
-  validateBody(StudentCreateSchema),
   async (req: Request, res: Response) => {
     try {
       const { name, level, email, photoUrl } = req.body;
       const userEmail = req.user?.email || req.body?.userEmail || "admin";
+
+      if (!name || typeof name !== "string") {
+        return res.status(400).json({ error: "Student name is required" });
+      }
 
       const cleanName = name.trim();
       const state = (await getAuthoritativeState(userEmail)) || {};

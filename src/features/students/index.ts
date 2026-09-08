@@ -1,11 +1,7 @@
-export * from './studentSchemas';
-export * from './studentService';
-export * from './studentHooks';
-export * from './studentCanonicalization';
-export * from './CertificateModal';
 export * from './StudentDetailModal';
 export * from './StudentTranscriptModal';
-export * from './StudentsPage';
+export * from './CertificateModal';
+export * from './studentCanonicalization';
+export * from '../../components/StudentsTab';
 export * from '../../components/Student360ProfileModal';
 export * from '../../components/StudentAttendancePortal';
-export { default } from './StudentsPage';

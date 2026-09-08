@@ -29,11 +29,6 @@ const currentDirname = typeof __dirname !== "undefined" ? __dirname : path.dirna
 
 async function startServer() {
   const app = express();
-  
-  // Configure Express proxy trust to safely process X-Forwarded-For headers
-  // when deployed behind trusted load balancers/reverse proxies (e.g., Google Cloud Run GFE)
-  app.set("trust proxy", 1);
-
   const isDev =
     process.env.NODE_ENV !== "production" &&
     !currentFilename.endsWith(".cjs") &&
@@ -68,19 +63,11 @@ async function startServer() {
   // Sanitize incoming JSON bodies
   app.use(sanitizeBody);
 
-  // Role-Based Access Control authentication context (resolved first so user IDs are available to limiters)
+  // Apply rate limiting specifically to /api endpoints (1000 requests per 15 min)
+  app.use("/api", rateLimiter(1000, 15 * 60 * 1000));
+
+  // Role-Based Access Control authentication context
   app.use("/api", authenticate);
-
-  // Apply granular namespaced rate limiting to sensitive and high-traffic endpoints
-  app.use("/api/auth", rateLimiter(15, 15 * 60 * 1000, "auth"));
-  app.use("/api/payments", rateLimiter(45, 15 * 60 * 1000, "payments"));
-  app.use("/api/ai", rateLimiter(35, 15 * 60 * 1000, "ai"));
-  app.use("/api/state", rateLimiter(15, 15 * 60 * 1000, "state"));
-  app.use("/api/attendance", rateLimiter(150, 15 * 60 * 1000, "attendance"));
-  app.use("/api/students", rateLimiter(200, 15 * 60 * 1000, "students"));
-
-  // Apply general fallback rate limiting specifically to other /api endpoints
-  app.use("/api", rateLimiter(1000, 15 * 60 * 1000, "general"));
 
   // Mount API routers
   app.use("/api/auth", authRouter);

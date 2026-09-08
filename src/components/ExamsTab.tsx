@@ -73,7 +73,7 @@ type StudentScoreRecord = {
   attendanceByDay?: Record<string, { present: boolean; timestamp?: string; score?: string }>;
 };
 
-export interface ExamsTabProps {
+interface ExamsTabProps {
   students: StudentScoreRecord[];
   allQuizSheets: string[];
   rubricScores: Record<string, { participation: number; scripture: number; assignment: number }>;

@@ -54,7 +54,7 @@ auditLogsRouter.post(
         entityId,
         action: action || "update",
         newValues: { notes, timestamp: new Date().toISOString() },
-        ipAddress: req.ip,
+        ipAddress: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress,
         userAgent: req.headers["user-agent"],
       });
 

@@ -68,7 +68,7 @@ export const PERIODS = [
 
 export const INITIAL_SCHEDULE: ScheduleItem[] = [];
 
-export interface ScheduleTabProps {
+interface ScheduleTabProps {
   classDays: { id: string; name: string }[];
   onTakeAttendanceForDay: (dayId: string) => void;
   onDeleteClassDay?: (dayId: string) => void;

@@ -4,7 +4,6 @@ import { requireAuth, requirePermission, requireResourceOwnership } from "../mid
 import { roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
 import { isDemoPayment } from "../../data/guards";
-import { PaymentCreateSchema, validateBody } from "../middleware/validation";
 
 export const paymentsRouter = Router();
 
@@ -207,10 +206,12 @@ paymentsRouter.post(
   "/transactions",
   requireAuth,
   requirePermission(["finance:record_payment", "all:access"]),
-  validateBody(PaymentCreateSchema),
   async (req: Request, res: Response) => {
   try {
     const { transaction, userEmail } = req.body;
+    if (!transaction || !transaction.invoiceId || !transaction.amount) {
+      return res.status(400).json({ error: "invoiceId and amount are required" });
+    }
 
     const state = (await getAuthoritativeState(userEmail)) || {};
     const fin = getFinancialState(state);

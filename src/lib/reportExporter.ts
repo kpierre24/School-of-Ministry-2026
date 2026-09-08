@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf';
 import hteimLogoAsset from '../assets/hteim_logo.png';
-import { isDemoRecord, isDemoPayment, isDemoStudent } from '../data/guards';
 
 export interface ReportColumn {
   header: string;
@@ -14,19 +13,6 @@ export interface ReportSummaryMetric {
   value: string | number;
   subtext?: string;
   badgeColor?: string;
-}
-
-/**
- * Filter out any demo rows from official report output
- */
-function sanitizeReportRows(rows: Record<string, any>[]): Record<string, any>[] {
-  if (!Array.isArray(rows)) return [];
-  return rows.filter(r => {
-    if (!r || typeof r !== 'object') return false;
-    if (r.isDemo === true || r._isDemo === true) return false;
-    if (isDemoRecord(r) || isDemoPayment(r) || isDemoStudent(r.studentName || r.name)) return false;
-    return true;
-  });
 }
 
 async function getLogoBase64(): Promise<string | null> {
@@ -60,9 +46,8 @@ async function getLogoBase64(): Promise<string | null> {
 export function exportReportToCSV(
   filename: string,
   columns: ReportColumn[],
-  rawRows: Record<string, any>[]
+  rows: Record<string, any>[]
 ): void {
-  const rows = sanitizeReportRows(rawRows);
   const headers = columns.map(col => `"${col.header.replace(/"/g, '""')}"`).join(',');
   const rowStrings = rows.map(row => {
     return columns.map(col => {
@@ -91,9 +76,8 @@ export async function generateReportPDF(
   filterSummary: string[],
   summaryMetrics: ReportSummaryMetric[],
   columns: ReportColumn[],
-  rawRows: Record<string, any>[]
+  rows: Record<string, any>[]
 ): Promise<void> {
-  const rows = sanitizeReportRows(rawRows);
   const doc = new jsPDF({
     orientation: columns.length > 5 ? 'landscape' : 'portrait',
     unit: 'mm',

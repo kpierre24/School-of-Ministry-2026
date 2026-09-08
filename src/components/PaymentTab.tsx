@@ -46,8 +46,8 @@ import {
   Heart,
   Calendar
 } from 'lucide-react';
-import { PaymentRecord, Invoice, PaymentTransaction, Receipt, StudentInstallmentPlan, InstallmentMilestone, SponsorshipDonation, PaymentPlanType, PaymentMethod } from '../types';
-import { getInvoices, saveInvoices, getTransactions, saveTransactions, getReceipts, saveReceipts, bootstrapFromPaymentRecords, recordPaymentTransaction, updateInvoiceDetails } from '../lib/financialWorkflow';
+import { PaymentRecord, Invoice, PaymentTransaction, Receipt, StudentInstallmentPlan, InstallmentMilestone, SponsorshipDonation } from '../types';
+import { getInvoices, saveInvoices, getTransactions, saveTransactions, getReceipts, saveReceipts, bootstrapFromPaymentRecords } from '../lib/financialWorkflow';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
 import { InstallmentPlanModal } from './InstallmentPlanModal';
@@ -1121,56 +1121,66 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
   const [editInvoiceTuition, setEditInvoiceTuition] = useState<number>(1200);
   const [editInvoiceDiscounts, setEditInvoiceDiscounts] = useState<number>(0);
   const [editInvoiceScholarships, setEditInvoiceScholarships] = useState<number>(0);
-  const [editInvoicePlan, setEditInvoicePlan] = useState<PaymentPlanType>('Monthly Installments');
+  const [editInvoicePlan, setEditInvoicePlan] = useState<string>('Monthly Installments');
   const [editInvoiceStatus, setEditInvoiceStatus] = useState<Invoice['status']>('Unpaid');
   const [editInvoiceNotes, setEditInvoiceNotes] = useState<string>('');
 
   // Payment form fields
   const [recordPaymentAmount, setRecordPaymentAmount] = useState<number>(300);
-  const [recordPaymentMethod, setRecordPaymentMethod] = useState<PaymentMethod>('Bank Transfer');
+  const [recordPaymentMethod, setRecordPaymentMethod] = useState<string>('Bank Transfer');
   const [recordPaymentDate, setRecordPaymentDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [recordPaymentNotes, setRecordPaymentNotes] = useState<string>('');
 
   // Edit Invoice submit handler
-  // Save invoice edits handler using atomic workflow
   const handleEditInvoiceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInvoiceForEdit) return;
 
-    try {
-      const updatedInvoice = updateInvoiceDetails({
-        invoiceId: selectedInvoiceForEdit.id,
-        totalTuition: editInvoiceTuition,
-        discounts: editInvoiceDiscounts,
-        scholarships: editInvoiceScholarships,
-        paymentPlan: editInvoicePlan,
-        notes: editInvoiceNotes,
-        updatedBy: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
-        actorRole: userRole || 'admin'
-      });
-
-      const freshInvoices = getInvoices();
-      const freshTransactions = getTransactions();
-
-      setInvoices(freshInvoices);
-      syncToPayments(freshInvoices, freshTransactions);
-      setShowEditInvoiceModal(false);
-
-      logActivity({
-        actor: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
-        role: 'admin',
-        actionCategory: 'Payment Entry',
-        actionTitle: 'Invoice Modified',
-        details: `Modified invoice ${selectedInvoiceForEdit.id} for "${selectedInvoiceForEdit.studentName}". Total Tuition: $${editInvoiceTuition}, Discounts: $${editInvoiceDiscounts}, Scholarships: $${editInvoiceScholarships}, Plan: ${editInvoicePlan}, Balance: $${updatedInvoice.outstandingBalance}`,
-        targetStudent: selectedInvoiceForEdit.studentName
-      });
-    } catch (err: any) {
-      console.error('Invoice modification failed:', err);
-      alert(`Invoice Edit Failed: ${err?.message || err}`);
+    const netTuition = Math.max(0, editInvoiceTuition - editInvoiceDiscounts - editInvoiceScholarships);
+    const outstandingBalance = Math.max(0, netTuition - selectedInvoiceForEdit.amountPaid);
+    
+    let calculatedStatus = editInvoiceStatus;
+    if (outstandingBalance <= 0) {
+      calculatedStatus = 'Paid';
+    } else if (selectedInvoiceForEdit.amountPaid > 0) {
+      calculatedStatus = 'Partially Paid';
+    } else {
+      calculatedStatus = 'Unpaid';
     }
+
+    const updatedInvoices = invoices.map(inv => {
+      if (inv.id === selectedInvoiceForEdit.id) {
+        return {
+          ...inv,
+          totalTuition: editInvoiceTuition,
+          discounts: editInvoiceDiscounts,
+          scholarships: editInvoiceScholarships,
+          netTuition,
+          outstandingBalance,
+          paymentPlan: editInvoicePlan,
+          status: calculatedStatus,
+          notes: editInvoiceNotes
+        };
+      }
+      return inv;
+    });
+
+    setInvoices(updatedInvoices);
+    saveInvoices(updatedInvoices);
+    syncToPayments(updatedInvoices, transactions);
+    setShowEditInvoiceModal(false);
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
+      role: 'admin',
+      actionCategory: 'Payment Entry',
+      actionTitle: 'Invoice Modified',
+      details: `Modified invoice ${selectedInvoiceForEdit.id} for "${selectedInvoiceForEdit.studentName}". Tuition: ${editInvoiceTuition}, Discounts: ${editInvoiceDiscounts}, Scholarships: ${editInvoiceScholarships}, Plan: ${editInvoicePlan}, Status: ${calculatedStatus}`,
+      targetStudent: selectedInvoiceForEdit.studentName
+    });
   };
 
-  // Record Payment submit handler using atomic workflow
+  // Record Payment submit handler
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInvoiceForPayment) return;
@@ -1178,39 +1188,80 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     const paymentAmount = Number(recordPaymentAmount);
     if (paymentAmount <= 0) return;
 
-    try {
-      const { transaction, receipt, updatedInvoice } = recordPaymentTransaction({
-        invoiceId: selectedInvoiceForPayment.id,
-        amount: paymentAmount,
-        paymentMethod: recordPaymentMethod,
-        paymentDate: recordPaymentDate,
-        notes: recordPaymentNotes || 'Partial tuition payment/deposit',
-        recordedBy: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
-        actorRole: userRole || 'admin'
-      });
+    const transactionId = `TXN-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const receiptNumber = `REC-HTEIM-2026-${Math.floor(10000 + Math.random() * 90000)}`;
 
-      const freshInvoices = getInvoices();
-      const freshTransactions = getTransactions();
-      const freshReceipts = getReceipts();
+    // Create payment transaction
+    const newTx: PaymentTransaction = {
+      id: transactionId,
+      invoiceId: selectedInvoiceForPayment.id,
+      studentName: selectedInvoiceForPayment.studentName,
+      studentId: selectedInvoiceForPayment.studentId,
+      amount: paymentAmount,
+      paymentDate: recordPaymentDate,
+      paymentMethod: recordPaymentMethod,
+      receiptNumber,
+      status: 'Completed',
+      notes: recordPaymentNotes || 'Partial tuition payment/deposit'
+    };
 
-      setInvoices(freshInvoices);
-      setTransactions(freshTransactions);
-      setReceipts(freshReceipts);
-      syncToPayments(freshInvoices, freshTransactions);
-      setShowRecordCustomPaymentModal(false);
+    const updatedTxs = [...transactions, newTx];
+    setTransactions(updatedTxs);
+    saveTransactions(updatedTxs);
 
-      logActivity({
-        actor: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
-        role: 'admin',
-        actionCategory: 'Payment Entry',
-        actionTitle: 'Payment Recorded',
-        details: `Recorded payment of $${paymentAmount} via ${recordPaymentMethod} for student "${selectedInvoiceForPayment.studentName}". Receipt: ${receipt.receiptNumber}. Remaining balance: $${updatedInvoice.outstandingBalance}`,
-        targetStudent: selectedInvoiceForPayment.studentName
-      });
-    } catch (err: any) {
-      console.error('Payment transaction failed:', err);
-      alert(`Payment Transaction Failed: ${err?.message || err}`);
-    }
+    // Create receipt
+    const newReceipt: Receipt = {
+      id: `REC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      receiptNumber,
+      paymentId: transactionId,
+      invoiceId: selectedInvoiceForPayment.id,
+      studentName: selectedInvoiceForPayment.studentName,
+      studentId: selectedInvoiceForPayment.studentId,
+      amountPaid: paymentAmount,
+      paymentDate: recordPaymentDate,
+      paymentMethod: recordPaymentMethod,
+      issuedAt: new Date().toISOString().slice(0, 10),
+      notes: recordPaymentNotes || 'Partial tuition payment receipt'
+    };
+
+    const updatedReceipts = [...receipts, newReceipt];
+    setReceipts(updatedReceipts);
+    saveReceipts(updatedReceipts);
+
+    // Update invoice balance and status
+    const updatedInvoices = invoices.map(inv => {
+      if (inv.id === selectedInvoiceForPayment.id) {
+        const newAmountPaid = inv.amountPaid + paymentAmount;
+        const newBalance = Math.max(0, inv.netTuition - newAmountPaid);
+        let calculatedStatus: Invoice['status'] = 'Unpaid';
+        if (newBalance <= 0) {
+          calculatedStatus = 'Paid';
+        } else if (newAmountPaid > 0) {
+          calculatedStatus = 'Partially Paid';
+        }
+        return {
+          ...inv,
+          amountPaid: newAmountPaid,
+          outstandingBalance: newBalance,
+          status: calculatedStatus
+        };
+      }
+      return inv;
+    });
+
+    setInvoices(updatedInvoices);
+    saveInvoices(updatedInvoices);
+    syncToPayments(updatedInvoices, updatedTxs);
+    setShowRecordCustomPaymentModal(false);
+
+    logActivity({
+      actor: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
+      role: 'admin',
+      actionCategory: 'Payment Entry',
+      actionTitle: 'Payment Recorded',
+      details: `Recorded payment of ${paymentAmount} via ${recordPaymentMethod} for student "${selectedInvoiceForPayment.studentName}". Outstanding balance: ${Math.max(0, selectedInvoiceForPayment.netTuition - (selectedInvoiceForPayment.amountPaid + paymentAmount))}`,
+      targetStudent: selectedInvoiceForPayment.studentName
+    });
   };
 
   const { route, navigate } = usePortalRouter('payments');
@@ -2706,7 +2757,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 <label className="block text-xs font-black text-slate-700 uppercase mb-1">Payment Plan Type</label>
                 <select
                   value={editInvoicePlan}
-                  onChange={(e) => setEditInvoicePlan(e.target.value as PaymentPlanType)}
+                  onChange={(e) => setEditInvoicePlan(e.target.value)}
                   className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:outline-none cursor-pointer"
                 >
                   <option value="Pay In Full">Pay In Full</option>
@@ -2779,7 +2830,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                 <label className="block text-xs font-black text-slate-700 uppercase mb-1">Payment Method</label>
                 <select
                   value={recordPaymentMethod}
-                  onChange={(e) => setRecordPaymentMethod(e.target.value as PaymentMethod)}
+                  onChange={(e) => setRecordPaymentMethod(e.target.value)}
                   className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:outline-none cursor-pointer"
                 >
                   <option value="Bank Transfer">Bank Transfer</option>

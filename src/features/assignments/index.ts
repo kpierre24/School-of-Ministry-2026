@@ -1,10 +1,5 @@
-export * from './assignmentSchemas';
-export * from './assignmentService';
-export * from './assignmentHooks';
 export * from './FloatingQuizBanner';
-export * from './ExamsPage';
 export * from '../../components/ExamsTab';
 export * from '../../components/QuizCreatorModal';
 export * from '../../components/QuizTakerView';
 export * from '../../components/AdminQuizzesDashboard';
-export { default } from './ExamsPage';

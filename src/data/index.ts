@@ -1,7 +1,6 @@
 // HTEIM School of Ministry — Data Architecture Index
-// Clearly separates production constants, seed generators, and isolated demo fixtures.
+// Clearly separates production institutional metadata from isolated demo/simulation datasets.
 
-export * from './constants';
-export * from './seed';
-export * from './fixtures';
+export * from './curriculum';
 export * from './guards';
+export * from './demo/demoData';

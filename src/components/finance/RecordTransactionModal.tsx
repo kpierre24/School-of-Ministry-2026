@@ -11,7 +11,7 @@ import {
   Hash,
   Sparkles
 } from 'lucide-react';
-import { Invoice, Receipt, PaymentTransaction, PaymentMethod } from '../../types';
+import { Invoice, Receipt, PaymentTransaction } from '../../types';
 import { recordPaymentTransaction } from '../../lib/financialWorkflow';
 import { useAccessibleModal } from '../../lib/useAccessibleModal';
 
@@ -35,7 +35,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
   const dialogRef = useAccessibleModal(isOpen, onClose);
 
   const [amount, setAmount] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Bank Transfer');
+  const [paymentMethod, setPaymentMethod] = useState<string>('Bank Transfer');
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [paymentDate, setPaymentDate] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -174,7 +174,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
               </label>
               <select
                 value={paymentMethod}
-                onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
+                onChange={e => setPaymentMethod(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 <option value="Bank Transfer">Bank Transfer / Wire</option>
