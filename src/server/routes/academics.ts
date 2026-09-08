@@ -29,12 +29,12 @@ academicsRouter.get("/courses", async (req: Request, res: Response) => {
 /**
  * POST /api/academics/courses
  * Creates or updates a course in authoritative state.
- * RBAC: Only super_admin, admin, registrar
+ * RBAC: Requires students:write or roles:manage
  */
 academicsRouter.post(
   "/courses",
   requireAuth,
-  requirePermission(["academics:manage_courses", "all:access"]),
+  requirePermission(["students:write", "roles:manage", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const { course } = req.body;
@@ -134,12 +134,12 @@ academicsRouter.get("/structure", async (req: Request, res: Response) => {
 /**
  * POST /api/academics/offerings
  * Create or update a CourseOffering in the authoritative state.
- * RBAC: Only super_admin, admin, registrar, lecturer
+ * RBAC: Requires students:write or roles:manage
  */
 academicsRouter.post(
   "/offerings",
   requireAuth,
-  requirePermission(["academics:manage_courses", "all:access"]),
+  requirePermission(["students:write", "roles:manage", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const offering = req.body.offering || req.body;

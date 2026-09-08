@@ -15,15 +15,6 @@ declare global {
 }
 
 /**
- * Known default system roles for bootstrap administrators
- */
-const DEFAULT_SUPER_ADMINS = ["kpierre24@gmail.com", "pastor@hteim.org"];
-const DEFAULT_ADMINS = ["admin@hteim.edu", "director@hteim.edu"];
-const DEFAULT_FINANCE = ["finance@hteim.edu", "bursar@hteim.edu"];
-const DEFAULT_REGISTRARS = ["registrar@hteim.edu", "admissions@hteim.edu"];
-const DEFAULT_LIBRARIANS = ["librarian@hteim.edu", "library@hteim.edu"];
-
-/**
  * Maps application UserRole to PostgreSQL users table check constraint:
  * ('admin' | 'teacher' | 'student' | 'staff')
  */
@@ -37,19 +28,21 @@ export function toDbUserRole(role: UserRole): "admin" | "teacher" | "student" | 
 /**
  * Authoritative Authentication Pipeline:
  * 
- * Firebase ID Token
- *         ↓
- *  verifyIdToken()
- *         ↓
- *   Firebase UID
- *         ↓
- * database users table
- *         ↓
- *      req.user
+ * Authentication
+ *       ↓
+ * Who are you? (Firebase ID Token -> verifyIdToken() -> uid, email)
+ *       ↓
+ * Authorization
+ *       ↓
+ * What are you allowed to do? (Database users/roles -> user.role -> permissions)
+ *       ↓
+ * Resource authorization
+ *       ↓
+ * Which specific record may you access? (requireResourceOwnership())
  * 
  * Insecure identity sources (req.query.userEmail, req.body.userEmail,
  * x-user-role, x-user-email) are strictly prohibited from establishing identity.
- * They are informational at most.
+ * Roles and privileges are NEVER inferred from email strings ("admin", "teacher", "lecturer").
  */
 export async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
   const authHeader = req.headers.authorization;
@@ -84,7 +77,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     return null;
   }
 
-  // 2. Firebase UID -> database users table
+  // 2. Query database for user role and active status
   const supabase = getServerSupabase();
   let dbUser: any = null;
 
@@ -110,26 +103,26 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     return null;
   }
 
-  // Authoritative State for supplemental profile attributes
+  // Authoritative State for supplemental profile attributes (credentials in DB state)
   const state = cleanEmail ? await getAuthoritativeState(cleanEmail) : null;
 
-  // Determine initial role mapping
+  // Default role is strictly "student" unless configured in database
   let assignedRole: UserRole = "student";
-  if (DEFAULT_SUPER_ADMINS.includes(cleanEmail)) {
-    assignedRole = "super_admin";
-  } else if (DEFAULT_ADMINS.includes(cleanEmail)) {
-    assignedRole = "admin";
-  } else if (DEFAULT_FINANCE.includes(cleanEmail)) {
-    assignedRole = "finance_officer";
-  } else if (DEFAULT_REGISTRARS.includes(cleanEmail)) {
-    assignedRole = "registrar";
-  } else if (DEFAULT_LIBRARIANS.includes(cleanEmail)) {
-    assignedRole = "librarian";
-  } else if (cleanEmail.includes("lecturer") || cleanEmail.includes("teacher") || cleanEmail.endsWith("@hteim.edu")) {
-    assignedRole = "lecturer";
+
+  // Check state database userCredentials for explicit role assignment
+  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
+    const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
+    if (match?.role) {
+      assignedRole = normalizeUserRole(match.role);
+    }
   }
 
-  // If user does not exist in database users table, provision an authoritative row
+  // If role is present in PostgreSQL users table, use it as database source of truth
+  if (dbUser?.role) {
+    assignedRole = normalizeUserRole(dbUser.role);
+  }
+
+  // If user does not exist in database users table, provision an authoritative row with default "student" role
   if (!dbUser && cleanEmail) {
     try {
       const dbRole = toDbUserRole(assignedRole);
@@ -148,20 +141,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
         logger.info(`Provisioned new database users record for ${cleanEmail} (role: ${dbRole})`);
       }
     } catch (insertErr) {
-      logger.warn("Could not insert user into database users table (continuing with default):", insertErr);
-    }
-  }
-
-  // Resolve role from database users table
-  if (dbUser?.role && !DEFAULT_SUPER_ADMINS.includes(cleanEmail) && !DEFAULT_ADMINS.includes(cleanEmail) && !DEFAULT_FINANCE.includes(cleanEmail) && !DEFAULT_REGISTRARS.includes(cleanEmail) && !DEFAULT_LIBRARIANS.includes(cleanEmail)) {
-    assignedRole = normalizeUserRole(dbUser.role);
-  }
-
-  // Check state database credentials for granular role overrides
-  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
-    const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
-    if (match?.role) {
-      assignedRole = normalizeUserRole(match.role);
+      logger.warn("Could not insert user into database users table (continuing with database role):", insertErr);
     }
   }
 
@@ -218,7 +198,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
   const roleDef = ROLE_DEFINITIONS[assignedRole] || ROLE_DEFINITIONS.student;
   const permissions: Permission[] = roleDef ? roleDef.permissions : [];
 
-  // 3. req.user: authoritative user object containing uid, userId, email, role, studentId
+  // 3. req.user: authoritative user object containing uid, userId, email, role, studentId, permissions
   return {
     uid: firebaseUid,
     userId: userId,

@@ -10,81 +10,93 @@ export const assignmentsRouter = Router();
 /**
  * GET /api/assignments
  * Retrieves assignments and quizzes, strictly excluding demo assignments.
+ * RBAC: Requires assignments:read
  */
-assignmentsRouter.get("/", async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+assignmentsRouter.get(
+  "/",
+  requireAuth,
+  requirePermission(["assignments:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
 
-    let assignments = (state?.customAssignments || []).filter((a: any) => !isDemoAssignment(a));
+      let assignments = (state?.customAssignments || []).filter((a: any) => !isDemoAssignment(a));
 
-    // RBAC: If student, only show published non-draft assignments
-    if (user && user.role === "student") {
-      assignments = assignments.filter((a: any) => !a.isDraft && a.published !== false);
+      // RBAC: If student, only show published non-draft assignments
+      if (user && user.role === "student") {
+        assignments = assignments.filter((a: any) => !a.isDraft && a.published !== false);
+      }
+
+      return res.status(200).json({
+        assignments,
+        count: assignments.length,
+      });
+    } catch (err: any) {
+      logger.error("GET /api/assignments error:", err);
+      return res.status(500).json({ error: "Failed to fetch assignments" });
     }
-
-    return res.status(200).json({
-      assignments,
-      count: assignments.length,
-    });
-  } catch (err: any) {
-    logger.error("GET /api/assignments error:", err);
-    return res.status(500).json({ error: "Failed to fetch assignments" });
   }
-});
+);
 
 /**
  * GET /api/assignments/submissions
  * Retrieves student submissions and rubric grades.
- * RBAC: Students only retrieve their own submissions unless they have grades:view_all.
+ * RBAC: Requires assignments:read or grades:read. Students only retrieve their own submissions.
  */
-assignmentsRouter.get("/submissions", async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-    let studentName = (req.query.studentName as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+assignmentsRouter.get(
+  "/submissions",
+  requireAuth,
+  requirePermission(["assignments:read", "grades:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      let studentName = (req.query.studentName as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
 
-    let submissions = state?.submissions || [];
-    let rubricScores = state?.rubricScores || {};
+      let submissions = state?.submissions || [];
+      let rubricScores = state?.rubricScores || {};
 
-    // RBAC: Restrict student view
-    if (user && user.role === "student" && !roleHasPermission(user.role, "grades:view_all")) {
-      const ownName = user.studentName || user.name || user.email.split("@")[0];
-      studentName = ownName;
-    }
-
-    if (studentName) {
-      const norm = studentName.toLowerCase().trim();
-      submissions = submissions.filter((s: any) => (s.studentName || "").toLowerCase().trim() === norm);
-      // Filter rubric scores to only this student
-      if (rubricScores[studentName]) {
-        rubricScores = { [studentName]: rubricScores[studentName] };
-      } else {
-        rubricScores = {};
+      // RBAC: Restrict student view
+      if (user && user.role === "student") {
+        const ownName = user.studentName || user.name || user.email.split("@")[0];
+        studentName = ownName;
       }
-    }
 
-    return res.status(200).json({
-      submissions,
-      rubricScores,
-      count: submissions.length,
-    });
-  } catch (err: any) {
-    logger.error("GET /api/assignments/submissions error:", err);
-    return res.status(500).json({ error: "Failed to fetch submissions" });
+      if (studentName) {
+        const norm = studentName.toLowerCase().trim();
+        submissions = submissions.filter((s: any) => (s.studentName || "").toLowerCase().trim() === norm);
+        // Filter rubric scores to only this student
+        if (rubricScores[studentName]) {
+          rubricScores = { [studentName]: rubricScores[studentName] };
+        } else {
+          rubricScores = {};
+        }
+      }
+
+      return res.status(200).json({
+        submissions,
+        rubricScores,
+        count: submissions.length,
+      });
+    } catch (err: any) {
+      logger.error("GET /api/assignments/submissions error:", err);
+      return res.status(500).json({ error: "Failed to fetch submissions" });
+    }
   }
-});
+);
 
 /**
  * POST /api/assignments/submit
  * Records a student assignment or quiz submission.
- * RBAC: Students can submit for themselves; instructors/admins can submit.
+ * RBAC: Requires assignments:submit. Students can submit for themselves; instructors/admins can submit.
  */
 assignmentsRouter.post(
   "/submit",
   requireAuth,
+  requirePermission(["assignments:submit", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: req.body?.submission?.studentName,
@@ -143,12 +155,12 @@ assignmentsRouter.post(
 /**
  * POST /api/assignments/grade
  * Records teacher grading and feedback.
- * RBAC: Only super_admin, admin, lecturer
+ * RBAC: Requires assignments:grade or grades:write
  */
 assignmentsRouter.post(
   "/grade",
   requireAuth,
-  requirePermission(["grades:submit_grade", "assignments:grade_assigned", "all:access"]),
+  requirePermission(["assignments:grade", "grades:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const { submissionId, score, feedback, rubricScores, studentName } = req.body;

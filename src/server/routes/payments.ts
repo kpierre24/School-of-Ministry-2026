@@ -23,49 +23,54 @@ function getFinancialState(state: any) {
 /**
  * GET /api/payments/invoices
  * Retrieves invoices, optionally filtered by studentName.
- * RBAC: Students can only view their own invoices.
+ * RBAC: Requires finance:read. Students can only view their own invoices.
  */
-paymentsRouter.get("/invoices", async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-    let studentName = (req.query.studentName as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
-    const fin = getFinancialState(state);
+paymentsRouter.get(
+  "/invoices",
+  requireAuth,
+  requirePermission(["finance:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      let studentName = (req.query.studentName as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
+      const fin = getFinancialState(state);
 
-    let invoices = fin.invoices;
+      let invoices = fin.invoices;
 
-    // RBAC: If student without finance:view_all permission, restrict to own invoices
-    if (user && user.role === "student" && !roleHasPermission(user.role, "finance:view_all")) {
-      const ownName = user.studentName || user.name || user.email.split("@")[0];
-      studentName = ownName;
+      // RBAC: If student, restrict to own invoices
+      if (user && user.role === "student") {
+        const ownName = user.studentName || user.name || user.email.split("@")[0];
+        studentName = ownName;
+      }
+
+      if (studentName) {
+        const norm = studentName.toLowerCase().trim();
+        invoices = invoices.filter((i: any) => (i.studentName || "").toLowerCase().trim() === norm);
+      }
+
+      return res.status(200).json({
+        invoices,
+        total: invoices.length,
+        updatedAt: state?.updatedAt || new Date().toISOString()
+      });
+    } catch (err: any) {
+      logger.error("GET /api/payments/invoices error:", err);
+      return res.status(500).json({ error: "Failed to fetch invoices" });
     }
-
-    if (studentName) {
-      const norm = studentName.toLowerCase().trim();
-      invoices = invoices.filter((i: any) => (i.studentName || "").toLowerCase().trim() === norm);
-    }
-
-    return res.status(200).json({
-      invoices,
-      total: invoices.length,
-      updatedAt: state?.updatedAt || new Date().toISOString()
-    });
-  } catch (err: any) {
-    logger.error("GET /api/payments/invoices error:", err);
-    return res.status(500).json({ error: "Failed to fetch invoices" });
   }
-});
+);
 
 /**
  * POST /api/payments/invoices
  * Creates or updates an institutional tuition invoice
- * RBAC: Only super_admin, admin, finance_officer
+ * RBAC: Requires finance:write
  */
 paymentsRouter.post(
   "/invoices",
   requireAuth,
-  requirePermission(["finance:record_payment", "finance:adjustments", "all:access"]),
+  requirePermission(["finance:write", "all:access"]),
   async (req: Request, res: Response) => {
   try {
     const { invoice } = req.body;
@@ -153,52 +158,57 @@ paymentsRouter.post(
 /**
  * GET /api/payments/transactions
  * Retrieves payment transactions
- * RBAC: Students only retrieve their own transactions.
+ * RBAC: Requires finance:read. Students only retrieve their own transactions.
  */
-paymentsRouter.get("/transactions", async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-    const invoiceId = (req.query.invoiceId as string) || undefined;
-    let studentName = (req.query.studentName as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
-    const fin = getFinancialState(state);
+paymentsRouter.get(
+  "/transactions",
+  requireAuth,
+  requirePermission(["finance:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      const invoiceId = (req.query.invoiceId as string) || undefined;
+      let studentName = (req.query.studentName as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
+      const fin = getFinancialState(state);
 
-    let transactions = fin.transactions;
+      let transactions = fin.transactions;
 
-    // RBAC: If student lacking finance:view_all, restrict to own transactions
-    if (user && user.role === "student" && !roleHasPermission(user.role, "finance:view_all")) {
-      const ownName = user.studentName || user.name || user.email.split("@")[0];
-      studentName = ownName;
+      // RBAC: If student, restrict to own transactions
+      if (user && user.role === "student") {
+        const ownName = user.studentName || user.name || user.email.split("@")[0];
+        studentName = ownName;
+      }
+
+      if (invoiceId) {
+        transactions = transactions.filter((t: any) => t.invoiceId === invoiceId);
+      }
+      if (studentName) {
+        const norm = studentName.toLowerCase().trim();
+        transactions = transactions.filter((t: any) => (t.studentName || "").toLowerCase().trim() === norm);
+      }
+
+      return res.status(200).json({
+        transactions,
+        total: transactions.length
+      });
+    } catch (err: any) {
+      logger.error("GET /api/payments/transactions error:", err);
+      return res.status(500).json({ error: "Failed to fetch transactions" });
     }
-
-    if (invoiceId) {
-      transactions = transactions.filter((t: any) => t.invoiceId === invoiceId);
-    }
-    if (studentName) {
-      const norm = studentName.toLowerCase().trim();
-      transactions = transactions.filter((t: any) => (t.studentName || "").toLowerCase().trim() === norm);
-    }
-
-    return res.status(200).json({
-      transactions,
-      total: transactions.length
-    });
-  } catch (err: any) {
-    logger.error("GET /api/payments/transactions error:", err);
-    return res.status(500).json({ error: "Failed to fetch transactions" });
   }
-});
+);
 
 /**
  * POST /api/payments/transactions
  * Architectural Core: Records transaction -> generates official receipt -> recomputes invoice paid & balance strictly from transactions
- * RBAC: super_admin, admin, finance_officer
+ * RBAC: Requires finance:write
  */
 paymentsRouter.post(
   "/transactions",
   requireAuth,
-  requirePermission(["finance:record_payment", "all:access"]),
+  requirePermission(["finance:write", "all:access"]),
   async (req: Request, res: Response) => {
   try {
     const { transaction } = req.body;
@@ -323,45 +333,50 @@ paymentsRouter.post(
 /**
  * GET /api/payments/receipts
  * Retrieves receipts.
- * RBAC: Students only retrieve their own receipts.
+ * RBAC: Requires finance:read. Students only retrieve their own receipts.
  */
-paymentsRouter.get("/receipts", async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-    let studentName = (req.query.studentName as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
-    const fin = getFinancialState(state);
+paymentsRouter.get(
+  "/receipts",
+  requireAuth,
+  requirePermission(["finance:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      let studentName = (req.query.studentName as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
+      const fin = getFinancialState(state);
 
-    let receipts = fin.receipts;
+      let receipts = fin.receipts;
 
-    // RBAC: If student without finance:view_all, restrict to own receipts
-    if (user && user.role === "student" && !roleHasPermission(user.role, "finance:view_all")) {
-      const ownName = user.studentName || user.name || user.email.split("@")[0];
-      studentName = ownName;
+      // RBAC: If student, restrict to own receipts
+      if (user && user.role === "student") {
+        const ownName = user.studentName || user.name || user.email.split("@")[0];
+        studentName = ownName;
+      }
+
+      if (studentName) {
+        const norm = studentName.toLowerCase().trim();
+        receipts = receipts.filter((r: any) => (r.studentName || "").toLowerCase().trim() === norm);
+      }
+
+      return res.status(200).json({ receipts, total: receipts.length });
+    } catch (err: any) {
+      logger.error("GET /api/payments/receipts error:", err);
+      return res.status(500).json({ error: "Failed to fetch receipts" });
     }
-
-    if (studentName) {
-      const norm = studentName.toLowerCase().trim();
-      receipts = receipts.filter((r: any) => (r.studentName || "").toLowerCase().trim() === norm);
-    }
-
-    return res.status(200).json({ receipts, total: receipts.length });
-  } catch (err: any) {
-    logger.error("GET /api/payments/receipts error:", err);
-    return res.status(500).json({ error: "Failed to fetch receipts" });
   }
-});
+);
 
 /**
  * POST /api/payments/adjustments
  * Applies a financial adjustment (Discount, Scholarship, Refund, Fee Adjustment)
- * RBAC: super_admin, admin, finance_officer
+ * RBAC: Requires finance:write or finance:refund
  */
 paymentsRouter.post(
   "/adjustments",
   requireAuth,
-  requirePermission(["finance:adjustments", "all:access"]),
+  requirePermission(["finance:write", "finance:refund", "all:access"]),
   async (req: Request, res: Response) => {
   try {
     const { adjustment } = req.body;
@@ -464,56 +479,62 @@ paymentsRouter.post(
 /**
  * GET /api/payments/summary
  * Returns overall tuition analytics and metrics.
+ * RBAC: Requires finance:read
  */
-paymentsRouter.get("/summary", async (req: Request, res: Response) => {
-  try {
-    const userEmail = (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
-    const fin = getFinancialState(state);
+paymentsRouter.get(
+  "/summary",
+  requireAuth,
+  requirePermission(["finance:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const userEmail = (req.query.userEmail as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
+      const fin = getFinancialState(state);
 
-    const invoices = fin.invoices;
-    const transactions = fin.transactions;
+      const invoices = fin.invoices;
+      const transactions = fin.transactions;
 
-    const totalInvoiced = invoices.reduce((acc: number, i: any) => acc + (Number(i.totalTuition) || 0), 0);
-    const totalDiscounts = invoices.reduce((acc: number, i: any) => acc + (Number(i.discounts) || 0), 0);
-    const totalScholarships = invoices.reduce((acc: number, i: any) => acc + (Number(i.scholarships) || 0), 0);
-    const netBilled = invoices.reduce((acc: number, i: any) => acc + (Number(i.netTuition) || 0), 0);
-    const totalCollected = transactions
-      .filter((t: any) => t.status === 'Completed' || t.status === 'completed' || t.status === 'paid')
-      .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
-    const totalOutstanding = Math.max(0, netBilled - totalCollected);
-    const collectionRate = netBilled > 0 ? ((totalCollected / netBilled) * 100).toFixed(1) : "100.0";
+      const totalInvoiced = invoices.reduce((acc: number, i: any) => acc + (Number(i.totalTuition) || 0), 0);
+      const totalDiscounts = invoices.reduce((acc: number, i: any) => acc + (Number(i.discounts) || 0), 0);
+      const totalScholarships = invoices.reduce((acc: number, i: any) => acc + (Number(i.scholarships) || 0), 0);
+      const netBilled = invoices.reduce((acc: number, i: any) => acc + (Number(i.netTuition) || 0), 0);
+      const totalCollected = transactions
+        .filter((t: any) => t.status === 'Completed' || t.status === 'completed' || t.status === 'paid')
+        .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+      const totalOutstanding = Math.max(0, netBilled - totalCollected);
+      const collectionRate = netBilled > 0 ? ((totalCollected / netBilled) * 100).toFixed(1) : "100.0";
 
-    const pastDueCount = invoices.filter((i: any) => i.status === 'Past Due' || (i.outstandingBalance > 0 && new Date(i.dueDate) < new Date())).length;
+      const pastDueCount = invoices.filter((i: any) => i.status === 'Past Due' || (i.outstandingBalance > 0 && new Date(i.dueDate) < new Date())).length;
 
-    return res.status(200).json({
-      totalInvoiced,
-      totalDiscounts,
-      totalScholarships,
-      netBilled,
-      totalCollected,
-      totalOutstanding,
-      collectionRate: Number(collectionRate),
-      invoicesCount: invoices.length,
-      transactionsCount: transactions.length,
-      pastDueCount,
-      currency: "USD"
-    });
-  } catch (err: any) {
-    logger.error("GET /api/payments/summary error:", err);
-    return res.status(500).json({ error: "Failed to fetch payment summary" });
+      return res.status(200).json({
+        totalInvoiced,
+        totalDiscounts,
+        totalScholarships,
+        netBilled,
+        totalCollected,
+        totalOutstanding,
+        collectionRate: Number(collectionRate),
+        invoicesCount: invoices.length,
+        transactionsCount: transactions.length,
+        pastDueCount,
+        currency: "USD"
+      });
+    } catch (err: any) {
+      logger.error("GET /api/payments/summary error:", err);
+      return res.status(500).json({ error: "Failed to fetch payment summary" });
+    }
   }
-});
+);
 
 /**
  * GET /api/payments/profile/:studentName
  * Returns comprehensive student financial profile
- * RBAC: Resource Ownership Check enforced
+ * RBAC: Requires finance:read + Resource Ownership Check
  */
 paymentsRouter.get(
   "/profile/:studentName",
   requireAuth,
-  requirePermission(["finance:view_all", "finance:view_own"]),
+  requirePermission(["finance:read", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.studentName).trim(),

@@ -206,3 +206,60 @@ export async function getAuditLogs(limit = 50, entityType?: string): Promise<any
     return [];
   }
 }
+
+/**
+ * Retrieves all registered users from PostgreSQL users table.
+ */
+export async function getDatabaseUsers(): Promise<any[]> {
+  try {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, role, is_active, created_at, updated_at')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.warn(`Failed to fetch database users: ${error.message}`);
+      return [];
+    }
+    return data || [];
+  } catch (err) {
+    logger.warn('Exception fetching database users:', err);
+    return [];
+  }
+}
+
+/**
+ * Updates a user's role in the database and records an audit log.
+ */
+export async function updateUserRoleInDatabase(
+  userId: string,
+  newRole: string,
+  actorEmail?: string
+): Promise<{ success: boolean; user?: any; error?: string }> {
+  try {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from('users')
+      .update({ role: newRole, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select('id, email, role, is_active, updated_at')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    await logAuditEvent({
+      actorUserId: actorEmail,
+      entityType: 'user_role',
+      entityId: userId,
+      action: 'update',
+      newValues: { role: newRole, userEmail: data?.email },
+    });
+
+    return { success: true, user: data };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update user role' };
+  }
+}

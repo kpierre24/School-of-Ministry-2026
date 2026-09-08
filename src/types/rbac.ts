@@ -29,44 +29,29 @@ export interface RoleDefinition {
 
 export type Permission =
   | 'all:access'
-  // Students & Enrollment
-  | 'students:view_all'
-  | 'students:view_own'
-  | 'students:enroll'
-  | 'students:edit_records'
-  | 'students:academic_docs'
+  // Students
+  | 'students:read'
+  | 'students:write'
   // Attendance
-  | 'attendance:view_all'
-  | 'attendance:view_own'
-  | 'attendance:mark_assigned'
-  | 'attendance:mark_all'
-  | 'attendance:override'
-  // Academics & Grades
-  | 'grades:view_all'
-  | 'grades:view_assigned'
-  | 'grades:view_own'
-  | 'grades:submit_grade'
-  | 'academics:manage_courses'
-  | 'academics:view_courses'
-  // Assignments & Exams
-  | 'assignments:manage'
-  | 'assignments:submit_own'
-  | 'assignments:grade_assigned'
-  // Finance & Payments
-  | 'finance:view_all'
-  | 'finance:view_own'
-  | 'finance:record_payment'
-  | 'finance:adjustments'
-  | 'finance:reconcile'
-  | 'finance:reports'
-  // Library
-  | 'library:manage'
-  | 'library:borrow'
-  | 'library:view'
-  // Reports & Logs
-  | 'reports:view_all'
-  | 'audit_logs:view'
-  // Roles & Security
+  | 'attendance:read'
+  | 'attendance:write'
+  | 'attendance:approve'
+  // Assignments
+  | 'assignments:read'
+  | 'assignments:submit'
+  | 'assignments:grade'
+  // Grades
+  | 'grades:read'
+  | 'grades:write'
+  | 'grades:release'
+  // Finance
+  | 'finance:read'
+  | 'finance:write'
+  | 'finance:refund'
+  // Audit
+  | 'audit:read'
+  // Governance
+  | 'users:manage'
   | 'roles:manage';
 
 export interface AuthenticatedUser {
@@ -91,7 +76,26 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badgeBg: 'bg-purple-100 dark:bg-purple-950/60',
     description: 'Unrestricted master access to all system entities, database settings, audit logs, and security roles.',
     accessibleTabs: ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages', 'reports', 'notes'],
-    permissions: ['all:access']
+    permissions: [
+      'all:access',
+      'students:read',
+      'students:write',
+      'attendance:read',
+      'attendance:write',
+      'attendance:approve',
+      'assignments:read',
+      'assignments:submit',
+      'assignments:grade',
+      'grades:read',
+      'grades:write',
+      'grades:release',
+      'finance:read',
+      'finance:write',
+      'finance:refund',
+      'audit:read',
+      'users:manage',
+      'roles:manage'
+    ]
   },
   admin: {
     id: 'admin',
@@ -99,30 +103,26 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Administrator',
     color: 'text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800',
     badgeBg: 'bg-rose-100 dark:bg-rose-950/60',
-    description: 'Full management of students, admissions, attendance tracking, payments, financial reports, and notifications.',
+    description: 'Full administrative control over students, attendance approvals, curriculum grades, tuition, audits, and users.',
     accessibleTabs: ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages', 'reports', 'notes'],
     permissions: [
-      'students:view_all',
-      'students:enroll',
-      'students:edit_records',
-      'students:academic_docs',
-      'attendance:view_all',
-      'attendance:mark_all',
-      'attendance:override',
-      'grades:view_all',
-      'academics:manage_courses',
-      'academics:view_courses',
-      'assignments:manage',
-      'finance:view_all',
-      'finance:record_payment',
-      'finance:adjustments',
-      'finance:reconcile',
-      'finance:reports',
-      'library:manage',
-      'library:borrow',
-      'library:view',
-      'reports:view_all',
-      'audit_logs:view'
+      'students:read',
+      'students:write',
+      'attendance:read',
+      'attendance:write',
+      'attendance:approve',
+      'assignments:read',
+      'assignments:submit',
+      'assignments:grade',
+      'grades:read',
+      'grades:write',
+      'grades:release',
+      'finance:read',
+      'finance:write',
+      'finance:refund',
+      'audit:read',
+      'users:manage',
+      'roles:manage'
     ]
   },
   registrar: {
@@ -131,17 +131,16 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Registrar',
     color: 'text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800',
     badgeBg: 'bg-blue-100 dark:bg-blue-950/60',
-    description: 'Admissions, student enrollment, academic transcripts, official documents, and institutional reports.',
+    description: 'Admissions, student enrollment, academic records, official grade releases, and student registry management.',
     accessibleTabs: ['home', 'students', 'courses', 'schedule', 'reports', 'notes'],
     permissions: [
-      'students:view_all',
-      'students:enroll',
-      'students:edit_records',
-      'students:academic_docs',
-      'academics:view_courses',
-      'academics:manage_courses',
-      'reports:view_all',
-      'library:view'
+      'students:read',
+      'students:write',
+      'attendance:read',
+      'assignments:read',
+      'grades:read',
+      'grades:release',
+      'audit:read'
     ]
   },
   lecturer: {
@@ -150,19 +149,16 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Lecturer',
     color: 'text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800',
     badgeBg: 'bg-amber-100 dark:bg-amber-950/60',
-    description: 'Assigned course teachings, class session attendance grading, homework evaluation, and quizzes.',
+    description: 'Course teachings, class session attendance marking, homework grading, and score assignments.',
     accessibleTabs: ['home', 'attendance', 'courses', 'exams', 'schedule', 'library', 'notes'],
     permissions: [
-      'students:view_all',
-      'attendance:view_all',
-      'attendance:mark_assigned',
-      'grades:view_assigned',
-      'grades:submit_grade',
-      'academics:view_courses',
-      'assignments:manage',
-      'assignments:grade_assigned',
-      'library:view',
-      'library:borrow'
+      'students:read',
+      'attendance:read',
+      'attendance:write',
+      'assignments:read',
+      'assignments:grade',
+      'grades:read',
+      'grades:write'
     ]
   },
   student: {
@@ -171,17 +167,15 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Student',
     color: 'text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
     badgeBg: 'bg-emerald-100 dark:bg-emerald-950/60',
-    description: 'Self-service portal for enrolled course modules, personal attendance, assignment submissions, grades, and tuition receipts.',
+    description: 'Self-service access for personal attendance, assignment submissions, course grades, and tuition ledger.',
     accessibleTabs: ['home', 'attendance', 'courses', 'exams', 'schedule', 'library', 'payments', 'notes'],
     permissions: [
-      'students:view_own',
-      'attendance:view_own',
-      'grades:view_own',
-      'assignments:submit_own',
-      'finance:view_own',
-      'academics:view_courses',
-      'library:view',
-      'library:borrow'
+      'students:read',
+      'attendance:read',
+      'assignments:read',
+      'assignments:submit',
+      'grades:read',
+      'finance:read'
     ]
   },
   finance_officer: {
@@ -190,17 +184,14 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Finance Officer',
     color: 'text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-800',
     badgeBg: 'bg-teal-100 dark:bg-teal-950/60',
-    description: 'Tuition collection, bank transfer reconciliation, receipts, adjustments, scholarships, and revenue ledger analytics.',
+    description: 'Tuition invoicing, payment transaction recording, refunds, financial adjustments, and ledger auditing.',
     accessibleTabs: ['home', 'payments', 'reports', 'students', 'notes'],
     permissions: [
-      'finance:view_all',
-      'finance:record_payment',
-      'finance:adjustments',
-      'finance:reconcile',
-      'finance:reports',
-      'students:view_all',
-      'reports:view_all',
-      'library:view'
+      'students:read',
+      'finance:read',
+      'finance:write',
+      'finance:refund',
+      'audit:read'
     ]
   },
   librarian: {
@@ -209,13 +200,11 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Librarian',
     color: 'text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800',
     badgeBg: 'bg-indigo-100 dark:bg-indigo-950/60',
-    description: 'Curriculum library resources, digital PDF syllabi, pastoral handouts, and borrowing circulation.',
+    description: 'Curriculum library resources, digital PDF syllabi, pastoral handouts, and academic reading catalogs.',
     accessibleTabs: ['home', 'library', 'schedule', 'courses', 'notes'],
     permissions: [
-      'library:manage',
-      'library:borrow',
-      'library:view',
-      'academics:view_courses'
+      'students:read',
+      'assignments:read'
     ]
   },
   viewer: {
@@ -224,33 +213,33 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Viewer',
     color: 'text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-800',
     badgeBg: 'bg-slate-100 dark:bg-slate-800',
-    description: 'Read-only viewing of ministry announcements, public catalog, general schedules, and selected resources.',
+    description: 'Read-only access to general catalogs, courses, and ministry announcements.',
     accessibleTabs: ['home', 'courses', 'schedule', 'library'],
     permissions: [
-      'academics:view_courses',
-      'library:view'
+      'students:read',
+      'attendance:read',
+      'assignments:read',
+      'grades:read',
+      'finance:read'
     ]
   },
-  // Legacy aliases:
+  // Legacy aliases
   teacher: {
     id: 'lecturer',
     title: 'Lecturer / Faculty',
     badge: 'Lecturer',
     color: 'text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800',
     badgeBg: 'bg-amber-100 dark:bg-amber-950/60',
-    description: 'Assigned course teachings, class session attendance grading, homework evaluation, and quizzes.',
+    description: 'Course teachings, class session attendance marking, homework grading, and score assignments.',
     accessibleTabs: ['home', 'attendance', 'courses', 'exams', 'schedule', 'library', 'notes'],
     permissions: [
-      'students:view_all',
-      'attendance:view_all',
-      'attendance:mark_assigned',
-      'grades:view_assigned',
-      'grades:submit_grade',
-      'academics:view_courses',
-      'assignments:manage',
-      'assignments:grade_assigned',
-      'library:view',
-      'library:borrow'
+      'students:read',
+      'attendance:read',
+      'attendance:write',
+      'assignments:read',
+      'assignments:grade',
+      'grades:read',
+      'grades:write'
     ]
   },
   staff: {
@@ -259,23 +248,18 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     badge: 'Administrator',
     color: 'text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800',
     badgeBg: 'bg-rose-100 dark:bg-rose-950/60',
-    description: 'Full management of students, admissions, attendance tracking, payments, financial reports, and notifications.',
+    description: 'Administrative support for students, attendance, grades, and finance.',
     accessibleTabs: ['home', 'attendance', 'students', 'courses', 'exams', 'schedule', 'library', 'payments', 'messages', 'reports', 'notes'],
     permissions: [
-      'students:view_all',
-      'students:enroll',
-      'students:edit_records',
-      'attendance:view_all',
-      'attendance:mark_all',
-      'grades:view_all',
-      'academics:manage_courses',
-      'academics:view_courses',
-      'assignments:manage',
-      'finance:view_all',
-      'finance:record_payment',
-      'library:manage',
-      'library:view',
-      'reports:view_all'
+      'students:read',
+      'students:write',
+      'attendance:read',
+      'attendance:write',
+      'assignments:read',
+      'grades:read',
+      'finance:read',
+      'finance:write',
+      'audit:read'
     ]
   }
 };

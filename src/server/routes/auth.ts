@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState } from "../services/supabaseServer";
+import { getAuthoritativeState, getDatabaseUsers, updateUserRoleInDatabase } from "../services/supabaseServer";
 import { UserRole, ROLE_DEFINITIONS, normalizeUserRole } from "../../types/rbac";
+import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 import { isDemoUser } from "../../data/guards";
 
@@ -97,7 +98,7 @@ authRouter.get("/me", (req: Request, res: Response) => {
 
 /**
  * GET /api/auth/roles
- * Lists all 8 defined roles and their granular access scopes.
+ * Lists all defined roles and their granular access scopes.
  */
 authRouter.get("/roles", (_req: Request, res: Response) => {
   const roles = Object.values(ROLE_DEFINITIONS).filter((r, index, self) => 
@@ -117,3 +118,63 @@ authRouter.get("/roles", (_req: Request, res: Response) => {
     })),
   });
 });
+
+/**
+ * GET /api/auth/users
+ * Returns list of registered users in the database.
+ * RBAC: Requires users:manage
+ */
+authRouter.get(
+  "/users",
+  requireAuth,
+  requirePermission(["users:manage", "all:access"]),
+  async (_req: Request, res: Response) => {
+    try {
+      const users = await getDatabaseUsers();
+      return res.status(200).json({
+        users,
+        count: users.length,
+      });
+    } catch (err: any) {
+      logger.error("GET /api/auth/users error:", err);
+      return res.status(500).json({ error: "Failed to fetch users" });
+    }
+  }
+);
+
+/**
+ * PATCH /api/auth/users/:userId/role
+ * Updates a user's role in the database.
+ * RBAC: Requires roles:manage
+ */
+authRouter.patch(
+  "/users/:userId/role",
+  requireAuth,
+  requirePermission(["roles:manage", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const { role } = req.body;
+      const actorEmail = req.user?.email || "admin";
+
+      if (!role || typeof role !== "string") {
+        return res.status(400).json({ error: "role is required" });
+      }
+
+      const normalized = normalizeUserRole(role);
+      const result = await updateUserRoleInDatabase(userId, normalized, actorEmail);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || "Failed to update role" });
+      }
+
+      return res.status(200).json({
+        status: "updated",
+        user: result.user,
+      });
+    } catch (err: any) {
+      logger.error("PATCH /api/auth/users/:userId/role error:", err);
+      return res.status(500).json({ error: "Failed to update user role" });
+    }
+  }
+);

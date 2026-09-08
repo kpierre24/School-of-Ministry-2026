@@ -9,51 +9,57 @@ export const attendanceRouter = Router();
 /**
  * GET /api/attendance
  * Retrieves authoritative attendance records.
- * RBAC: Students only receive their own records unless they have attendance:view_all.
+ * RBAC: Requires attendance:read. Students only receive their own records.
  */
-attendanceRouter.get("/", async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    const userEmail = user?.email || (req.query.userEmail as string) || undefined;
-    const state = await getAuthoritativeState(userEmail);
+attendanceRouter.get(
+  "/",
+  requireAuth,
+  requirePermission(["attendance:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      const userEmail = user?.email || (req.query.userEmail as string) || undefined;
+      const state = await getAuthoritativeState(userEmail);
 
-    if (!state) {
-      return res.status(200).json({ records: [], classDays: [], excusedAbsences: {}, totalRecords: 0 });
+      if (!state) {
+        return res.status(200).json({ records: [], classDays: [], excusedAbsences: {}, totalRecords: 0 });
+      }
+
+      let records = state.records || [];
+      const classDays = state.classDays || [];
+      const excusedAbsences = state.excusedAbsences || {};
+
+      // RBAC: Restrict student view to own attendance
+      if (user && user.role === "student") {
+        const ownName = (user.studentName || user.name || user.email.split("@")[0]).toLowerCase().trim();
+        records = records.filter((r: any) => (r.student?.name || "").toLowerCase().trim() === ownName);
+      }
+
+      return res.status(200).json({
+        records,
+        classDays,
+        excusedAbsences,
+        totalRecords: records.length,
+        totalSessions: classDays.length,
+        policyThreshold: "75%",
+        updatedAt: state.updatedAt || new Date().toISOString(),
+      });
+    } catch (err: any) {
+      logger.error("GET /api/attendance error:", err);
+      return res.status(500).json({ error: "Failed to fetch attendance records" });
     }
-
-    let records = state.records || [];
-    const classDays = state.classDays || [];
-    const excusedAbsences = state.excusedAbsences || {};
-
-    // RBAC: Restrict student view to own attendance
-    if (user && user.role === "student" && !roleHasPermission(user.role, "attendance:view_all")) {
-      const ownName = (user.studentName || user.name || user.email.split("@")[0]).toLowerCase().trim();
-      records = records.filter((r: any) => (r.student?.name || "").toLowerCase().trim() === ownName);
-    }
-
-    return res.status(200).json({
-      records,
-      classDays,
-      excusedAbsences,
-      totalRecords: records.length,
-      totalSessions: classDays.length,
-      policyThreshold: "75%",
-      updatedAt: state.updatedAt || new Date().toISOString(),
-    });
-  } catch (err: any) {
-    logger.error("GET /api/attendance error:", err);
-    return res.status(500).json({ error: "Failed to fetch attendance records" });
   }
-});
+);
 
 /**
  * POST /api/attendance/checkin
  * Records student check-in status (Present, Absent, Excused, Tardy) authoritatively.
- * RBAC: Students can self check-in; instructors/admins can mark any student.
+ * RBAC: Requires attendance:write. Students can self check-in; instructors/admins can mark any student.
  */
 attendanceRouter.post(
   "/checkin",
   requireAuth,
+  requirePermission(["attendance:write", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: req.body.studentName,
@@ -140,12 +146,12 @@ attendanceRouter.post(
 /**
  * POST /api/attendance/batch
  * Batch saves attendance records for an entire class day.
- * RBAC: Only super_admin, admin, lecturer
+ * RBAC: Requires attendance:write
  */
 attendanceRouter.post(
   "/batch",
   requireAuth,
-  requirePermission(["attendance:mark_all", "attendance:mark_assigned", "all:access"]),
+  requirePermission(["attendance:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const { date, records: incomingRecords } = req.body;
@@ -210,12 +216,12 @@ attendanceRouter.post(
 /**
  * POST /api/attendance/override
  * Overrides a student's attendance record.
- * RBAC: Only super_admin, admin, lecturer
+ * RBAC: Requires attendance:approve
  */
 attendanceRouter.post(
   "/override",
   requireAuth,
-  requirePermission(["attendance:override", "attendance:mark_all", "all:access"]),
+  requirePermission(["attendance:approve", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const { studentName, date, status, reason } = req.body;
@@ -379,12 +385,12 @@ attendanceRouter.post(
 /**
  * GET /api/attendance/at-risk
  * Returns at-risk students failing the required 75% attendance policy threshold.
- * RBAC: Only authorized staff (super_admin, admin, registrar, lecturer)
+ * RBAC: Requires attendance:read
  */
 attendanceRouter.get(
   "/at-risk",
   requireAuth,
-  requirePermission(["attendance:view_all", "reports:view_all", "all:access"]),
+  requirePermission(["attendance:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const userEmail = req.user?.email || (req.query.userEmail as string) || undefined;

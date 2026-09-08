@@ -115,8 +115,8 @@ studentsRouter.get("/", async (req: Request, res: Response) => {
 
     let studentNames = Array.from(namesSet).sort((a, b) => a.localeCompare(b));
 
-    // RBAC: If requester is a student and lacks students:view_all, restrict list to own profile
-    if (user && user.role === "student" && !roleHasPermission(user.role, "students:view_all")) {
+    // RBAC: If requester is a student, restrict list to own profile
+    if (user && user.role === "student") {
       const ownName = user.studentName || user.name || user.email.split("@")[0];
       const match = studentNames.find((n) => n.toLowerCase().trim() === ownName.toLowerCase().trim());
       studentNames = match ? [match] : [];
@@ -153,14 +153,14 @@ studentsRouter.get("/", async (req: Request, res: Response) => {
  * 
  * RBAC & Ownership Pipeline:
  * 1. Is the user authenticated?
- * 2. Is the user allowed to view grades? (grades:view_all, grades:view_assigned, grades:view_own)
+ * 2. Is the user allowed to view grades? (grades:read)
  * 3. Is the requested student the logged-in student, or an admin / assigned lecturer?
  * 4. Return only authorized data.
  */
 studentsRouter.get(
   "/:name/grades",
   requireAuth,
-  requirePermission(["grades:view_all", "grades:view_assigned", "grades:view_own"]),
+  requirePermission(["grades:read", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),
@@ -222,7 +222,7 @@ studentsRouter.get(
 studentsRouter.get(
   "/:name/attendance",
   requireAuth,
-  requirePermission(["attendance:view_all", "attendance:view_own"]),
+  requirePermission(["attendance:read", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),
@@ -279,7 +279,7 @@ studentsRouter.get(
 studentsRouter.get(
   "/:name/financial-profile",
   requireAuth,
-  requirePermission(["finance:view_all", "finance:view_own"]),
+  requirePermission(["finance:read", "all:access"]),
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),
@@ -382,12 +382,12 @@ studentsRouter.get(
 /**
  * POST /api/students
  * Enrolls a new student into authoritative state.
- * RBAC: Only super_admin, admin, registrar
+ * RBAC: Requires students:write permission
  */
 studentsRouter.post(
   "/",
   requireAuth,
-  requirePermission(["students:enroll", "all:access"]),
+  requirePermission(["students:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const { name, level, email, photoUrl } = req.body;
@@ -449,12 +449,12 @@ studentsRouter.post(
 /**
  * PUT /api/students/:name
  * Updates student attributes.
- * RBAC: Only super_admin, admin, registrar
+ * RBAC: Requires students:write permission
  */
 studentsRouter.put(
   "/:name",
   requireAuth,
-  requirePermission(["students:edit_records", "all:access"]),
+  requirePermission(["students:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
