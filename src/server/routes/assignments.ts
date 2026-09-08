@@ -133,6 +133,7 @@ assignmentsRouter.post(
  * POST /api/assignments/grade
  * 9.4: Records teacher grading verifying lecturer -> course -> assignment -> submission chain.
  * 9.5: Validates score bounds (0 <= score <= maxScore).
+ * Phase 10: Enforces grade locking rules.
  */
 assignmentsRouter.post(
   "/grade",
@@ -140,7 +141,7 @@ assignmentsRouter.post(
   requirePermission(["assignments:grade", "grades:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId, assignmentId, studentId, score, feedback, rubricScores } = req.body;
+      const { submissionId, assignmentId, studentId, score, feedback, rubricScores, overrideReason } = req.body;
       const actorUser = req.user!;
 
       // 9.4 Staff check
@@ -154,15 +155,85 @@ assignmentsRouter.post(
       }
 
       const result = await assignmentsService.gradeSubmission(
-        { submissionId, assignmentId, studentId, score: Number(score), feedback, rubricScores },
-        actorUser.email
+        { submissionId, assignmentId, studentId, score: Number(score), feedback, rubricScores, overrideReason },
+        actorUser
       );
 
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/assignments/grade error:", err);
-      const statusCode = err.message?.includes("not found") ? 404 : 400;
+      const isLockedErr = err.message?.includes("LOCKED");
+      const statusCode = isLockedErr ? 403 : err.message?.includes("not found") ? 404 : 400;
       return res.status(statusCode).json({ error: err.message || "Failed to record grade" });
+    }
+  }
+);
+
+/**
+ * POST /api/assignments/grade/transition
+ * Phase 10: Transitions a grade through its controlled lifecycle:
+ * SUBMITTED -> GRADED -> MODERATION -> RELEASED -> LOCKED
+ */
+assignmentsRouter.post(
+  "/grade/transition",
+  requireAuth,
+  requirePermission(["assignments:grade", "grades:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const { submissionId, targetStatus, reason } = req.body;
+      const actorUser = req.user!;
+
+      if (!submissionId || !targetStatus) {
+        return res.status(400).json({ error: "submissionId and targetStatus are required" });
+      }
+
+      const result = await assignmentsService.transitionGradeLifecycle(
+        { submissionId, targetStatus, reason },
+        actorUser
+      );
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error("POST /api/assignments/grade/transition error:", err);
+      const isDenied = err.message?.includes("Access denied");
+      const statusCode = isDenied ? 403 : err.message?.includes("not found") ? 404 : 400;
+      return res.status(statusCode).json({ error: err.message || "Failed to transition grade lifecycle" });
+    }
+  }
+);
+
+/**
+ * POST /api/assignments/grade/override
+ * Phase 10: Elevated administrative override for locked grades (Registrar/Admin only).
+ */
+assignmentsRouter.post(
+  "/grade/override",
+  requireAuth,
+  requirePermission(["grades:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const { submissionId, score, feedback, reason } = req.body;
+      const actorUser = req.user!;
+
+      const elevatedRoles = ["super_admin", "admin", "registrar"];
+      if (!elevatedRoles.includes(actorUser.role)) {
+        return res.status(403).json({ error: "Access denied: Only Registrar or Admin can approve grade overrides for locked records." });
+      }
+
+      if (!submissionId || score === undefined || !reason) {
+        return res.status(400).json({ error: "submissionId, score, and explicit reason are required for an administrative override." });
+      }
+
+      const result = await assignmentsService.overrideLockedGrade(
+        { submissionId, score: Number(score), feedback, reason },
+        actorUser
+      );
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error("POST /api/assignments/grade/override error:", err);
+      const statusCode = err.message?.includes("Access denied") ? 403 : 400;
+      return res.status(statusCode).json({ error: err.message || "Failed to perform administrative grade override" });
     }
   }
 );

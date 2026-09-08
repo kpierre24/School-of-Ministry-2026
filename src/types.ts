@@ -416,6 +416,8 @@ export type CustomAssignment = {
   published?: boolean;
 };
 
+export type GradeLifecycleStatus = 'SUBMITTED' | 'GRADED' | 'MODERATION' | 'RELEASED' | 'LOCKED' | 'submitted' | 'graded' | 'moderation' | 'released' | 'locked';
+
 export type AssignmentSubmission = {
   id: string;
   assignmentId: string;
@@ -445,7 +447,7 @@ export type AssignmentSubmission = {
   teacherCorrectedFileType?: string;
   teacherFeedback?: string;
   score?: number;
-  status: 'Submitted' | 'Graded' | 'Correction Returned' | 'Pending Review';
+  status: GradeLifecycleStatus | 'Submitted' | 'Graded' | 'Correction Returned' | 'Pending Review';
   updatedAt: string;
 };
 

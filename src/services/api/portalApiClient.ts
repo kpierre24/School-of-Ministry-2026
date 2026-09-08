@@ -250,11 +250,38 @@ export const portalApi = {
     score: number;
     feedback?: string;
     rubricScores?: any;
+    overrideReason?: string;
   }) {
     return fetchJson<{ status: string; score: number }>('/assignments/grade', {
       method: 'POST',
       body: JSON.stringify(gradeData),
     });
+  },
+
+  async transitionGradeLifecycle(data: {
+    submissionId: string;
+    targetStatus: 'SUBMITTED' | 'GRADED' | 'MODERATION' | 'RELEASED' | 'LOCKED' | string;
+    reason?: string;
+  }) {
+    return fetchJson<{ status: string; lifecycleStatus: string }>('/assignments/grade/transition', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async overrideLockedGrade(data: {
+    submissionId: string;
+    score: number;
+    feedback?: string;
+    reason: string;
+  }) {
+    return fetchJson<{ status: string; score: number; feedback?: string; overrideApproved: boolean }>(
+      '/assignments/grade/override',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
   },
 
   // 8. Audit Logs

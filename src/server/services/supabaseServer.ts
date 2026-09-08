@@ -361,7 +361,7 @@ export async function logAuditEvent(entry: {
   actorUserId?: string;
   entityType: string;
   entityId: string;
-  action: 'create' | 'update' | 'delete' | 'soft_delete' | 'restore' | 'grade_override' | 'attendance_override';
+  action: 'create' | 'update' | 'delete' | 'soft_delete' | 'restore' | 'grade_override' | 'attendance_override' | 'grade_recorded' | 'grade_override_approved' | string;
   oldValues?: any;
   newValues?: any;
   ipAddress?: string;

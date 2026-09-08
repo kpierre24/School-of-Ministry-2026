@@ -353,23 +353,35 @@ export const assignmentsService = {
   },
 
   /**
-   * Securely grades a student submission with lecturer verification chain and authoritative score bounds checking.
-   * 9.4 Verifies lecturer -> course -> assignment -> submission relationship.
-   * 9.5 Validates score against authoritative assignment maxPoints.
+   * Securely grades a student submission with lecturer verification chain, authoritative score bounds checking,
+   * and Phase 10 grade lifecycle locking checks.
    */
   async gradeSubmission(
-    data: { submissionId?: string; assignmentId?: string; studentId?: string; studentName?: string; score: number; feedback?: string; rubricScores?: any },
-    actorUserId?: string
+    data: {
+      submissionId?: string;
+      assignmentId?: string;
+      studentId?: string;
+      studentName?: string;
+      score: number;
+      feedback?: string;
+      rubricScores?: any;
+      overrideReason?: string;
+      allowLockedOverride?: boolean;
+    },
+    actorUser?: AuthenticatedUser | string
   ): Promise<{ status: string; score: number; feedback?: string }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
+
+    const actorEmail = typeof actorUser === 'string' ? actorUser : actorUser?.email || 'teacher';
+    const actorRole = typeof actorUser === 'string' ? 'teacher' : actorUser?.role || 'teacher';
 
     try {
       if (!data.submissionId) {
         throw new Error('submissionId is required for grading');
       }
 
-      // 9.4 Verify submission, assignment, and course relationship chain
+      // 1. Verify submission, assignment, and course relationship chain
       const { data: sub, error: subErr } = await supabase
         .from('submissions')
         .select('*, assignments(*)')
@@ -380,19 +392,33 @@ export const assignmentsService = {
         throw new Error('Submission not found');
       }
 
+      const currentStatus = (sub.status || 'submitted').toUpperCase().trim();
+
+      // Phase 10: Check if grade is LOCKED
+      if (currentStatus === 'LOCKED' || currentStatus === 'LOCKED_GRADE') {
+        const elevatedRoles = ['super_admin', 'admin', 'registrar'];
+        const isElevated = elevatedRoles.includes(actorRole) || data.allowLockedOverride;
+
+        if (!isElevated) {
+          throw new Error(
+            'Grade is LOCKED. Standard lecturers cannot modify locked grades. An override must be approved by the Registrar or Admin.'
+          );
+        }
+      }
+
       const assignment = Array.isArray(sub.assignments) ? sub.assignments[0] : sub.assignments;
       if (!assignment) {
         throw new Error('Associated assignment not found for this submission');
       }
 
-      // 9.5 Validate score against authoritative maxPoints
+      // 2. Validate score against authoritative maxPoints
       const maxScore = Number(assignment.max_points || assignment.maxPoints || 100);
       const numericScore = Number(data.score);
       if (isNaN(numericScore) || numericScore < 0 || numericScore > maxScore) {
         throw new Error(`Score must be a number between 0 and ${maxScore}`);
       }
 
-      // 1. Upsert grade row
+      // 3. Upsert grade row
       const { error: gradeErr } = await supabase
         .from('grades')
         .upsert(
@@ -401,7 +427,7 @@ export const assignmentsService = {
             points_awarded: numericScore,
             feedback: data.feedback || '',
             graded_at: timestamp,
-            graded_by_user_id: actorUserId || null,
+            graded_by_user_id: actorEmail,
             updated_at: timestamp,
           },
           { onConflict: 'submission_id' }
@@ -411,22 +437,34 @@ export const assignmentsService = {
         logger.warn('Grade upsert warning:', gradeErr.message);
       }
 
-      // 2. Update submission status to graded
+      // 4. Update submission status to GRADED if not already in an advanced state
+      const nextStatus = currentStatus === 'SUBMITTED' ? 'GRADED' : sub.status;
       await supabase
         .from('submissions')
-        .update({ status: 'graded', updated_at: timestamp })
+        .update({ status: nextStatus, updated_at: timestamp })
         .eq('id', data.submissionId);
 
+      // Log audit entry
+      const isLockedOverride = currentStatus === 'LOCKED' || Boolean(data.overrideReason);
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorEmail,
         entityType: 'grade',
         entityId: data.submissionId,
-        action: 'grade_override',
-        newValues: { score: numericScore, feedback: data.feedback, rubricScores: data.rubricScores, maxScore },
+        action: isLockedOverride ? 'grade_override_approved' : 'grade_recorded',
+        newValues: {
+          previousStatus: currentStatus,
+          newStatus: nextStatus,
+          score: numericScore,
+          feedback: data.feedback,
+          rubricScores: data.rubricScores,
+          maxScore,
+          overrideReason: data.overrideReason || null,
+          actorRole,
+        },
       });
 
       return {
-        status: 'graded',
+        status: nextStatus,
         score: numericScore,
         feedback: data.feedback,
       };
@@ -434,5 +472,120 @@ export const assignmentsService = {
       logger.error('Error in gradeSubmission relational service:', err);
       throw err;
     }
+  },
+
+  /**
+   * Transitions a grade through its controlled lifecycle:
+   * SUBMITTED -> GRADED -> MODERATION -> RELEASED -> LOCKED
+   * 
+   * Transitioning TO or FROM LOCKED requires elevated permissions (Registrar/Admin).
+   */
+  async transitionGradeLifecycle(
+    params: {
+      submissionId: string;
+      targetStatus: 'SUBMITTED' | 'GRADED' | 'MODERATION' | 'RELEASED' | 'LOCKED' | string;
+      reason?: string;
+    },
+    actorUser: AuthenticatedUser
+  ): Promise<{ status: string; lifecycleStatus: string }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+    const normalizedTarget = params.targetStatus.toUpperCase().trim();
+
+    const validStatuses = ['SUBMITTED', 'GRADED', 'MODERATION', 'RELEASED', 'LOCKED'];
+    if (!validStatuses.includes(normalizedTarget)) {
+      throw new Error(`Invalid lifecycle status. Allowed values: ${validStatuses.join(', ')}`);
+    }
+
+    // 1. Fetch current submission
+    const { data: sub, error } = await supabase
+      .from('submissions')
+      .select('*, assignments(*)')
+      .eq('id', params.submissionId)
+      .maybeSingle();
+
+    if (error || !sub) {
+      throw new Error('Submission not found');
+    }
+
+    const currentStatus = (sub.status || 'SUBMITTED').toUpperCase().trim();
+
+    // 2. Lock protection check: Transitioning TO or FROM LOCKED requires elevated permissions
+    if (currentStatus === 'LOCKED' || normalizedTarget === 'LOCKED') {
+      const elevatedRoles = ['super_admin', 'admin', 'registrar'];
+      if (!elevatedRoles.includes(actorUser.role)) {
+        throw new Error(
+          'Access denied: Only Registrar or Admin can lock or transition locked grades.'
+        );
+      }
+    }
+
+    // 3. Update status in database
+    const dbStatus = normalizedTarget.toLowerCase();
+    const { error: updateErr } = await supabase
+      .from('submissions')
+      .update({ status: dbStatus, updated_at: timestamp })
+      .eq('id', params.submissionId);
+
+    if (updateErr) {
+      logger.warn('Submission lifecycle update warning:', updateErr.message);
+    }
+
+    // 4. Log audit record
+    await logAuditEvent({
+      actorUserId: actorUser.email,
+      entityType: 'grade_lifecycle',
+      entityId: params.submissionId,
+      action: `grade_lifecycle_transition_${normalizedTarget.toLowerCase()}`,
+      newValues: {
+        previousStatus: currentStatus,
+        targetStatus: normalizedTarget,
+        reason: params.reason || `Transitioned to ${normalizedTarget} by ${actorUser.role}`,
+        actorRole: actorUser.role,
+      },
+    });
+
+    return {
+      status: 'success',
+      lifecycleStatus: normalizedTarget,
+    };
+  },
+
+  /**
+   * Administrative override for locked grades requiring an explicit reason.
+   */
+  async overrideLockedGrade(
+    params: {
+      submissionId: string;
+      score: number;
+      feedback?: string;
+      reason: string;
+    },
+    actorUser: AuthenticatedUser
+  ): Promise<{ status: string; score: number; feedback?: string; overrideApproved: boolean }> {
+    const elevatedRoles = ['super_admin', 'admin', 'registrar'];
+    if (!elevatedRoles.includes(actorUser.role)) {
+      throw new Error('Access denied: Only Registrar or Admin can approve grade overrides for locked records.');
+    }
+
+    if (!params.reason || params.reason.trim().length === 0) {
+      throw new Error('An explicit justification reason is required for an administrative grade override.');
+    }
+
+    const res = await this.gradeSubmission(
+      {
+        submissionId: params.submissionId,
+        score: params.score,
+        feedback: params.feedback,
+        overrideReason: params.reason,
+        allowLockedOverride: true,
+      },
+      actorUser
+    );
+
+    return {
+      ...res,
+      overrideApproved: true,
+    };
   },
 };
