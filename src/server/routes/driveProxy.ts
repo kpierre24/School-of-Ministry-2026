@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { Readable } from "stream";
+import { requireAuth } from "../middleware/rbac";
 
 export const driveProxyRouter = Router();
+
+// Default-deny at the router level: All drive proxy endpoints require authentication
+driveProxyRouter.use(requireAuth);
 
 /**
  * Proxy to fetch public spreadsheet sheet/tab names and GIDs server-side,

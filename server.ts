@@ -23,7 +23,7 @@ import { initializeRelationalSchema, stateHydrationService } from "./src/server/
 import { validateSupabaseServerConfig, isSupabaseConfigured } from "./src/server/services/supabaseServer";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
-import { authenticate } from "./src/server/middleware/rbac";
+import { authenticate, requireAuth } from "./src/server/middleware/rbac";
 
 dotenv.config();
 
@@ -100,22 +100,24 @@ async function startServer() {
   // Initialize relational PostgreSQL database tables
   initializeRelationalSchema().catch((e) => logger.warn("Relational init warning:", e));
 
-  // Mount API routers
+  // Public API routers (accessible without required authentication token)
   app.use("/api/auth", authRouter);
-  app.use("/api/students", studentsRouter);
-  app.use("/api/academics", academicsRouter);
-  app.use("/api/attendance", attendanceRouter);
-  app.use("/api/payments", paymentsRouter);
-  app.use("/api/library", libraryRouter);
-  app.use("/api/assignments", assignmentsRouter);
-  app.use("/api/audit-logs", auditLogsRouter);
-  app.use("/api/state", stateRouter);
-  app.use("/api/me", meRouter);
-  app.use("/api/notifications", notificationsRouter);
-  app.use("/api/github", githubRouter);
-  app.use("/api/ai", aiRouter);
-  app.use("/api/drive-proxy", driveProxyRouter);
   app.use("/api/bible", bibleRouter);
+
+  // Protected API routers (strictly require verified authentication token)
+  app.use("/api/students", requireAuth, studentsRouter);
+  app.use("/api/academics", requireAuth, academicsRouter);
+  app.use("/api/attendance", requireAuth, attendanceRouter);
+  app.use("/api/payments", requireAuth, paymentsRouter);
+  app.use("/api/library", requireAuth, libraryRouter);
+  app.use("/api/assignments", requireAuth, assignmentsRouter);
+  app.use("/api/audit-logs", requireAuth, auditLogsRouter);
+  app.use("/api/state", requireAuth, stateRouter);
+  app.use("/api/me", requireAuth, meRouter);
+  app.use("/api/notifications", requireAuth, notificationsRouter);
+  app.use("/api/github", requireAuth, githubRouter);
+  app.use("/api/ai", requireAuth, aiRouter);
+  app.use("/api/drive-proxy", requireAuth, driveProxyRouter);
 
   // Vite middleware for development vs static asset serving in production
   if (isDev) {
