@@ -20,6 +20,7 @@ import { stateRouter } from "./src/server/routes/state";
 import { meRouter } from "./src/server/routes/me";
 import { notificationsRouter } from "./src/server/routes/notifications";
 import { initializeRelationalSchema, stateHydrationService } from "./src/server/services/domain";
+import { validateSupabaseServerConfig, isSupabaseConfigured } from "./src/server/services/supabaseServer";
 import { logger } from "./src/lib/logger";
 import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
 import { authenticate } from "./src/server/middleware/rbac";
@@ -30,6 +31,16 @@ const currentFilename = typeof __filename !== "undefined" ? __filename : process
 const currentDirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(currentFilename);
 
 async function startServer() {
+  // Check privileged server credentials on startup
+  if (!isSupabaseConfigured()) {
+    logger.warn(
+      "[Supabase Server] SUPABASE_SERVICE_ROLE_KEY is not configured in this environment. " +
+      "Authoritative server database operations will fail until SUPABASE_SERVICE_ROLE_KEY is provided in environment variables."
+    );
+  } else {
+    logger.info("[Supabase Server] Privileged SUPABASE_SERVICE_ROLE_KEY configured and verified.");
+  }
+
   const app = express();
   const isDev =
     process.env.NODE_ENV !== "production" &&

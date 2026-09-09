@@ -7,12 +7,31 @@ import { AuthenticatedUser } from '../../types/rbac';
 let serverSupabaseClient: SupabaseClient | null = null;
 
 export function isSupabaseConfigured(): boolean {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY;
-  return Boolean(supabaseUrl && supabaseKey);
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return Boolean(supabaseUrl && serviceRoleKey);
+}
+
+/**
+ * Validates that authoritative privileged server credentials are configured.
+ * Fails fast without silently downgrading to anonymous browser credentials.
+ */
+export function validateSupabaseServerConfig(): void {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error(
+      "FATAL: Missing required Supabase URL (SUPABASE_URL or VITE_SUPABASE_URL). Server cannot start."
+    );
+  }
+
+  if (!serviceRoleKey) {
+    throw new Error(
+      "FATAL: Missing required privileged server credential: SUPABASE_SERVICE_ROLE_KEY. " +
+      "Server domain operations, database management, and authoritative audit logging require privileged service role access and will not downgrade to anonymous client credentials."
+    );
+  }
 }
 
 export function getServerSupabase(): SupabaseClient {
@@ -20,26 +39,19 @@ export function getServerSupabase(): SupabaseClient {
     return serverSupabaseClient;
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY;
+  validateSupabaseServerConfig();
 
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Missing required Supabase credentials (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY)"
-    );
-  }
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-  serverSupabaseClient = createClient(supabaseUrl, supabaseKey, {
+  serverSupabaseClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
   });
 
-  logger.info("Initialized server-side Supabase PostgreSQL client");
+  logger.info("Initialized authoritative server-side Supabase client with SUPABASE_SERVICE_ROLE_KEY");
   return serverSupabaseClient;
 }
 
