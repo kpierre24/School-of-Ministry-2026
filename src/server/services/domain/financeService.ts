@@ -10,6 +10,7 @@ function isUuid(val: any): boolean {
 
 /**
  * Obtains the next sequence number formatted as PRE-YYYY-000001 (6 digits zero-padded)
+ * 100% PostgreSQL-atomic. Removed COUNT + 1 and random document-number fallbacks.
  */
 export async function getNextDatabaseSequenceNumber(
   type: 'invoice' | 'payment' | 'refund' | 'adjustment' | 'receipt',
@@ -26,57 +27,18 @@ export async function getNextDatabaseSequenceNumber(
   };
   const prefix = prefixMap[type] || type.toUpperCase().slice(0, 3);
 
-  // 1. Try atomic PostgreSQL RPC
-  try {
-    const { data, error } = await supabase.rpc('get_next_document_number', {
-      p_type: type,
-      p_year: year,
-    });
-    if (!error && data && typeof data === 'string') {
-      return data;
-    }
-  } catch {
-    // Ignore RPC failure if table/function pending migration
+  // Call the atomic PostgreSQL sequence generator RPC
+  const { data, error } = await supabase.rpc('get_next_document_number', {
+    p_type: type,
+    p_year: year,
+  });
+
+  if (error || !data || typeof data !== 'string') {
+    logger.error(`Database atomic sequence generation failed for type "${type}":`, error?.message || error);
+    throw new Error(`Failed to generate atomic sequence number for ${type}: ${error?.message || 'Empty sequence value returned'}`);
   }
 
-  // 2. Try document_sequences table
-  try {
-    const { data: seqRow } = await supabase
-      .from('document_sequences')
-      .select('current_value')
-      .eq('sequence_type', type)
-      .maybeSingle();
-
-    const nextVal = (Number(seqRow?.current_value) || 0) + 1;
-    await supabase.from('document_sequences').upsert({
-      sequence_type: type,
-      prefix,
-      year,
-      current_value: nextVal,
-      updated_at: new Date().toISOString(),
-    });
-    return `${prefix}-${year}-${String(nextVal).padStart(6, '0')}`;
-  } catch {
-    // Ignore table failure
-  }
-
-  // 3. Fallback to count + 1
-  try {
-    const tableName =
-      type === 'invoice'
-        ? 'invoices'
-        : type === 'payment'
-        ? 'payments'
-        : type === 'refund'
-        ? 'refunds'
-        : 'financial_adjustments';
-    const { count } = await supabase.from(tableName).select('*', { count: 'exact', head: true });
-    const nextVal = (Number(count) || 0) + 1;
-    return `${prefix}-${year}-${String(nextVal).padStart(6, '0')}`;
-  } catch {
-    const nextVal = Math.floor(1 + Math.random() * 9999);
-    return `${prefix}-${year}-${String(nextVal).padStart(6, '0')}`;
-  }
+  return data;
 }
 
 export interface AuthoritativeInvoiceFinancialSummary {
@@ -585,7 +547,7 @@ export const financeService = {
       const invoiceId = (safePayload.id && isUuid(safePayload.id)) ? safePayload.id : crypto.randomUUID();
       const invoiceNumber = safePayload.invoiceNumber || await getNextDatabaseSequenceNumber('invoice', '2026', supabase);
 
-      // 3. Insert or update invoice header
+      // 3. Prepare Invoice Header payload
       const invoiceHeader = {
         id: invoiceId,
         invoice_number: invoiceNumber,
@@ -597,20 +559,9 @@ export const financeService = {
         due_date: safePayload.dueDate || '2026-05-15',
         payment_plan: safePayload.paymentPlan || 'Monthly Installments',
         notes: safePayload.notes || '',
-        updated_at: timestamp,
       };
 
-      const { error: headerErr } = await supabase
-        .from('invoices')
-        .upsert(invoiceHeader, { onConflict: 'id' });
-
-      if (headerErr) {
-        logger.error('Invoice header upsert failed:', headerErr.message);
-        throw new Error(`Failed to save invoice header: ${headerErr.message}`);
-      }
-
-      // 4. Authoritative Line Items Handling:
-      // If client supplied lines, use them; otherwise, create standard tuition line
+      // 4. Prepare Line Items
       let inputLines: any[] = Array.isArray(safePayload.lines) && safePayload.lines.length > 0
         ? safePayload.lines
         : [
@@ -622,32 +573,28 @@ export const financeService = {
             },
           ];
 
-      // Delete existing lines and re-insert normalized lines
-      const { error: delErr } = await supabase.from('invoice_lines').delete().eq('invoice_id', invoiceId);
-      if (delErr) {
-        logger.error('Invoice lines deletion failed:', delErr.message);
-        throw new Error(`Failed to update invoice lines: ${delErr.message}`);
-      }
-
       const linesToInsert = inputLines.map((l) => {
         const qty = Number(l.quantity || 1);
         const unit = Number(l.unitAmount || 0);
         return {
           id: (l.id && isUuid(l.id)) ? l.id : crypto.randomUUID(),
-          invoice_id: invoiceId,
           line_type: l.lineType || 'tuition',
           description: l.description || 'Curriculum Tuition',
           quantity: qty,
           unit_amount: unit,
           total_amount: Math.round(qty * unit * 100) / 100,
-          updated_at: timestamp,
         };
       });
 
-      const { error: lineErr } = await supabase.from('invoice_lines').insert(linesToInsert);
-      if (lineErr) {
-        logger.error('Invoice lines insertion failed:', lineErr.message);
-        throw new Error(`Failed to save invoice lines: ${lineErr.message}`);
+      // Execute atomic transaction via database RPC
+      const { error: txnErr } = await supabase.rpc('create_invoice_transaction', {
+        p_invoice: invoiceHeader,
+        p_lines: linesToInsert
+      });
+
+      if (txnErr) {
+        logger.error('Invoice creation transaction failed:', txnErr.message);
+        throw new Error(`Failed to save invoice via atomic transaction: ${txnErr.message}`);
       }
 
       // 5. Run Server Calculation Engine to compute authoritative balance
@@ -832,10 +779,11 @@ export const financeService = {
       const paymentNumber = paymentInput.paymentNumber || await getNextDatabaseSequenceNumber('payment', '2026', supabase);
       const reference = paymentInput.reference || paymentInput.transactionReference || paymentNumber;
 
-      // 1. Insert payment record
+      // 1. Prepare payment payload
       const paymentPayload = {
         id: paymentId,
         payment_number: paymentNumber,
+        receipt_number: paymentNumber,
         invoice_id: paymentInput.invoiceId || null,
         student_id: studentId,
         student_name: studentName,
@@ -846,17 +794,9 @@ export const financeService = {
         status: 'completed',
         notes: paymentInput.notes || '',
         recorded_by_user_id: actorUserId || null,
-        updated_at: timestamp,
       };
 
-      const { error: pmtErr } = await supabase.from('payments').upsert(paymentPayload, { onConflict: 'id' });
-      if (pmtErr) {
-        logger.error('Payment insert failed:', pmtErr.message);
-        throw new Error(`Failed to record payment: ${pmtErr.message}`);
-      }
-
-      // 2. Insert Payment Allocations:
-      // payment -> payment_allocation
+      // 2. Prepare Payment Allocations
       const targetInvoiceIds: string[] = [];
       const allocationsToInsert: any[] = [];
 
@@ -866,11 +806,9 @@ export const financeService = {
             targetInvoiceIds.push(alloc.invoiceId);
             allocationsToInsert.push({
               id: (alloc.id && isUuid(alloc.id)) ? alloc.id : crypto.randomUUID(),
-              payment_id: paymentId,
               invoice_id: alloc.invoiceId,
               allocated_amount: Number(alloc.amount || alloc.allocatedAmount),
               notes: alloc.notes || paymentInput.notes || 'Tuition payment allocation',
-              created_at: timestamp,
             });
           }
         });
@@ -878,20 +816,21 @@ export const financeService = {
         targetInvoiceIds.push(paymentInput.invoiceId);
         allocationsToInsert.push({
           id: crypto.randomUUID(),
-          payment_id: paymentId,
           invoice_id: paymentInput.invoiceId,
           allocated_amount: amount,
           notes: paymentInput.notes || 'Direct invoice payment allocation',
-          created_at: timestamp,
         });
       }
 
-      if (allocationsToInsert.length > 0) {
-        const { error: allocErr } = await supabase.from('payment_allocations').insert(allocationsToInsert);
-        if (allocErr) {
-          logger.error('Payment allocations insert failed:', allocErr.message);
-          throw new Error(`Failed to record payment allocations: ${allocErr.message}`);
-        }
+      // Execute atomic transaction via database RPC
+      const { error: txnErr } = await supabase.rpc('create_payment_transaction', {
+        p_payment: paymentPayload,
+        p_allocations: allocationsToInsert
+      });
+
+      if (txnErr) {
+        logger.error('Payment creation transaction failed:', txnErr.message);
+        throw new Error(`Failed to record payment via atomic transaction: ${txnErr.message}`);
       }
 
       // 3. Recalculate Authoritative Balances for each affected invoice
@@ -1062,7 +1001,7 @@ export const financeService = {
       const refundId = (refundInput.id && isUuid(refundInput.id)) ? refundInput.id : crypto.randomUUID();
       const refundNumber = refundInput.refundNumber || await getNextDatabaseSequenceNumber('refund', '2026', supabase);
 
-      // 1. Insert refund record
+      // 1. Prepare Refund Payload
       const refundPayload = {
         id: refundId,
         refund_number: refundNumber,
@@ -1075,17 +1014,9 @@ export const financeService = {
         refund_date: refundInput.refundDate || timestamp.split('T')[0],
         approved_by_user_id: actorUserId || refundInput.approvedBy || 'Finance Bursar',
         notes: refundInput.notes || '',
-        updated_at: timestamp,
       };
 
-      const { error: refErr } = await supabase.from('refunds').upsert(refundPayload, { onConflict: 'id' });
-      if (refErr) {
-        logger.error('Refund insert failed:', refErr.message);
-        throw new Error(`Failed to record refund: ${refErr.message}`);
-      }
-
-      // 2. Insert Refund Allocations:
-      // refund -> refund_allocation
+      // 2. Prepare Refund Allocations
       const targetInvoiceIds: string[] = [];
       const allocationsToInsert: any[] = [];
 
@@ -1095,11 +1026,9 @@ export const financeService = {
             targetInvoiceIds.push(alloc.invoiceId);
             allocationsToInsert.push({
               id: (alloc.id && isUuid(alloc.id)) ? alloc.id : crypto.randomUUID(),
-              refund_id: refundId,
               invoice_id: alloc.invoiceId,
               payment_allocation_id: alloc.paymentAllocationId || null,
               allocated_amount: Number(alloc.amount || alloc.allocatedAmount),
-              created_at: timestamp,
             });
           }
         });
@@ -1107,19 +1036,20 @@ export const financeService = {
         targetInvoiceIds.push(refundInput.invoiceId);
         allocationsToInsert.push({
           id: crypto.randomUUID(),
-          refund_id: refundId,
           invoice_id: refundInput.invoiceId,
           allocated_amount: amount,
-          created_at: timestamp,
         });
       }
 
-      if (allocationsToInsert.length > 0) {
-        const { error: refAllocErr } = await supabase.from('refund_allocations').insert(allocationsToInsert);
-        if (refAllocErr) {
-          logger.error('Refund allocations insert failed:', refAllocErr.message);
-          throw new Error(`Failed to record refund allocations: ${refAllocErr.message}`);
-        }
+      // Execute atomic transaction via database RPC
+      const { error: txnErr } = await supabase.rpc('create_refund_transaction', {
+        p_refund: refundPayload,
+        p_allocations: allocationsToInsert
+      });
+
+      if (txnErr) {
+        logger.error('Refund creation transaction failed:', txnErr.message);
+        throw new Error(`Failed to record refund via atomic transaction: ${txnErr.message}`);
       }
 
       // 3. Recalculate Authoritative Balances for each affected invoice
