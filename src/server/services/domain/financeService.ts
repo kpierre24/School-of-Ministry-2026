@@ -376,7 +376,10 @@ export const financeService = {
         );
 
         let result = formatted;
-        if (user && user.role === 'student') {
+        if (user && (user.role === 'teacher' || user.role === 'lecturer')) {
+          // Lecturers/Teachers have no authorization to view financial records
+          return { invoices: [], total: 0 };
+        } else if (user && user.role === 'student') {
           const studentUuid = user.studentRecordId || user.studentId || user.userId;
           const userUuid = user.userId || user.id;
           result = formatted.filter(
@@ -635,7 +638,10 @@ export const financeService = {
         });
 
         let result = formatted;
-        if (user && user.role === 'student') {
+        if (user && (user.role === 'teacher' || user.role === 'lecturer')) {
+          // Lecturers/Teachers have no authorization to view transaction ledgers
+          return { transactions: [], total: 0 };
+        } else if (user && user.role === 'student') {
           const studentUuid = user.studentRecordId || user.studentId || user.userId;
           const userUuid = user.userId || user.id;
           result = formatted.filter(

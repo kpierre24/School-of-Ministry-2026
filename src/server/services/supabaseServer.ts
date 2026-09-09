@@ -336,6 +336,43 @@ export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promis
     };
   }
 
+  // Lecturer / Faculty Scoping: No access to financial ledger; restricted to assigned courses
+  if (user.role === 'teacher' || user.role === 'lecturer') {
+    const assigned = Array.isArray(user.assignedCourses) ? user.assignedCourses.map(c => c.toLowerCase().trim()) : [];
+    const hasAssignedCourses = assigned.length > 0 && !assigned.includes('*');
+
+    const matchesAssignedCourse = (item: any) => {
+      if (!hasAssignedCourses) return true; // Default to all if no specific assignments restriction set
+      if (!item) return false;
+      const cId = String(item.course_offering_id || item.courseOfferingId || item.course_id || item.courseId || item.courseCode || '').toLowerCase().trim();
+      return assigned.some(a => a === cId || cId.includes(a));
+    };
+
+    return {
+      ...cleanState,
+      // Lecturers do NOT have authorization to read institutional financial ledgers
+      payments: [],
+      invoices: [],
+      transactions: [],
+      receipts: [],
+      adjustments: [],
+      // Filter attendance records to lecturer's assigned courses
+      records: Array.isArray(cleanState.records)
+        ? cleanState.records.filter((r: any) => matchesAssignedCourse(r))
+        : [],
+      // Filter homework submissions to lecturer's assigned courses
+      submissions: Array.isArray(cleanState.submissions)
+        ? cleanState.submissions.filter((s: any) => matchesAssignedCourse(s))
+        : [],
+      // Filter custom assignments to lecturer's assigned courses
+      customAssignments: Array.isArray(cleanState.customAssignments)
+        ? cleanState.customAssignments.filter((a: any) => matchesAssignedCourse(a))
+        : [],
+      // No administrative audit logs
+      auditHistory: [],
+    };
+  }
+
   // Institutional users (admin, teacher, registrar, finance_officer) receive full institutional state
   return cleanState;
 }
@@ -431,6 +468,21 @@ export async function saveAuthoritativeStateForUser(
         ...existing,
         version: nextVersion,
         submissions: mergedSubmissions,
+        lastSyncedAt: timestamp,
+      };
+    }
+  } else if (user.role === 'teacher' || user.role === 'lecturer') {
+    const existing = await getAuthoritativeState('shared_default_state');
+    if (existing) {
+      // Prevent lecturer from overwriting institutional financial ledgers or unassigned course settings
+      finalStateToSave = {
+        ...sanitizedState,
+        version: nextVersion,
+        payments: existing.payments || [],
+        invoices: existing.invoices || [],
+        transactions: existing.transactions || [],
+        receipts: existing.receipts || [],
+        adjustments: existing.adjustments || [],
         lastSyncedAt: timestamp,
       };
     }
