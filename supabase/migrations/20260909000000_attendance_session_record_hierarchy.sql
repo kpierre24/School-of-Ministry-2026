@@ -6,11 +6,36 @@
 -- Batch Attendance: UPSERT attendance_record inside an atomic transaction
 -- ============================================================================
 
+-- 0. Ensure cohorts lookup table exists to prevent SQLSTATE 42P01
+CREATE TABLE IF NOT EXISTS public.cohorts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  academic_year INTEGER NOT NULL DEFAULT 2026,
+  term TEXT,
+  start_date DATE,
+  end_date DATE,
+  is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+  is_current BOOLEAN NOT NULL DEFAULT FALSE,
+  description TEXT,
+  sheet_url TEXT,
+  sheet_tab_pattern TEXT,
+  theme_color TEXT DEFAULT 'indigo',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed default cohorts if newly created
+INSERT INTO public.cohorts (id, name, academic_year, term, start_date, end_date, is_archived, is_current, description, theme_color, sheet_tab_pattern)
+VALUES 
+  ('cohort_2026', 'Class of 2026', 2026, 'Spring 2026 • Term 2', '2026-01-10', '2026-12-15', FALSE, TRUE, 'Current active ministerial diploma & certificate cohort (Foundation to Executive Leadership).', 'indigo', '2026'),
+  ('cohort_2027', 'Class of 2027', 2027, 'Fall 2026 / Spring 2027', '2027-01-09', '2027-12-14', FALSE, FALSE, 'Upcoming academic year cohort for prospective & enrolled ministry students.', 'emerald', '2027')
+ON CONFLICT (id) DO NOTHING;
+
 -- 1. Create attendance_sessions table
 CREATE TABLE IF NOT EXISTS public.attendance_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id UUID REFERENCES public.courses(id) ON DELETE SET NULL,
-  cohort_id UUID REFERENCES public.cohorts(id) ON DELETE SET NULL,
+  cohort_id TEXT, -- Flexible cohort identifier (e.g. 'cohort_2026', 'cohort_2027') without hard table dependency
   session_date DATE NOT NULL,
   title TEXT,
   notes TEXT,
@@ -20,8 +45,20 @@ CREATE TABLE IF NOT EXISTS public.attendance_sessions (
   CONSTRAINT unique_session_date_course UNIQUE (session_date, course_id)
 );
 
+-- Defensively ensure cohort_id column exists if table was created previously
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'attendance_sessions') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'attendance_sessions' AND column_name = 'cohort_id') THEN
+      ALTER TABLE public.attendance_sessions ADD COLUMN cohort_id TEXT;
+    END IF;
+  END IF;
+END;
+$$;
+
 CREATE INDEX IF NOT EXISTS idx_attendance_sessions_date ON public.attendance_sessions (session_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_sessions_course ON public.attendance_sessions (course_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_sessions_cohort ON public.attendance_sessions (cohort_id);
 
 -- 2. Create attendance_records table (Hierarchy: session -> record -> student_id)
 CREATE TABLE IF NOT EXISTS public.attendance_records (
@@ -71,23 +108,40 @@ BEGIN
   END IF;
 
   -- 1. Ensure attendance_session exists inside this transaction
-  INSERT INTO public.attendance_sessions (
-    session_date,
-    course_id,
-    title,
-    updated_at
-  )
-  VALUES (
-    p_session_date,
-    p_course_id,
-    COALESCE(p_session_title, 'Class Session'),
-    NOW()
-  )
-  ON CONFLICT (session_date, course_id)
-  DO UPDATE SET
-    title = COALESCE(EXCLUDED.title, public.attendance_sessions.title),
-    updated_at = NOW()
-  RETURNING id INTO v_session_id;
+  IF p_course_id IS NOT NULL THEN
+    SELECT id INTO v_session_id
+    FROM public.attendance_sessions
+    WHERE session_date = p_session_date AND course_id = p_course_id AND deleted_at IS NULL
+    ORDER BY created_at ASC
+    LIMIT 1;
+  ELSE
+    SELECT id INTO v_session_id
+    FROM public.attendance_sessions
+    WHERE session_date = p_session_date AND course_id IS NULL AND deleted_at IS NULL
+    ORDER BY created_at ASC
+    LIMIT 1;
+  END IF;
+
+  IF v_session_id IS NULL THEN
+    INSERT INTO public.attendance_sessions (
+      session_date,
+      course_id,
+      title,
+      updated_at
+    )
+    VALUES (
+      p_session_date,
+      p_course_id,
+      COALESCE(p_session_title, 'Class Session'),
+      NOW()
+    )
+    RETURNING id INTO v_session_id;
+  ELSE
+    UPDATE public.attendance_sessions
+    SET title = COALESCE(p_session_title, title),
+        updated_at = NOW()
+    WHERE id = v_session_id;
+  END IF;
 
   -- 2. Process and UPSERT each attendance_record
   -- This preserves existing records for other students in this session without deleting
@@ -169,23 +223,40 @@ BEGIN
   END IF;
 
   -- 1. Ensure attendance_session exists
-  INSERT INTO public.attendance_sessions (
-    session_date,
-    course_id,
-    title,
-    updated_at
-  )
-  VALUES (
-    p_session_date,
-    p_course_id,
-    COALESCE(p_session_title, 'Class Session'),
-    NOW()
-  )
-  ON CONFLICT (session_date, course_id)
-  DO UPDATE SET
-    title = COALESCE(EXCLUDED.title, public.attendance_sessions.title),
-    updated_at = NOW()
-  RETURNING id INTO v_session_id;
+  IF p_course_id IS NOT NULL THEN
+    SELECT id INTO v_session_id
+    FROM public.attendance_sessions
+    WHERE session_date = p_session_date AND course_id = p_course_id AND deleted_at IS NULL
+    ORDER BY created_at ASC
+    LIMIT 1;
+  ELSE
+    SELECT id INTO v_session_id
+    FROM public.attendance_sessions
+    WHERE session_date = p_session_date AND course_id IS NULL AND deleted_at IS NULL
+    ORDER BY created_at ASC
+    LIMIT 1;
+  END IF;
+
+  IF v_session_id IS NULL THEN
+    INSERT INTO public.attendance_sessions (
+      session_date,
+      course_id,
+      title,
+      updated_at
+    )
+    VALUES (
+      p_session_date,
+      p_course_id,
+      COALESCE(p_session_title, 'Class Session'),
+      NOW()
+    )
+    RETURNING id INTO v_session_id;
+  ELSE
+    UPDATE public.attendance_sessions
+    SET title = COALESCE(p_session_title, title),
+        updated_at = NOW()
+    WHERE id = v_session_id;
+  END IF;
 
   -- 2. Upsert record
   INSERT INTO public.attendance_records (
