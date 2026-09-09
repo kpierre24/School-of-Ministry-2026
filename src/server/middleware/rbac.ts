@@ -798,10 +798,10 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
       return next();
     }
 
-    // 2. Check explicitly allowed administrative roles (excluding lecturer!)
-    // Note: Lecturers must never bypass via allowedRoles; they must be verified with courseCode against the database.
+    // 2. Check explicitly allowed administrative roles (excluding lecturer and teacher!)
+    // Note: Lecturers and faculty must never bypass via allowedRoles; they must be verified with courseCode against the database.
     const allowedRoles: UserRole[] = (options.allowedRoles || ["super_admin", "admin", "registrar"])
-      .filter((r): r is UserRole => r !== "lecturer");
+      .filter((r): r is UserRole => r !== "lecturer" && r !== "teacher");
 
     if (allowedRoles.includes(role)) {
       return next();
@@ -810,13 +810,13 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
     // 3. Extract target identifiers from request
     const { targetStudentId, targetStudentName, targetEmail, courseCode } = options.getTarget(req);
 
-    // 4. Lecturer check: Course scope is strictly required and verified against the database
-    if (role === "lecturer") {
+    // 4. Lecturer check: Course scope is strictly required and verified against relational assignment tables in database
+    if (role === "lecturer" || role === "teacher") {
       if (!courseCode) {
         return res.status(400).json({
-          error: "Course scope is required",
+          error: "Course context is required",
           code: "COURSE_SCOPE_REQUIRED",
-          details: "Lecturers must provide a courseCode parameter or body field to access scoped student records."
+          details: "Lecturers and faculty must provide a courseCode parameter or body field to access scoped student records."
         });
       }
 
@@ -826,7 +826,7 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
         return next();
       }
 
-      logger.warn(`Lecturer course verification failed for ${email} (Role: lecturer) targeting course [${courseCode}]`);
+      logger.warn(`Lecturer course verification failed for ${email} (Role: ${role}) targeting course [${courseCode}]`);
       return res.status(403).json({
         error: `Access Denied: You are not assigned as the lecturer for course ${courseCode} in the database.`,
         code: "LECTURER_COURSE_UNASSIGNED",

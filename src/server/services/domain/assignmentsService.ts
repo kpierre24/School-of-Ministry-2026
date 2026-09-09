@@ -411,9 +411,12 @@ export const assignmentsService = {
         throw new Error('Associated assignment not found for this submission');
       }
 
-      // Verify lecturer assignment against database for lecturer role
+      // Verify lecturer assignment against database for lecturer/teacher role
       const courseCode = assignment.course_code || assignment.courseCode || assignment.course_definition_id || assignment.courseId;
-      if (typeof actorUser === 'object' && actorUser.role === 'lecturer' && courseCode) {
+      if (typeof actorUser === 'object' && (actorUser.role === 'lecturer' || actorUser.role === 'teacher')) {
+        if (!courseCode) {
+          throw new Error('Access Denied: Course context (courseCode) is required for lecturer authorization.');
+        }
         const { verifyLecturerCourseInDatabase } = await import('../../middleware/rbac');
         const isAssigned = await verifyLecturerCourseInDatabase(actorUser, courseCode);
         if (!isAssigned) {
