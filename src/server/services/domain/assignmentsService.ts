@@ -373,8 +373,8 @@ export const assignmentsService = {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
 
-    const actorEmail = typeof actorUser === 'string' ? actorUser : actorUser?.email || 'teacher';
-    const actorRole = typeof actorUser === 'string' ? 'teacher' : actorUser?.role || 'teacher';
+    const actorUserId = typeof actorUser === 'object' ? actorUser.userId : (actorUser || null);
+    const actorRole = typeof actorUser === 'object' ? actorUser.role : 'teacher';
 
     try {
       if (!data.submissionId) {
@@ -427,7 +427,7 @@ export const assignmentsService = {
             points_awarded: numericScore,
             feedback: data.feedback || '',
             graded_at: timestamp,
-            graded_by_user_id: actorEmail,
+            graded_by_user_id: actorUserId,
             updated_at: timestamp,
           },
           { onConflict: 'submission_id' }
@@ -444,10 +444,11 @@ export const assignmentsService = {
         .update({ status: nextStatus, updated_at: timestamp })
         .eq('id', data.submissionId);
 
-      // Log audit entry
+      // Log audit entry with all authoritative fields
       const isLockedOverride = currentStatus === 'LOCKED' || Boolean(data.overrideReason);
       await logAuditEvent({
-        actorUserId: actorEmail,
+        actorUserId: actorUserId,
+        actorRole: actorRole,
         entityType: 'grade',
         entityId: data.submissionId,
         action: isLockedOverride ? 'grade_override_approved' : 'grade_recorded',
@@ -459,8 +460,9 @@ export const assignmentsService = {
           rubricScores: data.rubricScores,
           maxScore,
           overrideReason: data.overrideReason || null,
-          actorRole,
         },
+        changedFields: ['score', 'feedback', 'status'],
+        reason: data.overrideReason || (isLockedOverride ? 'Grade override approved' : 'Grade recorded'),
       });
 
       return {
@@ -531,18 +533,21 @@ export const assignmentsService = {
       logger.warn('Submission lifecycle update warning:', updateErr.message);
     }
 
-    // 4. Log audit record
+    // 4. Log audit record with all authoritative fields
     await logAuditEvent({
-      actorUserId: actorUser.email,
+      actorUserId: actorUser.userId,
+      actorRole: actorUser.role,
       entityType: 'grade_lifecycle',
       entityId: params.submissionId,
       action: `grade_lifecycle_transition_${normalizedTarget.toLowerCase()}`,
+      oldValues: { status: currentStatus },
       newValues: {
         previousStatus: currentStatus,
         targetStatus: normalizedTarget,
-        reason: params.reason || `Transitioned to ${normalizedTarget} by ${actorUser.role}`,
-        actorRole: actorUser.role,
+        status: dbStatus,
       },
+      changedFields: ['status'],
+      reason: params.reason || `Transitioned to ${normalizedTarget} by ${actorUser.role}`,
     });
 
     return {

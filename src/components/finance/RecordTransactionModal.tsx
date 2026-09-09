@@ -74,7 +74,7 @@ export const RecordTransactionModal: React.FC<RecordTransactionModalProps> = ({
         paymentDate,
         notes: notes.trim(),
         recordedBy: userEmail || 'Finance Bursar',
-        actorRole: userRole || 'admin'
+        actorRole: userRole || 'finance_officer'
       });
 
       onTransactionRecorded(result);

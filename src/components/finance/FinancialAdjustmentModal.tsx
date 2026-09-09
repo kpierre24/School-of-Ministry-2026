@@ -85,7 +85,7 @@ export const FinancialAdjustmentModal: React.FC<FinancialAdjustmentModalProps> =
         categoryName: categoryName.trim(),
         amount: numAmount,
         authorizedBy: authorizedBy.trim(),
-        actorRole: userRole || 'admin',
+        actorRole: userRole || 'finance_officer',
         notes: notes.trim(),
         receiptOrDocRef: receiptOrDocRef.trim()
       });

@@ -141,7 +141,7 @@ export function filterNotificationsForUser(
   role?: string,
   studentName?: string
 ): AppNotification[] {
-  const normalizedRole = (role || 'admin').toLowerCase().trim();
+  const normalizedRole = (role || 'student').toLowerCase().trim();
   const normalizedStudentName = (studentName || '').toLowerCase().trim();
 
   return notifications.filter(n => {

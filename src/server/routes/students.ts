@@ -234,7 +234,8 @@ studentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { name, level, email, photoUrl } = req.body;
-      const actorUserId = req.user?.email || "admin";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!name || typeof name !== "string") {
         return res.status(400).json({ error: "Student name is required" });
@@ -242,7 +243,8 @@ studentsRouter.post(
 
       const result = await studentsService.enrollStudent(
         { name, level, email, photoUrl },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       return res.status(201).json(result);
@@ -266,12 +268,14 @@ studentsRouter.put(
     try {
       const studentName = decodeURIComponent(req.params.name).trim();
       const { level, note, photoUrl } = req.body;
-      const actorUserId = req.user?.email || "admin";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       const result = await studentsService.updateStudent(
         studentName,
         { level, note, photoUrl },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       return res.status(200).json(result);

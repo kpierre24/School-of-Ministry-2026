@@ -42,13 +42,14 @@ academicsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { course } = req.body;
-      const actorUserId = req.user?.email || "admin";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!course || !course.code || !course.title) {
         return res.status(400).json({ error: "Course code and title are required" });
       }
 
-      const result = await academicsService.saveCourse(course, actorUserId);
+      const result = await academicsService.saveCourse(course, actorUserId, actorRole);
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/academics/courses error:", err);
@@ -87,13 +88,14 @@ academicsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const offering = req.body.offering || req.body;
-      const actorUserId = req.user?.email || "admin";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!offering || !offering.id || !offering.courseId) {
         return res.status(400).json({ error: "Offering id and courseId are required" });
       }
 
-      const result = await academicsService.saveCourseOffering(offering, actorUserId);
+      const result = await academicsService.saveCourseOffering(offering, actorUserId, actorRole);
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/academics/offerings error:", err);

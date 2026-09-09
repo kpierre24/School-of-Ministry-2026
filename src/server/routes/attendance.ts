@@ -58,7 +58,8 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride } = req.body;
-      const actorUserId = req.user?.email || "teacher";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if ((!studentName && !studentId) || !date) {
         return res.status(400).json({ error: "studentId or studentName, and date are required" });
@@ -73,7 +74,8 @@ attendanceRouter.post(
 
       const result = await attendanceService.recordCheckin(
         { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       return res.status(200).json(result);
@@ -98,7 +100,8 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { date, records: incomingRecords, sessionId, sessionTitle } = req.body;
-      const actorUserId = req.user?.email || "teacher";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!date || !Array.isArray(incomingRecords)) {
         return res.status(400).json({ error: "date and records array are required" });
@@ -118,7 +121,8 @@ attendanceRouter.post(
 
       const result = await attendanceService.recordBatchAttendance(
         { date, records: incomingRecords, sessionId, sessionTitle },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       return res.status(200).json(result);
@@ -142,7 +146,8 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { studentName, studentId, date, status, reason, sessionId } = req.body;
-      const actorUserId = req.user?.email || "admin";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!studentName || !date || !status) {
         return res.status(400).json({ error: "studentName, date, and status are required" });
@@ -165,7 +170,8 @@ attendanceRouter.post(
           notes: reason ? `[Override by ${actorUserId}]: ${reason}` : "Administrative override",
           manualOverride: true,
         },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       return res.status(200).json({
@@ -195,7 +201,8 @@ attendanceRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { studentName, studentId, date, reason, documentUrl } = req.body;
-      const actorUserId = req.user?.email || "student";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if ((!studentName && !studentId) || !date) {
         return res.status(400).json({ error: "studentId or studentName, and date are required" });
@@ -203,7 +210,8 @@ attendanceRouter.post(
 
       const result = await attendanceService.recordExcuse(
         { studentName, studentId, date, reason, documentUrl },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       return res.status(200).json(result);

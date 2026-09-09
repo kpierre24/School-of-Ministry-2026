@@ -44,18 +44,23 @@ auditLogsRouter.post(
   requirePermission(["audit:read", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { action, entityType, entityId, notes } = req.body;
-      const actorEmail = req.user?.email || "system";
+      const { action, entityType, entityId, notes, reason, oldValues, newValues } = req.body;
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
       if (!action || !entityType || !entityId) {
         return res.status(400).json({ error: "action, entityType, and entityId are required" });
       }
 
       const ok = await logAuditEvent({
-        actorUserId: actorEmail,
+        actorUserId,
+        actorRole,
         entityType,
         entityId,
         action: action || "update",
-        newValues: { notes, timestamp: new Date().toISOString() },
+        oldValues: oldValues || null,
+        newValues: newValues || { notes, timestamp: new Date().toISOString() },
+        reason: reason || notes || null,
+        requestId: (req.headers["x-request-id"] as string) || undefined,
         ipAddress: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress,
         userAgent: req.headers["user-agent"],
       });

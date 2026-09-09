@@ -416,7 +416,8 @@ export const attendanceService = {
       studentEmail?: string;
       manualOverride?: boolean;
     },
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; record: any }> {
     // 1. Strict status validation (prohibits arbitrary strings)
     const validStatus = validateAttendanceStatus(data.status);
@@ -493,9 +494,10 @@ export const attendanceService = {
         logger.warn('Legacy attendance sync notice:', syncErr);
       }
 
-      // 6. Log audit event
+      // 6. Log audit event with full authoritative fields
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'teacher',
         entityType: 'attendance_record',
         entityId: `${session.id}_${studentId}`,
         action: data.manualOverride ? 'attendance_override' : 'create',
@@ -506,6 +508,8 @@ export const attendanceService = {
           status: validStatus,
           notes: data.notes,
         },
+        changedFields: ['status', 'notes'],
+        reason: data.notes || (data.manualOverride ? 'Attendance manual override' : 'Attendance checkin recorded'),
       });
 
       return {
@@ -562,7 +566,8 @@ export const attendanceService = {
         manualOverride?: boolean;
       }>;
     },
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; count: number; date: string; session: any }> {
     if (!data.date) {
       throw new Error('date is required for batch attendance');
@@ -693,9 +698,10 @@ export const attendanceService = {
         logger.warn('Legacy table sync notice:', legacyErr);
       }
 
-      // 6. Audit logging
+      // 6. Audit logging with full authoritative fields
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'teacher',
         entityType: 'attendance_session',
         entityId: session.id,
         action: 'update',
@@ -704,6 +710,8 @@ export const attendanceService = {
           date: cleanDate,
           upsertedCount: recordsToUpsert.length,
         },
+        changedFields: ['records'],
+        reason: `Batch attendance saved for session ${cleanDate} (${recordsToUpsert.length} records)`,
       });
 
       return {
@@ -723,7 +731,8 @@ export const attendanceService = {
    */
   async recordExcuse(
     data: { studentId?: string; studentName?: string; date: string; reason?: string; documentUrl?: string },
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; studentId: string; studentName: string; date: string }> {
     try {
       const checkinRes = await this.recordCheckin(
@@ -735,18 +744,22 @@ export const attendanceService = {
           notes: data.reason || 'Excused absence approved',
           manualOverride: true,
         },
-        actorUserId
+        actorUserId,
+        actorRole
       );
 
       const resolvedStudentId = checkinRes.record.studentId || data.studentId || 'std-unknown';
       const resolvedStudentName = checkinRes.record.student?.name || data.studentName || 'Student';
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'student',
         entityType: 'attendance_excuse',
         entityId: `${resolvedStudentId}_${data.date}`,
         action: 'attendance_override',
         newValues: { ...data, studentId: resolvedStudentId, status: AttendanceStatus.EXCUSED },
+        changedFields: ['status', 'reason', 'documentUrl'],
+        reason: data.reason || 'Excused absence recorded',
       });
 
       return {

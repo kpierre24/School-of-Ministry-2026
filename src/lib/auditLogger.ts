@@ -34,11 +34,34 @@ import { logger } from './logger';
 
 export type AuditLogEntry = {
   id: string;
+  audit_id?: string;
+  auditId?: string;
   timestamp: string;
+  actor_user_id?: string | null;
+  actorUserId?: string | null;
+  actor_role?: string;
+  actorRole?: string;
   userEmail?: string;
   actor: string;
   role: UserRole | 'admin' | 'teacher' | 'student' | 'system' | 'finance' | string;
   action: AuditActionCode;
+  entity_type?: string;
+  entityType?: string;
+  entity_id?: string;
+  entityId?: string;
+  old_values?: any;
+  oldValues?: any;
+  new_values?: any;
+  newValues?: any;
+  changed_fields?: string[];
+  changedFields?: string[];
+  reason?: string | null;
+  ip_address?: string | null;
+  ipAddress?: string | null;
+  user_agent?: string | null;
+  userAgent?: string | null;
+  request_id?: string | null;
+  requestId?: string | null;
   actionCategory: AuditLogCategory;
   actionTitle: string;
   details: string;
@@ -188,9 +211,17 @@ export function getAuditLogs(): AuditLogEntry[] {
 
 export function logActivity(entry: {
   userEmail?: string;
+  actorUserId?: string | null;
+  actor_user_id?: string | null;
   actor?: string;
   role?: UserRole | 'admin' | 'teacher' | 'student' | 'system' | 'finance' | string;
-  action?: AuditActionCode;
+  actorRole?: string;
+  actor_role?: string;
+  action?: AuditActionCode | string;
+  entityType?: string;
+  entity_type?: string;
+  entityId?: string;
+  entity_id?: string;
   actionCategory?: AuditLogCategory;
   actionTitle: string;
   details: string;
@@ -199,6 +230,19 @@ export function logActivity(entry: {
   course?: string;
   oldValue?: string | number | null;
   newValue?: string | number | null;
+  oldValues?: any;
+  old_values?: any;
+  newValues?: any;
+  new_values?: any;
+  changedFields?: string[];
+  changed_fields?: string[];
+  reason?: string | null;
+  ipAddress?: string | null;
+  ip_address?: string | null;
+  userAgent?: string | null;
+  user_agent?: string | null;
+  requestId?: string | null;
+  request_id?: string | null;
   ipOrDevice?: string;
   metadata?: Record<string, any>;
   timestamp?: string;
@@ -209,7 +253,7 @@ export function logActivity(entry: {
   const formattedTime = entry.timestamp || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   // Auto-deduce action code if not explicitly passed
-  let resolvedAction: AuditActionCode = entry.action || 'OTHER';
+  let resolvedAction: AuditActionCode = (entry.action as AuditActionCode) || 'OTHER';
   if (!entry.action) {
     if (entry.actionCategory === 'Grade Adjustment') resolvedAction = 'UPDATE_GRADE';
     else if (entry.actionCategory === 'Attendance Override') resolvedAction = 'EDIT_ATTENDANCE';
@@ -231,13 +275,42 @@ export function logActivity(entry: {
     else if (resolvedAction === 'RESTORE_BACKUP' || resolvedAction === 'DATA_EXPORT') resolvedCategory = 'Backup & Data';
   }
 
+  const logId = `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const actorUserId = entry.actorUserId || entry.actor_user_id || entry.userEmail || null;
+  const actorRole = entry.actorRole || entry.actor_role || entry.role || 'user';
+  const entityType = entry.entityType || entry.entity_type || (entry.targetStudent ? 'student' : entry.course ? 'course' : 'system');
+  const entityId = entry.entityId || entry.entity_id || entry.studentId || entry.course || 'system';
+
   const newLog: AuditLogEntry = {
-    id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: logId,
+    audit_id: logId,
+    auditId: logId,
     timestamp: formattedTime,
-    userEmail: entry.userEmail || (entry.role === 'admin' ? 'admin@hteim.org' : entry.role === 'teacher' ? 'lecturer@hteim.org' : 'portal.user@hteim.org'),
-    actor: entry.actor || 'Administrator',
-    role: entry.role || 'admin',
+    actor_user_id: actorUserId,
+    actorUserId: actorUserId,
+    actor_role: actorRole,
+    actorRole: actorRole,
+    userEmail: entry.userEmail,
+    actor: entry.actor || (entry.userEmail ? entry.userEmail.split('@')[0] : 'System'),
+    role: actorRole,
     action: resolvedAction,
+    entity_type: entityType,
+    entityType: entityType,
+    entity_id: entityId,
+    entityId: entityId,
+    old_values: entry.oldValues !== undefined ? entry.oldValues : entry.old_values !== undefined ? entry.old_values : entry.oldValue,
+    oldValues: entry.oldValues !== undefined ? entry.oldValues : entry.old_values !== undefined ? entry.old_values : entry.oldValue,
+    new_values: entry.newValues !== undefined ? entry.newValues : entry.new_values !== undefined ? entry.new_values : entry.newValue,
+    newValues: entry.newValues !== undefined ? entry.newValues : entry.new_values !== undefined ? entry.new_values : entry.newValue,
+    changed_fields: entry.changedFields || entry.changed_fields || [],
+    changedFields: entry.changedFields || entry.changed_fields || [],
+    reason: entry.reason || entry.details || null,
+    ip_address: entry.ipAddress || entry.ip_address || entry.ipOrDevice || null,
+    ipAddress: entry.ipAddress || entry.ip_address || entry.ipOrDevice || null,
+    user_agent: entry.userAgent || entry.user_agent || null,
+    userAgent: entry.userAgent || entry.user_agent || null,
+    request_id: entry.requestId || entry.request_id || null,
+    requestId: entry.requestId || entry.request_id || null,
     actionCategory: resolvedCategory,
     actionTitle: entry.actionTitle,
     details: entry.details,

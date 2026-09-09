@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
 import { sanitizeProductionState, isDemoRecord, isDemoUser } from '../../data/guards';
 import { AuthenticatedUser } from '../../types/rbac';
@@ -265,6 +266,7 @@ export async function saveAuthoritativeStateForUser(
   try {
     await logAuditEvent({
       actorUserId: user.userId,
+      actorRole: user.role,
       entityType: 'app_state',
       entityId: docId,
       action: 'update',
@@ -275,6 +277,7 @@ export async function saveAuthoritativeStateForUser(
         description: actionDescription || 'Authoritative state synchronized by authenticated user',
         updatedAt: timestamp,
       },
+      reason: actionDescription || 'Authoritative user state synchronization',
     });
   } catch (auditErr) {
     logger.warn("Audit log record warning (non-fatal):", auditErr);
@@ -336,6 +339,7 @@ export async function saveAuthoritativeState(
   try {
     await logAuditEvent({
       actorUserId: actorUserId || undefined,
+      actorRole: 'system',
       entityType: 'app_state',
       entityId: docId,
       action: 'update',
@@ -346,6 +350,7 @@ export async function saveAuthoritativeState(
         description: actionDescription || 'Authoritative state synchronized',
         updatedAt: timestamp,
       },
+      reason: actionDescription || 'Authoritative state synchronization',
     });
   } catch (auditErr) {
     logger.warn("Audit log record warning (non-fatal):", auditErr);
@@ -354,34 +359,136 @@ export async function saveAuthoritativeState(
   return { success: true, updatedAt: timestamp };
 }
 
+export interface AuditEventEntry {
+  auditId?: string;
+  audit_id?: string;
+  actorUserId?: string | null;
+  actor_user_id?: string | null;
+  actorRole?: string | null;
+  actor_role?: string | null;
+  action: string;
+  entityType: string;
+  entity_type?: string;
+  entityId: string;
+  entity_id?: string;
+  oldValues?: any;
+  old_values?: any;
+  newValues?: any;
+  new_values?: any;
+  changedFields?: string[] | any;
+  changed_fields?: string[] | any;
+  reason?: string | null;
+  ipAddress?: string | null;
+  ip_address?: string | null;
+  userAgent?: string | null;
+  user_agent?: string | null;
+  requestId?: string | null;
+  request_id?: string | null;
+  timestamp?: string;
+}
+
 /**
  * Logs an event into the authoritative audit_history PostgreSQL table.
+ * Strictly guarantees all 14 audit fields are populated:
+ * audit_id, actor_user_id, actor_role, action, entity_type, entity_id,
+ * old_values, new_values, changed_fields, reason, ip_address, user_agent,
+ * request_id, timestamp.
  */
-export async function logAuditEvent(entry: {
-  actorUserId?: string;
-  entityType: string;
-  entityId: string;
-  action: 'create' | 'update' | 'delete' | 'soft_delete' | 'restore' | 'grade_override' | 'attendance_override' | 'grade_recorded' | 'grade_override_approved' | string;
-  oldValues?: any;
-  newValues?: any;
-  ipAddress?: string;
-  userAgent?: string;
-}): Promise<boolean> {
+export async function logAuditEvent(entry: AuditEventEntry): Promise<boolean> {
   try {
     const supabase = getServerSupabase();
+    
+    // 1. Resolve audit_id (UUID)
+    const auditId = entry.auditId || entry.audit_id || randomUUID();
+    
+    // 2. Resolve actor_user_id (UUID)
+    const rawActor = entry.actorUserId !== undefined ? entry.actorUserId : (entry.actor_user_id !== undefined ? entry.actor_user_id : null);
+    let resolvedUserId: string | null = null;
+    
+    const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    if (rawActor) {
+      if (isUuid(rawActor)) {
+        resolvedUserId = rawActor;
+      } else {
+        // If an email/username is passed, query users table to retrieve the canonical UUID
+        try {
+          const { data: userRecord } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', rawActor.toLowerCase().trim())
+            .single();
+          
+          if (userRecord?.id) {
+            resolvedUserId = userRecord.id;
+          }
+        } catch {
+          // Non-blocking lookup fallback
+        }
+      }
+    }
+    
+    // 3. Resolve actor_role
+    const actorRole = entry.actorRole || entry.actor_role || 'system';
+    
+    // 4. Resolve action, entity_type, entity_id
+    const action = entry.action;
+    const entityType = entry.entityType || entry.entity_type || 'unknown';
+    const entityId = String(entry.entityId || entry.entity_id || 'system');
+    
+    // 5. Resolve old_values and new_values
+    const oldValues = entry.oldValues !== undefined ? entry.oldValues : (entry.old_values !== undefined ? entry.old_values : null);
+    const newValues = entry.newValues !== undefined ? entry.newValues : (entry.new_values !== undefined ? entry.new_values : null);
+    
+    // 6. Compute changed_fields if not explicitly passed
+    let changedFields: any = entry.changedFields || entry.changed_fields;
+    if (!changedFields && oldValues && newValues && typeof oldValues === 'object' && typeof newValues === 'object') {
+      const keys = new Set([...Object.keys(oldValues), ...Object.keys(newValues)]);
+      const diffKeys: string[] = [];
+      for (const k of keys) {
+        if (JSON.stringify(oldValues[k]) !== JSON.stringify(newValues[k])) {
+          diffKeys.push(k);
+        }
+      }
+      changedFields = diffKeys;
+    } else if (!changedFields) {
+      changedFields = [];
+    }
+    
+    // 7. Resolve reason
+    const reason = entry.reason || 
+      newValues?.reason || 
+      newValues?.overrideReason || 
+      newValues?.notes || 
+      newValues?.description || 
+      null;
+      
+    // 8. Resolve request metadata
+    const ipAddress = entry.ipAddress || entry.ip_address || null;
+    const userAgent = entry.userAgent || entry.user_agent || null;
+    const requestId = entry.requestId || entry.request_id || randomUUID();
+    const timestamp = entry.timestamp || new Date().toISOString();
+    
+    // 9. Authoritative Insert storing all 14 columns
     const { error } = await supabase.from('audit_history').insert({
-      entity_type: entry.entityType,
-      entity_id: entry.entityId,
-      action: entry.action,
-      old_values: entry.oldValues || null,
-      new_values: entry.newValues || null,
-      ip_address: entry.ipAddress || null,
-      user_agent: entry.userAgent || null,
-      timestamp: new Date().toISOString(),
+      audit_id: auditId,
+      actor_user_id: resolvedUserId,
+      actor_role: actorRole,
+      action: action,
+      entity_type: entityType,
+      entity_id: entityId,
+      old_values: oldValues,
+      new_values: newValues,
+      changed_fields: Array.isArray(changedFields) ? changedFields : [changedFields],
+      reason: reason,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+      request_id: requestId,
+      timestamp: timestamp,
     });
 
     if (error) {
-      logger.warn(`Failed to insert audit record: ${error.message}`);
+      logger.warn(`Failed to insert authoritative audit record: ${error.message}`);
       return false;
     }
     return true;
@@ -412,7 +519,34 @@ export async function getAuditLogs(limit = 50, entityType?: string): Promise<any
       logger.warn(`Failed to fetch audit logs: ${error.message}`);
       return [];
     }
-    return data || [];
+    
+    return (data || []).map((row: any) => ({
+      audit_id: row.audit_id || row.id,
+      id: row.audit_id || row.id,
+      actor_user_id: row.actor_user_id,
+      actorUserId: row.actor_user_id,
+      actor_role: row.actor_role || 'system',
+      actorRole: row.actor_role || 'system',
+      action: row.action,
+      entity_type: row.entity_type,
+      entityType: row.entity_type,
+      entity_id: row.entity_id,
+      entityId: row.entity_id,
+      old_values: row.old_values,
+      oldValues: row.old_values,
+      new_values: row.new_values,
+      newValues: row.new_values,
+      changed_fields: row.changed_fields || [],
+      changedFields: row.changed_fields || [],
+      reason: row.reason || null,
+      ip_address: row.ip_address,
+      ipAddress: row.ip_address,
+      user_agent: row.user_agent,
+      userAgent: row.user_agent,
+      request_id: row.request_id,
+      requestId: row.request_id,
+      timestamp: row.timestamp,
+    }));
   } catch (err) {
     logger.warn(`Exception fetching audit logs:`, err);
     return [];
@@ -447,10 +581,23 @@ export async function getDatabaseUsers(): Promise<any[]> {
 export async function updateUserRoleInDatabase(
   userId: string,
   newRole: string,
-  actorEmail?: string
+  actorUserId?: string,
+  actorRole?: string,
+  reason?: string,
+  requestId?: string,
+  ipAddress?: string,
+  userAgent?: string
 ): Promise<{ success: boolean; user?: any; error?: string }> {
   try {
     const supabase = getServerSupabase();
+    
+    // Fetch previous user info for old_values in audit
+    const { data: previousUser } = await supabase
+      .from('users')
+      .select('id, email, role')
+      .eq('id', userId)
+      .single();
+
     const { data, error } = await supabase
       .from('users')
       .update({ role: newRole, updated_at: new Date().toISOString() })
@@ -463,11 +610,18 @@ export async function updateUserRoleInDatabase(
     }
 
     await logAuditEvent({
-      actorUserId: actorEmail,
+      actorUserId: actorUserId || null,
+      actorRole: actorRole || 'super_admin',
       entityType: 'user_role',
       entityId: userId,
       action: 'update',
+      oldValues: { role: previousUser?.role || 'unknown' },
       newValues: { role: newRole, userEmail: data?.email },
+      changedFields: ['role'],
+      reason: reason || `Updated role to ${newRole}`,
+      requestId,
+      ipAddress,
+      userAgent,
     });
 
     return { success: true, user: data };

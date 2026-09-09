@@ -281,7 +281,8 @@ export const studentsService = {
    */
   async enrollStudent(
     data: { name: string; level?: string; email?: string; photoUrl?: string },
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; student: any }> {
     const supabase = getServerSupabase();
     const cleanName = data.name.trim();
@@ -353,9 +354,10 @@ export const studentsService = {
         logger.warn('Student record upsert warning:', stdErr);
       }
 
-      // 4. Log relational audit event
+      // 4. Log relational audit event with all authoritative fields
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'system',
         entityType: 'student',
         entityId: student?.id || user.id,
         action: 'create',
@@ -365,6 +367,8 @@ export const studentsService = {
           studentNumber,
           cohortLevel: data.level || 'Level 1 Foundation',
         },
+        changedFields: ['name', 'email', 'studentNumber', 'cohortLevel'],
+        reason: `Student ${cleanName} enrolled`,
       });
 
       return {
@@ -390,7 +394,8 @@ export const studentsService = {
   async updateStudent(
     nameOrId: string,
     data: { level?: string; note?: string; photoUrl?: string },
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; student: any }> {
     const supabase = getServerSupabase();
     const cleanQuery = decodeURIComponent(nameOrId).trim();
@@ -424,11 +429,15 @@ export const studentsService = {
       }
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'system',
         entityType: 'student',
         entityId: std.id || cleanQuery,
         action: 'update',
+        oldValues: { level: std.level, note: std.note, photoUrl: std.photoUrl },
         newValues: data,
+        changedFields: Object.keys(data),
+        reason: `Student ${std.name || cleanQuery} profile updated`,
       });
 
       return {

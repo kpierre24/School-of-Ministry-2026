@@ -407,7 +407,8 @@ export const financeService = {
    */
   async saveInvoice(
     invoiceInput: any,
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; invoice: any }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
@@ -512,7 +513,8 @@ export const financeService = {
       const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invoiceId, supabase);
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'finance_officer',
         entityType: 'invoice',
         entityId: invoiceId,
         action: 'create',
@@ -523,6 +525,8 @@ export const financeService = {
           balance: summary.balance,
           linesCount: linesToInsert.length,
         },
+        changedFields: ['invoiceTotal', 'balance', 'lines'],
+        reason: `Tuition invoice created for ${studentName}`,
       });
 
       return {
@@ -653,7 +657,8 @@ export const financeService = {
    */
   async recordPayment(
     paymentInput: any,
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; payment: any; updatedInvoices?: any[] }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
@@ -754,7 +759,8 @@ export const financeService = {
       }
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'finance_officer',
         entityType: 'payment',
         entityId: paymentId,
         action: 'create',
@@ -763,7 +769,10 @@ export const financeService = {
           amount,
           targetInvoiceIds,
           allocationsCount: allocationsToInsert.length,
+          studentName,
         },
+        changedFields: ['amount', 'status', 'allocations'],
+        reason: `Payment of $${amount} recorded for ${studentName}`,
       });
 
       return {
@@ -788,7 +797,8 @@ export const financeService = {
    */
   async applyFinancialAdjustment(
     adjInput: any,
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; adjustment: any; updatedInvoice?: any }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
@@ -842,7 +852,8 @@ export const financeService = {
       const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invoiceId, supabase);
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'finance_officer',
         entityType: 'adjustment',
         entityId: adjId,
         action: 'create',
@@ -855,6 +866,8 @@ export const financeService = {
           status,
           newBalance: summary.balance,
         },
+        changedFields: ['amount', 'status', 'balance'],
+        reason: adjInput.reason || `Financial adjustment of $${amount} applied to invoice ${invoiceId}`,
       });
 
       return {
@@ -885,7 +898,8 @@ export const financeService = {
    */
   async recordRefund(
     refundInput: any,
-    actorUserId?: string
+    actorUserId?: string,
+    actorRole?: string
   ): Promise<{ status: string; refund: any; updatedInvoices?: any[] }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
@@ -965,7 +979,8 @@ export const financeService = {
       }
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'finance_officer',
         entityType: 'refund',
         entityId: refundId,
         action: 'create',
@@ -974,6 +989,8 @@ export const financeService = {
           amount,
           targetInvoiceIds,
         },
+        changedFields: ['amount', 'status', 'allocations'],
+        reason: refundInput.reason || `Refund of $${amount} recorded`,
       });
 
       return {

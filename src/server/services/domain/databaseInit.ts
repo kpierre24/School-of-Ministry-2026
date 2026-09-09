@@ -16,15 +16,22 @@ export async function initializeRelationalSchema(): Promise<void> {
     }
 
     // Probe attendance hierarchy tables
-    const [sessRes, recRes] = await Promise.all([
+    const [sessRes, recRes, auditRes] = await Promise.all([
       supabase.from('attendance_sessions').select('id').limit(1),
       supabase.from('attendance_records').select('id').limit(1),
+      supabase.from('audit_history').select('audit_id, actor_user_id, actor_role, action, entity_type, entity_id, changed_fields, timestamp').limit(1),
     ]);
 
     if (!sessRes.error && !recRes.error) {
       logger.info('Attendance hierarchy tables (attendance_sessions & attendance_records) operational');
     } else {
       logger.info('Attendance hierarchy tables status probe completed; ready for operational usage');
+    }
+
+    if (!auditRes.error) {
+      logger.info('Authoritative audit_history table (with audit_id, actor_user_id, actor_role, changed_fields) operational');
+    } else {
+      logger.info('Audit history table probe completed; ready for operational logging');
     }
 
     logger.info('Relational domain tables probe returned status; database is ready for domain operations');

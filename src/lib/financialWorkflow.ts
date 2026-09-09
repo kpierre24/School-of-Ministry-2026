@@ -372,8 +372,8 @@ export function recordPaymentTransaction(params: {
   // 4. Audit Log
   logFinancialAudit({
     action: 'PAYMENT_RECORDED',
-    actorName: params.recordedBy || 'Finance Admin',
-    actorRole: params.actorRole || 'admin',
+    actorName: params.recordedBy || 'Finance Bursar',
+    actorRole: params.actorRole || 'finance_officer',
     studentId: invoice.studentId,
     studentName: invoice.studentName,
     entityId: newTransaction.id,
@@ -466,7 +466,7 @@ export function applyFinancialAdjustment(params: {
   logFinancialAudit({
     action: isCharge ? 'CHARGE_APPLIED' : params.type === 'scholarship' ? 'SCHOLARSHIP_AWARDED' : params.type === 'refund' ? 'REFUND_ISSUED' : 'ADJUSTMENT_APPLIED',
     actorName: params.authorizedBy,
-    actorRole: params.actorRole || 'admin',
+    actorRole: params.actorRole || 'finance_officer',
     studentId: invoice.studentId,
     studentName: invoice.studentName,
     entityId: newAdjustment.id,

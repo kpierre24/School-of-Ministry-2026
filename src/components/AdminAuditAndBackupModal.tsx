@@ -587,11 +587,18 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                           </td>
                           <td className="p-3 whitespace-nowrap">
                             <div className="font-bold text-slate-900 dark:text-slate-100">{log.actor}</div>
-                            <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
-                              <span className="text-slate-400">{log.userEmail || `${log.role}@hteim.org`}</span>
-                              <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[9px]">
-                                {log.role}
-                              </span>
+                            <div className="text-[10px] text-slate-500 font-mono flex flex-col gap-0.5 mt-0.5">
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">{log.userEmail || `${log.role}@hteim.org`}</span>
+                                <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[9px]">
+                                  {log.role}
+                                </span>
+                              </div>
+                              {(log.actorUserId || log.actor_user_id) && (
+                                <span className="text-[9px] text-slate-400 font-mono" title={`Actor User ID: ${log.actorUserId || log.actor_user_id}`}>
+                                  UID: {(log.actorUserId || log.actor_user_id)?.slice(0, 8)}...
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="p-3 whitespace-nowrap">
@@ -640,11 +647,29 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
                               {log.actionTitle}
                             </div>
                             <p className="text-xs">{log.details}</p>
-                            {log.ipOrDevice && (
-                              <span className="block text-[10px] text-slate-400 font-mono mt-0.5">
-                                Session: {log.ipOrDevice}
-                              </span>
+                            {log.reason && (
+                              <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-1.5 rounded-md border border-amber-200 dark:border-amber-900/40 mt-1">
+                                <span className="font-bold">Reason:</span> {log.reason}
+                              </p>
                             )}
+                            {((log.changedFields && log.changedFields.length > 0) || (log.changed_fields && log.changed_fields.length > 0)) && (
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                <span className="text-[9px] text-slate-400 font-bold uppercase">Changed:</span>
+                                {(log.changedFields || log.changed_fields || []).map((field: string, idx: number) => (
+                                  <span key={idx} className="px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px] font-mono">
+                                    {field}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400 font-mono flex-wrap">
+                              {(log.ipAddress || log.ip_address || log.ipOrDevice) && (
+                                <span>IP: {log.ipAddress || log.ip_address || log.ipOrDevice}</span>
+                              )}
+                              {(log.requestId || log.request_id) && (
+                                <span>Req: {(log.requestId || log.request_id)?.slice(0, 8)}...</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

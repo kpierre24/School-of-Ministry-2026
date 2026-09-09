@@ -139,15 +139,28 @@ authRouter.patch(
   async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const { role } = req.body;
-      const actorEmail = req.user?.email || "admin";
+      const { role, reason } = req.body;
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
+      const requestId = (req.headers["x-request-id"] as string) || undefined;
+      const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
+      const userAgent = req.headers["user-agent"];
 
       if (!role || typeof role !== "string") {
         return res.status(400).json({ error: "role is required" });
       }
 
       const normalized = normalizeUserRole(role);
-      const result = await updateUserRoleInDatabase(userId, normalized, actorEmail);
+      const result = await updateUserRoleInDatabase(
+        userId,
+        normalized,
+        actorUserId,
+        actorRole,
+        reason,
+        requestId,
+        ipAddress,
+        userAgent
+      );
 
       if (!result.success) {
         return res.status(400).json({ error: result.error || "Failed to update role" });

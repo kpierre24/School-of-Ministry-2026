@@ -51,13 +51,14 @@ paymentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { invoice } = req.body;
-      const actorUserId = req.user?.email || "finance";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!invoice || (!invoice.studentName && !invoice.studentId)) {
         return res.status(400).json({ error: "studentId or studentName is required" });
       }
 
-      const result = await financeService.saveInvoice(invoice, actorUserId);
+      const result = await financeService.saveInvoice(invoice, actorUserId, actorRole);
       return res.status(201).json(result);
     } catch (err: any) {
       logger.error("POST /api/payments/invoices error:", err);
@@ -111,13 +112,14 @@ paymentsRouter.post(
     try {
       const { transaction, payment } = req.body;
       const pmtPayload = transaction || payment;
-      const actorUserId = req.user?.email || "finance";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!pmtPayload || (!pmtPayload.studentName && !pmtPayload.studentId) || !pmtPayload.amount) {
         return res.status(400).json({ error: "studentId or studentName, and amount are required" });
       }
 
-      const result = await financeService.recordPayment(pmtPayload, actorUserId);
+      const result = await financeService.recordPayment(pmtPayload, actorUserId, actorRole);
       return res.status(201).json(result);
     } catch (err: any) {
       logger.error("POST /api/payments/transactions error:", err);
@@ -161,13 +163,14 @@ paymentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { adjustment } = req.body;
-      const actorUserId = req.user?.email || "finance";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!adjustment || !adjustment.invoiceId || !adjustment.amount) {
         return res.status(400).json({ error: "invoiceId and adjustment amount are required" });
       }
 
-      const result = await financeService.applyFinancialAdjustment(adjustment, actorUserId);
+      const result = await financeService.applyFinancialAdjustment(adjustment, actorUserId, actorRole);
       return res.status(201).json(result);
     } catch (err: any) {
       logger.error("POST /api/payments/adjustments error:", err);
@@ -211,13 +214,14 @@ paymentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { refund } = req.body;
-      const actorUserId = req.user?.email || "finance";
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
 
       if (!refund || !refund.amount) {
         return res.status(400).json({ error: "refund amount is required" });
       }
 
-      const result = await financeService.recordRefund(refund, actorUserId);
+      const result = await financeService.recordRefund(refund, actorUserId, actorRole);
       return res.status(201).json(result);
     } catch (err: any) {
       logger.error("POST /api/payments/refunds error:", err);

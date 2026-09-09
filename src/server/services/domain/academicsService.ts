@@ -83,7 +83,7 @@ export const academicsService = {
   /**
    * Saves or updates a master course definition in PostgreSQL.
    */
-  async saveCourse(course: any, actorUserId?: string): Promise<{ status: string; course: any }> {
+  async saveCourse(course: any, actorUserId?: string, actorRole?: string): Promise<{ status: string; course: any }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
 
@@ -110,11 +110,14 @@ export const academicsService = {
       }
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'system',
         entityType: 'course',
         entityId: course.code,
         action: 'update',
         newValues: course,
+        changedFields: Object.keys(course),
+        reason: `Course definition ${course.code} updated`,
       });
 
       return {
@@ -130,7 +133,7 @@ export const academicsService = {
   /**
    * Saves or updates a course offering in PostgreSQL.
    */
-  async saveCourseOffering(offering: any, actorUserId?: string): Promise<{ status: string; offering: any }> {
+  async saveCourseOffering(offering: any, actorUserId?: string, actorRole?: string): Promise<{ status: string; offering: any }> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
 
@@ -164,11 +167,14 @@ export const academicsService = {
       }
 
       await logAuditEvent({
-        actorUserId,
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'system',
         entityType: 'course_offering',
         entityId: offering.id,
         action: 'update',
         newValues: offering,
+        changedFields: Object.keys(offering),
+        reason: `Course offering ${offering.id} updated`,
       });
 
       return {

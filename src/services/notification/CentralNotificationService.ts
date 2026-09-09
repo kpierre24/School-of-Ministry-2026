@@ -122,7 +122,7 @@ class CentralNotificationServiceClass {
    * Filter notifications relevant to current user with strict RBAC rules
    */
   public getFilteredNotifications(role?: string, studentName?: string): CentralNotification[] {
-    const normRole = (role || 'admin').toLowerCase().trim();
+    const normRole = (role || 'student').toLowerCase().trim();
     const normName = (studentName || '').toLowerCase().trim();
 
     return this.notifications.filter(n => {

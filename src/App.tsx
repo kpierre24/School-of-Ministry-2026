@@ -4770,7 +4770,7 @@ create policy "Allow public update" on app_states for update using (true) with c
       <SettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
-        userRole={appUser?.role || 'admin'}
+        userRole={appUser?.role || 'user'}
         atRiskThreshold={atRiskThreshold}
         setAtRiskThreshold={setAtRiskThreshold}
         satisfactoryThreshold={satisfactoryThreshold}
@@ -4811,7 +4811,7 @@ create policy "Allow public update" on app_states for update using (true) with c
         onArchiveToggle={handleArchiveToggleCohort}
         students={uniqueStudents}
         courses={courses}
-        userRole={appUser?.role || 'admin'}
+        userRole={appUser?.role || 'user'}
         onAssignStudentCohort={handleAssignStudentCohort}
       />
 
