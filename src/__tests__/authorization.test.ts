@@ -112,11 +112,9 @@ describe('Authorization & Security Test Suite', () => {
       requireAuth(mockReq as Request, mockRes as Response, mockNext);
 
       expect(statusSpy).toHaveBeenCalledWith(401);
-      expect(jsonSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'UNAUTHENTICATED',
-        })
-      );
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
@@ -171,11 +169,9 @@ describe('Authorization & Security Test Suite', () => {
       middleware(mockReq as Request, mockRes as Response, mockNext);
 
       expect(statusSpy).toHaveBeenCalledWith(403);
-      expect(jsonSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'PERMISSION_DENIED',
-        })
-      );
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'PERMISSION_DENIED',
+      });
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
@@ -197,11 +193,9 @@ describe('Authorization & Security Test Suite', () => {
       middleware(mockReq as Request, mockRes as Response, mockNext);
 
       expect(statusSpy).toHaveBeenCalledWith(403);
-      expect(jsonSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'PERMISSION_DENIED',
-        })
-      );
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'PERMISSION_DENIED',
+      });
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
@@ -223,11 +217,9 @@ describe('Authorization & Security Test Suite', () => {
       middleware(mockReq as Request, mockRes as Response, mockNext);
 
       expect(statusSpy).toHaveBeenCalledWith(403);
-      expect(jsonSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'PERMISSION_DENIED',
-        })
-      );
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'PERMISSION_DENIED',
+      });
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
