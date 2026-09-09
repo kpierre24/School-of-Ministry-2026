@@ -433,12 +433,146 @@ export async function verifyLecturerCourseInDatabase(
 }
 
 /**
+ * Verifies student ownership strictly using immutable internal IDs (student_number, student id, user_id).
+ * Never authorizes based on names, display names, email prefixes, or partial strings.
+ */
+export async function verifyStudentOwnershipInDatabase(
+  user: AuthenticatedUser,
+  targetStudentId?: string,
+  targetStudentName?: string,
+  targetEmail?: string
+): Promise<boolean> {
+  if (!user) return false;
+
+  const cleanUserStudentId = (user.studentId || "").trim().toLowerCase();
+  const cleanUserId = (user.userId || user.id || "").trim().toLowerCase();
+  const cleanUserEmail = (user.email || "").trim().toLowerCase();
+
+  const cleanTargetId = (targetStudentId || "").trim().toLowerCase();
+  const cleanTargetEmail = (targetEmail || "").trim().toLowerCase();
+
+  // 1. Exact immutable ID matching against target parameters
+  if (cleanTargetId) {
+    if (cleanUserStudentId && cleanTargetId === cleanUserStudentId) {
+      return true;
+    }
+    if (cleanUserId && cleanTargetId === cleanUserId) {
+      return true;
+    }
+  }
+
+  // 2. Exact email matching (only full exact email, no prefix or partial string)
+  if (cleanTargetEmail && cleanUserEmail && cleanTargetEmail === cleanUserEmail) {
+    return true;
+  }
+
+  // 3. Database lookup: If target parameter was passed as a name or identifier in URL parameter, look up the database record
+  // and check record.student_number / record.id / record.user_id strictly against user's immutable IDs.
+  const targetIdentifier = targetStudentId || targetStudentName;
+  if (!targetIdentifier) {
+    return false;
+  }
+
+  try {
+    const supabase = getServerSupabase();
+
+    // Query students table by student_number, id, or user_id matching targetIdentifier
+    const { data: stdRecords, error } = await supabase
+      .from("students")
+      .select("id, student_number, user_id")
+      .or(`student_number.eq.${targetIdentifier},id.eq.${targetIdentifier},user_id.eq.${targetIdentifier}`);
+
+    if (!error && stdRecords && stdRecords.length > 0) {
+      const isOwned = stdRecords.some((rec: any) => {
+        const recStdNum = (rec.student_number || "").trim().toLowerCase();
+        const recId = (rec.id || "").trim().toLowerCase();
+        const recUserId = (rec.user_id || "").trim().toLowerCase();
+
+        return (
+          (cleanUserStudentId && (recStdNum === cleanUserStudentId || recId === cleanUserStudentId)) ||
+          (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
+        );
+      });
+
+      if (isOwned) {
+        return true;
+      }
+    }
+
+    // Query profiles joined with students if targetIdentifier was passed as display name in URL path
+    if (targetStudentName) {
+      const normTargetName = targetStudentName.trim().toLowerCase();
+      const { data: profRecords, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, user_id, first_name, last_name, students(id, student_number, user_id)");
+
+      if (!profErr && profRecords && profRecords.length > 0) {
+        const matchedProfile = profRecords.find((p: any) => {
+          const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase();
+          return fullName === normTargetName;
+        });
+
+        if (matchedProfile) {
+          const profUserId = (matchedProfile.user_id || "").trim().toLowerCase();
+          const stdList = matchedProfile.students || [];
+
+          if (cleanUserId && profUserId === cleanUserId) {
+            return true;
+          }
+
+          const stdMatches = stdList.some((rec: any) => {
+            const recStdNum = (rec.student_number || "").trim().toLowerCase();
+            const recId = (rec.id || "").trim().toLowerCase();
+            const recUserId = (rec.user_id || "").trim().toLowerCase();
+
+            return (
+              (cleanUserStudentId && (recStdNum === cleanUserStudentId || recId === cleanUserStudentId)) ||
+              (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
+            );
+          });
+
+          if (stdMatches) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // Fallback: Check state in app_states table
+    const { data: stateRow } = await supabase
+      .from("app_states")
+      .select("state")
+      .eq("id", "shared_default_state")
+      .maybeSingle();
+
+    if (stateRow?.state) {
+      const state = stateRow.state;
+      if (Array.isArray(state.userCredentials)) {
+        const matchingCred = state.userCredentials.find(
+          (c: any) => (c.email || "").trim().toLowerCase() === cleanUserEmail
+        );
+        if (matchingCred && matchingCred.studentId) {
+          const credStdId = String(matchingCred.studentId).trim().toLowerCase();
+          if (cleanTargetId && cleanTargetId === credStdId) {
+            return true;
+          }
+        }
+      }
+    }
+  } catch (dbErr) {
+    logger.warn("Database student ownership verification failed:", dbErr);
+  }
+
+  return false;
+}
+
+/**
  * Resource Ownership Verification Middleware
  * 
  * Verifies that the authenticated user either:
  * 1. Has an elevated administrative role (Super Admin, Admin, Registrar, Finance Officer, etc.), OR
  * 2. Is the assigned faculty lecturer for the specific course, verified strictly against the database, OR
- * 3. Owns the resource matching their studentId, studentName, or email.
+ * 3. Owns the resource verified strictly by immutable studentId / user_id database record comparison.
  */
 export interface ResourceOwnershipOptions {
   getTarget: (req: Request) => {
@@ -456,7 +590,7 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
       return res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
     }
 
-    const { role, email, studentId, studentName } = req.user;
+    const { role, email } = req.user;
 
     // 1. Super Admin is always authorized
     if (role === "super_admin") {
@@ -499,24 +633,16 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
       });
     }
 
-    // 5. Student Ownership Check: Validate whether the target matches this logged-in student
-    const normTargetName = (targetStudentName || "").toLowerCase().trim();
-    const normUserStudentName = (studentName || "").toLowerCase().trim();
+    // 5. Student Ownership Check: Validate strictly using immutable internal IDs against database records.
+    // Do NOT authorize based on name, email prefix, display name, or partial strings.
+    const isOwner = await verifyStudentOwnershipInDatabase(
+      req.user,
+      targetStudentId,
+      targetStudentName,
+      targetEmail
+    );
 
-    const normTargetId = (targetStudentId || "").toLowerCase().trim();
-    const normUserStudentId = (studentId || "").toLowerCase().trim();
-
-    const normTargetEmail = (targetEmail || "").toLowerCase().trim();
-    const normUserEmail = (email || "").toLowerCase().trim();
-
-    const isMatch =
-      (normTargetName && normUserStudentName && normTargetName === normUserStudentName) ||
-      (normTargetId && normUserStudentId && normTargetId === normUserStudentId) ||
-      (normTargetEmail && normUserEmail && normTargetEmail === normUserEmail) ||
-      (normTargetName && normTargetName.includes(normUserEmail.split("@")[0])) ||
-      (normTargetId && normTargetId === normUserEmail);
-
-    if (isMatch) {
+    if (isOwner) {
       return next();
     }
 
@@ -525,7 +651,7 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
     return res.status(403).json({
       error: "Access Denied: You do not have ownership or authority to view or modify this student's private record.",
       code: "RESOURCE_OWNERSHIP_DENIED",
-      details: "Students may only access their own grades, attendance, and financial ledgers."
+      details: "Students may only access their own grades, attendance, and financial ledgers verified by immutable ID."
     });
   };
 }
