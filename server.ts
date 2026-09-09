@@ -59,10 +59,16 @@ async function startServer() {
     }
   }
 
-  let HOST = process.env.HOST || "0.0.0.0";
+  const defaultHost = isDev ? "127.0.0.1" : "0.0.0.0";
+  let HOST = process.env.HOST || defaultHost;
   const hostArgIdx = process.argv.indexOf("--host");
-  if (hostArgIdx !== -1 && process.argv[hostArgIdx + 1] && !process.argv[hostArgIdx + 1].startsWith("-")) {
-    HOST = process.argv[hostArgIdx + 1];
+  if (hostArgIdx !== -1) {
+    const nextArg = process.argv[hostArgIdx + 1];
+    if (nextArg && !nextArg.startsWith("-")) {
+      HOST = nextArg;
+    } else {
+      HOST = "0.0.0.0";
+    }
   }
 
   // Apply security response headers globally
