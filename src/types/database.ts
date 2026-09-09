@@ -31,7 +31,15 @@ export type TermStatus = 'upcoming' | 'active' | 'completed' | 'archived';
 export type SubmissionStatus = 'draft' | 'submitted' | 'graded' | 'resubmitted' | 'late';
 export type ProgramEnrollmentStatus = 'enrolled' | 'active' | 'completed' | 'withdrawn' | 'deferred';
 export type CourseEnrollmentStatus = 'enrolled' | 'in_progress' | 'completed' | 'failed' | 'dropped';
-export type AttendanceStatus = 'present' | 'absent' | 'excused' | 'tardy';
+// Attendance Status Enum (Strict values, arbitrary strings prohibited)
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT',
+  ABSENT = 'ABSENT',
+  LATE = 'LATE',
+  EXCUSED = 'EXCUSED',
+}
+export type AttendanceStatusType = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+
 export type InvoiceStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
 export type PaymentMethod = 'stripe' | 'card' | 'bank_transfer' | 'cash' | 'check' | 'scholarship' | 'other';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
@@ -220,16 +228,51 @@ export interface DbCourseEnrollment {
 }
 
 // ============================================================================
-// 4. OPERATIONAL RELATIONSHIPS
+// 4. OPERATIONAL RELATIONSHIPS (ATTENDANCE HIERARCHY: session -> record -> student_id)
 // ============================================================================
 
+/**
+ * Attendance Session Entity (attendance_session)
+ * Represents an authoritative class meeting/session day.
+ */
+export interface DbAttendanceSession {
+  id: string; // UUID PK
+  course_id?: string | null; // FK -> DbCourse.id
+  cohort_id?: string | null;
+  session_date: string; // YYYY-MM-DD
+  title?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+/**
+ * Attendance Record Entity (attendance_record)
+ * Links directly to attendance_session and student_id with strict enum status.
+ */
+export interface DbAttendanceRecord {
+  id: string; // UUID PK
+  session_id: string; // FK -> DbAttendanceSession.id
+  student_id: string; // FK -> DbStudent.id
+  status: AttendanceStatus | AttendanceStatusType;
+  notes?: string | null;
+  manual_override?: boolean;
+  locked?: boolean;
+  recorded_by_user_id?: string | null; // FK -> DbUser.id
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+// Legacy attendance table representation for backwards compatibility
 export interface DbAttendance {
   id: string; // UUID PK
   student_id: string; // FK -> DbStudent.id
   course_id: string; // FK -> DbCourse.id
   lesson_id?: string | null; // FK -> DbLesson.id
   session_date: string;
-  status: AttendanceStatus;
+  status: AttendanceStatus | AttendanceStatusType | string;
   notes?: string | null;
   recorded_by_user_id?: string | null; // FK -> DbUser.id
   created_at: string;
@@ -361,3 +404,38 @@ export interface VStudentAcademicSummary {
   graded_submissions: number;
   average_grade_percentage: number; // Calculated: AVG(points_awarded / max_points * 100)
 }
+
+/**
+ * Validates whether a given status value is an allowed AttendanceStatus enum.
+ * Prohibits arbitrary strings.
+ */
+export function isValidAttendanceStatus(status: unknown): status is AttendanceStatus {
+  if (typeof status !== 'string') return false;
+  const upper = status.trim().toUpperCase();
+  return upper === 'PRESENT' || upper === 'ABSENT' || upper === 'LATE' || upper === 'EXCUSED';
+}
+
+/**
+ * Normalizes input status to the strict AttendanceStatus enum (PRESENT, ABSENT, LATE, EXCUSED).
+ * Rejects arbitrary strings with a clear validation error.
+ */
+export function parseAttendanceStatus(status: unknown): AttendanceStatus {
+  if (typeof status !== 'string' || !status.trim()) {
+    throw new Error('Attendance status is required. Allowed values are strictly: PRESENT, ABSENT, LATE, EXCUSED');
+  }
+  const upper = status.trim().toUpperCase();
+  if (upper === 'PRESENT' || upper === 'P' || upper === 'ATTENDED') {
+    return AttendanceStatus.PRESENT;
+  }
+  if (upper === 'ABSENT' || upper === 'A') {
+    return AttendanceStatus.ABSENT;
+  }
+  if (upper === 'LATE' || upper === 'TARDY' || upper === 'L' || upper === 'T') {
+    return AttendanceStatus.LATE;
+  }
+  if (upper === 'EXCUSED' || upper === 'E') {
+    return AttendanceStatus.EXCUSED;
+  }
+  throw new Error(`Invalid attendance status "${status}". Arbitrary status strings are forbidden. Allowed values: PRESENT, ABSENT, LATE, EXCUSED`);
+}
+

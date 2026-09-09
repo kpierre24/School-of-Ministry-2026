@@ -2,6 +2,7 @@ export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' |
 
 import { UserRole } from './types/rbac';
 export * from './types/rbac';
+import { AttendanceStatus, AttendanceStatusType } from './types/database';
 export * from './types/database';
 export type { StudentClassNote } from './utils/notesStorage';
 
@@ -474,28 +475,51 @@ export type AppNotification = {
   metadata?: Record<string, any>;
 };
 
+export interface AttendanceSession {
+  id: string; // UUID PK
+  sessionDate: string; // YYYY-MM-DD
+  title?: string;
+  name?: string;
+  courseId?: string;
+  cohortId?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type AttendanceRecord = {
   id?: string;
-  studentId?: string; // Primary Foreign Key (UUID)
-  name?: string; // Display Attribute
-  studentName?: string; // Display Attribute
+  sessionId?: string; // Foreign Key -> attendance_session.id
+  studentId?: string; // Primary Foreign Key (UUID) -> student_id
+  status?: AttendanceStatus | AttendanceStatusType | string; // PRESENT | ABSENT | LATE | EXCUSED
+  notes?: string;
+  manualOverride?: boolean;
+  locked?: boolean;
+  recordedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+
+  // Populated relations
+  session?: AttendanceSession;
   student?: {
     id: string;
     name: string;
     email?: string;
     photoUrl?: string | null;
+    studentNumber?: string;
   };
-  timestamp: string;
+
+  // Backwards compatibility & convenience view fields
+  name?: string; // Display Attribute
+  studentName?: string; // Display Attribute
+  timestamp?: string;
   sessionDate?: string;
+  date?: string;
   capturedAt?: string;
-  score: string;
-  classDay: string;
-  present: boolean;
-  manualOverride?: boolean;
-  locked?: boolean;
+  score?: string;
+  classDay?: string;
+  present?: boolean;
   cohortId?: string;
-  notes?: string;
-  status?: string;
 };
 
 export type ClassDay = {

@@ -123,6 +123,8 @@ import { LoginModal } from './components/LoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
 import { SettingsModal, ThemeMode } from './components/SettingsModal';
 import { CohortManagementModal } from './components/CohortManagementModal';
+import { portalApiClient } from './services/api/portalApiClient';
+import { AttendanceStatus } from './types/database';
 import { StudentAttendancePortal } from './components/StudentAttendancePortal';
 import { AttendanceWorkspace as AttendanceTab } from './features/attendance/AttendanceWorkspace';
 import { HomeTab, DEFAULT_FACULTY_TEACHERS } from './components/HomeTab';
@@ -3266,6 +3268,7 @@ export default function App() {
     const studentKey = (studentName || '').toLowerCase().trim();
     const day = classDays.find(d => d.id === classDayId || d.name === classDayId);
     const dayName = day ? day.name : classDayId;
+    const resolvedStudentId = getStudentIdForName(studentName);
 
     // Check 24-hour fraud-prevention lock
     const existingRecord = records.find(r => r && (r.studentName || r.name) && (r?.studentName || r?.name || '').toLowerCase().trim() === studentKey && r.classDay === classDayId);
@@ -3301,7 +3304,15 @@ export default function App() {
       return copy;
     });
 
-    // 2. Update or delete attendance records
+    // 2. Strict Enum Mapping (PRESENT, ABSENT, EXCUSED, LATE)
+    const strictStatus: AttendanceStatus =
+      newStatus === 'present'
+        ? AttendanceStatus.PRESENT
+        : newStatus === 'excused'
+        ? AttendanceStatus.EXCUSED
+        : AttendanceStatus.ABSENT;
+
+    // 3. Update attendance records (Non-destructive UPSERT in local state)
     const nowIso = new Date().toISOString();
     setRecords(prev => {
       const updated = [...prev];
@@ -3311,52 +3322,49 @@ export default function App() {
         if (existingIdx >= 0) {
           updated.splice(existingIdx, 1);
         }
-      } else if (newStatus === 'present') {
-        if (existingIdx >= 0) {
-          updated[existingIdx] = {
-            ...updated[existingIdx],
-            present: true,
-            manualOverride: true,
-            timestamp: nowIso,
-            capturedAt: updated[existingIdx].capturedAt || nowIso
-          };
-        } else {
-          updated.push({
-            studentName: studentName,
-            name: studentName,
-            classDay: classDayId,
-            present: true,
-            score: '',
-            timestamp: nowIso,
-            capturedAt: nowIso,
-            manualOverride: true
-          });
-        }
       } else {
-        // absent or excused
+        const isPresent = strictStatus === AttendanceStatus.PRESENT;
+        const recordData: AttendanceRecord = {
+          studentId: resolvedStudentId,
+          sessionId: classDayId,
+          studentName: studentName,
+          name: studentName,
+          classDay: classDayId,
+          status: strictStatus,
+          present: isPresent,
+          score: existingIdx >= 0 ? updated[existingIdx].score : '',
+          timestamp: nowIso,
+          capturedAt: existingIdx >= 0 ? (updated[existingIdx].capturedAt || nowIso) : nowIso,
+          manualOverride: true,
+        };
+
         if (existingIdx >= 0) {
           updated[existingIdx] = {
             ...updated[existingIdx],
-            present: false,
-            manualOverride: true,
-            timestamp: nowIso,
-            capturedAt: updated[existingIdx].capturedAt || nowIso
+            ...recordData,
           };
         } else {
-          updated.push({
-            studentName: studentName,
-            name: studentName,
-            classDay: classDayId,
-            present: false,
-            score: '',
-            timestamp: nowIso,
-            capturedAt: nowIso,
-            manualOverride: true
-          });
+          updated.push(recordData);
         }
       }
       return updated;
     });
+
+    // 4. Asynchronously persist check-in / override to backend via transactional API
+    if (newStatus !== 'unmarked') {
+      portalApiClient
+        .recordCheckin({
+          studentId: resolvedStudentId,
+          studentName,
+          sessionId: classDayId,
+          date: day?.name || classDayId,
+          status: strictStatus,
+          manualOverride: true,
+        })
+        .catch(apiErr => {
+          console.warn('Backend attendance checkin sync notice:', apiErr);
+        });
+    }
   };
 
   const handleAddClassDay = (customTitle?: string) => {
@@ -3381,34 +3389,85 @@ export default function App() {
   const handleRecordBatchAttendance = (newRecords: AttendanceRecord[]) => {
     const nowIso = new Date().toISOString();
     let lockedCount = 0;
+    const upsertedBatch: AttendanceRecord[] = [];
+
+    // Non-destructive transactional local UPSERT:
+    // Completely eliminates "delete all records for date"
     setRecords(prev => {
       let updated = [...prev];
       newRecords.forEach(newRec => {
         const studentKey = (newRec.name || newRec.studentName || '').toLowerCase().trim();
-        const existingIdx = updated.findIndex(r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === newRec.classDay);
+        const existingIdx = updated.findIndex(
+          r => r && (r.studentName || r.name || '').toLowerCase().trim() === studentKey && r.classDay === newRec.classDay
+        );
+
         if (existingIdx >= 0) {
           if (isAttendanceLocked(updated[existingIdx], newRec.classDay)) {
             lockedCount++;
             return;
           }
-          updated[existingIdx] = {
+          const strictStatus = newRec.present ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT;
+          const merged: AttendanceRecord = {
             ...updated[existingIdx],
+            studentId: newRec.studentId || updated[existingIdx].studentId || getStudentIdForName(newRec.name || newRec.studentName || ''),
+            sessionId: newRec.classDay,
+            status: strictStatus,
             present: newRec.present,
             manualOverride: true,
             timestamp: newRec.timestamp || nowIso,
             capturedAt: updated[existingIdx].capturedAt || nowIso
           };
+          updated[existingIdx] = merged;
+          upsertedBatch.push(merged);
         } else {
-          updated.push({
+          const strictStatus = newRec.present ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT;
+          const item: AttendanceRecord = {
             ...newRec,
+            studentId: newRec.studentId || getStudentIdForName(newRec.name || newRec.studentName || ''),
+            sessionId: newRec.classDay,
+            status: strictStatus,
             capturedAt: newRec.capturedAt || nowIso,
-            timestamp: newRec.timestamp || nowIso
-          });
+            timestamp: newRec.timestamp || nowIso,
+            manualOverride: true
+          };
+          updated.push(item);
+          upsertedBatch.push(item);
         }
       });
       return updated;
     });
-    
+
+    // Asynchronously dispatch transactional batch UPSERT to backend API
+    // Groups by session/date and calls UPSERT attendance_record inside an atomic transaction
+    if (upsertedBatch.length > 0) {
+      const byClassDay = new Map<string, AttendanceRecord[]>();
+      upsertedBatch.forEach(rec => {
+        const key = rec.classDay || 'session';
+        if (!byClassDay.has(key)) byClassDay.set(key, []);
+        byClassDay.get(key)!.push(rec);
+      });
+
+      byClassDay.forEach((dayRecords, dayId) => {
+        const dayObj = classDays.find(d => d.id === dayId || d.name === dayId);
+        const sessionDate = dayObj ? dayObj.name : dayId;
+        portalApiClient
+          .recordBatchAttendance({
+            date: sessionDate,
+            sessionId: dayId,
+            sessionTitle: dayObj?.name || dayId,
+            records: dayRecords.map(r => ({
+              studentId: r.studentId,
+              studentName: r.name || r.studentName,
+              status: r.present ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT,
+              manualOverride: true,
+            })),
+          })
+          .catch(batchErr => {
+            console.warn('Backend transactional batch upsert notice:', batchErr);
+          });
+      });
+    }
+
     if (lockedCount > 0) {
       setError(`Notice: ${lockedCount} student record(s) are locked (>24h old) and were preserved.`);
     }
@@ -3418,7 +3477,7 @@ export default function App() {
       role: appUser?.role === 'student' ? 'student' : 'admin',
       actionCategory: 'Attendance Override',
       actionTitle: 'Batch Zoom Attendance Registered',
-      details: `Registered Zoom attendance for ${newRecords.length} students (${lockedCount} locked records preserved)`
+      details: `Registered Zoom attendance for ${newRecords.length} students (${lockedCount} locked records preserved via non-destructive UPSERT)`
     });
   };
 

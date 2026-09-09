@@ -99,12 +99,13 @@ export const portalApi = {
     });
   },
 
-  // 3. Attendance Management
+  // 3. Attendance Management (Hierarchy: attendance_session -> attendance_record -> student_id)
   async getAttendance() {
     return fetchJson<{
       records: any[];
+      sessions: any[];
       classDays: any[];
-      excusedAbsences: Record<string, Record<string, boolean>>;
+      excusedAbsences: Record<string, any>;
       totalRecords: number;
       totalSessions: number;
       policyThreshold: string;
@@ -112,11 +113,14 @@ export const portalApi = {
   },
 
   async recordCheckin(data: {
-    studentName: string;
+    studentId?: string;
+    studentName?: string;
+    sessionId?: string;
     date: string;
-    status: 'Present' | 'Absent' | 'Excused' | 'Tardy';
+    status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | string;
     notes?: string;
     studentEmail?: string;
+    manualOverride?: boolean;
   }) {
     return fetchJson<{ status: string; record: any }>('/attendance/checkin', {
       method: 'POST',
@@ -126,21 +130,30 @@ export const portalApi = {
 
   async recordBatchAttendance(data: {
     date: string;
-    records: any[];
+    sessionId?: string;
+    sessionTitle?: string;
+    records: Array<{
+      studentId?: string;
+      studentName?: string;
+      status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | string;
+      notes?: string;
+      manualOverride?: boolean;
+    }>;
   }) {
-    return fetchJson<{ status: string; count: number }>('/attendance/batch', {
+    return fetchJson<{ status: string; count: number; date: string; session?: any }>('/attendance/batch', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   async recordExcusedAbsence(data: {
-    studentName: string;
+    studentId?: string;
+    studentName?: string;
     date: string;
     reason?: string;
     documentUrl?: string;
   }) {
-    return fetchJson<{ status: string; studentName: string; date: string }>('/attendance/excuse', {
+    return fetchJson<{ status: string; studentId: string; studentName: string; date: string }>('/attendance/excuse', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -458,3 +471,6 @@ export const portalApi = {
     });
   },
 };
+
+export const portalApiClient = portalApi;
+export default portalApi;

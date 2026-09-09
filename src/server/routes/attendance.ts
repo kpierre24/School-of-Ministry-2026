@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { attendanceService } from "../services/domain";
+import { attendanceService, validateAttendanceStatus } from "../services/domain";
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
@@ -23,6 +23,7 @@ attendanceRouter.get(
 
       return res.status(200).json({
         records: data.records,
+        sessions: data.sessions,
         classDays: data.classDays,
         excusedAbsences: data.excusedAbsences,
         totalRecords: data.totalRecords,
@@ -39,7 +40,8 @@ attendanceRouter.get(
 
 /**
  * POST /api/attendance/checkin
- * Records student check-in status (Present, Absent, Excused, Tardy) directly in PostgreSQL attendance table.
+ * Records student check-in status (PRESENT, ABSENT, LATE, EXCUSED) directly in PostgreSQL attendance table.
+ * Strictly validates status enum; rejects arbitrary strings.
  * RBAC: Requires attendance:write.
  */
 attendanceRouter.post(
@@ -55,29 +57,38 @@ attendanceRouter.post(
   }),
   async (req: Request, res: Response) => {
     try {
-      const { studentName, studentId, date, status, notes, studentEmail } = req.body;
+      const { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride } = req.body;
       const actorUserId = req.user?.email || "teacher";
 
       if ((!studentName && !studentId) || !date) {
         return res.status(400).json({ error: "studentId or studentName, and date are required" });
       }
 
+      // Enforce strict enum validation; reject arbitrary strings
+      try {
+        validateAttendanceStatus(status);
+      } catch (valErr: any) {
+        return res.status(400).json({ error: valErr.message });
+      }
+
       const result = await attendanceService.recordCheckin(
-        { studentName, studentId, date, status, notes, studentEmail },
+        { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride },
         actorUserId
       );
 
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/attendance/checkin error:", err);
-      return res.status(500).json({ error: "Failed to record check-in" });
+      return res.status(500).json({ error: err?.message || "Failed to record check-in" });
     }
   }
 );
 
 /**
  * POST /api/attendance/batch
- * Batch saves attendance records directly into relational PostgreSQL table.
+ * Batch saves attendance records using non-destructive UPSERT inside a transaction.
+ * Strictly validates status enum (PRESENT, ABSENT, LATE, EXCUSED) across all records.
+ * Arbitrary strings are forbidden.
  * RBAC: Requires attendance:write
  */
 attendanceRouter.post(
@@ -86,22 +97,34 @@ attendanceRouter.post(
   requirePermission(["attendance:write", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { date, records: incomingRecords } = req.body;
+      const { date, records: incomingRecords, sessionId, sessionTitle } = req.body;
       const actorUserId = req.user?.email || "teacher";
 
       if (!date || !Array.isArray(incomingRecords)) {
         return res.status(400).json({ error: "date and records array are required" });
       }
 
+      // Enforce strict enum validation across all records; reject arbitrary strings immediately
+      for (let i = 0; i < incomingRecords.length; i++) {
+        const r = incomingRecords[i];
+        try {
+          validateAttendanceStatus(r.status);
+        } catch (valErr: any) {
+          return res.status(400).json({
+            error: `Record #${i + 1} (${r.studentName || r.studentId || 'unknown'}): ${valErr.message}`,
+          });
+        }
+      }
+
       const result = await attendanceService.recordBatchAttendance(
-        { date, records: incomingRecords },
+        { date, records: incomingRecords, sessionId, sessionTitle },
         actorUserId
       );
 
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/attendance/batch error:", err);
-      return res.status(500).json({ error: "Failed to batch save attendance" });
+      return res.status(500).json({ error: err?.message || "Failed to batch save attendance" });
     }
   }
 );
@@ -109,6 +132,7 @@ attendanceRouter.post(
 /**
  * POST /api/attendance/override
  * Overrides a student's attendance record with audit trail in relational table.
+ * Strictly validates status enum (PRESENT, ABSENT, LATE, EXCUSED).
  * RBAC: Requires attendance:approve
  */
 attendanceRouter.post(
@@ -117,11 +141,18 @@ attendanceRouter.post(
   requirePermission(["attendance:approve", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { studentName, studentId, date, status, reason } = req.body;
+      const { studentName, studentId, date, status, reason, sessionId } = req.body;
       const actorUserId = req.user?.email || "admin";
 
       if (!studentName || !date || !status) {
         return res.status(400).json({ error: "studentName, date, and status are required" });
+      }
+
+      // Enforce strict enum validation; reject arbitrary strings
+      try {
+        validateAttendanceStatus(status);
+      } catch (valErr: any) {
+        return res.status(400).json({ error: valErr.message });
       }
 
       const result = await attendanceService.recordCheckin(
@@ -129,8 +160,10 @@ attendanceRouter.post(
           studentName,
           studentId,
           date,
+          sessionId,
           status,
           notes: reason ? `[Override by ${actorUserId}]: ${reason}` : "Administrative override",
+          manualOverride: true,
         },
         actorUserId
       );
@@ -141,7 +174,7 @@ attendanceRouter.post(
       });
     } catch (err: any) {
       logger.error("POST /api/attendance/override error:", err);
-      return res.status(500).json({ error: "Failed to override attendance" });
+      return res.status(500).json({ error: err?.message || "Failed to override attendance" });
     }
   }
 );

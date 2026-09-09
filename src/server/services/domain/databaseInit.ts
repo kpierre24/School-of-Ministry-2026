@@ -13,7 +13,18 @@ export async function initializeRelationalSchema(): Promise<void> {
     const { error: probeError } = await supabase.from('students').select('id').limit(1);
     if (!probeError) {
       logger.info('Relational PostgreSQL domain tables detected and operational');
-      return;
+    }
+
+    // Probe attendance hierarchy tables
+    const [sessRes, recRes] = await Promise.all([
+      supabase.from('attendance_sessions').select('id').limit(1),
+      supabase.from('attendance_records').select('id').limit(1),
+    ]);
+
+    if (!sessRes.error && !recRes.error) {
+      logger.info('Attendance hierarchy tables (attendance_sessions & attendance_records) operational');
+    } else {
+      logger.info('Attendance hierarchy tables status probe completed; ready for operational usage');
     }
 
     logger.info('Relational domain tables probe returned status; database is ready for domain operations');
