@@ -20,6 +20,57 @@ export const assignmentsService = {
         let filtered = assignments;
         if (user && user.role === 'student') {
           filtered = assignments.filter((a: any) => a.is_published !== false);
+        } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
+          const cleanEmail = (user.email || '').trim().toLowerCase();
+          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
+
+          // Query course_offerings to find matching courses
+          const { data: offerings } = await supabase
+            .from('course_offerings')
+            .select(`
+              id,
+              course_definition_id,
+              lecturer_email,
+              lecturer_name,
+              course_definitions (
+                id,
+                code
+              )
+            `)
+            .is('deleted_at', null);
+
+          const allowedCourseIdentifiers = new Set<string>();
+
+          // Also add any explicitly assigned courses from user record
+          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
+          assignedFromUser.forEach(c => {
+            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
+          });
+
+          if (offerings) {
+            offerings.forEach((off: any) => {
+              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
+              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
+
+              const lecturerMatches =
+                (cleanEmail && offLecturerEmail === cleanEmail) ||
+                (cleanName && offLecturerName === cleanName) ||
+                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
+                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
+
+              if (lecturerMatches) {
+                if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
+                if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
+                if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
+              }
+            });
+          }
+
+          filtered = assignments.filter((a: any) => {
+            const courseId = String(a.course_code || a.courseCode || a.course_definition_id || a.courseId || '').trim().toUpperCase();
+            if (!courseId) return false;
+            return allowedCourseIdentifiers.has(courseId);
+          });
         }
         return { assignments: filtered, count: filtered.length };
       }
@@ -70,7 +121,9 @@ export const assignmentsService = {
           ),
           assignments (
             title,
-            max_points
+            max_points,
+            course_code,
+            course_definition_id
           )
         `)
         .is('deleted_at', null)
@@ -117,6 +170,7 @@ export const assignmentsService = {
             feedback: grade?.feedback || '',
             gradedAt: grade?.graded_at,
             maxPoints: asg?.max_points || 100,
+            courseCode: asg?.course_code || asg?.course_definition_id || '',
           };
         });
 
@@ -129,6 +183,57 @@ export const assignmentsService = {
                      (sub.student?.id && (sub.student.id === studentUuid || sub.student.id === userUuid)) ||
                      ((sub as any).student_id && ((sub as any).student_id === studentUuid || (sub as any).student_id === userUuid))
           );
+        } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
+          const cleanEmail = (user.email || '').trim().toLowerCase();
+          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
+
+          // Query course_offerings to find matching courses
+          const { data: offerings } = await supabase
+            .from('course_offerings')
+            .select(`
+              id,
+              course_definition_id,
+              lecturer_email,
+              lecturer_name,
+              course_definitions (
+                id,
+                code
+              )
+            `)
+            .is('deleted_at', null);
+
+          const allowedCourseIdentifiers = new Set<string>();
+
+          // Also add any explicitly assigned courses from user record
+          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
+          assignedFromUser.forEach(c => {
+            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
+          });
+
+          if (offerings) {
+            offerings.forEach((off: any) => {
+              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
+              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
+
+              const lecturerMatches =
+                (cleanEmail && offLecturerEmail === cleanEmail) ||
+                (cleanName && offLecturerName === cleanName) ||
+                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
+                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
+
+              if (lecturerMatches) {
+                if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
+                if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
+                if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
+              }
+            });
+          }
+
+          result = formatted.filter((sub) => {
+            const courseId = String(sub.courseCode || '').trim().toUpperCase();
+            if (!courseId) return false;
+            return allowedCourseIdentifiers.has(courseId);
+          });
         } else if (filters?.studentId) {
           result = formatted.filter((sub) => sub.studentId === filters.studentId || (sub as any).student_id === filters.studentId);
         }

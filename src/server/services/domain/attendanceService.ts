@@ -241,6 +241,7 @@ export const attendanceService = {
               id: sessionId,
               sessionDate,
               title: sessionTitle,
+              courseId: session?.course_id || r.course_id || null,
             },
             student: {
               id: r.student_id,
@@ -261,6 +262,57 @@ export const attendanceService = {
                    (r.student?.id && (r.student.id === studentUuid || r.student.id === userUuid)) ||
                    ((r as any).student_id && ((r as any).student_id === studentUuid || (r as any).student_id === userUuid))
           );
+        } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
+          const cleanEmail = (user.email || '').trim().toLowerCase();
+          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
+
+          // Query course_offerings to find matching courses
+          const { data: offerings } = await supabase
+            .from('course_offerings')
+            .select(`
+              id,
+              course_definition_id,
+              lecturer_email,
+              lecturer_name,
+              course_definitions (
+                id,
+                code
+              )
+            `)
+            .is('deleted_at', null);
+
+          const allowedCourseIdentifiers = new Set<string>();
+
+          // Also add any explicitly assigned courses from user record
+          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
+          assignedFromUser.forEach(c => {
+            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
+          });
+
+          if (offerings) {
+            offerings.forEach((off: any) => {
+              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
+              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
+
+              const lecturerMatches =
+                (cleanEmail && offLecturerEmail === cleanEmail) ||
+                (cleanName && offLecturerName === cleanName) ||
+                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
+                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
+
+              if (lecturerMatches) {
+                if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
+                if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
+                if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
+              }
+            });
+          }
+
+          filtered = formattedRecords.filter((r) => {
+            const courseId = String(r.session?.courseId || '').trim().toUpperCase();
+            if (!courseId) return false;
+            return allowedCourseIdentifiers.has(courseId);
+          });
         }
 
         const classDays = Array.from(uniqueSessionsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
