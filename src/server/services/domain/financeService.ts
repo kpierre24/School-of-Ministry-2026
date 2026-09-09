@@ -393,9 +393,8 @@ export const financeService = {
       }
     } catch (err) {
       logger.error('Error fetching invoices from relational table:', err);
+      throw err;
     }
-
-    return { invoices: [], total: 0 };
   },
 
   /**
@@ -473,7 +472,8 @@ export const financeService = {
         .upsert(invoiceHeader, { onConflict: 'id' });
 
       if (headerErr) {
-        logger.warn('Invoice header upsert warning:', headerErr.message);
+        logger.error('Invoice header upsert failed:', headerErr.message);
+        throw new Error(`Failed to save invoice header: ${headerErr.message}`);
       }
 
       // 4. Authoritative Line Items Handling:
@@ -490,7 +490,11 @@ export const financeService = {
           ];
 
       // Delete existing lines and re-insert normalized lines
-      await supabase.from('invoice_lines').delete().eq('invoice_id', invoiceId);
+      const { error: delErr } = await supabase.from('invoice_lines').delete().eq('invoice_id', invoiceId);
+      if (delErr) {
+        logger.error('Invoice lines deletion failed:', delErr.message);
+        throw new Error(`Failed to update invoice lines: ${delErr.message}`);
+      }
 
       const linesToInsert = inputLines.map((l) => {
         const qty = Number(l.quantity || 1);
@@ -507,7 +511,11 @@ export const financeService = {
         };
       });
 
-      await supabase.from('invoice_lines').insert(linesToInsert);
+      const { error: lineErr } = await supabase.from('invoice_lines').insert(linesToInsert);
+      if (lineErr) {
+        logger.error('Invoice lines insertion failed:', lineErr.message);
+        throw new Error(`Failed to save invoice lines: ${lineErr.message}`);
+      }
 
       // 5. Run Server Calculation Engine to compute authoritative balance
       const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invoiceId, supabase);
@@ -708,7 +716,8 @@ export const financeService = {
 
       const { error: pmtErr } = await supabase.from('payments').upsert(paymentPayload, { onConflict: 'id' });
       if (pmtErr) {
-        logger.warn('Payment insert warning:', pmtErr.message);
+        logger.error('Payment insert failed:', pmtErr.message);
+        throw new Error(`Failed to record payment: ${pmtErr.message}`);
       }
 
       // 2. Insert Payment Allocations:
@@ -743,7 +752,11 @@ export const financeService = {
       }
 
       if (allocationsToInsert.length > 0) {
-        await supabase.from('payment_allocations').insert(allocationsToInsert);
+        const { error: allocErr } = await supabase.from('payment_allocations').insert(allocationsToInsert);
+        if (allocErr) {
+          logger.error('Payment allocations insert failed:', allocErr.message);
+          throw new Error(`Failed to record payment allocations: ${allocErr.message}`);
+        }
       }
 
       // 3. Recalculate Authoritative Balances for each affected invoice
@@ -845,7 +858,8 @@ export const financeService = {
         .upsert(adjustmentPayload, { onConflict: 'id' });
 
       if (adjErr) {
-        logger.warn('Adjustment insert warning:', adjErr.message);
+        logger.error('Adjustment insert failed:', adjErr.message);
+        throw new Error(`Failed to apply financial adjustment: ${adjErr.message}`);
       }
 
       // Recompute invoice balance authoritatively
@@ -929,7 +943,11 @@ export const financeService = {
         updated_at: timestamp,
       };
 
-      await supabase.from('refunds').upsert(refundPayload, { onConflict: 'id' });
+      const { error: refErr } = await supabase.from('refunds').upsert(refundPayload, { onConflict: 'id' });
+      if (refErr) {
+        logger.error('Refund insert failed:', refErr.message);
+        throw new Error(`Failed to record refund: ${refErr.message}`);
+      }
 
       // 2. Insert Refund Allocations:
       // refund -> refund_allocation
@@ -962,7 +980,11 @@ export const financeService = {
       }
 
       if (allocationsToInsert.length > 0) {
-        await supabase.from('refund_allocations').insert(allocationsToInsert);
+        const { error: refAllocErr } = await supabase.from('refund_allocations').insert(allocationsToInsert);
+        if (refAllocErr) {
+          logger.error('Refund allocations insert failed:', refAllocErr.message);
+          throw new Error(`Failed to record refund allocations: ${refAllocErr.message}`);
+        }
       }
 
       // 3. Recalculate Authoritative Balances for each affected invoice

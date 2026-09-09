@@ -677,13 +677,16 @@ export async function logAuditEvent(entry: AuditEventEntry): Promise<boolean> {
     });
 
     if (error) {
-      logger.warn(`Failed to insert authoritative audit record: ${error.message}`);
-      return false;
+      logger.error(`Failed to insert authoritative audit record: ${error.message}`);
+      throw new Error(`Audit persistence failed: ${error.message}`);
     }
     return true;
   } catch (err) {
-    logger.warn(`Exception writing to audit_history:`, err);
-    return false;
+    if (err instanceof Error && err.message.startsWith('Audit persistence failed:')) {
+      throw err;
+    }
+    logger.error(`Exception writing to audit_history:`, err);
+    throw new Error(`Audit persistence failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

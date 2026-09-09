@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { getAuthoritativeState, getServerSupabase } from "../services/supabaseServer";
+import { getServerSupabase } from "../services/supabaseServer";
 import { verifyIdToken } from "../services/firebaseAuth";
 import { UserRole, Permission, AuthenticatedUser, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
@@ -11,6 +11,14 @@ declare global {
     interface Request {
       user?: AuthenticatedUser;
     }
+  }
+}
+
+export class DatabaseServiceError extends Error {
+  public isDatabaseError = true;
+  constructor(message: string, public cause?: any) {
+    super(message);
+    this.name = "DatabaseServiceError";
   }
 }
 
@@ -28,12 +36,11 @@ export function toDbUserRole(role: UserRole): "admin" | "teacher" | "student" | 
 /**
  * Enrollment-based Policy:
  * Verifies whether an email or student number corresponds to an active enrollment
- * or pre-configured credential before activating a database user account.
+ * or pre-configured record strictly in PostgreSQL relational tables before activating a user account.
  */
 export async function checkEnrollmentMatch(
   cleanEmail: string,
-  supabase: any,
-  state: any
+  supabase: any
 ): Promise<{
   isEnrolled: boolean;
   role?: UserRole;
@@ -44,55 +51,45 @@ export async function checkEnrollmentMatch(
 }> {
   if (!cleanEmail) return { isEnrolled: false };
 
-  // 1. Check state userCredentials (configured staff, admins, teachers, and pre-registered student credentials)
-  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
-    const credMatch = state.userCredentials.find(
-      (u: any) =>
-        (u.email || "").toLowerCase().trim() === cleanEmail ||
-        (u.studentId || "").toLowerCase().trim() === cleanEmail ||
-        (u.studentNumber || "").toLowerCase().trim() === cleanEmail
-    );
-    if (credMatch) {
-      // Legacy state cannot grant super_admin; sanitize to admin
-      let matchedRole = credMatch.role ? normalizeUserRole(credMatch.role) : "student";
-      if (matchedRole === "super_admin") {
-        matchedRole = "admin";
+  // Check relational database profiles, students, and course_offerings tables in PostgreSQL
+  try {
+    // 1. Check profiles table in PostgreSQL
+    const { data: prof, error: profErr } = await supabase
+      .from("profiles")
+      .select("id, user_id, first_name, last_name, email, role, students(id, student_number)")
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (profErr) {
+      throw new DatabaseServiceError("Database lookup error on profiles table", profErr);
+    }
+
+    if (prof) {
+      const std = Array.isArray(prof.students) ? prof.students[0] : prof.students;
+      let matchedRole: UserRole = "student";
+      if (prof.role) {
+        matchedRole = normalizeUserRole(prof.role);
+        if (matchedRole === "super_admin") matchedRole = "admin";
       }
       return {
         isEnrolled: true,
         role: matchedRole,
-        studentRecordId: credMatch.studentRecordId || credMatch.studentId,
-        studentNumber: credMatch.studentNumber || credMatch.studentId,
-        studentName: credMatch.studentName,
-        assignedCourses: credMatch.assignedCourses || [],
-      };
-    }
-  }
-
-  // 2. Check relational database students / profiles tables
-  try {
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("id, user_id, first_name, last_name, email, students(id, student_number)")
-      .eq("email", cleanEmail)
-      .maybeSingle();
-
-    if (prof) {
-      const std = Array.isArray(prof.students) ? prof.students[0] : prof.students;
-      return {
-        isEnrolled: true,
-        role: "student",
         studentRecordId: std?.id,
         studentNumber: std?.student_number,
         studentName: `${prof.first_name || ""} ${prof.last_name || ""}`.trim() || undefined,
       };
     }
 
-    const { data: stdDirect } = await supabase
+    // 2. Check students table in PostgreSQL by student_number or id matching email
+    const { data: stdDirect, error: stdErr } = await supabase
       .from("students")
       .select("id, student_number, user_id")
       .or(`student_number.eq.${cleanEmail},id.eq.${cleanEmail}`)
       .maybeSingle();
+
+    if (stdErr) {
+      throw new DatabaseServiceError("Database lookup error on students table", stdErr);
+    }
 
     if (stdDirect) {
       return {
@@ -102,62 +99,31 @@ export async function checkEnrollmentMatch(
         studentNumber: stdDirect.student_number,
       };
     }
+
+    // 3. Check course_offerings in PostgreSQL for assigned faculty/lecturer email
+    const { data: facultyOffering, error: facultyErr } = await supabase
+      .from("course_offerings")
+      .select("id, lecturer_email, lecturer_name")
+      .ilike("lecturer_email", cleanEmail)
+      .maybeSingle();
+
+    if (facultyErr) {
+      throw new DatabaseServiceError("Database lookup error on course_offerings table", facultyErr);
+    }
+
+    if (facultyOffering) {
+      return {
+        isEnrolled: true,
+        role: "lecturer",
+        studentName: facultyOffering.lecturer_name,
+      };
+    }
   } catch (dbErr) {
-    logger.warn("Error checking database enrollment match:", dbErr);
-  }
-
-  // 3. Check student records / roster in state
-  if (state?.records && Array.isArray(state.records)) {
-    const recordMatch = state.records.find(
-      (r: any) =>
-        (r.student?.email || "").toLowerCase().trim() === cleanEmail ||
-        (r.student?.id || "").toLowerCase().trim() === cleanEmail ||
-        (r.student?.studentNumber || r.student?.student_number || "").toLowerCase().trim() === cleanEmail
-    );
-    if (recordMatch) {
-      return {
-        isEnrolled: true,
-        role: "student",
-        studentRecordId: recordMatch.student?.id || recordMatch.id,
-        studentNumber: recordMatch.student?.studentNumber || recordMatch.student?.student_number,
-        studentName: recordMatch.student?.name,
-      };
+    if (dbErr instanceof DatabaseServiceError || (dbErr as any)?.isDatabaseError) {
+      throw dbErr;
     }
-  }
-
-  // 4. Check students list in state
-  if (state?.students && Array.isArray(state.students)) {
-    const stdMatch = state.students.find(
-      (s: any) =>
-        (s.email || "").toLowerCase().trim() === cleanEmail ||
-        (s.studentNumber || s.student_number || "").toLowerCase().trim() === cleanEmail ||
-        (s.id || "").toLowerCase().trim() === cleanEmail
-    );
-    if (stdMatch) {
-      return {
-        isEnrolled: true,
-        role: "student",
-        studentRecordId: stdMatch.id,
-        studentNumber: stdMatch.studentNumber || stdMatch.student_number,
-        studentName: stdMatch.name,
-      };
-    }
-  }
-
-  // 5. Check invoices / financial ledger records in state
-  if (state?.invoices && Array.isArray(state.invoices)) {
-    const invMatch = state.invoices.find(
-      (i: any) => (i.email || "").toLowerCase().trim() === cleanEmail
-    );
-    if (invMatch) {
-      return {
-        isEnrolled: true,
-        role: "student",
-        studentRecordId: invMatch.studentId,
-        studentNumber: invMatch.studentNumber || invMatch.studentId,
-        studentName: invMatch.studentName,
-      };
-    }
+    logger.error("Error checking PostgreSQL database enrollment match:", dbErr);
+    throw new DatabaseServiceError("Failed to verify database enrollment match", dbErr);
   }
 
   return { isEnrolled: false };
@@ -172,7 +138,7 @@ export async function checkEnrollmentMatch(
  *       ↓
  * Authorization
  *       ↓
- * What are you allowed to do? (Database users/roles -> user.role -> permissions)
+ * What are you allowed to do? (PostgreSQL users/roles -> user.role -> permissions)
  *       ↓
  * Resource authorization
  *       ↓
@@ -180,7 +146,7 @@ export async function checkEnrollmentMatch(
  * 
  * Insecure identity sources (req.query.userEmail, req.body.userEmail,
  * x-user-role, x-user-email) are strictly prohibited from establishing identity.
- * Roles and privileges are NEVER inferred from email strings ("admin", "teacher", "lecturer").
+ * Roles and privileges are NEVER inferred from email strings ("admin", "teacher", "lecturer") or legacy state blobs.
  */
 export async function resolveUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
   const authHeader = req.headers.authorization;
@@ -215,7 +181,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     return null;
   }
 
-  // 2. Query database for user role and active status
+  // 2. Query PostgreSQL users table for user role, active status, and assigned_courses
   const supabase = getServerSupabase();
   let dbUser: any = null;
 
@@ -223,55 +189,44 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     try {
       const { data, error } = await supabase
         .from("users")
-        .select("id, email, role, is_active")
+        .select("id, email, role, is_active, assigned_courses")
         .eq("email", cleanEmail)
         .maybeSingle();
 
-      if (!error && data) {
+      if (error) {
+        throw new DatabaseServiceError("Database error looking up user in users table", error);
+      }
+      if (data) {
         dbUser = data;
       }
     } catch (dbErr: any) {
-      logger.error("Error querying database users table:", dbErr);
+      if (dbErr instanceof DatabaseServiceError || dbErr?.isDatabaseError) {
+        throw dbErr;
+      }
+      logger.error("Error querying PostgreSQL database users table:", dbErr);
+      throw new DatabaseServiceError("Database outage or error during user lookup", dbErr);
     }
   }
 
-  // Guard: Suspended or inactive accounts are rejected
+  // Guard: Suspended or inactive accounts in PostgreSQL are rejected
   if (dbUser && dbUser.is_active === false) {
-    logger.warn(`Authentication rejected for deactivated account: ${cleanEmail}`);
+    logger.warn(`Authentication rejected for deactivated account in PostgreSQL: ${cleanEmail}`);
     return null;
   }
 
-  // Authoritative State for supplemental profile attributes (credentials in DB state)
-  const state = cleanEmail ? await getAuthoritativeState(cleanEmail) : null;
-
-  // Default role is strictly "student" unless configured in database
+  // Authoritative Database Role Source of Truth:
+  // PostgreSQL users table strictly determines role authority.
   let assignedRole: UserRole = "student";
 
-  // Check state database userCredentials for explicit role assignment (legacy state)
-  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
-    const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
-    if (match?.role) {
-      assignedRole = normalizeUserRole(match.role);
-    }
-  }
-
-  // Security Policy: Legacy state CANNOT grant super_admin. Downgrade to admin if legacy state claimed super_admin.
-  if (assignedRole === "super_admin") {
-    assignedRole = "admin";
-  }
-
-  // Authoritative Database Role Source of Truth:
-  // super_admin requires explicit database provisioning in the PostgreSQL users table.
-  // Immediate Revocation: Any changes to dbUser.role or dbUser.is_active in PostgreSQL take effect immediately.
   if (dbUser?.role) {
     assignedRole = normalizeUserRole(dbUser.role);
   }
 
   // Enrollment-based Policy:
-  // If user does not exist in database users table, match email or student number to enrollment roster.
-  // Account is ONLY activated if a valid enrollment or credential match is found.
+  // If user does not exist in PostgreSQL users table, check PostgreSQL enrollment/profile records.
+  // Account is ONLY activated if a valid enrollment match is found in PostgreSQL.
   if (!dbUser && cleanEmail) {
-    const enrollment = await checkEnrollmentMatch(cleanEmail, supabase, state);
+    const enrollment = await checkEnrollmentMatch(cleanEmail, supabase);
 
     if (!enrollment.isEnrolled) {
       logger.warn(`Authentication rejected for un-enrolled account attempt: ${cleanEmail}`);
@@ -292,43 +247,59 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
           role: dbRole,
           is_active: true,
         })
-        .select("id, email, role, is_active")
+        .select("id, email, role, is_active, assigned_courses")
         .maybeSingle();
 
-      if (!insertErr && createdUser) {
+      if (insertErr) {
+        throw new DatabaseServiceError("Failed to activate user account in database", insertErr);
+      }
+
+      if (createdUser) {
         dbUser = createdUser;
-        logger.info(`Activated enrolled user account for ${cleanEmail} (role: ${dbRole})`);
+        logger.info(`Activated enrolled user account in PostgreSQL for ${cleanEmail} (role: ${dbRole})`);
 
         // If enrollment matched a database student record, link user_id
         if (enrollment.studentRecordId) {
-          await supabase
+          const { error: updateErr } = await supabase
             .from("students")
             .update({ user_id: createdUser.id })
             .eq("id", enrollment.studentRecordId)
             .is("user_id", null);
+
+          if (updateErr) {
+            logger.warn("Warning linking student record user_id:", updateErr);
+          }
         }
       }
     } catch (insertErr) {
-      logger.warn("Could not insert user into database users table:", insertErr);
+      if (insertErr instanceof DatabaseServiceError || (insertErr as any)?.isDatabaseError) {
+        throw insertErr;
+      }
+      logger.error("Could not insert user into PostgreSQL database users table:", insertErr);
+      throw new DatabaseServiceError("Database error during account activation", insertErr);
     }
   }
 
-  // Look up student record from database students table
+  // Look up student linkage and student identity strictly from PostgreSQL
   let studentRecordId: string | undefined = undefined;
   let studentNumber: string | undefined = undefined;
   let studentId: string | undefined = undefined;
   let studentName: string | undefined = decoded.name;
-  let assignedCourses: string[] = [];
+  let assignedCourses: string[] = Array.isArray(dbUser?.assigned_courses) ? dbUser.assigned_courses : [];
 
   const userId = dbUser?.id || firebaseUid;
 
   if (dbUser?.id) {
     try {
-      const { data: studentRecord } = await supabase
+      const { data: studentRecord, error: stdError } = await supabase
         .from("students")
         .select("id, student_number")
         .eq("user_id", dbUser.id)
         .maybeSingle();
+
+      if (stdError) {
+        throw new DatabaseServiceError("Database error looking up student record", stdError);
+      }
 
       if (studentRecord) {
         if (studentRecord.id) studentRecordId = studentRecord.id;
@@ -336,19 +307,43 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
         studentId = studentRecord.id || studentRecord.student_number;
       }
     } catch (studentErr) {
-      logger.warn("Error querying database students table:", studentErr);
+      if (studentErr instanceof DatabaseServiceError || (studentErr as any)?.isDatabaseError) {
+        throw studentErr;
+      }
+      logger.error("Error querying PostgreSQL database students table:", studentErr);
+      throw new DatabaseServiceError("Database error querying student record", studentErr);
     }
   }
 
-  // Check state userCredentials for student attributes
-  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
-    const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
-    if (match) {
-      if (match.studentName && !studentName) studentName = match.studentName;
-      if (match.studentRecordId && !studentRecordId) studentRecordId = match.studentRecordId;
-      if (match.studentNumber && !studentNumber) studentNumber = match.studentNumber;
-      if (match.studentId && !studentId) studentId = match.studentId;
-      if (match.assignedCourses) assignedCourses = match.assignedCourses;
+  // Fallback to query profiles table in PostgreSQL for student record & name if not linked by user_id yet
+  if (!studentRecordId && cleanEmail) {
+    try {
+      const { data: prof, error: profLookupError } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, students(id, student_number)")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (profLookupError) {
+        throw new DatabaseServiceError("Database error looking up profiles table", profLookupError);
+      }
+
+      if (prof) {
+        const fullProfName = `${prof.first_name || ""} ${prof.last_name || ""}`.trim();
+        if (fullProfName) studentName = fullProfName;
+        const std = Array.isArray(prof.students) ? prof.students[0] : prof.students;
+        if (std) {
+          studentRecordId = std.id;
+          studentNumber = std.student_number;
+          studentId = std.id || std.student_number;
+        }
+      }
+    } catch (profErr) {
+      if (profErr instanceof DatabaseServiceError || (profErr as any)?.isDatabaseError) {
+        throw profErr;
+      }
+      logger.error("Error querying PostgreSQL database profiles table:", profErr);
+      throw new DatabaseServiceError("Database error looking up profile", profErr);
     }
   }
 
@@ -361,23 +356,6 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
 
   if (!studentId) {
     studentId = studentRecordId || studentNumber;
-  }
-
-  // If studentName is still not found, check student roster in state
-  if (!studentName && state?.records && Array.isArray(state.records)) {
-    const studentRecord = state.records.find((r: any) => r.student?.email?.toLowerCase().trim() === cleanEmail);
-    if (studentRecord?.student?.name) {
-      studentName = studentRecord.student.name;
-    }
-  }
-
-  // Check invoices / payments for student ID / name match
-  if ((!studentId || !studentName) && state?.invoices && Array.isArray(state.invoices)) {
-    const inv = state.invoices.find((i: any) => (i.email || "").toLowerCase().trim() === cleanEmail);
-    if (inv) {
-      if (!studentId && inv.studentId) studentId = inv.studentId;
-      if (!studentName && inv.studentName) studentName = inv.studentName;
-    }
   }
 
   const roleDef = ROLE_DEFINITIONS[assignedRole] || ROLE_DEFINITIONS.student;
@@ -403,16 +381,27 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
 /**
  * Authentication Middleware: Extracts & attaches user to request
  */
-export async function authenticate(req: Request, _res: Response, next: NextFunction) {
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
     const user = await resolveUserFromRequest(req);
     if (user) {
       req.user = user;
     }
     next();
-  } catch (err) {
+  } catch (err: any) {
+    if (err instanceof DatabaseServiceError || err?.isDatabaseError) {
+      logger.error(`Authentication aborted - Database service error: ${err.message}`);
+      return res.status(503).json({
+        error: "Service Unavailable: Database lookup failed",
+        code: "DATABASE_UNAVAILABLE",
+        message: "The system could not verify identity or user state due to a database service error. Access denied."
+      });
+    }
     logger.error("Error in authenticate middleware:", err);
-    next();
+    return res.status(500).json({
+      error: "Authentication process error",
+      code: "AUTH_PROCESS_ERROR"
+    });
   }
 }
 
@@ -484,138 +473,84 @@ export async function verifyLecturerCourseInDatabase(
     const supabase = getServerSupabase();
 
     // 1. Check relational `course_offerings` table in PostgreSQL
-    try {
-      const { data: offerings, error: offErr } = await supabase
-        .from("course_offerings")
-        .select(`
+    const { data: offerings, error: offErr } = await supabase
+      .from("course_offerings")
+      .select(`
+        id,
+        course_definition_id,
+        lecturer_email,
+        lecturer_name,
+        status,
+        course_definitions (
           id,
-          course_definition_id,
-          lecturer_email,
-          lecturer_name,
-          status,
-          course_definitions (
-            id,
-            code
-          )
-        `)
-        .is("deleted_at", null);
+          code
+        )
+      `)
+      .is("deleted_at", null);
 
-      if (!offErr && offerings && offerings.length > 0) {
-        const isAssigned = offerings.some((off: any) => {
-          const offLecturerEmail = (off.lecturer_email || "").trim().toLowerCase();
-          const offLecturerName = (off.lecturer_name || "").trim().toLowerCase();
+    if (offErr) {
+      throw new DatabaseServiceError("Database error querying course_offerings table", offErr);
+    }
 
-          const lecturerMatches =
-            (cleanEmail && offLecturerEmail === cleanEmail) ||
-            (cleanName && offLecturerName === cleanName) ||
-            (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
-            (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
+    if (offerings && offerings.length > 0) {
+      const isAssigned = offerings.some((off: any) => {
+        const offLecturerEmail = (off.lecturer_email || "").trim().toLowerCase();
+        const offLecturerName = (off.lecturer_name || "").trim().toLowerCase();
 
-          if (!lecturerMatches) return false;
+        const lecturerMatches =
+          (cleanEmail && offLecturerEmail === cleanEmail) ||
+          (cleanName && offLecturerName === cleanName) ||
+          (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
+          (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
 
-          const codeFromDef = (off.course_definitions?.code || "").trim().toUpperCase();
-          const defId = (off.course_definition_id || "").trim().toUpperCase();
-          const offId = (off.id || "").trim().toUpperCase();
+        if (!lecturerMatches) return false;
 
-          return (
-            codeFromDef === cleanCourse ||
-            defId === cleanCourse ||
-            offId === cleanCourse ||
-            cleanCourse.includes(codeFromDef || "___") ||
-            (codeFromDef && cleanCourse.startsWith(codeFromDef))
-          );
-        });
+        const codeFromDef = (off.course_definitions?.code || "").trim().toUpperCase();
+        const defId = (off.course_definition_id || "").trim().toUpperCase();
+        const offId = (off.id || "").trim().toUpperCase();
 
-        if (isAssigned) {
-          return true;
-        }
+        return (
+          codeFromDef === cleanCourse ||
+          defId === cleanCourse ||
+          offId === cleanCourse ||
+          cleanCourse.includes(codeFromDef || "___") ||
+          (codeFromDef && cleanCourse.startsWith(codeFromDef))
+        );
+      });
+
+      if (isAssigned) {
+        return true;
       }
-    } catch (offEx) {
-      logger.warn("Error checking course_offerings in verifyLecturerCourseInDatabase:", offEx);
     }
 
     // 2. Check `users` table for database-persisted assigned_courses array
-    try {
-      const { data: dbUser, error: userErr } = await supabase
-        .from("users")
-        .select("id, email, assigned_courses, role")
-        .or(`id.eq.${userId},email.eq.${cleanEmail}`)
-        .maybeSingle();
+    const { data: dbUser, error: userErr } = await supabase
+      .from("users")
+      .select("id, email, assigned_courses, role")
+      .or(`id.eq.${userId},email.eq.${cleanEmail}`)
+      .maybeSingle();
 
-      if (!userErr && dbUser?.assigned_courses && Array.isArray(dbUser.assigned_courses)) {
-        const hasAssignment = dbUser.assigned_courses.some((c: string) => {
-          const upper = String(c).trim().toUpperCase();
-          return upper === cleanCourse || cleanCourse.includes(upper);
-        });
-        if (hasAssignment) {
-          return true;
-        }
-      }
-    } catch (userEx) {
-      logger.warn("Error checking users table in verifyLecturerCourseInDatabase:", userEx);
+    if (userErr) {
+      throw new DatabaseServiceError("Database error querying users table for assigned courses", userErr);
     }
 
-    // 3. Check authoritative state stored in database app_states table
-    try {
-      const { data: stateRow, error: stateErr } = await supabase
-        .from("app_states")
-        .select("state")
-        .eq("id", "shared_default_state")
-        .maybeSingle();
-
-      if (!stateErr && stateRow?.state) {
-        const state = stateRow.state;
-
-        // Check state.courseOfferings
-        if (Array.isArray(state.courseOfferings)) {
-          const assignedInState = state.courseOfferings.some((off: any) => {
-            const offCourseCode = (off.courseCode || off.courseId || "").trim().toUpperCase();
-            const offLecturerEmail = (off.lecturer?.email || off.lecturerEmail || "").trim().toLowerCase();
-            const offLecturerName = (off.lecturer?.name || off.lecturerName || "").trim().toLowerCase();
-
-            const isLecturer =
-              (cleanEmail && offLecturerEmail === cleanEmail) ||
-              (cleanName && offLecturerName === cleanName) ||
-              (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
-              (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
-
-            return isLecturer && (offCourseCode === cleanCourse || cleanCourse.includes(offCourseCode));
-          });
-
-          if (assignedInState) {
-            return true;
-          }
-        }
-
-        // Check state.academicStructure
-        if (Array.isArray(state.academicStructure?.courseOfferings)) {
-          const assignedInAcademic = state.academicStructure.courseOfferings.some((off: any) => {
-            const offCourseCode = (off.courseCode || off.courseId || "").trim().toUpperCase();
-            const offLecturerEmail = (off.lecturer?.email || off.lecturerEmail || "").trim().toLowerCase();
-            const offLecturerName = (off.lecturer?.name || off.lecturerName || "").trim().toLowerCase();
-
-            const isLecturer =
-              (cleanEmail && offLecturerEmail === cleanEmail) ||
-              (cleanName && offLecturerName === cleanName) ||
-              (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
-              (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
-
-            return isLecturer && (offCourseCode === cleanCourse || cleanCourse.includes(offCourseCode));
-          });
-
-          if (assignedInAcademic) {
-            return true;
-          }
-        }
+    if (dbUser?.assigned_courses && Array.isArray(dbUser.assigned_courses)) {
+      const hasAssignment = dbUser.assigned_courses.some((c: string) => {
+        const upper = String(c).trim().toUpperCase();
+        return upper === cleanCourse || cleanCourse.includes(upper);
+      });
+      if (hasAssignment) {
+        return true;
       }
-    } catch (stateEx) {
-      logger.warn("Error checking app_states in verifyLecturerCourseInDatabase:", stateEx);
     }
 
     return false;
   } catch (err) {
+    if (err instanceof DatabaseServiceError || (err as any)?.isDatabaseError) {
+      throw err;
+    }
     logger.error("Database lecturer course verification failed:", err);
-    return false;
+    throw new DatabaseServiceError("Database lecturer course verification failed", err);
   }
 }
 
@@ -677,7 +612,11 @@ export async function verifyStudentOwnershipInDatabase(
       .select("id, student_number, user_id")
       .or(`student_number.eq.${targetIdentifier},id.eq.${targetIdentifier},user_id.eq.${targetIdentifier}`);
 
-    if (!error && stdRecords && stdRecords.length > 0) {
+    if (error) {
+      throw new DatabaseServiceError("Database error querying students table for student ownership", error);
+    }
+
+    if (stdRecords && stdRecords.length > 0) {
       const isOwned = stdRecords.some((rec: any) => {
         const recStdNum = (rec.student_number || "").trim().toLowerCase();
         const recId = (rec.id || "").trim().toLowerCase();
@@ -703,7 +642,11 @@ export async function verifyStudentOwnershipInDatabase(
         .from("profiles")
         .select("id, user_id, first_name, last_name, students(id, student_number, user_id)");
 
-      if (!profErr && profRecords && profRecords.length > 0) {
+      if (profErr) {
+        throw new DatabaseServiceError("Database error querying profiles table for student ownership", profErr);
+      }
+
+      if (profRecords && profRecords.length > 0) {
         const matchedProfile = profRecords.find((p: any) => {
           const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase();
           return fullName === normTargetName;
@@ -736,32 +679,12 @@ export async function verifyStudentOwnershipInDatabase(
         }
       }
     }
-
-    // Fallback: Check state in app_states table
-    const { data: stateRow } = await supabase
-      .from("app_states")
-      .select("state")
-      .eq("id", "shared_default_state")
-      .maybeSingle();
-
-    if (stateRow?.state) {
-      const state = stateRow.state;
-      if (Array.isArray(state.userCredentials)) {
-        const matchingCred = state.userCredentials.find(
-          (c: any) => (c.email || "").trim().toLowerCase() === cleanUserEmail
-        );
-        if (matchingCred) {
-          const credStdId = String(matchingCred.studentId || matchingCred.studentRecordId || "").trim().toLowerCase();
-          const credStdNum = String(matchingCred.studentNumber || "").trim().toLowerCase();
-
-          if (cleanTargetId && (cleanTargetId === credStdId || cleanTargetId === credStdNum)) {
-            return true;
-          }
-        }
-      }
-    }
   } catch (dbErr) {
-    logger.warn("Database student ownership verification failed:", dbErr);
+    if (dbErr instanceof DatabaseServiceError || (dbErr as any)?.isDatabaseError) {
+      throw dbErr;
+    }
+    logger.error("Database student ownership verification failed:", dbErr);
+    throw new DatabaseServiceError("Database student ownership verification failed", dbErr);
   }
 
   return false;
@@ -821,9 +744,18 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
       }
 
       // Verify course assignment from database (never trust client claims or unverified state)
-      const isAssigned = await verifyLecturerCourseInDatabase(req.user, courseCode);
-      if (isAssigned) {
-        return next();
+      try {
+        const isAssigned = await verifyLecturerCourseInDatabase(req.user, courseCode);
+        if (isAssigned) {
+          return next();
+        }
+      } catch (dbErr: any) {
+        logger.error("Course assignment verification failed due to database error:", dbErr);
+        return res.status(503).json({
+          error: "Service Unavailable: Database verification failed",
+          code: "DATABASE_UNAVAILABLE",
+          details: "Could not verify course assignment due to a database service error."
+        });
       }
 
       logger.warn(`Lecturer course verification failed for ${email} (Role: ${role}) targeting course [${courseCode}]`);
@@ -836,15 +768,24 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
 
     // 5. Student Ownership Check: Validate strictly using immutable internal IDs against database records.
     // Do NOT authorize based on name, email prefix, display name, or partial strings.
-    const isOwner = await verifyStudentOwnershipInDatabase(
-      req.user,
-      targetStudentId,
-      targetStudentName,
-      targetEmail
-    );
+    try {
+      const isOwner = await verifyStudentOwnershipInDatabase(
+        req.user,
+        targetStudentId,
+        targetStudentName,
+        targetEmail
+      );
 
-    if (isOwner) {
-      return next();
+      if (isOwner) {
+        return next();
+      }
+    } catch (dbErr: any) {
+      logger.error("Student ownership verification failed due to database error:", dbErr);
+      return res.status(503).json({
+        error: "Service Unavailable: Database verification failed",
+        code: "DATABASE_UNAVAILABLE",
+        details: "Could not verify resource ownership due to a database service error."
+      });
     }
 
     // Access Denied
