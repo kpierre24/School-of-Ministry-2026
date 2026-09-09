@@ -14,6 +14,8 @@ export interface AttendanceLockInfo {
 
 /**
  * Extracts a valid Date from record fields or class day identifiers.
+ * Filters out parsed dates with year < 2024 to prevent loose browser date parsing bugs
+ * (e.g. parsing "School of the Pastors Pt 3 (Timestamp)" as March 1, 2001).
  */
 export function getCapturedDate(
   record?: Partial<AttendanceRecord> | null,
@@ -24,20 +26,32 @@ export function getCapturedDate(
   // 1. Explicit capturedAt ISO string or epoch
   if (record.capturedAt) {
     const d = new Date(record.capturedAt);
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
   }
 
   // 2. record.timestamp
   if (record.timestamp) {
-    const d = new Date(record.timestamp);
-    if (!isNaN(d.getTime())) return d;
-
-    // Handle common formatted strings like MM/DD/YYYY or YYYY-MM-DD
-    const parts = record.timestamp.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
-    if (parts) {
-      const parsed = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
-      if (!isNaN(parsed.getTime())) return parsed;
+    // Try explicit regex patterns first to avoid loose parsing side effects
+    const dateMatch = record.timestamp.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dateMatch) {
+      const day = parseInt(dateMatch[1], 10);
+      const month = parseInt(dateMatch[2], 10) - 1;
+      const year = parseInt(dateMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
     }
+
+    const isoMatch = record.timestamp.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
+    }
+
+    const d = new Date(record.timestamp);
+    if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
   }
 
   // 3. If classDay is a timestamp ID like day-1723500000000
@@ -45,15 +59,32 @@ export function getCapturedDate(
   if (dayId && dayId.startsWith('day-')) {
     const num = parseInt(dayId.replace('day-', ''), 10);
     if (!isNaN(num) && num > 1600000000000) {
-      return new Date(num);
+      const d = new Date(num);
+      if (d.getFullYear() >= 2024) return d;
     }
   }
 
   // 4. If classDay name contains a recognizable date
   const dayName = typeof classDay === 'string' ? '' : classDay?.name;
   if (dayName) {
-    const d = new Date(dayName);
-    if (!isNaN(d.getTime())) return d;
+    // Only parse if the name contains an explicit recognizable date pattern
+    const dateMatch = dayName.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dateMatch) {
+      const day = parseInt(dateMatch[1], 10);
+      const month = parseInt(dateMatch[2], 10) - 1;
+      const year = parseInt(dateMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
+    }
+
+    const isoMatch = dayName.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime()) && d.getFullYear() >= 2024) return d;
+    }
   }
 
   return null;
