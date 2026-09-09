@@ -74,6 +74,84 @@ export class StateConcurrencyError extends Error {
 }
 
 /**
+ * Strips all private student, grade, financial, attendance, submission, audit, and PII data
+ * from the shared default state object, ensuring it contains ONLY public system configuration.
+ */
+export function sanitizePublicSharedState(rawState: any): any {
+  if (!rawState || typeof rawState !== 'object') {
+    return {
+      version: 1,
+      academicYears: [],
+      terms: [],
+      masterCourses: [],
+      courses: [],
+      courseOfferings: [],
+      classDays: [],
+      portalConfig: {
+        policyThreshold: '75%',
+        honorThreshold: '85%',
+        criticalThreshold: '50%',
+      },
+      libraryResources: [],
+      records: [],
+      submissions: [],
+      rubricScores: {},
+      payments: [],
+      invoices: [],
+      transactions: [],
+      receipts: [],
+      adjustments: [],
+      refunds: [],
+      students: [],
+      studentLevels: {},
+      studentPhotos: {},
+      studentNotes: {},
+      notifications: [],
+      auditHistory: [],
+      systemAuditLog: [],
+    };
+  }
+
+  const clean = sanitizeProductionState(rawState);
+
+  // Filter notifications to keep only global public system announcements
+  const publicNotifications = Array.isArray(clean.notifications)
+    ? clean.notifications.filter((n: any) => {
+        if (!n) return false;
+        const recipient = String(n.recipient || n.targetRole || '').toLowerCase();
+        const hasSpecificStudentTarget = Boolean(n.studentId || n.student_id || n.studentName);
+        return (recipient === 'all' || recipient === 'public' || !recipient) && !hasSpecificStudentTarget;
+      })
+    : [];
+
+  return {
+    ...clean,
+    // Strip all private student PII and records
+    students: [],
+    studentLevels: {},
+    studentPhotos: {},
+    studentNotes: {},
+    // Strip attendance history
+    records: [],
+    // Strip assignments homework submissions & rubric scores
+    submissions: [],
+    rubricScores: {},
+    // Strip all financial ledgers, invoices, transactions, payments, receipts, adjustments, refunds
+    invoices: [],
+    payments: [],
+    transactions: [],
+    receipts: [],
+    adjustments: [],
+    refunds: [],
+    // Strip administrative audit history
+    auditHistory: [],
+    systemAuditLog: [],
+    // Keep only global public notifications
+    notifications: publicNotifications,
+  };
+}
+
+/**
  * Loads raw authoritative application state from Supabase PostgreSQL by docId / key.
  */
 export async function getAuthoritativeState(userIdOrKey?: string | null): Promise<any | null> {
@@ -112,6 +190,9 @@ export async function getAuthoritativeState(userIdOrKey?: string | null): Promis
     const state = data.state;
     const version = Number(data.version) || Number(state.version) || 1;
     state.version = version;
+    if (docId === 'shared_default_state') {
+      return sanitizePublicSharedState(state);
+    }
     return state;
   }
 
@@ -136,7 +217,7 @@ export async function getAuthoritativeState(userIdOrKey?: string | null): Promis
       const state = fallback.data.state;
       const version = Number(fallback.data.version) || Number(state.version) || 1;
       state.version = version;
-      return state;
+      return sanitizePublicSharedState(state);
     }
   }
 
@@ -160,6 +241,7 @@ export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promis
 
   // 1. Fetch user-specific state or shared default state
   let rawState: any = null;
+  let isFromSharedDefault = false;
 
   const { data: userData } = await supabase
     .from('app_states')
@@ -190,6 +272,7 @@ export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promis
       .single();
     if (defaultData?.state) {
       rawState = defaultData.state;
+      isFromSharedDefault = true;
     }
   }
 
@@ -197,44 +280,55 @@ export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promis
     return null;
   }
 
-  const cleanState = sanitizeProductionState(rawState);
+  const cleanState = isFromSharedDefault
+    ? sanitizePublicSharedState(rawState)
+    : sanitizeProductionState(rawState);
 
   // 2. Apply strict role-based data scoping
   if (user.role === 'student') {
-    const studentName = user.studentName ? user.studentName.toLowerCase().trim() : '';
-    const studentId = user.studentId || '';
+    const studentRecordId = (user.studentRecordId || user.studentId || '').trim().toLowerCase();
+    const cleanUserId = (user.userId || user.id || user.uid || '').trim().toLowerCase();
 
-    const matchesStudent = (name?: string, id?: string) => {
-      if (studentId && id && id === studentId) return true;
-      if (studentName && name && name.toLowerCase().trim() === studentName) return true;
+    // Strict ownership matching based on UUID foreign keys (students.id or users.id)
+    const matchesStudent = (rec: any) => {
+      if (!rec) return false;
+      const recStudentId = String(rec.student_id || rec.studentId || '').trim().toLowerCase();
+      const recUserId = String(rec.user_id || rec.userId || '').trim().toLowerCase();
+      const recId = String(rec.id || '').trim().toLowerCase();
+
+      if (studentRecordId && recStudentId && recStudentId === studentRecordId) return true;
+      if (studentRecordId && recId && recId === studentRecordId) return true;
+      if (cleanUserId && recUserId && recUserId === cleanUserId) return true;
+      if (cleanUserId && recStudentId && recStudentId === cleanUserId) return true;
+      if (studentRecordId && recUserId && recUserId === studentRecordId) return true;
       return false;
     };
 
     return {
       ...cleanState,
-      // Scope attendance records to this student only
+      // Scope attendance records to this student only (by UUID)
       records: Array.isArray(cleanState.records)
-        ? cleanState.records.filter((r: any) => matchesStudent(r.studentName, r.studentId))
+        ? cleanState.records.filter((r: any) => matchesStudent(r))
         : [],
-      // Scope homework submissions to this student only
+      // Scope homework submissions to this student only (by UUID)
       submissions: Array.isArray(cleanState.submissions)
-        ? cleanState.submissions.filter((s: any) => matchesStudent(s.studentName, s.studentId))
+        ? cleanState.submissions.filter((s: any) => matchesStudent(s))
         : [],
-      // Scope payments and ledger to this student only
+      // Scope payments and ledger to this student only (by UUID)
       payments: Array.isArray(cleanState.payments)
-        ? cleanState.payments.filter((p: any) => matchesStudent(p.studentName, p.studentId))
+        ? cleanState.payments.filter((p: any) => matchesStudent(p))
         : [],
       invoices: Array.isArray(cleanState.invoices)
-        ? cleanState.invoices.filter((i: any) => matchesStudent(i.studentName, i.studentId))
+        ? cleanState.invoices.filter((i: any) => matchesStudent(i))
         : [],
-      // Scope student profiles to this student only
+      // Scope student profiles to this student only (by UUID)
       students: Array.isArray(cleanState.students)
-        ? cleanState.students.filter((s: any) => matchesStudent(s.name, s.id))
+        ? cleanState.students.filter((s: any) => matchesStudent(s))
         : [],
       // Only keep personal notifications
       notifications: Array.isArray(cleanState.notifications)
         ? cleanState.notifications.filter((n: any) => 
-            !n.recipient || n.recipient === 'all' || n.recipient === 'students' || matchesStudent(n.recipient, n.studentId)
+            !n.recipient || n.recipient === 'all' || n.recipient === 'students' || matchesStudent(n)
           )
         : [],
       // Student has no access to full administrative audit log history
@@ -306,21 +400,30 @@ export async function saveAuthoritativeStateForUser(
   if (user.role === 'student') {
     const existing = await getAuthoritativeState('shared_default_state');
     if (existing) {
-      const studentName = user.studentName ? user.studentName.toLowerCase().trim() : '';
-      const studentId = user.studentId || '';
-      const matchesStudent = (name?: string, id?: string) => {
-        if (studentId && id && id === studentId) return true;
-        if (studentName && name && name.toLowerCase().trim() === studentName) return true;
+      const studentRecordId = (user.studentRecordId || user.studentId || '').trim().toLowerCase();
+      const userId = (user.userId || user.id || user.uid || '').trim().toLowerCase();
+
+      const matchesStudent = (rec: any) => {
+        if (!rec) return false;
+        const recStudentId = String(rec.student_id || rec.studentId || '').trim().toLowerCase();
+        const recUserId = String(rec.user_id || rec.userId || '').trim().toLowerCase();
+        const recId = String(rec.id || '').trim().toLowerCase();
+
+        if (studentRecordId && recStudentId && recStudentId === studentRecordId) return true;
+        if (studentRecordId && recId && recId === studentRecordId) return true;
+        if (userId && recUserId && recUserId === userId) return true;
+        if (userId && recStudentId && recStudentId === userId) return true;
+        if (studentRecordId && recUserId && recUserId === studentRecordId) return true;
         return false;
       };
 
       // Merge student's submissions and self assessments into existing institutional state
       const existingSubmissions = Array.isArray(existing.submissions) ? existing.submissions : [];
       const newStudentSubmissions = (Array.isArray(sanitizedState.submissions) ? sanitizedState.submissions : [])
-        .filter((s: any) => matchesStudent(s.studentName, s.studentId));
+        .filter((s: any) => matchesStudent(s));
 
       const mergedSubmissions = [
-        ...existingSubmissions.filter((s: any) => !matchesStudent(s.studentName, s.studentId)),
+        ...existingSubmissions.filter((s: any) => !matchesStudent(s)),
         ...newStudentSubmissions,
       ];
 
@@ -366,12 +469,13 @@ export async function saveAuthoritativeStateForUser(
     }
   }
 
-  // 3. If user is an administrative role, also update shared_default_state
+  // 3. If user is an administrative role, also update shared_default_state (sanitizing all private data out of shared state)
   if (user.role !== 'student') {
+    const publicSharedState = sanitizePublicSharedState(finalStateToSave);
     try {
       await supabase.from('app_states').upsert({
         id: 'shared_default_state',
-        state: finalStateToSave,
+        state: publicSharedState,
         version: nextVersion,
         updated_at: timestamp,
         updated_by: updater,
@@ -379,7 +483,7 @@ export async function saveAuthoritativeStateForUser(
     } catch {
       await supabase.from('app_states').upsert({
         id: 'shared_default_state',
-        state: finalStateToSave,
+        state: publicSharedState,
         updated_at: timestamp,
         updated_by: updater,
       });
@@ -468,7 +572,9 @@ export async function saveAuthoritativeState(
 
   const nextVersion = (currentVersion > 0 ? currentVersion : (expectedVersion || 0)) + 1;
   const sanitizedState = sanitizeProductionState(state);
-  const finalStateToSave = { ...sanitizedState, version: nextVersion };
+  const finalStateToSave = docId === 'shared_default_state'
+    ? sanitizePublicSharedState(sanitizedState)
+    : { ...sanitizedState, version: nextVersion };
 
   // 2. Update user state or default state in app_states table
   let upsertErr: any = null;
@@ -502,12 +608,13 @@ export async function saveAuthoritativeState(
     }
   }
 
-  // 3. Also keep shared_default_state synced for global/guest views
+  // 3. Also keep shared_default_state synced for global/guest views (sanitizing all private data)
   if (docId !== 'shared_default_state') {
+    const publicSharedState = sanitizePublicSharedState(finalStateToSave);
     try {
       await supabase.from('app_states').upsert({
         id: 'shared_default_state',
-        state: finalStateToSave,
+        state: publicSharedState,
         version: nextVersion,
         updated_at: timestamp,
         updated_by: updater,
@@ -515,7 +622,7 @@ export async function saveAuthoritativeState(
     } catch {
       await supabase.from('app_states').upsert({
         id: 'shared_default_state',
-        state: finalStateToSave,
+        state: publicSharedState,
         updated_at: timestamp,
         updated_by: updater,
       });

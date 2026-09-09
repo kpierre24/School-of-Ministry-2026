@@ -315,12 +315,14 @@ notificationsRouter.get('/', async (req: Request, res: Response) => {
 
     // Filter by role:
     if (role === 'student') {
+      const studentUuid = (req.user?.studentRecordId || req.user?.studentId || req.user?.userId || '').toLowerCase();
       filtered = filtered.filter(n => {
         const isStudentTarget = n.targetRole === 'student' || n.targetRole === 'all' || !n.targetRole;
         if (!isStudentTarget) return false;
-        // If notification is tied to a specific student name, match it
-        if (n.studentName && studentName) {
-          return n.studentName.toLowerCase().trim() === studentName.toLowerCase().trim();
+        // If notification is tied to a specific student UUID, match it strictly
+        const targetStudentId = (((n as any).studentId || (n as any).student_id || (n as any).recipient || '') as string).toLowerCase();
+        if (targetStudentId && targetStudentId !== 'all' && targetStudentId !== 'students') {
+          return studentUuid ? targetStudentId === studentUuid : false;
         }
         return true;
       });
@@ -479,13 +481,14 @@ notificationsRouter.put('/:id/read', (req: Request, res: Response) => {
  * Mark all notifications as read for a given role or user.
  */
 notificationsRouter.put('/read-all', (req: Request, res: Response) => {
-  const role = (req.body.role as string) || (req.query.role as string) || 'all';
-  const studentName = req.body.studentName as string;
+  const role = req.user?.role || (req.body.role as string) || (req.query.role as string) || 'all';
+  const studentUuid = (req.user?.studentRecordId || req.user?.studentId || req.user?.userId || '').toLowerCase();
 
   memoryNotifications = memoryNotifications.map(n => {
     if (role === 'student') {
       if (n.targetRole === 'student' || n.targetRole === 'all') {
-        if (!n.studentName || !studentName || n.studentName.toLowerCase() === studentName.toLowerCase()) {
+        const targetStudentId = (((n as any).studentId || (n as any).student_id || (n as any).recipient || '') as string).toLowerCase();
+        if (!targetStudentId || targetStudentId === 'all' || targetStudentId === 'students' || (studentUuid && targetStudentId === studentUuid)) {
           return { ...n, read: true };
         }
       }

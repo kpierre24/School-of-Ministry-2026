@@ -122,14 +122,15 @@ export const assignmentsService = {
 
         let result = formatted;
         if (user && user.role === 'student') {
-          const ownId = user.studentId || user.userId;
-          const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
-          result = formatted.filter((sub) => (sub.studentId && sub.studentId === ownId) || sub.studentName.toLowerCase().trim() === ownName);
+          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          const userUuid = user.userId || user.id;
+          result = formatted.filter(
+            (sub) => (sub.studentId && (sub.studentId === studentUuid || sub.studentId === userUuid)) ||
+                     (sub.student?.id && (sub.student.id === studentUuid || sub.student.id === userUuid)) ||
+                     ((sub as any).student_id && ((sub as any).student_id === studentUuid || (sub as any).student_id === userUuid))
+          );
         } else if (filters?.studentId) {
-          result = formatted.filter((sub) => sub.studentId === filters.studentId);
-        } else if (filters?.studentName) {
-          const target = filters.studentName.toLowerCase().trim();
-          result = formatted.filter((sub) => sub.studentName.toLowerCase().trim() === target);
+          result = formatted.filter((sub) => sub.studentId === filters.studentId || (sub as any).student_id === filters.studentId);
         }
 
         return {

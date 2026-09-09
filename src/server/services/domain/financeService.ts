@@ -377,16 +377,15 @@ export const financeService = {
 
         let result = formatted;
         if (user && user.role === 'student') {
-          const ownId = user.studentId || user.userId;
-          const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
+          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          const userUuid = user.userId || user.id;
           result = formatted.filter(
-            (i) => (i.studentId && i.studentId === ownId) || i.studentName.toLowerCase().trim() === ownName
+            (i) => (i.studentId && (i.studentId === studentUuid || i.studentId === userUuid)) ||
+                   (i.student?.id && (i.student.id === studentUuid || i.student.id === userUuid)) ||
+                   ((i as any).student_id && ((i as any).student_id === studentUuid || (i as any).student_id === userUuid))
           );
         } else if (filterObj?.studentId) {
-          result = formatted.filter((i) => i.studentId === filterObj.studentId);
-        } else if (filterObj?.studentName) {
-          const norm = filterObj.studentName.toLowerCase().trim();
-          result = formatted.filter((i) => i.studentName.toLowerCase().trim() === norm);
+          result = formatted.filter((i) => i.studentId === filterObj.studentId || (i as any).student_id === filterObj.studentId);
         }
 
         return { invoices: result, total: result.length };
@@ -637,16 +636,15 @@ export const financeService = {
 
         let result = formatted;
         if (user && user.role === 'student') {
-          const ownId = user.studentId || user.userId;
-          const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
+          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          const userUuid = user.userId || user.id;
           result = formatted.filter(
-            (t) => (t.studentId && t.studentId === ownId) || t.studentName.toLowerCase().trim() === ownName
+            (t) => (t.studentId && (t.studentId === studentUuid || t.studentId === userUuid)) ||
+                   (t.student?.id && (t.student.id === studentUuid || t.student.id === userUuid)) ||
+                   ((t as any).student_id && ((t as any).student_id === studentUuid || (t as any).student_id === userUuid))
           );
         } else if (filters?.studentId) {
-          result = formatted.filter((t) => t.studentId === filters.studentId);
-        } else if (filters?.studentName) {
-          const target = filters.studentName.toLowerCase().trim();
-          result = formatted.filter((t) => t.studentName.toLowerCase().trim() === target);
+          result = formatted.filter((t) => t.studentId === filters.studentId || (t as any).student_id === filters.studentId);
         }
 
         return { transactions: result, total: result.length };
@@ -1051,10 +1049,10 @@ export const financeService = {
       const adjustments = data || [];
 
       if (user && user.role === 'student') {
-        const ownId = user.studentId || user.userId;
-        const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
+        const studentUuid = user.studentRecordId || user.studentId || user.userId;
+        const userUuid = user.userId || user.id;
         const filtered = adjustments.filter(
-          (a: any) => (a.student_id && a.student_id === ownId) || (a.student_name && a.student_name.toLowerCase().trim() === ownName)
+          (a: any) => (a.student_id && (a.student_id === studentUuid || a.student_id === userUuid))
         );
         return { adjustments: filtered, total: filtered.length };
       }
@@ -1091,10 +1089,10 @@ export const financeService = {
       const refunds = data || [];
 
       if (user && user.role === 'student') {
-        const ownId = user.studentId || user.userId;
-        const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
+        const studentUuid = user.studentRecordId || user.studentId || user.userId;
+        const userUuid = user.userId || user.id;
         const filtered = refunds.filter(
-          (r: any) => (r.student_id && r.student_id === ownId) || (r.student_name && r.student_name.toLowerCase().trim() === ownName)
+          (r: any) => (r.student_id && (r.student_id === studentUuid || r.student_id === userUuid))
         );
         return { refunds: filtered, total: filtered.length };
       }

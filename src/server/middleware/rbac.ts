@@ -555,35 +555,27 @@ export async function verifyLecturerCourseInDatabase(
 }
 
 /**
- * Verifies student ownership strictly using immutable internal IDs (student_number, student id, user_id).
- * Never authorizes based on names, display names, email prefixes, or partial strings.
+ * Verifies student ownership strictly using immutable UUID keys (students.id, students.user_id, users.id).
+ * Never authorizes based on names, display names, or name searches in profiles.
  */
 export async function verifyStudentOwnershipInDatabase(
   user: AuthenticatedUser,
   targetStudentId?: string,
-  targetStudentName?: string,
+  _targetStudentName?: string,
   targetEmail?: string
 ): Promise<boolean> {
   if (!user) return false;
 
   const cleanUserId = (user.userId || user.id || "").trim().toLowerCase();
-  const cleanStudentRecordId = (user.studentRecordId || "").trim().toLowerCase();
-  const cleanStudentNumber = (user.studentNumber || "").trim().toLowerCase();
-  const cleanUserStudentId = (user.studentId || "").trim().toLowerCase();
+  const cleanStudentRecordId = (user.studentRecordId || user.studentId || "").trim().toLowerCase();
   const cleanUserEmail = (user.email || "").trim().toLowerCase();
 
   const cleanTargetId = (targetStudentId || "").trim().toLowerCase();
   const cleanTargetEmail = (targetEmail || "").trim().toLowerCase();
 
-  // 1. Exact immutable ID matching against target parameters (UUIDs or student number)
+  // 1. Exact immutable UUID matching against target parameters
   if (cleanTargetId) {
     if (cleanStudentRecordId && cleanTargetId === cleanStudentRecordId) {
-      return true;
-    }
-    if (cleanStudentNumber && cleanTargetId === cleanStudentNumber) {
-      return true;
-    }
-    if (cleanUserStudentId && cleanTargetId === cleanUserStudentId) {
       return true;
     }
     if (cleanUserId && cleanTargetId === cleanUserId) {
@@ -591,100 +583,48 @@ export async function verifyStudentOwnershipInDatabase(
     }
   }
 
-  // 2. Exact email matching (only full exact email, no prefix or partial string)
+  // 2. Exact email matching (only full exact email)
   if (cleanTargetEmail && cleanUserEmail && cleanTargetEmail === cleanUserEmail) {
     return true;
   }
 
-  // 3. Database lookup: If target parameter was passed as a name or identifier in URL parameter, look up the database record
-  // and check record.id (UUID), record.student_number (registration string), or record.user_id (UUID) strictly against user's immutable IDs.
-  const targetIdentifier = targetStudentId || targetStudentName;
-  if (!targetIdentifier) {
-    return false;
-  }
+  // 3. Database lookup: Verify target identifier against students table by UUID foreign key
+  if (cleanTargetId) {
+    try {
+      const supabase = getServerSupabase();
 
-  try {
-    const supabase = getServerSupabase();
+      // Query students table by id (UUID) or user_id (UUID)
+      const { data: stdRecords, error } = await supabase
+        .from("students")
+        .select("id, user_id")
+        .or(`id.eq.${cleanTargetId},user_id.eq.${cleanTargetId}`);
 
-    // Query students table by student_number, id (UUID), or user_id (UUID) matching targetIdentifier
-    const { data: stdRecords, error } = await supabase
-      .from("students")
-      .select("id, student_number, user_id")
-      .or(`student_number.eq.${targetIdentifier},id.eq.${targetIdentifier},user_id.eq.${targetIdentifier}`);
-
-    if (error) {
-      throw new DatabaseServiceError("Database error querying students table for student ownership", error);
-    }
-
-    if (stdRecords && stdRecords.length > 0) {
-      const isOwned = stdRecords.some((rec: any) => {
-        const recStdNum = (rec.student_number || "").trim().toLowerCase();
-        const recId = (rec.id || "").trim().toLowerCase();
-        const recUserId = (rec.user_id || "").trim().toLowerCase();
-
-        return (
-          (cleanStudentRecordId && recId === cleanStudentRecordId) ||
-          (cleanStudentNumber && recStdNum === cleanStudentNumber) ||
-          (cleanUserStudentId && (recStdNum === cleanUserStudentId || recId === cleanUserStudentId)) ||
-          (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
-        );
-      });
-
-      if (isOwned) {
-        return true;
-      }
-    }
-
-    // Query profiles joined with students if targetIdentifier was passed as display name in URL path
-    if (targetStudentName) {
-      const normTargetName = targetStudentName.trim().toLowerCase();
-      const { data: profRecords, error: profErr } = await supabase
-        .from("profiles")
-        .select("id, user_id, first_name, last_name, students(id, student_number, user_id)");
-
-      if (profErr) {
-        throw new DatabaseServiceError("Database error querying profiles table for student ownership", profErr);
+      if (error) {
+        throw new DatabaseServiceError("Database error querying students table for student ownership", error);
       }
 
-      if (profRecords && profRecords.length > 0) {
-        const matchedProfile = profRecords.find((p: any) => {
-          const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase();
-          return fullName === normTargetName;
+      if (stdRecords && stdRecords.length > 0) {
+        const isOwned = stdRecords.some((rec: any) => {
+          const recId = (rec.id || "").trim().toLowerCase();
+          const recUserId = (rec.user_id || "").trim().toLowerCase();
+
+          return (
+            (cleanStudentRecordId && recId === cleanStudentRecordId) ||
+            (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
+          );
         });
 
-        if (matchedProfile) {
-          const profUserId = (matchedProfile.user_id || "").trim().toLowerCase();
-          const stdList = matchedProfile.students || [];
-
-          if (cleanUserId && profUserId === cleanUserId) {
-            return true;
-          }
-
-          const stdMatches = stdList.some((rec: any) => {
-            const recStdNum = (rec.student_number || "").trim().toLowerCase();
-            const recId = (rec.id || "").trim().toLowerCase();
-            const recUserId = (rec.user_id || "").trim().toLowerCase();
-
-            return (
-              (cleanStudentRecordId && recId === cleanStudentRecordId) ||
-              (cleanStudentNumber && recStdNum === cleanStudentNumber) ||
-              (cleanUserStudentId && (recStdNum === cleanUserStudentId || recId === cleanUserStudentId)) ||
-              (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
-            );
-          });
-
-          if (stdMatches) {
-            return true;
-          }
+        if (isOwned) {
+          return true;
         }
       }
+    } catch (dbErr) {
+      if (dbErr instanceof DatabaseServiceError || (dbErr as any)?.isDatabaseError) {
+        throw dbErr;
+      }
+      logger.error("Database student ownership verification failed:", dbErr);
+      throw new DatabaseServiceError("Database student ownership verification failed", dbErr);
     }
-  } catch (dbErr) {
-    if (dbErr instanceof DatabaseServiceError || (dbErr as any)?.isDatabaseError) {
-      throw dbErr;
-    }
-    logger.error("Database student ownership verification failed:", dbErr);
-    throw new DatabaseServiceError("Database student ownership verification failed", dbErr);
   }
 
   return false;

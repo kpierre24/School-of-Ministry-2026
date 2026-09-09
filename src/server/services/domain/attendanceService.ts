@@ -254,10 +254,12 @@ export const attendanceService = {
 
         let filtered = formattedRecords;
         if (user && user.role === 'student') {
-          const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
-          const ownId = user.studentId || user.userId;
+          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          const userUuid = user.userId || user.id;
           filtered = formattedRecords.filter(
-            (r) => (r.studentId && r.studentId === ownId) || (r.student?.name || '').toLowerCase().trim() === ownName
+            (r) => (r.studentId && (r.studentId === studentUuid || r.studentId === userUuid)) ||
+                   (r.student?.id && (r.student.id === studentUuid || r.student.id === userUuid)) ||
+                   ((r as any).student_id && ((r as any).student_id === studentUuid || (r as any).student_id === userUuid))
           );
         }
 
@@ -361,10 +363,12 @@ export const attendanceService = {
 
         let filtered = formattedRecords;
         if (user && user.role === 'student') {
-          const ownName = (user.studentName || user.name || user.email.split('@')[0]).toLowerCase().trim();
-          const ownId = user.studentId || user.userId;
+          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          const userUuid = user.userId || user.id;
           filtered = formattedRecords.filter(
-            (r) => (r.studentId && r.studentId === ownId) || (r.student?.name || '').toLowerCase().trim() === ownName
+            (r) => (r.studentId && (r.studentId === studentUuid || r.studentId === userUuid)) ||
+                   (r.student?.id && (r.student.id === studentUuid || r.student.id === userUuid)) ||
+                   ((r as any).student_id && ((r as any).student_id === studentUuid || (r as any).student_id === userUuid))
           );
         }
 
