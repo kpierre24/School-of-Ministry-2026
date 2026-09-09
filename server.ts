@@ -54,6 +54,8 @@ async function startServer() {
   }
 
   const app = express();
+  // Trust the frontend proxy/load balancer (e.g., Cloud Run load balancer or Nginx)
+  app.set("trust proxy", 1);
   const isDev =
     process.env.NODE_ENV !== "production" &&
     !currentFilename.endsWith(".cjs") &&

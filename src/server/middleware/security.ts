@@ -31,7 +31,8 @@ if (cleanupTimer.unref) {
  */
 export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000, bucketName = "global") {
   return (req: Request, res: Response, next: NextFunction) => {
-    const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "unknown-ip";
+    // Use Express's trusted proxy-aware client IP extraction (req.ip)
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown-ip";
     const key = `${bucketName}:${clientIp}`;
     const now = Date.now();
 

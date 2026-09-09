@@ -321,59 +321,190 @@ export const financeService = {
       const { data: dbInvoices, error } = await query;
 
       if (dbInvoices && dbInvoices.length > 0) {
-        // Hydrate child ledger records for each invoice to ensure authoritative calculation
-        const formatted = await Promise.all(
-          dbInvoices.map(async (inv: any) => {
-            const std = inv.students;
-            const prof = Array.isArray(std?.profiles) ? std?.profiles[0] : std?.profiles;
-            const userObj = Array.isArray(std?.users) ? std?.users[0] : std?.users;
-            const name = prof
-              ? `${prof.first_name || ''} ${prof.last_name || ''}`.trim()
-              : (inv.student_name || 'Student');
+        const invoiceIds = dbInvoices.map((inv: any) => inv.id);
 
-            // Compute ledger totals server-side
-            const summary = await financeService.calculateAuthoritativeInvoiceFinancials(inv.id, supabase);
+        // Batch fetch children for all invoices to eliminate N+1 database queries entirely
+        const [
+          { data: allLines },
+          { data: allAllocations },
+          { data: allRefundAllocations },
+          { data: allAdjustments }
+        ] = await Promise.all([
+          supabase.from('invoice_lines').select('*').in('invoice_id', invoiceIds),
+          supabase.from('payment_allocations').select(`
+            *,
+            payments (
+              id,
+              status,
+              payment_date,
+              payment_method,
+              transaction_reference,
+              deleted_at
+            )
+          `).in('invoice_id', invoiceIds),
+          supabase.from('refund_allocations').select(`
+            *,
+            refunds (
+              id,
+              status,
+              refund_date,
+              amount
+            )
+          `).in('invoice_id', invoiceIds),
+          supabase.from('financial_adjustments').select('*').in('invoice_id', invoiceIds)
+        ]);
 
-            return {
-              id: inv.id,
-              invoiceNumber: inv.invoice_number || inv.id,
-              studentId: inv.student_id,
-              student: {
-                id: inv.student_id,
-                name,
-                email: userObj?.email || '',
-                phone: prof?.phone || '',
-              },
-              studentName: name,
+        // Group lines by invoice_id
+        const linesMap = new Map<string, any[]>();
+        (allLines || []).forEach((line: any) => {
+          const list = linesMap.get(line.invoice_id) || [];
+          list.push(line);
+          linesMap.set(line.invoice_id, list);
+        });
+
+        // Group payment allocations by invoice_id
+        const allocationsMap = new Map<string, any[]>();
+        (allAllocations || []).forEach((alloc: any) => {
+          const list = allocationsMap.get(alloc.invoice_id) || [];
+          list.push(alloc);
+          allocationsMap.set(alloc.invoice_id, list);
+        });
+
+        // Group refund allocations by invoice_id
+        const refundAllocationsMap = new Map<string, any[]>();
+        (allRefundAllocations || []).forEach((ra: any) => {
+          const list = refundAllocationsMap.get(ra.invoice_id) || [];
+          list.push(ra);
+          refundAllocationsMap.set(ra.invoice_id, list);
+        });
+
+        // Group adjustments by invoice_id
+        const adjustmentsMap = new Map<string, any[]>();
+        (allAdjustments || []).forEach((adj: any) => {
+          const list = adjustmentsMap.get(adj.invoice_id) || [];
+          list.push(adj);
+          adjustmentsMap.set(adj.invoice_id, list);
+        });
+
+        // Hydrate and calculate totals in memory with O(N) execution time
+        const formatted = dbInvoices.map((inv: any) => {
+          const std = inv.students;
+          const prof = Array.isArray(std?.profiles) ? std?.profiles[0] : std?.profiles;
+          const userObj = Array.isArray(std?.users) ? std?.users[0] : std?.users;
+          const name = prof
+            ? `${prof.first_name || ''} ${prof.last_name || ''}`.trim()
+            : (inv.student_name || 'Student');
+
+          const lines = linesMap.get(inv.id) || [];
+          const allocations = allocationsMap.get(inv.id) || [];
+          const refundAllocations = refundAllocationsMap.get(inv.id) || [];
+          const adjustments = adjustmentsMap.get(inv.id) || [];
+
+          // 1. Calculate invoiceTotal
+          const invoiceTotal = lines.reduce((acc: number, line: any) => {
+            const lineTotal = Number(line.total_amount ?? (Number(line.quantity || 1) * Number(line.unit_amount || 0)));
+            return acc + (isNaN(lineTotal) ? 0 : lineTotal);
+          }, 0);
+
+          // 2. Calculate validAllocations & paymentsTotal
+          const validAllocations = allocations.filter((a: any) => {
+            const p = Array.isArray(a.payments) ? a.payments[0] : a.payments;
+            return p && p.status === 'completed' && !p.deleted_at;
+          });
+          const paymentsTotal = validAllocations.reduce((acc: number, a: any) => {
+            const amt = Number(a.allocated_amount || 0);
+            return acc + (isNaN(amt) ? 0 : amt);
+          }, 0);
+
+          // 3. Calculate validRefunds & refundsTotal
+          const validRefunds = refundAllocations.filter((ra: any) => {
+            const r = Array.isArray(ra.refunds) ? ra.refunds[0] : ra.refunds;
+            return r && (r.status === 'approved' || r.status === 'processed');
+          });
+          const refundsTotal = validRefunds.reduce((acc: number, ra: any) => {
+            const amt = Number(ra.allocated_amount || 0);
+            return acc + (isNaN(amt) ? 0 : amt);
+          }, 0);
+
+          // Effective payments
+          const netPayments = Math.max(0, paymentsTotal - refundsTotal);
+
+          // 4. Calculate adjustments
+          const approvedAdjustmentsList = adjustments.filter((a: any) => a.status === 'approved');
+          let discounts = 0;
+          let scholarships = 0;
+          let applicableCharges = 0;
+
+          approvedAdjustmentsList.forEach((adj: any) => {
+            const amt = Number(adj.amount || 0);
+            if (isNaN(amt) || amt <= 0) return;
+
+            if (adj.is_charge === true || adj.adjustment_type === 'applicable_charge' || adj.adjustment_type === 'late_fee' || adj.adjustment_type === 'administrative_charge') {
+              applicableCharges += amt;
+            } else if (adj.adjustment_type === 'scholarship') {
+              scholarships += amt;
+            } else {
+              discounts += amt;
+            }
+          });
+
+          const approvedAdjustments = discounts + scholarships;
+          const netTuition = Math.max(0, (invoiceTotal + applicableCharges) - approvedAdjustments);
+          const balance = Math.max(0, (invoiceTotal + applicableCharges) - netPayments - approvedAdjustments);
+
+          // Status calculation
+          let effectiveStatus = 'Unpaid';
+          const dueDate = inv.due_date ? new Date(inv.due_date) : null;
+          const now = new Date();
+
+          if (balance <= 0) {
+            effectiveStatus = 'Paid';
+          } else if (netPayments > 0 || approvedAdjustments > 0) {
+            effectiveStatus = 'Partially Paid';
+          } else if (dueDate && dueDate < now) {
+            effectiveStatus = 'Past Due';
+          } else {
+            effectiveStatus = 'Unpaid';
+          }
+
+          return {
+            id: inv.id,
+            invoiceNumber: inv.invoice_number || inv.id,
+            studentId: inv.student_id,
+            student: {
+              id: inv.student_id,
+              name,
               email: userObj?.email || '',
               phone: prof?.phone || '',
-              moduleTrack: inv.module_track || 'Core Ministry Curriculum',
-              term: inv.term || '2026 Semester 1',
-              academicYear: inv.academic_year || '2026-2027',
-              issueDate: inv.issue_date || inv.created_at?.split('T')[0],
-              dueDate: inv.due_date,
-              // Server-calculated authoritative fields:
-              lines: summary.lines,
-              allocations: summary.allocations,
-              refundAllocations: summary.refundAllocations,
-              adjustmentsList: summary.adjustments,
-              totalTuition: summary.invoiceTotal,
-              applicableCharges: summary.applicableCharges,
-              discounts: summary.discounts,
-              scholarships: summary.scholarships,
-              refunds: summary.refundsTotal,
-              adjustments: summary.applicableCharges,
-              netTuition: summary.netTuition,
-              amountPaid: summary.netPayments,
-              outstandingBalance: summary.balance,
-              status: summary.status,
-              paymentPlan: inv.payment_plan || 'Monthly Installments',
-              notes: inv.notes || '',
-              createdAt: inv.created_at,
-              updatedAt: inv.updated_at,
-            };
-          })
-        );
+            },
+            studentName: name,
+            email: userObj?.email || '',
+            phone: prof?.phone || '',
+            moduleTrack: inv.module_track || 'Core Ministry Curriculum',
+            term: inv.term || '2026 Semester 1',
+            academicYear: inv.academic_year || '2026-2027',
+            issueDate: inv.issue_date || inv.created_at?.split('T')[0],
+            dueDate: inv.due_date,
+            lines,
+            allocations: validAllocations,
+            refundAllocations: validRefunds,
+            adjustmentsList: adjustments,
+            totalTuition: invoiceTotal,
+            applicableCharges,
+            discounts,
+            scholarships,
+            refunds: refundsTotal,
+            adjustments: applicableCharges,
+            netTuition,
+            amountPaid: netPayments,
+            outstandingBalance: balance,
+            status: effectiveStatus,
+            paymentPlan: inv.payment_plan || 'Monthly Installments',
+            notes: inv.notes || '',
+            createdAt: inv.created_at,
+            updatedAt: inv.updated_at,
+          };
+        });
 
         let result = formatted;
         if (user && (user.role === 'teacher' || user.role === 'lecturer')) {
