@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { financeService } from "../services/domain";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
+import { validateBody } from "../middleware/validation";
+import { RecordPaymentSchema } from "../schemas/finance.schema";
 
 export const paymentsRouter = Router();
 
@@ -108,6 +110,7 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/transactions",
   requirePermission(["finance:write", "all:access"]),
+  validateBody(RecordPaymentSchema),
   async (req: Request, res: Response) => {
     try {
       const { transaction, payment } = req.body;

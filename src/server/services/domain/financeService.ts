@@ -2,6 +2,18 @@ import crypto from 'crypto';
 import { getServerSupabase, logAuditEvent } from '../supabaseServer';
 import { logger } from '../../../lib/logger';
 import { AuthenticatedUser } from '../../../types/rbac';
+import {
+  Invoice,
+  InvoiceLine,
+  Payment,
+  PaymentAllocation,
+  Refund,
+  RefundAllocation,
+  FinancialAdjustment,
+  FinancialSummary,
+  InvoiceInput,
+  PaymentInput,
+} from '../../../types/finance';
 
 function isUuid(val: any): boolean {
   if (!val || typeof val !== 'string') return false;
@@ -41,23 +53,6 @@ export async function getNextDatabaseSequenceNumber(
   return data;
 }
 
-export interface AuthoritativeInvoiceFinancialSummary {
-  invoiceTotal: number;
-  applicableCharges: number;
-  paymentsTotal: number;
-  refundsTotal: number;
-  netPayments: number;
-  discounts: number;
-  scholarships: number;
-  approvedAdjustments: number;
-  netTuition: number;
-  balance: number;
-  status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Past Due' | 'Cancelled';
-  lines: any[];
-  allocations: any[];
-  refundAllocations: any[];
-  adjustments: any[];
-}
 
 export const financeService = {
   /**
@@ -79,7 +74,7 @@ export const financeService = {
   async calculateAuthoritativeInvoiceFinancials(
     invoiceId: string,
     existingClient?: any
-  ): Promise<AuthoritativeInvoiceFinancialSummary> {
+  ): Promise<FinancialSummary> {
     const supabase = existingClient || getServerSupabase();
 
     // 1. Query invoice header
@@ -94,9 +89,9 @@ export const financeService = {
       .from('invoice_lines')
       .select('*')
       .eq('invoice_id', invoiceId);
-    const lines = dbLines || [];
+    const lines: InvoiceLine[] = dbLines || [];
 
-    const invoiceTotal = lines.reduce((acc: number, line: any) => {
+    const invoiceTotal = lines.reduce((acc: number, line: InvoiceLine) => {
       const lineTotal = Number(line.total_amount ?? (Number(line.quantity || 1) * Number(line.unit_amount || 0)));
       return acc + (isNaN(lineTotal) ? 0 : lineTotal);
     }, 0);
@@ -117,12 +112,12 @@ export const financeService = {
       `)
       .eq('invoice_id', invoiceId);
 
-    const validAllocations = (dbAllocations || []).filter((a: any) => {
+    const validAllocations: PaymentAllocation[] = (dbAllocations || []).filter((a: any) => {
       const p = Array.isArray(a.payments) ? a.payments[0] : a.payments;
       return p && p.status === 'completed' && !p.deleted_at;
     });
 
-    const paymentsTotal = validAllocations.reduce((acc: number, a: any) => {
+    const paymentsTotal = validAllocations.reduce((acc: number, a: PaymentAllocation) => {
       const amt = Number(a.allocated_amount || 0);
       return acc + (isNaN(amt) ? 0 : amt);
     }, 0);
@@ -141,12 +136,12 @@ export const financeService = {
       `)
       .eq('invoice_id', invoiceId);
 
-    const validRefunds = (dbRefundAllocations || []).filter((ra: any) => {
+    const validRefunds: RefundAllocation[] = (dbRefundAllocations || []).filter((ra: any) => {
       const r = Array.isArray(ra.refunds) ? ra.refunds[0] : ra.refunds;
       return r && (r.status === 'approved' || r.status === 'processed');
     });
 
-    const refundsTotal = validRefunds.reduce((acc: number, ra: any) => {
+    const refundsTotal = validRefunds.reduce((acc: number, ra: RefundAllocation) => {
       const amt = Number(ra.allocated_amount || 0);
       return acc + (isNaN(amt) ? 0 : amt);
     }, 0);
@@ -160,14 +155,14 @@ export const financeService = {
       .select('*')
       .eq('invoice_id', invoiceId);
 
-    const adjustments = dbAdjustments || [];
-    const approvedAdjustmentsList = adjustments.filter((a: any) => a.status === 'approved');
+    const adjustments: FinancialAdjustment[] = dbAdjustments || [];
+    const approvedAdjustmentsList = adjustments.filter((a: FinancialAdjustment) => a.status === 'approved');
 
     let discounts = 0;
     let scholarships = 0;
     let applicableCharges = 0;
 
-    approvedAdjustmentsList.forEach((adj: any) => {
+    approvedAdjustmentsList.forEach((adj: FinancialAdjustment) => {
       const amt = Number(adj.amount || 0);
       if (isNaN(amt) || amt <= 0) return;
 
@@ -181,21 +176,21 @@ export const financeService = {
       }
     });
 
-    const approvedAdjustments = discounts + scholarships;
+    const approvedAdjustmentsTotal = discounts + scholarships;
 
     // Authoritative Formula:
     // balance = invoice total - payments - approved adjustments + applicable charges
-    const netTuition = Math.max(0, (invoiceTotal + applicableCharges) - approvedAdjustments);
-    const balance = Math.max(0, (invoiceTotal + applicableCharges) - netPayments - approvedAdjustments);
+    const netTuition = Math.max(0, (invoiceTotal + applicableCharges) - approvedAdjustmentsTotal);
+    const balance = Math.max(0, (invoiceTotal + applicableCharges) - netPayments - approvedAdjustmentsTotal);
 
     // Calculate effective status
-    let effectiveStatus: AuthoritativeInvoiceFinancialSummary['status'] = 'Unpaid';
+    let effectiveStatus: FinancialSummary['status'] = 'Unpaid';
     const dueDate = inv?.due_date ? new Date(inv.due_date) : null;
     const now = new Date();
 
     if (balance <= 0) {
       effectiveStatus = 'Paid';
-    } else if (netPayments > 0 || approvedAdjustments > 0) {
+    } else if (netPayments > 0 || approvedAdjustmentsTotal > 0) {
       effectiveStatus = 'Partially Paid';
     } else if (dueDate && dueDate < now) {
       effectiveStatus = 'Past Due';
@@ -232,7 +227,7 @@ export const financeService = {
       netPayments,
       discounts,
       scholarships,
-      approvedAdjustments,
+      approvedAdjustments: approvedAdjustmentsTotal,
       netTuition,
       balance,
       status: effectiveStatus,
