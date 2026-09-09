@@ -1,68 +1,82 @@
 import { Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
+import { createClient } from "redis";
 import { logger } from "../../lib/logger";
 
-/**
- * In-memory sliding window rate limiter
- */
-interface RateLimitRecord {
-  count: number;
-  resetTime: number;
-}
+// Initialize Redis client if REDIS_URL is present
+let redisClient: ReturnType<typeof createClient> | undefined;
+let isRedisConnected = false;
 
-const ipLimits = new Map<string, RateLimitRecord>();
+if (process.env.REDIS_URL) {
+  redisClient = createClient({
+    url: process.env.REDIS_URL,
+    // Add reconnect strategy for resilience
+    socket: {
+      reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
+    },
+  });
 
-// Clean up stale rate limit records every 10 minutes
-const cleanupTimer = setInterval(() => {
-  const now = Date.now();
-  for (const [ip, record] of ipLimits.entries()) {
-    if (now > record.resetTime) {
-      ipLimits.delete(ip);
-    }
-  }
-}, 10 * 60 * 1000);
+  redisClient.on("error", (err) => logger.error("Redis Client Error", err));
+  redisClient.on("ready", () => {
+    isRedisConnected = true;
+    logger.info("Redis connected and ready for rate limiting.");
+  });
 
-if (cleanupTimer.unref) {
-  cleanupTimer.unref();
+  // Start connection
+  redisClient.connect().catch((err) => {
+    logger.error("Failed to connect to Redis:", err);
+  });
 }
 
 /**
  * Rate Limiting Middleware
- * Supports isolated bucket tracking per route category.
+ * Supports isolated bucket tracking per route category using Redis (if configured) or Memory store.
+ * Identifies users by authenticated user ID (if available) or trusted client IP.
  */
 export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000, bucketName = "global") {
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Use Express's trusted proxy-aware client IP extraction (req.ip)
-    const clientIp = req.ip || req.socket.remoteAddress || "unknown-ip";
-    const key = `${bucketName}:${clientIp}`;
-    const now = Date.now();
-
-    let record = ipLimits.get(key);
-
-    if (!record || now > record.resetTime) {
-      record = {
-        count: 1,
-        resetTime: now + windowMs,
-      };
-      ipLimits.set(key, record);
-    } else {
-      record.count += 1;
-    }
-
-    res.setHeader("X-RateLimit-Limit", maxRequests);
-    res.setHeader("X-RateLimit-Remaining", Math.max(0, maxRequests - record.count));
-    res.setHeader("X-RateLimit-Reset", Math.ceil(record.resetTime / 1000));
-
-    if (record.count > maxRequests) {
-      logger.warn(`Rate limit exceeded [bucket: ${bucketName}] for IP: ${clientIp} on endpoint: ${req.originalUrl}`);
-      return res.status(429).json({
+  return rateLimit({
+    windowMs,
+    max: maxRequests,
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    // Key generator prioritizes authenticated user ID over IP address
+    keyGenerator: (req: Request) => {
+      // 1. Authenticated User Identity
+      if (req.user && req.user.userId) {
+        return `${bucketName}:user:${req.user.userId}`;
+      }
+      
+      // 2. Fallback to Express trusted IP (which properly parses x-forwarded-for when trust proxy is configured)
+      const ip = req.ip || req.socket.remoteAddress || "unknown-ip";
+      return `${bucketName}:ip:${ip}`;
+    },
+    // Handler triggered when limit is exceeded
+    handler: (req: Request, res: Response, next: NextFunction, options) => {
+      const clientIp = req.ip || req.socket.remoteAddress || "unknown-ip";
+      const identifier = req.user?.userId ? `user:${req.user.userId}` : `ip:${clientIp}`;
+      
+      logger.warn(`Rate limit exceeded [bucket: ${bucketName}] for ${identifier} on endpoint: ${req.originalUrl}`);
+      
+      res.status(options.statusCode).json({
         error: "Too Many Requests",
         message: `Rate limit exceeded for ${bucketName} operations. Please try again later.`,
-        retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
+        retryAfterSeconds: Math.ceil(windowMs / 1000),
       });
-    }
-
-    next();
-  };
+    },
+    // Use Redis store if connected, otherwise fallback to default memory store
+    store: redisClient 
+      ? new RedisStore({
+          sendCommand: (...args: string[]) => {
+            if (isRedisConnected && redisClient) {
+              return redisClient.sendCommand(args);
+            }
+            throw new Error("Redis not connected");
+          },
+          prefix: `ratelimit:${bucketName}:`
+        })
+      : undefined, 
+  });
 }
 
 // Specialized rate limiters for high-risk, resource-intensive, or sensitive operations

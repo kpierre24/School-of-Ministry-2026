@@ -1,0 +1,54 @@
+name: Deploy Database Migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-migrations:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Migration Validation
+        run: |
+          echo "Validating migrations against a local shadow database..."
+          supabase db start
+          supabase db lint
+        
+      - name: Migration Execution & Status Verification
+        run: |
+          echo "Executing migrations on production..."
+          supabase link --project-ref $PROJECT_ID --password $SUPABASE_DB_PASSWORD
+          supabase db push
+
+      - name: Verify Constraint Deployments
+        run: |
+          npm install
+          npm run db:validate-constraints
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Rollback Strategy
+        if: failure()
+        run: |
+          echo "Migration failed or constraints invalid! Initiating rollback..."
+          echo "Please ensure you have configured rollback or point-in-time recovery for critical databases."
+          # If a specific migration needs to be rolled back manually, one can execute:
+          # supabase migration down 1

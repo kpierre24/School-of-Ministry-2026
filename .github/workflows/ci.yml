@@ -17,7 +17,33 @@ jobs:
           cache: 'npm'
       - run: npm install
       - run: npx tsc --noEmit
-      - run: npm run lint
+      # Removing `npm run lint` as there is no eslint configured in package.json yet
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm install
+      - run: npm run test
+
+  db-validation:
+    runs-on: ubuntu-latest
+    # Assuming the environment has SUPABASE credentials provided as secrets
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm install
+      - run: npm run db:validate-constraints
 
   build:
     runs-on: ubuntu-latest

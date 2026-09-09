@@ -586,10 +586,31 @@ export const financeService = {
         };
       });
 
+      const totalTuition = linesToInsert.reduce((sum, l) => sum + l.total_amount, 0);
+      
+      const auditLogPayload = {
+        audit_id: crypto.randomUUID(),
+        actor_user_id: actorUserId || null,
+        actor_role: actorRole || 'finance_officer',
+        entity_type: 'invoice',
+        entity_id: invoiceId,
+        action: 'create',
+        new_values: {
+          invoiceId,
+          studentId,
+          invoiceTotal: totalTuition,
+          balance: totalTuition,
+          linesCount: linesToInsert.length,
+        },
+        changed_fields: ['invoiceTotal', 'balance', 'lines'],
+        reason: `Tuition invoice created for ${studentName}`,
+      };
+
       // Execute atomic transaction via database RPC
       const { error: txnErr } = await supabase.rpc('create_invoice_transaction', {
         p_invoice: invoiceHeader,
-        p_lines: linesToInsert
+        p_lines: linesToInsert,
+        p_audit_log: auditLogPayload
       });
 
       if (txnErr) {
@@ -599,23 +620,6 @@ export const financeService = {
 
       // 5. Run Server Calculation Engine to compute authoritative balance
       const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invoiceId, supabase);
-
-      await logAuditEvent({
-        actorUserId: actorUserId || null,
-        actorRole: actorRole || 'finance_officer',
-        entityType: 'invoice',
-        entityId: invoiceId,
-        action: 'create',
-        newValues: {
-          invoiceId,
-          studentId,
-          invoiceTotal: summary.invoiceTotal,
-          balance: summary.balance,
-          linesCount: linesToInsert.length,
-        },
-        changedFields: ['invoiceTotal', 'balance', 'lines'],
-        reason: `Tuition invoice created for ${studentName}`,
-      });
 
       return {
         status: 'saved',
@@ -822,10 +826,30 @@ export const financeService = {
         });
       }
 
+      // 3. Prepare Audit Log payload
+      const auditLogPayload = {
+        audit_id: crypto.randomUUID(),
+        actor_user_id: actorUserId || null,
+        actor_role: actorRole || 'finance_officer',
+        entity_type: 'payment',
+        entity_id: paymentId,
+        action: 'create',
+        new_values: {
+          paymentId,
+          amount,
+          targetInvoiceIds,
+          allocationsCount: allocationsToInsert.length,
+          studentName,
+        },
+        changed_fields: ['amount', 'status', 'allocations'],
+        reason: `Payment of $${amount} recorded for ${studentName}`,
+      };
+
       // Execute atomic transaction via database RPC
       const { error: txnErr } = await supabase.rpc('create_payment_transaction', {
         p_payment: paymentPayload,
-        p_allocations: allocationsToInsert
+        p_allocations: allocationsToInsert,
+        p_audit_log: auditLogPayload
       });
 
       if (txnErr) {
@@ -833,7 +857,7 @@ export const financeService = {
         throw new Error(`Failed to record payment via atomic transaction: ${txnErr.message}`);
       }
 
-      // 3. Recalculate Authoritative Balances for each affected invoice
+      // 4. Recalculate Authoritative Balances for each affected invoice
       const updatedInvoices: any[] = [];
       for (const invId of targetInvoiceIds) {
         const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invId, supabase);
@@ -844,23 +868,6 @@ export const financeService = {
           status: summary.status,
         });
       }
-
-      await logAuditEvent({
-        actorUserId: actorUserId || null,
-        actorRole: actorRole || 'finance_officer',
-        entityType: 'payment',
-        entityId: paymentId,
-        action: 'create',
-        newValues: {
-          paymentId,
-          amount,
-          targetInvoiceIds,
-          allocationsCount: allocationsToInsert.length,
-          studentName,
-        },
-        changedFields: ['amount', 'status', 'allocations'],
-        reason: `Payment of $${amount} recorded for ${studentName}`,
-      });
 
       return {
         status: 'recorded',
@@ -927,36 +934,37 @@ export const financeService = {
         updated_at: timestamp,
       };
 
-      const { error: adjErr } = await supabase
-        .from('financial_adjustments')
-        .upsert(adjustmentPayload, { onConflict: 'id' });
-
-      if (adjErr) {
-        logger.error('Adjustment insert failed:', adjErr.message);
-        throw new Error(`Failed to apply financial adjustment: ${adjErr.message}`);
-      }
-
-      // Recompute invoice balance authoritatively
-      const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invoiceId, supabase);
-
-      await logAuditEvent({
-        actorUserId: actorUserId || null,
-        actorRole: actorRole || 'finance_officer',
-        entityType: 'adjustment',
-        entityId: adjId,
+      const auditLogPayload = {
+        audit_id: crypto.randomUUID(),
+        actor_user_id: actorUserId || null,
+        actor_role: actorRole || 'finance_officer',
+        entity_type: 'adjustment',
+        entity_id: adjId,
         action: 'create',
-        newValues: {
+        new_values: {
           adjId,
           invoiceId,
           type: adjType,
           amount,
           isCharge,
           status,
-          newBalance: summary.balance,
         },
-        changedFields: ['amount', 'status', 'balance'],
+        changed_fields: ['amount', 'status', 'balance'],
         reason: adjInput.reason || `Financial adjustment of $${amount} applied to invoice ${invoiceId}`,
+      };
+
+      const { error: txnErr } = await supabase.rpc('create_adjustment_transaction', {
+        p_adj: adjustmentPayload,
+        p_audit_log: auditLogPayload
       });
+
+      if (txnErr) {
+        logger.error('Adjustment transaction failed:', txnErr.message);
+        throw new Error(`Failed to apply financial adjustment via atomic transaction: ${txnErr.message}`);
+      }
+
+      // Recompute invoice balance authoritatively
+      const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invoiceId, supabase);
 
       return {
         status: 'applied',
@@ -1041,10 +1049,28 @@ export const financeService = {
         });
       }
 
+      // 3. Prepare Audit Log payload
+      const auditLogPayload = {
+        audit_id: crypto.randomUUID(),
+        actor_user_id: actorUserId || null,
+        actor_role: actorRole || 'finance_officer',
+        entity_type: 'refund',
+        entity_id: refundId,
+        action: 'create',
+        new_values: {
+          refundId,
+          amount,
+          targetInvoiceIds,
+        },
+        changed_fields: ['amount', 'status', 'allocations'],
+        reason: refundInput.reason || `Refund of $${amount} recorded`,
+      };
+
       // Execute atomic transaction via database RPC
       const { error: txnErr } = await supabase.rpc('create_refund_transaction', {
         p_refund: refundPayload,
-        p_allocations: allocationsToInsert
+        p_allocations: allocationsToInsert,
+        p_audit_log: auditLogPayload
       });
 
       if (txnErr) {
@@ -1052,7 +1078,7 @@ export const financeService = {
         throw new Error(`Failed to record refund via atomic transaction: ${txnErr.message}`);
       }
 
-      // 3. Recalculate Authoritative Balances for each affected invoice
+      // 4. Recalculate Authoritative Balances for each affected invoice
       const updatedInvoices: any[] = [];
       for (const invId of targetInvoiceIds) {
         const summary = await financeService.calculateAuthoritativeInvoiceFinancials(invId, supabase);
@@ -1064,21 +1090,6 @@ export const financeService = {
           status: summary.status,
         });
       }
-
-      await logAuditEvent({
-        actorUserId: actorUserId || null,
-        actorRole: actorRole || 'finance_officer',
-        entityType: 'refund',
-        entityId: refundId,
-        action: 'create',
-        newValues: {
-          refundId,
-          amount,
-          targetInvoiceIds,
-        },
-        changedFields: ['amount', 'status', 'allocations'],
-        reason: refundInput.reason || `Refund of $${amount} recorded`,
-      });
 
       return {
         status: 'recorded',

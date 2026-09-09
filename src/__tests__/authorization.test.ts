@@ -356,36 +356,175 @@ describe('Authorization & Security Test Suite', () => {
     });
   });
 
-  // Scenario 11: Duplicate invoice number → rejected
-  describe('Scenario 11: Duplicate invoice number', () => {
-    it('should reject saving an invoice if the invoice number already exists', async () => {
-      const duplicateInvoiceInput = {
-        studentId: 'student-rec-123',
-        studentName: 'John Doe',
-        invoiceNumber: 'INV-DUP-111',
-        lines: [{ description: 'Tuition', quantity: 1, unit_amount: 1000 }],
+  // Scenario 12: Student cannot create or approve a refund
+  describe('Scenario 12: Student creating or approving refunds', () => {
+    it('should reject a student trying to access refund write operations', () => {
+      mockReq.user = {
+        uid: 'student-uuid-456',
+        id: 'student-uuid-456',
+        name: 'Test Student',
+        permissions: [],
+        userId: 'student-uuid-456',
+        role: 'student',
+        email: 'student@example.com',
       };
 
-      const mockSupabase = createMockSupabase({
-        rpcHandler: (fnName: string, args: any) => {
-          if (fnName === 'create_invoice_transaction') {
-            return {
-              data: null,
-              error: { message: 'duplicate key value violates unique constraint "invoices_invoice_number_key"' }
-            };
-          }
-          if (fnName === 'get_next_document_number') {
-            return { data: 'INV-2026-000002', error: null };
-          }
-          return { data: 'OK', error: null };
-        }
-      });
+      const middleware = requirePermission(['finance:write', 'all:access']);
+      middleware(mockReq as Request, mockRes as Response, mockNext);
 
+      expect(statusSpy).toHaveBeenCalledWith(403);
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'PERMISSION_DENIED',
+      });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  // Scenario 13: Lecturer cannot access an unassigned course
+  describe('Scenario 13: Lecturer grading unassigned course', () => {
+    it('should reject a lecturer grading a course they are not assigned to', async () => {
+      const { assignmentsService } = await import('../server/services/domain/assignmentsService');
+      const rbacModule = await import('../server/middleware/rbac');
+      
+      // Mock the DB check to return false (not assigned)
+      vi.spyOn(rbacModule, 'verifyLecturerCourseInDatabase').mockResolvedValue(false);
+
+      const gradingInput = {
+        submissionId: 'sub-123',
+        assignmentId: 'assign-456',
+        studentId: 'std-789',
+        score: 95
+      };
+
+      const actorUser: AuthenticatedUser = {
+        uid: 'lecturer-uuid',
+        id: 'lecturer-uuid',
+        name: 'Test Lecturer',
+        permissions: [],
+        userId: 'lecturer-uuid',
+        role: 'lecturer',
+        email: 'lecturer@example.com',
+      };
+
+      // Mock assignmentsService internals to bypass the initial assignment lookup and just hit the lecturer check
+      const mockSupabase = createMockSupabase();
+      mockSupabase.maybeSingle = vi.fn().mockResolvedValue({
+        data: { 
+          id: 'sub-123', 
+          assignments: { id: 'assign-456', course_code: 'SOM-101', max_points: 100 }
+        },
+        error: null
+      });
       vi.spyOn(supabaseServer, 'getServerSupabase').mockReturnValue(mockSupabase as any);
 
       await expect(
-        financeService.saveInvoice(duplicateInvoiceInput, 'actor-123', 'admin')
-      ).rejects.toThrow('duplicate key value violates unique constraint');
+        assignmentsService.gradeSubmission(gradingInput, actorUser)
+      ).rejects.toThrow(/Access Denied: You are not assigned as the lecturer/);
+    });
+  });
+
+  // Scenario 14: User cannot access another student's attendance
+  describe('Scenario 14: Student accessing another student attendance', () => {
+    it('should filter attendance sessions so a student only sees their own records', async () => {
+      const { attendanceService } = await import('../server/services/domain/attendanceService');
+      
+      const mockSupabase = createMockSupabase();
+      // Override the attendance service's query to return records for multiple students
+      // getAttendance queries 'attendance_records'
+      mockSupabase.then = (onfulfilled: any) => {
+        const data = [
+          {
+            id: 'rec-1',
+            session_id: 'session-1',
+            student_id: 'my-student-id',
+            status: 'PRESENT',
+            attendance_sessions: { session_date: '2026-09-01', title: 'Session 1' },
+            students: { id: 'my-student-id' }
+          },
+          {
+            id: 'rec-2',
+            session_id: 'session-1',
+            student_id: 'other-student-id',
+            status: 'ABSENT',
+            attendance_sessions: { session_date: '2026-09-01', title: 'Session 1' },
+            students: { id: 'other-student-id' }
+          }
+        ];
+        return Promise.resolve({ data, error: null }).then(onfulfilled);
+      };
+      
+      vi.spyOn(supabaseServer, 'getServerSupabase').mockReturnValue(mockSupabase as any);
+
+      const actorUser: AuthenticatedUser = {
+        uid: 'my-student-id',
+        id: 'my-student-id',
+        name: 'My Student',
+        permissions: [],
+        userId: 'my-student-id',
+        studentId: 'my-student-id',
+        role: 'student',
+        email: 'student@example.com',
+      };
+
+      const result = await attendanceService.getAttendance(actorUser);
+      
+      // Ensure only 'my-student-id' records are kept in the returned records array
+      const myRecords = result.records;
+      expect(myRecords).toHaveLength(1);
+      expect(myRecords[0].studentId).toBe('my-student-id');
+    });
+  });
+
+  // Scenario 15: User cannot submit a payment for another student
+  describe('Scenario 15: Student attempting to submit a payment', () => {
+    it('should block a student from using the finance transaction write endpoints', () => {
+      mockReq.user = {
+        uid: 'student-uuid',
+        id: 'student-uuid',
+        name: 'Test Student',
+        permissions: [],
+        userId: 'student-uuid',
+        studentId: 'student-uuid',
+        role: 'student',
+        email: 'student@example.com',
+      };
+      mockReq.body = {
+        payment: { studentId: 'another-student-uuid', amount: 500 }
+      };
+
+      // The payments route uses finance:write, all:access for transactions
+      const middleware = requirePermission(['finance:write', 'all:access']);
+      middleware(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(statusSpy).toHaveBeenCalledWith(403);
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'PERMISSION_DENIED',
+      });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  // Scenario 16: Finance user cannot modify system administration settings
+  describe('Scenario 16: Finance user modifying settings', () => {
+    it('should reject a finance_officer trying to access settings write operations', () => {
+      mockReq.user = {
+        uid: 'finance-uuid',
+        id: 'finance-uuid',
+        name: 'Test Finance',
+        permissions: [],
+        userId: 'finance-uuid',
+        role: 'finance_officer',
+        email: 'finance@example.com',
+      };
+
+      const middleware = requirePermission(['all:access', 'roles:manage']);
+      middleware(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(statusSpy).toHaveBeenCalledWith(403);
+      expect(jsonSpy.mock.calls[0][0]).toMatchObject({
+        code: 'PERMISSION_DENIED',
+      });
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 });

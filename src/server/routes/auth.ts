@@ -143,7 +143,7 @@ authRouter.patch(
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
       const requestId = (req.headers["x-request-id"] as string) || undefined;
-      const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
+      const ipAddress = req.ip || req.socket.remoteAddress || "unknown-ip";
       const userAgent = req.headers["user-agent"];
 
       if (!role || typeof role !== "string") {
