@@ -26,6 +26,139 @@ export function toDbUserRole(role: UserRole): "admin" | "teacher" | "student" | 
 }
 
 /**
+ * Enrollment-based Policy:
+ * Verifies whether an email or student number corresponds to an active enrollment
+ * or pre-configured credential before activating a database user account.
+ */
+export async function checkEnrollmentMatch(
+  cleanEmail: string,
+  supabase: any,
+  state: any
+): Promise<{
+  isEnrolled: boolean;
+  role?: UserRole;
+  studentRecordId?: string;
+  studentNumber?: string;
+  studentName?: string;
+  assignedCourses?: string[];
+}> {
+  if (!cleanEmail) return { isEnrolled: false };
+
+  // 1. Check state userCredentials (configured staff, admins, teachers, and pre-registered student credentials)
+  if (state?.userCredentials && Array.isArray(state.userCredentials)) {
+    const credMatch = state.userCredentials.find(
+      (u: any) =>
+        (u.email || "").toLowerCase().trim() === cleanEmail ||
+        (u.studentId || "").toLowerCase().trim() === cleanEmail ||
+        (u.studentNumber || "").toLowerCase().trim() === cleanEmail
+    );
+    if (credMatch) {
+      return {
+        isEnrolled: true,
+        role: credMatch.role ? normalizeUserRole(credMatch.role) : "student",
+        studentRecordId: credMatch.studentRecordId || credMatch.studentId,
+        studentNumber: credMatch.studentNumber || credMatch.studentId,
+        studentName: credMatch.studentName,
+        assignedCourses: credMatch.assignedCourses || [],
+      };
+    }
+  }
+
+  // 2. Check relational database students / profiles tables
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("id, user_id, first_name, last_name, email, students(id, student_number)")
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (prof) {
+      const std = Array.isArray(prof.students) ? prof.students[0] : prof.students;
+      return {
+        isEnrolled: true,
+        role: "student",
+        studentRecordId: std?.id,
+        studentNumber: std?.student_number,
+        studentName: `${prof.first_name || ""} ${prof.last_name || ""}`.trim() || undefined,
+      };
+    }
+
+    const { data: stdDirect } = await supabase
+      .from("students")
+      .select("id, student_number, user_id")
+      .or(`student_number.eq.${cleanEmail},id.eq.${cleanEmail}`)
+      .maybeSingle();
+
+    if (stdDirect) {
+      return {
+        isEnrolled: true,
+        role: "student",
+        studentRecordId: stdDirect.id,
+        studentNumber: stdDirect.student_number,
+      };
+    }
+  } catch (dbErr) {
+    logger.warn("Error checking database enrollment match:", dbErr);
+  }
+
+  // 3. Check student records / roster in state
+  if (state?.records && Array.isArray(state.records)) {
+    const recordMatch = state.records.find(
+      (r: any) =>
+        (r.student?.email || "").toLowerCase().trim() === cleanEmail ||
+        (r.student?.id || "").toLowerCase().trim() === cleanEmail ||
+        (r.student?.studentNumber || r.student?.student_number || "").toLowerCase().trim() === cleanEmail
+    );
+    if (recordMatch) {
+      return {
+        isEnrolled: true,
+        role: "student",
+        studentRecordId: recordMatch.student?.id || recordMatch.id,
+        studentNumber: recordMatch.student?.studentNumber || recordMatch.student?.student_number,
+        studentName: recordMatch.student?.name,
+      };
+    }
+  }
+
+  // 4. Check students list in state
+  if (state?.students && Array.isArray(state.students)) {
+    const stdMatch = state.students.find(
+      (s: any) =>
+        (s.email || "").toLowerCase().trim() === cleanEmail ||
+        (s.studentNumber || s.student_number || "").toLowerCase().trim() === cleanEmail ||
+        (s.id || "").toLowerCase().trim() === cleanEmail
+    );
+    if (stdMatch) {
+      return {
+        isEnrolled: true,
+        role: "student",
+        studentRecordId: stdMatch.id,
+        studentNumber: stdMatch.studentNumber || stdMatch.student_number,
+        studentName: stdMatch.name,
+      };
+    }
+  }
+
+  // 5. Check invoices / financial ledger records in state
+  if (state?.invoices && Array.isArray(state.invoices)) {
+    const invMatch = state.invoices.find(
+      (i: any) => (i.email || "").toLowerCase().trim() === cleanEmail
+    );
+    if (invMatch) {
+      return {
+        isEnrolled: true,
+        role: "student",
+        studentRecordId: invMatch.studentId,
+        studentNumber: invMatch.studentNumber || invMatch.studentId,
+        studentName: invMatch.studentName,
+      };
+    }
+  }
+
+  return { isEnrolled: false };
+}
+
+/**
  * Authoritative Authentication Pipeline:
  * 
  * Authentication
@@ -122,8 +255,21 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     assignedRole = normalizeUserRole(dbUser.role);
   }
 
-  // If user does not exist in database users table, provision an authoritative row with default "student" role
+  // Enrollment-based Policy:
+  // If user does not exist in database users table, match email or student number to enrollment roster.
+  // Account is ONLY activated if a valid enrollment or credential match is found.
   if (!dbUser && cleanEmail) {
+    const enrollment = await checkEnrollmentMatch(cleanEmail, supabase, state);
+
+    if (!enrollment.isEnrolled) {
+      logger.warn(`Authentication rejected for un-enrolled account attempt: ${cleanEmail}`);
+      return null;
+    }
+
+    if (enrollment.role) {
+      assignedRole = enrollment.role;
+    }
+
     try {
       const dbRole = toDbUserRole(assignedRole);
       const { data: createdUser, error: insertErr } = await supabase
@@ -138,14 +284,25 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
 
       if (!insertErr && createdUser) {
         dbUser = createdUser;
-        logger.info(`Provisioned new database users record for ${cleanEmail} (role: ${dbRole})`);
+        logger.info(`Activated enrolled user account for ${cleanEmail} (role: ${dbRole})`);
+
+        // If enrollment matched a database student record, link user_id
+        if (enrollment.studentRecordId) {
+          await supabase
+            .from("students")
+            .update({ user_id: createdUser.id })
+            .eq("id", enrollment.studentRecordId)
+            .is("user_id", null);
+        }
       }
     } catch (insertErr) {
-      logger.warn("Could not insert user into database users table (continuing with database role):", insertErr);
+      logger.warn("Could not insert user into database users table:", insertErr);
     }
   }
 
-  // Look up studentId from database students table
+  // Look up student record from database students table
+  let studentRecordId: string | undefined = undefined;
+  let studentNumber: string | undefined = undefined;
   let studentId: string | undefined = undefined;
   let studentName: string | undefined = decoded.name;
   let assignedCourses: string[] = [];
@@ -160,8 +317,10 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
         .eq("user_id", dbUser.id)
         .maybeSingle();
 
-      if (studentRecord?.student_number) {
-        studentId = studentRecord.student_number;
+      if (studentRecord) {
+        if (studentRecord.id) studentRecordId = studentRecord.id;
+        if (studentRecord.student_number) studentNumber = studentRecord.student_number;
+        studentId = studentRecord.id || studentRecord.student_number;
       }
     } catch (studentErr) {
       logger.warn("Error querying database students table:", studentErr);
@@ -173,9 +332,22 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
     if (match) {
       if (match.studentName && !studentName) studentName = match.studentName;
+      if (match.studentRecordId && !studentRecordId) studentRecordId = match.studentRecordId;
+      if (match.studentNumber && !studentNumber) studentNumber = match.studentNumber;
       if (match.studentId && !studentId) studentId = match.studentId;
       if (match.assignedCourses) assignedCourses = match.assignedCourses;
     }
+  }
+
+  // Fallbacks to maintain consistency across studentRecordId, studentNumber, and studentId
+  if (!studentRecordId && studentId && studentId.includes("-") && studentId.length > 20) {
+    studentRecordId = studentId;
+  } else if (!studentNumber && studentId) {
+    studentNumber = studentId;
+  }
+
+  if (!studentId) {
+    studentId = studentRecordId || studentNumber;
   }
 
   // If studentName is still not found, check student roster in state
@@ -198,7 +370,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
   const roleDef = ROLE_DEFINITIONS[assignedRole] || ROLE_DEFINITIONS.student;
   const permissions: Permission[] = roleDef ? roleDef.permissions : [];
 
-  // 3. req.user: authoritative user object containing uid, userId, email, role, studentId, permissions
+  // 3. req.user: authoritative user object containing uid, userId, studentRecordId (UUID), studentNumber (string), permissions
   return {
     uid: firebaseUid,
     userId: userId,
@@ -207,6 +379,8 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     name: studentName || cleanEmail.split("@")[0],
     role: assignedRole,
     studentId,
+    studentRecordId,
+    studentNumber,
     studentName,
     assignedCourses,
     permissions,
@@ -444,15 +618,23 @@ export async function verifyStudentOwnershipInDatabase(
 ): Promise<boolean> {
   if (!user) return false;
 
-  const cleanUserStudentId = (user.studentId || "").trim().toLowerCase();
   const cleanUserId = (user.userId || user.id || "").trim().toLowerCase();
+  const cleanStudentRecordId = (user.studentRecordId || "").trim().toLowerCase();
+  const cleanStudentNumber = (user.studentNumber || "").trim().toLowerCase();
+  const cleanUserStudentId = (user.studentId || "").trim().toLowerCase();
   const cleanUserEmail = (user.email || "").trim().toLowerCase();
 
   const cleanTargetId = (targetStudentId || "").trim().toLowerCase();
   const cleanTargetEmail = (targetEmail || "").trim().toLowerCase();
 
-  // 1. Exact immutable ID matching against target parameters
+  // 1. Exact immutable ID matching against target parameters (UUIDs or student number)
   if (cleanTargetId) {
+    if (cleanStudentRecordId && cleanTargetId === cleanStudentRecordId) {
+      return true;
+    }
+    if (cleanStudentNumber && cleanTargetId === cleanStudentNumber) {
+      return true;
+    }
     if (cleanUserStudentId && cleanTargetId === cleanUserStudentId) {
       return true;
     }
@@ -467,7 +649,7 @@ export async function verifyStudentOwnershipInDatabase(
   }
 
   // 3. Database lookup: If target parameter was passed as a name or identifier in URL parameter, look up the database record
-  // and check record.student_number / record.id / record.user_id strictly against user's immutable IDs.
+  // and check record.id (UUID), record.student_number (registration string), or record.user_id (UUID) strictly against user's immutable IDs.
   const targetIdentifier = targetStudentId || targetStudentName;
   if (!targetIdentifier) {
     return false;
@@ -476,7 +658,7 @@ export async function verifyStudentOwnershipInDatabase(
   try {
     const supabase = getServerSupabase();
 
-    // Query students table by student_number, id, or user_id matching targetIdentifier
+    // Query students table by student_number, id (UUID), or user_id (UUID) matching targetIdentifier
     const { data: stdRecords, error } = await supabase
       .from("students")
       .select("id, student_number, user_id")
@@ -489,6 +671,8 @@ export async function verifyStudentOwnershipInDatabase(
         const recUserId = (rec.user_id || "").trim().toLowerCase();
 
         return (
+          (cleanStudentRecordId && recId === cleanStudentRecordId) ||
+          (cleanStudentNumber && recStdNum === cleanStudentNumber) ||
           (cleanUserStudentId && (recStdNum === cleanUserStudentId || recId === cleanUserStudentId)) ||
           (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
         );
@@ -526,6 +710,8 @@ export async function verifyStudentOwnershipInDatabase(
             const recUserId = (rec.user_id || "").trim().toLowerCase();
 
             return (
+              (cleanStudentRecordId && recId === cleanStudentRecordId) ||
+              (cleanStudentNumber && recStdNum === cleanStudentNumber) ||
               (cleanUserStudentId && (recStdNum === cleanUserStudentId || recId === cleanUserStudentId)) ||
               (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
             );
@@ -551,9 +737,11 @@ export async function verifyStudentOwnershipInDatabase(
         const matchingCred = state.userCredentials.find(
           (c: any) => (c.email || "").trim().toLowerCase() === cleanUserEmail
         );
-        if (matchingCred && matchingCred.studentId) {
-          const credStdId = String(matchingCred.studentId).trim().toLowerCase();
-          if (cleanTargetId && cleanTargetId === credStdId) {
+        if (matchingCred) {
+          const credStdId = String(matchingCred.studentId || matchingCred.studentRecordId || "").trim().toLowerCase();
+          const credStdNum = String(matchingCred.studentNumber || "").trim().toLowerCase();
+
+          if (cleanTargetId && (cleanTargetId === credStdId || cleanTargetId === credStdNum)) {
             return true;
           }
         }

@@ -56,12 +56,14 @@ export type Permission =
 
 export interface AuthenticatedUser {
   uid: string;           // Firebase UID
-  userId: string;        // Database users table ID
+  userId: string;        // Database users table UUID (id)
   id: string;            // Aliased to userId for backward compatibility
   email: string;
   name: string;
   role: UserRole;
-  studentId?: string;
+  studentId?: string;    // Aliased to studentRecordId or studentNumber for backward compatibility
+  studentRecordId?: string; // Database students table UUID (id)
+  studentNumber?: string;   // Administrative registration number (student_number)
   studentName?: string;
   assignedCourses?: string[];
   permissions: Permission[];
