@@ -27,21 +27,22 @@ if (cleanupTimer.unref) {
 
 /**
  * Rate Limiting Middleware
- * Defaults to max 100 requests per 15 minutes per IP address.
+ * Supports isolated bucket tracking per route category.
  */
-export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
+export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000, bucketName = "global") {
   return (req: Request, res: Response, next: NextFunction) => {
     const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "unknown-ip";
+    const key = `${bucketName}:${clientIp}`;
     const now = Date.now();
 
-    let record = ipLimits.get(clientIp);
+    let record = ipLimits.get(key);
 
     if (!record || now > record.resetTime) {
       record = {
         count: 1,
         resetTime: now + windowMs,
       };
-      ipLimits.set(clientIp, record);
+      ipLimits.set(key, record);
     } else {
       record.count += 1;
     }
@@ -51,10 +52,10 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
     res.setHeader("X-RateLimit-Reset", Math.ceil(record.resetTime / 1000));
 
     if (record.count > maxRequests) {
-      logger.warn(`Rate limit exceeded for IP: ${clientIp} on endpoint: ${req.originalUrl}`);
+      logger.warn(`Rate limit exceeded [bucket: ${bucketName}] for IP: ${clientIp} on endpoint: ${req.originalUrl}`);
       return res.status(429).json({
         error: "Too Many Requests",
-        message: "Rate limit exceeded. Please try again later.",
+        message: `Rate limit exceeded for ${bucketName} operations. Please try again later.`,
         retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
       });
     }
@@ -62,6 +63,17 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
     next();
   };
 }
+
+// Specialized rate limiters for high-risk, resource-intensive, or sensitive operations
+export const authRateLimiter = rateLimiter(15, 15 * 60 * 1000, "auth"); // 15 requests / 15 mins
+export const aiRateLimiter = rateLimiter(30, 15 * 60 * 1000, "ai"); // 30 requests / 15 mins (LLM evaluations)
+export const paymentsRateLimiter = rateLimiter(40, 15 * 60 * 1000, "payments"); // 40 requests / 15 mins (financial mutations)
+export const assignmentsRateLimiter = rateLimiter(50, 15 * 60 * 1000, "assignments"); // 50 requests / 15 mins (homework uploads)
+export const driveProxyRateLimiter = rateLimiter(60, 15 * 60 * 1000, "drive-proxy"); // 60 requests / 15 mins (Google Drive/Sheets proxy)
+export const adminRateLimiter = rateLimiter(60, 15 * 60 * 1000, "admin"); // 60 requests / 15 mins (audit logs & admin ops)
+export const stateRateLimiter = rateLimiter(80, 15 * 60 * 1000, "state"); // 80 requests / 15 mins (state sync)
+export const githubRateLimiter = rateLimiter(30, 15 * 60 * 1000, "github"); // 30 requests / 15 mins (git operations)
+export const generalApiRateLimiter = rateLimiter(1000, 15 * 60 * 1000, "general-api"); // 1000 requests / 15 mins
 
 /**
  * HTTP Security Headers Middleware

@@ -22,7 +22,19 @@ import { notificationsRouter } from "./src/server/routes/notifications";
 import { initializeRelationalSchema, stateHydrationService } from "./src/server/services/domain";
 import { validateSupabaseServerConfig, isSupabaseConfigured } from "./src/server/services/supabaseServer";
 import { logger } from "./src/lib/logger";
-import { securityHeaders, rateLimiter, sanitizeBody } from "./src/server/middleware/security";
+import {
+  securityHeaders,
+  sanitizeBody,
+  generalApiRateLimiter,
+  authRateLimiter,
+  aiRateLimiter,
+  paymentsRateLimiter,
+  assignmentsRateLimiter,
+  driveProxyRateLimiter,
+  adminRateLimiter,
+  stateRateLimiter,
+  githubRateLimiter,
+} from "./src/server/middleware/security";
 import { authenticate, requireAuth } from "./src/server/middleware/rbac";
 
 dotenv.config();
@@ -97,8 +109,8 @@ async function startServer() {
   // Sanitize incoming JSON bodies
   app.use(sanitizeBody);
 
-  // Apply rate limiting specifically to /api endpoints (1000 requests per 15 min)
-  app.use("/api", rateLimiter(1000, 15 * 60 * 1000));
+  // Apply general API baseline rate limiting to /api endpoints (1000 requests per 15 min)
+  app.use("/api", generalApiRateLimiter);
 
   // Role-Based Access Control authentication context
   app.use("/api", authenticate);
@@ -106,24 +118,24 @@ async function startServer() {
   // Initialize relational PostgreSQL database tables
   initializeRelationalSchema().catch((e) => logger.warn("Relational init warning:", e));
 
-  // Public API routers (accessible without required authentication token)
-  app.use("/api/auth", authRouter);
+  // Public API routers with strict rate limiting
+  app.use("/api/auth", authRateLimiter, authRouter);
   app.use("/api/bible", bibleRouter);
 
-  // Protected API routers (strictly require verified authentication token)
+  // Protected API routers with specific domain rate limits
   app.use("/api/students", requireAuth, studentsRouter);
   app.use("/api/academics", requireAuth, academicsRouter);
   app.use("/api/attendance", requireAuth, attendanceRouter);
-  app.use("/api/payments", requireAuth, paymentsRouter);
+  app.use("/api/payments", requireAuth, paymentsRateLimiter, paymentsRouter);
   app.use("/api/library", requireAuth, libraryRouter);
-  app.use("/api/assignments", requireAuth, assignmentsRouter);
-  app.use("/api/audit-logs", requireAuth, auditLogsRouter);
-  app.use("/api/state", requireAuth, stateRouter);
+  app.use("/api/assignments", requireAuth, assignmentsRateLimiter, assignmentsRouter);
+  app.use("/api/audit-logs", requireAuth, adminRateLimiter, auditLogsRouter);
+  app.use("/api/state", requireAuth, stateRateLimiter, stateRouter);
   app.use("/api/me", requireAuth, meRouter);
   app.use("/api/notifications", requireAuth, notificationsRouter);
-  app.use("/api/github", requireAuth, githubRouter);
-  app.use("/api/ai", requireAuth, aiRouter);
-  app.use("/api/drive-proxy", requireAuth, driveProxyRouter);
+  app.use("/api/github", requireAuth, githubRateLimiter, githubRouter);
+  app.use("/api/ai", requireAuth, aiRateLimiter, aiRouter);
+  app.use("/api/drive-proxy", requireAuth, driveProxyRateLimiter, driveProxyRouter);
 
   // Vite middleware for development vs static asset serving in production
   if (isDev) {
