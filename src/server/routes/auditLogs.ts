@@ -1,21 +1,21 @@
 import { Router, Request, Response } from "express";
-import { getAuditLogs, logAuditEvent } from "../services/supabaseServer";
+import { getAuditLogs } from "../services/supabaseServer";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
 export const auditLogsRouter = Router();
 
-// Default-deny at the router level: All routes require authentication
+// 1. Router-level default-deny: All audit routes require authentication
 auditLogsRouter.use(requireAuth);
 
 /**
  * GET /api/audit-logs
- * Retrieves audit history log entries from PostgreSQL.
- * RBAC: Requires audit:read
+ * Retrieves authoritative audit history log entries from PostgreSQL.
+ * RBAC: Requires authenticated user with 'audit:read' permission (or super_admin).
  */
 auditLogsRouter.get(
   "/",
-  requirePermission(["audit:read", "all:access"]),
+  requirePermission("audit:read"),
   async (req: Request, res: Response) => {
     try {
       const limit = parseInt((req.query.limit as string) || "50", 10);
@@ -35,40 +35,13 @@ auditLogsRouter.get(
 
 /**
  * POST /api/audit-logs
- * Appends a manual audit log entry.
- * RBAC: Requires audit:read or all:access
+ * Disallow manual external creation of audit log entries.
+ * Audit logs are strictly emitted server-side by authoritative backend service handlers.
  */
-auditLogsRouter.post(
-  "/",
-  requireAuth,
-  requirePermission(["audit:read", "all:access"]),
-  async (req: Request, res: Response) => {
-    try {
-      const { action, entityType, entityId, notes, reason, oldValues, newValues } = req.body;
-      const actorUserId = req.user!.userId;
-      const actorRole = req.user!.role;
-      if (!action || !entityType || !entityId) {
-        return res.status(400).json({ error: "action, entityType, and entityId are required" });
-      }
+auditLogsRouter.post("/", (_req: Request, res: Response) => {
+  return res.status(405).json({
+    error: "Method Not Allowed: Audit log entries are generated authoritatively by server-side actions only and cannot be manually inserted.",
+    code: "AUDIT_MUTATION_RESTRICTED"
+  });
+});
 
-      const ok = await logAuditEvent({
-        actorUserId,
-        actorRole,
-        entityType,
-        entityId,
-        action: action || "update",
-        oldValues: oldValues || null,
-        newValues: newValues || { notes, timestamp: new Date().toISOString() },
-        reason: reason || notes || null,
-        requestId: (req.headers["x-request-id"] as string) || undefined,
-        ipAddress: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress,
-        userAgent: req.headers["user-agent"],
-      });
-
-      return res.status(201).json({ status: ok ? "logged" : "failed" });
-    } catch (err: any) {
-      logger.error("POST /api/audit-logs error:", err);
-      return res.status(500).json({ error: "Failed to create audit log entry" });
-    }
-  }
-);
