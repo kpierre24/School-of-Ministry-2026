@@ -55,8 +55,9 @@ studentsRouter.get(
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),
       targetStudentId: req.params.name,
+      courseCode: (req.query.courseCode as string) || (req.query.course as string) || (req.body?.courseCode as string),
     }),
-    allowedRoles: ["super_admin", "admin", "registrar", "lecturer"],
+    allowedRoles: ["super_admin", "admin", "registrar"],
   }),
   async (req: Request, res: Response) => {
     try {
@@ -106,8 +107,9 @@ studentsRouter.get(
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),
       targetStudentId: req.params.name,
+      courseCode: (req.query.courseCode as string) || (req.query.course as string) || (req.body?.courseCode as string),
     }),
-    allowedRoles: ["super_admin", "admin", "registrar", "lecturer"],
+    allowedRoles: ["super_admin", "admin", "registrar"],
   }),
   async (req: Request, res: Response) => {
     try {
@@ -196,8 +198,9 @@ studentsRouter.get(
     getTarget: (req) => ({
       targetStudentName: decodeURIComponent(req.params.name).trim(),
       targetStudentId: req.params.name,
+      courseCode: (req.query.courseCode as string) || (req.query.course as string) || (req.body?.courseCode as string),
     }),
-    allowedRoles: ["super_admin", "admin", "registrar", "lecturer", "finance_officer"],
+    allowedRoles: ["super_admin", "admin", "registrar", "finance_officer"],
   }),
   async (req: Request, res: Response) => {
     try {

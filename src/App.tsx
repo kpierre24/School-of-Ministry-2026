@@ -3992,6 +3992,7 @@ export default function App() {
                 {`create table if not exists app_states (
   id text primary key,
   state jsonb not null default '{}'::jsonb,
+  version integer not null default 1,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_by text
 );

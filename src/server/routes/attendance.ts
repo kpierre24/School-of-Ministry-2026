@@ -52,8 +52,9 @@ attendanceRouter.post(
     getTarget: (req) => ({
       targetStudentName: req.body.studentName,
       targetEmail: req.body.studentEmail,
+      courseCode: req.body.courseCode || req.body.courseId || (req.query.courseCode as string),
     }),
-    allowedRoles: ["super_admin", "admin", "registrar", "lecturer"],
+    allowedRoles: ["super_admin", "admin", "registrar"],
   }),
   async (req: Request, res: Response) => {
     try {
@@ -195,8 +196,10 @@ attendanceRouter.post(
   requireResourceOwnership({
     getTarget: (req) => ({
       targetStudentName: req.body.studentName,
+      targetStudentId: req.body.studentId,
+      courseCode: req.body.courseCode || req.body.courseId || (req.query.courseCode as string),
     }),
-    allowedRoles: ["super_admin", "admin", "registrar", "lecturer"],
+    allowedRoles: ["super_admin", "admin", "registrar"],
   }),
   async (req: Request, res: Response) => {
     try {

@@ -38,15 +38,24 @@ async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promis
 
   if (!response.ok) {
     let errorMsg = `HTTP Error ${response.status}: ${response.statusText}`;
+    let errorCode: string | undefined;
+    let errorData: any;
     try {
-      const errorJson = await response.json();
-      if (errorJson?.error) {
-        errorMsg = errorJson.error;
+      errorData = await response.json();
+      if (errorData?.error) {
+        errorMsg = errorData.error;
+      }
+      if (errorData?.code) {
+        errorCode = errorData.code;
       }
     } catch {
       // Keep default message
     }
-    throw new Error(errorMsg);
+    const err: any = new Error(errorMsg);
+    err.status = response.status;
+    err.code = errorCode;
+    err.data = errorData;
+    throw err;
   }
 
   return response.json() as Promise<T>;
@@ -450,15 +459,54 @@ export const portalApi = {
   async saveAuthoritativeState(
     state: SyncedAppState,
     _legacyUserEmail?: string,
-    actionDescription?: string
+    actionDescription?: string,
+    expectedVersion?: number | null
   ): Promise<boolean> {
     try {
-      const res = await fetchJson<{ success: boolean; updatedAt: string }>('/state', {
+      const versionToSend = typeof expectedVersion === 'number' 
+        ? expectedVersion 
+        : (typeof (state as any).version === 'number' ? (state as any).version : undefined);
+
+      const headers: Record<string, string> = {};
+      if (versionToSend !== undefined) {
+        headers['If-Match'] = `"${versionToSend}"`;
+        headers['x-expected-version'] = String(versionToSend);
+      }
+
+      const res = await fetchJson<{ success: boolean; version?: number; updatedAt: string }>('/state', {
         method: 'POST',
-        body: JSON.stringify({ state, actionDescription }),
+        headers,
+        body: JSON.stringify({
+          state,
+          expectedVersion: versionToSend,
+          actionDescription,
+        }),
       });
+
+      if (res.version && typeof (state as any) === 'object') {
+        (state as any).version = res.version;
+      }
+
       return !!res.success;
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.status === 409 || err?.code === 'CONCURRENCY_CONFLICT' || err?.message?.includes('concurrency conflict')) {
+        logger.warn(
+          `[PortalApiClient] State concurrency conflict (409) detected. Server has newer state version:`,
+          err?.data || err?.message
+        );
+        // Dispatch custom window event so UI or sync components can react to conflict
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('hteim:state_concurrency_conflict', {
+              detail: {
+                message: err.message,
+                data: err.data,
+              },
+            })
+          );
+        }
+        return false;
+      }
       logger.warn('Error saving state to Express /api/state:', err);
       return false;
     }

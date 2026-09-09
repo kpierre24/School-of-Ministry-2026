@@ -28,7 +28,7 @@ export async function loadFromSupabase(userEmail: string | null | undefined): Pr
 
     const { data, error } = await supabase
       .from('app_states')
-      .select('state')
+      .select('state, version')
       .eq('id', docId)
       .single();
 
@@ -39,19 +39,23 @@ export async function loadFromSupabase(userEmail: string | null | undefined): Pr
     }
 
     if (data?.state) {
-      return data.state;
+      const stateObj = data.state;
+      stateObj.version = Number(data.version) || Number(stateObj.version) || 1;
+      return stateObj;
     }
 
     // Fall back to shared_default_state if user-specific record was not found
     if (docId !== 'shared_default_state') {
       const fallback = await supabase
         .from('app_states')
-        .select('state')
+        .select('state, version')
         .eq('id', 'shared_default_state')
         .single();
 
       if (fallback.data?.state) {
-        return fallback.data.state;
+        const fallbackObj = fallback.data.state;
+        fallbackObj.version = Number(fallback.data.version) || Number(fallbackObj.version) || 1;
+        return fallbackObj;
       }
     }
 
@@ -84,15 +88,30 @@ export async function saveToSupabase(
 
     const timestamp = new Date().toISOString();
     const updater = userEmail || 'anonymous';
+    const nextVer = (typeof (cleanState as any).version === 'number' ? (cleanState as any).version + 1 : 2);
+    (cleanState as any).version = nextVer;
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from('app_states')
       .upsert({
         id: docId,
         state: cleanState,
+        version: nextVer,
         updated_at: timestamp,
         updated_by: updater
       });
+
+    if (error && (error.message?.includes('version') || error.code === '42703')) {
+      const fallback = await supabase
+        .from('app_states')
+        .upsert({
+          id: docId,
+          state: cleanState,
+          updated_at: timestamp,
+          updated_by: updater
+        });
+      error = fallback.error;
+    }
 
     if (error) {
       if (error.code === '42P01') {
@@ -103,14 +122,26 @@ export async function saveToSupabase(
 
     // Always keep shared_default_state updated so published or guest views get the latest workspace state
     if (docId !== 'shared_default_state') {
-      await supabase
-        .from('app_states')
-        .upsert({
-          id: 'shared_default_state',
-          state: cleanState,
-          updated_at: timestamp,
-          updated_by: updater
-        });
+      try {
+        await supabase
+          .from('app_states')
+          .upsert({
+            id: 'shared_default_state',
+            state: cleanState,
+            version: nextVer,
+            updated_at: timestamp,
+            updated_by: updater
+          });
+      } catch {
+        await supabase
+          .from('app_states')
+          .upsert({
+            id: 'shared_default_state',
+            state: cleanState,
+            updated_at: timestamp,
+            updated_by: updater
+          });
+      }
     }
 
     return true;

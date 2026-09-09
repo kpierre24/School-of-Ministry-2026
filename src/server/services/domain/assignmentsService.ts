@@ -411,6 +411,16 @@ export const assignmentsService = {
         throw new Error('Associated assignment not found for this submission');
       }
 
+      // Verify lecturer assignment against database for lecturer role
+      const courseCode = assignment.course_code || assignment.courseCode || assignment.course_definition_id || assignment.courseId;
+      if (typeof actorUser === 'object' && actorUser.role === 'lecturer' && courseCode) {
+        const { verifyLecturerCourseInDatabase } = await import('../../middleware/rbac');
+        const isAssigned = await verifyLecturerCourseInDatabase(actorUser, courseCode);
+        if (!isAssigned) {
+          throw new Error(`Access Denied: You are not assigned as the lecturer for course ${courseCode} in the database.`);
+        }
+      }
+
       // 2. Validate score against authoritative maxPoints
       const maxScore = Number(assignment.max_points || assignment.maxPoints || 100);
       const numericScore = Number(data.score);

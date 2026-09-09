@@ -277,11 +277,167 @@ export function requirePermission(permission: Permission | Permission[]) {
 }
 
 /**
+ * Verifies whether a lecturer is assigned to teach a course by querying the authoritative database.
+ * Does NOT trust client-supplied or unverified in-memory claims.
+ */
+export async function verifyLecturerCourseInDatabase(
+  user: AuthenticatedUser,
+  courseCode: string
+): Promise<boolean> {
+  if (!user || user.role !== "lecturer" || !courseCode) {
+    return false;
+  }
+
+  const cleanCourse = courseCode.trim().toUpperCase();
+  const cleanEmail = (user.email || "").trim().toLowerCase();
+  const cleanName = (user.studentName || user.name || "").trim().toLowerCase();
+  const userId = user.userId || user.id || "";
+
+  try {
+    const supabase = getServerSupabase();
+
+    // 1. Check relational `course_offerings` table in PostgreSQL
+    try {
+      const { data: offerings, error: offErr } = await supabase
+        .from("course_offerings")
+        .select(`
+          id,
+          course_definition_id,
+          lecturer_email,
+          lecturer_name,
+          status,
+          course_definitions (
+            id,
+            code
+          )
+        `)
+        .is("deleted_at", null);
+
+      if (!offErr && offerings && offerings.length > 0) {
+        const isAssigned = offerings.some((off: any) => {
+          const offLecturerEmail = (off.lecturer_email || "").trim().toLowerCase();
+          const offLecturerName = (off.lecturer_name || "").trim().toLowerCase();
+
+          const lecturerMatches =
+            (cleanEmail && offLecturerEmail === cleanEmail) ||
+            (cleanName && offLecturerName === cleanName) ||
+            (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
+            (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
+
+          if (!lecturerMatches) return false;
+
+          const codeFromDef = (off.course_definitions?.code || "").trim().toUpperCase();
+          const defId = (off.course_definition_id || "").trim().toUpperCase();
+          const offId = (off.id || "").trim().toUpperCase();
+
+          return (
+            codeFromDef === cleanCourse ||
+            defId === cleanCourse ||
+            offId === cleanCourse ||
+            cleanCourse.includes(codeFromDef || "___") ||
+            (codeFromDef && cleanCourse.startsWith(codeFromDef))
+          );
+        });
+
+        if (isAssigned) {
+          return true;
+        }
+      }
+    } catch (offEx) {
+      logger.warn("Error checking course_offerings in verifyLecturerCourseInDatabase:", offEx);
+    }
+
+    // 2. Check `users` table for database-persisted assigned_courses array
+    try {
+      const { data: dbUser, error: userErr } = await supabase
+        .from("users")
+        .select("id, email, assigned_courses, role")
+        .or(`id.eq.${userId},email.eq.${cleanEmail}`)
+        .maybeSingle();
+
+      if (!userErr && dbUser?.assigned_courses && Array.isArray(dbUser.assigned_courses)) {
+        const hasAssignment = dbUser.assigned_courses.some((c: string) => {
+          const upper = String(c).trim().toUpperCase();
+          return upper === cleanCourse || cleanCourse.includes(upper);
+        });
+        if (hasAssignment) {
+          return true;
+        }
+      }
+    } catch (userEx) {
+      logger.warn("Error checking users table in verifyLecturerCourseInDatabase:", userEx);
+    }
+
+    // 3. Check authoritative state stored in database app_states table
+    try {
+      const { data: stateRow, error: stateErr } = await supabase
+        .from("app_states")
+        .select("state")
+        .eq("id", "shared_default_state")
+        .maybeSingle();
+
+      if (!stateErr && stateRow?.state) {
+        const state = stateRow.state;
+
+        // Check state.courseOfferings
+        if (Array.isArray(state.courseOfferings)) {
+          const assignedInState = state.courseOfferings.some((off: any) => {
+            const offCourseCode = (off.courseCode || off.courseId || "").trim().toUpperCase();
+            const offLecturerEmail = (off.lecturer?.email || off.lecturerEmail || "").trim().toLowerCase();
+            const offLecturerName = (off.lecturer?.name || off.lecturerName || "").trim().toLowerCase();
+
+            const isLecturer =
+              (cleanEmail && offLecturerEmail === cleanEmail) ||
+              (cleanName && offLecturerName === cleanName) ||
+              (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
+              (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
+
+            return isLecturer && (offCourseCode === cleanCourse || cleanCourse.includes(offCourseCode));
+          });
+
+          if (assignedInState) {
+            return true;
+          }
+        }
+
+        // Check state.academicStructure
+        if (Array.isArray(state.academicStructure?.courseOfferings)) {
+          const assignedInAcademic = state.academicStructure.courseOfferings.some((off: any) => {
+            const offCourseCode = (off.courseCode || off.courseId || "").trim().toUpperCase();
+            const offLecturerEmail = (off.lecturer?.email || off.lecturerEmail || "").trim().toLowerCase();
+            const offLecturerName = (off.lecturer?.name || off.lecturerName || "").trim().toLowerCase();
+
+            const isLecturer =
+              (cleanEmail && offLecturerEmail === cleanEmail) ||
+              (cleanName && offLecturerName === cleanName) ||
+              (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
+              (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
+
+            return isLecturer && (offCourseCode === cleanCourse || cleanCourse.includes(offCourseCode));
+          });
+
+          if (assignedInAcademic) {
+            return true;
+          }
+        }
+      }
+    } catch (stateEx) {
+      logger.warn("Error checking app_states in verifyLecturerCourseInDatabase:", stateEx);
+    }
+
+    return false;
+  } catch (err) {
+    logger.error("Database lecturer course verification failed:", err);
+    return false;
+  }
+}
+
+/**
  * Resource Ownership Verification Middleware
  * 
  * Verifies that the authenticated user either:
  * 1. Has an elevated administrative role (Super Admin, Admin, Registrar, Finance Officer, etc.), OR
- * 2. Is the assigned faculty lecturer for the student/course, OR
+ * 2. Is the assigned faculty lecturer for the specific course, verified strictly against the database, OR
  * 3. Owns the resource matching their studentId, studentName, or email.
  */
 export interface ResourceOwnershipOptions {
@@ -295,20 +451,23 @@ export interface ResourceOwnershipOptions {
 }
 
 export function requireResourceOwnership(options: ResourceOwnershipOptions) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
     }
 
-    const { role, email, studentId, studentName, assignedCourses } = req.user;
+    const { role, email, studentId, studentName } = req.user;
 
     // 1. Super Admin is always authorized
     if (role === "super_admin") {
       return next();
     }
 
-    // 2. Check explicitly allowed administrative roles (default includes super_admin, admin, registrar)
-    const allowedRoles = options.allowedRoles || ["super_admin", "admin", "registrar"];
+    // 2. Check explicitly allowed administrative roles (excluding lecturer!)
+    // Note: Lecturers must never bypass via allowedRoles; they must be verified with courseCode against the database.
+    const allowedRoles: UserRole[] = (options.allowedRoles || ["super_admin", "admin", "registrar"])
+      .filter((r): r is UserRole => r !== "lecturer");
+
     if (allowedRoles.includes(role)) {
       return next();
     }
@@ -316,15 +475,28 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
     // 3. Extract target identifiers from request
     const { targetStudentId, targetStudentName, targetEmail, courseCode } = options.getTarget(req);
 
-    // 4. Lecturer check: If user is a lecturer and is assigned to the course
+    // 4. Lecturer check: Course scope is strictly required and verified against the database
     if (role === "lecturer") {
-      if (courseCode && assignedCourses && assignedCourses.includes(courseCode)) {
-        return next();
-      }
-      // If no specific course filter or lecturer has broad academic access
       if (!courseCode) {
+        return res.status(400).json({
+          error: "Course scope is required",
+          code: "COURSE_SCOPE_REQUIRED",
+          details: "Lecturers must provide a courseCode parameter or body field to access scoped student records."
+        });
+      }
+
+      // Verify course assignment from database (never trust client claims or unverified state)
+      const isAssigned = await verifyLecturerCourseInDatabase(req.user, courseCode);
+      if (isAssigned) {
         return next();
       }
+
+      logger.warn(`Lecturer course verification failed for ${email} (Role: lecturer) targeting course [${courseCode}]`);
+      return res.status(403).json({
+        error: `Access Denied: You are not assigned as the lecturer for course ${courseCode} in the database.`,
+        code: "LECTURER_COURSE_UNASSIGNED",
+        details: "Lecturer access is restricted to courses actively assigned to the faculty member in the database."
+      });
     }
 
     // 5. Student Ownership Check: Validate whether the target matches this logged-in student

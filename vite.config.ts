@@ -11,7 +11,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'hteim_logo.svg', 'hteim_logo.png'],
+        includeAssets: ['hteim_logo.svg', 'hteim_logo.png', 'icon.png'],
         manifest: {
           id: '/',
           name: 'HTEIM School of Ministry',
@@ -98,6 +98,21 @@ export default defineConfig(() => {
         'Referrer-Policy': 'strict-origin-when-cross-origin',
         'X-XSS-Protection': '1; mode=block',
         'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: ws:; frame-ancestors 'self' https://*.run.app https://*.google.com https://*.googleusercontent.com https://ai.studio https://*.aistudio.google.com; object-src 'none'; base-uri 'self';",
+      },
+    },
+    build: {
+      outDir: 'dist',
+      emptyOutDir: false,
+      sourcemap: true,
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-charts': ['recharts'],
+          },
+        },
       },
     },
     test: {

@@ -55,6 +55,24 @@ export function getServerSupabase(): SupabaseClient {
   return serverSupabaseClient;
 }
 
+export class StateConcurrencyError extends Error {
+  public readonly code = "CONCURRENCY_CONFLICT";
+  public readonly status = 409;
+  public readonly expectedVersion: number;
+  public readonly currentVersion: number;
+  public readonly currentUpdatedAt?: string;
+
+  constructor(expectedVersion: number, currentVersion: number, currentUpdatedAt?: string) {
+    super(
+      `State concurrency conflict. Client expected version ${expectedVersion}, but database is currently at version ${currentVersion}.`
+    );
+    this.name = "StateConcurrencyError";
+    this.expectedVersion = expectedVersion;
+    this.currentVersion = currentVersion;
+    this.currentUpdatedAt = currentUpdatedAt;
+  }
+}
+
 /**
  * Loads raw authoritative application state from Supabase PostgreSQL by docId / key.
  */
@@ -64,30 +82,61 @@ export async function getAuthoritativeState(userIdOrKey?: string | null): Promis
     ? (userIdOrKey.startsWith('user_') || userIdOrKey === 'shared_default_state' ? userIdOrKey : `user_${userIdOrKey.replace(/[^a-zA-Z0-9]/g, '_')}`)
     : 'shared_default_state';
 
-  const { data, error } = await supabase
-    .from('app_states')
-    .select('state, updated_at, updated_by')
-    .eq('id', docId)
-    .single();
+  let data: any = null;
+  let error: any = null;
+
+  try {
+    const res = await supabase
+      .from('app_states')
+      .select('state, version, updated_at, updated_by')
+      .eq('id', docId)
+      .single();
+    data = res.data;
+    error = res.error;
+  } catch (queryErr) {
+    // Fallback if version column query fails
+    const fallback = await supabase
+      .from('app_states')
+      .select('state, updated_at, updated_by')
+      .eq('id', docId)
+      .single();
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error && error.code !== 'PGRST116') {
     logger.warn(`Error loading state for ${docId} from PostgreSQL: ${error.message}`);
   }
 
   if (data?.state) {
-    return data.state;
+    const state = data.state;
+    const version = Number(data.version) || Number(state.version) || 1;
+    state.version = version;
+    return state;
   }
 
   // Fall back to shared_default_state if user-specific state is not found
   if (docId !== 'shared_default_state') {
-    const fallback = await supabase
-      .from('app_states')
-      .select('state')
-      .eq('id', 'shared_default_state')
-      .single();
+    let fallback: any = null;
+    try {
+      fallback = await supabase
+        .from('app_states')
+        .select('state, version')
+        .eq('id', 'shared_default_state')
+        .single();
+    } catch {
+      fallback = await supabase
+        .from('app_states')
+        .select('state')
+        .eq('id', 'shared_default_state')
+        .single();
+    }
 
-    if (fallback.data?.state) {
-      return fallback.data.state;
+    if (fallback?.data?.state) {
+      const state = fallback.data.state;
+      const version = Number(fallback.data.version) || Number(state.version) || 1;
+      state.version = version;
+      return state;
     }
   }
 
@@ -199,12 +248,14 @@ export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promis
 
 /**
  * Saves authoritative state authoritatively for the authenticated user based on req.user.
+ * Enforces optimistic concurrency if expectedVersion is provided.
  */
 export async function saveAuthoritativeStateForUser(
   user: AuthenticatedUser,
   state: any,
-  actionDescription?: string
-): Promise<{ success: boolean; updatedAt: string }> {
+  actionDescription?: string,
+  expectedVersion?: number | null
+): Promise<{ success: boolean; version: number; updatedAt: string }> {
   const supabase = getServerSupabase();
   const userId = user.userId || user.uid;
   const docId = `user_${userId.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -213,13 +264,45 @@ export async function saveAuthoritativeStateForUser(
 
   if (state?.dataSource === 'demo' || state?.isDemo) {
     logger.warn(`Blocked attempt to automatically save demo data for user ${userId}`);
-    return { success: false, updatedAt: timestamp };
+    return { success: false, version: 1, updatedAt: timestamp };
   }
 
+  // 1. Optimistic concurrency check against current database state
+  let currentDoc: any = null;
+  try {
+    const res = await supabase
+      .from('app_states')
+      .select('id, state, version, updated_at')
+      .eq('id', docId)
+      .maybeSingle();
+    currentDoc = res.data;
+  } catch (probeErr) {
+    const fallback = await supabase
+      .from('app_states')
+      .select('id, state, updated_at')
+      .eq('id', docId)
+      .maybeSingle();
+    currentDoc = fallback.data;
+  }
+
+  const currentVersion = currentDoc
+    ? (Number(currentDoc.version) || Number(currentDoc.state?.version) || 1)
+    : 0;
+
+  if (expectedVersion !== undefined && expectedVersion !== null) {
+    if (currentDoc && currentVersion !== expectedVersion) {
+      logger.warn(
+        `[Optimistic Concurrency Conflict] Document ${docId}: client expected version ${expectedVersion}, but database is at version ${currentVersion}. Rejecting write.`
+      );
+      throw new StateConcurrencyError(expectedVersion, currentVersion, currentDoc.updated_at);
+    }
+  }
+
+  const nextVersion = (currentVersion > 0 ? currentVersion : (expectedVersion || 0)) + 1;
   const sanitizedState = sanitizeProductionState(state);
 
   // If the user is a student, ensure they cannot overwrite institutional records
-  let finalStateToSave = sanitizedState;
+  let finalStateToSave = { ...sanitizedState, version: nextVersion };
   if (user.role === 'student') {
     const existing = await getAuthoritativeState('shared_default_state');
     if (existing) {
@@ -243,38 +326,67 @@ export async function saveAuthoritativeStateForUser(
 
       finalStateToSave = {
         ...existing,
+        version: nextVersion,
         submissions: mergedSubmissions,
         lastSyncedAt: timestamp,
       };
     }
   }
 
-  // 1. Update user state
-  const { error: upsertErr } = await supabase
-    .from('app_states')
-    .upsert({
-      id: docId,
-      state: finalStateToSave,
-      updated_at: timestamp,
-      updated_by: updater,
-    });
+  // 2. Persist updated user state with version increment
+  let upsertErr: any = null;
+  try {
+    const { error } = await supabase
+      .from('app_states')
+      .upsert({
+        id: docId,
+        state: finalStateToSave,
+        version: nextVersion,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    upsertErr = error;
+  } catch (err: any) {
+    upsertErr = err;
+  }
 
   if (upsertErr) {
-    logger.error(`Failed to save authoritative state for user ${userId}:`, upsertErr);
-    throw upsertErr;
+    // If table lacks version column, fall back gracefully
+    const { error: fallbackErr } = await supabase
+      .from('app_states')
+      .upsert({
+        id: docId,
+        state: finalStateToSave,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    if (fallbackErr) {
+      logger.error(`Failed to save authoritative state for user ${userId}:`, fallbackErr);
+      throw fallbackErr;
+    }
   }
 
-  // 2. If user is an administrative role, also update shared_default_state
+  // 3. If user is an administrative role, also update shared_default_state
   if (user.role !== 'student') {
-    await supabase.from('app_states').upsert({
-      id: 'shared_default_state',
-      state: finalStateToSave,
-      updated_at: timestamp,
-      updated_by: updater,
-    });
+    try {
+      await supabase.from('app_states').upsert({
+        id: 'shared_default_state',
+        state: finalStateToSave,
+        version: nextVersion,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    } catch {
+      await supabase.from('app_states').upsert({
+        id: 'shared_default_state',
+        state: finalStateToSave,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    }
   }
 
-  // 3. Log audit event
+  // 4. Log audit event
   try {
     await logAuditEvent({
       actorUserId: user.userId,
@@ -283,6 +395,8 @@ export async function saveAuthoritativeStateForUser(
       entityId: docId,
       action: 'update',
       newValues: {
+        version: nextVersion,
+        previousVersion: currentVersion,
         recordsCount: finalStateToSave?.records?.length || 0,
         paymentsCount: finalStateToSave?.payments?.length || 0,
         submissionsCount: finalStateToSave?.submissions?.length || 0,
@@ -295,17 +409,19 @@ export async function saveAuthoritativeStateForUser(
     logger.warn("Audit log record warning (non-fatal):", auditErr);
   }
 
-  return { success: true, updatedAt: timestamp };
+  return { success: true, version: nextVersion, updatedAt: timestamp };
 }
 
 /**
  * Saves authoritative application state to Supabase PostgreSQL and appends an audit record.
+ * Enforces optimistic concurrency if expectedVersion is provided.
  */
 export async function saveAuthoritativeState(
   state: any,
   actorUserId?: string | null,
-  actionDescription?: string
-): Promise<{ success: boolean; updatedAt: string }> {
+  actionDescription?: string,
+  expectedVersion?: number | null
+): Promise<{ success: boolean; version: number; updatedAt: string }> {
   const supabase = getServerSupabase();
   const docId = actorUserId 
     ? (actorUserId.startsWith('user_') || actorUserId === 'shared_default_state' ? actorUserId : `user_${actorUserId.replace(/[^a-zA-Z0-9]/g, '_')}`)
@@ -316,38 +432,97 @@ export async function saveAuthoritativeState(
   // Guard: Demo state must never be saved to production databases
   if (state?.dataSource === 'demo' || state?.isDemo) {
     logger.warn(`Blocked attempt to automatically save demo data into production database for ${docId}`);
-    return { success: false, updatedAt: new Date().toISOString() };
+    return { success: false, version: 1, updatedAt: new Date().toISOString() };
   }
 
-  // Sanitize state to ensure no demo records, demo users, or demo payments leak into production
-  const sanitizedState = sanitizeProductionState(state);
+  // 1. Optimistic concurrency check
+  let currentDoc: any = null;
+  try {
+    const res = await supabase
+      .from('app_states')
+      .select('id, state, version, updated_at')
+      .eq('id', docId)
+      .maybeSingle();
+    currentDoc = res.data;
+  } catch {
+    const fallback = await supabase
+      .from('app_states')
+      .select('id, state, updated_at')
+      .eq('id', docId)
+      .maybeSingle();
+    currentDoc = fallback.data;
+  }
 
-  // 1. Update user state or default state in app_states table
-  const { error: upsertErr } = await supabase
-    .from('app_states')
-    .upsert({
-      id: docId,
-      state: sanitizedState,
-      updated_at: timestamp,
-      updated_by: updater,
-    });
+  const currentVersion = currentDoc
+    ? (Number(currentDoc.version) || Number(currentDoc.state?.version) || 1)
+    : 0;
+
+  if (expectedVersion !== undefined && expectedVersion !== null) {
+    if (currentDoc && currentVersion !== expectedVersion) {
+      logger.warn(
+        `[Optimistic Concurrency Conflict] Document ${docId}: client expected version ${expectedVersion}, but database is at version ${currentVersion}. Rejecting write.`
+      );
+      throw new StateConcurrencyError(expectedVersion, currentVersion, currentDoc.updated_at);
+    }
+  }
+
+  const nextVersion = (currentVersion > 0 ? currentVersion : (expectedVersion || 0)) + 1;
+  const sanitizedState = sanitizeProductionState(state);
+  const finalStateToSave = { ...sanitizedState, version: nextVersion };
+
+  // 2. Update user state or default state in app_states table
+  let upsertErr: any = null;
+  try {
+    const { error } = await supabase
+      .from('app_states')
+      .upsert({
+        id: docId,
+        state: finalStateToSave,
+        version: nextVersion,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    upsertErr = error;
+  } catch (err: any) {
+    upsertErr = err;
+  }
 
   if (upsertErr) {
-    logger.error(`Failed to save authoritative state for ${docId}:`, upsertErr);
-    throw upsertErr;
+    const { error: fallbackErr } = await supabase
+      .from('app_states')
+      .upsert({
+        id: docId,
+        state: finalStateToSave,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    if (fallbackErr) {
+      logger.error(`Failed to save authoritative state for ${docId}:`, fallbackErr);
+      throw fallbackErr;
+    }
   }
 
-  // 2. Also keep shared_default_state synced for global/guest views
+  // 3. Also keep shared_default_state synced for global/guest views
   if (docId !== 'shared_default_state') {
-    await supabase.from('app_states').upsert({
-      id: 'shared_default_state',
-      state: sanitizedState,
-      updated_at: timestamp,
-      updated_by: updater,
-    });
+    try {
+      await supabase.from('app_states').upsert({
+        id: 'shared_default_state',
+        state: finalStateToSave,
+        version: nextVersion,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    } catch {
+      await supabase.from('app_states').upsert({
+        id: 'shared_default_state',
+        state: finalStateToSave,
+        updated_at: timestamp,
+        updated_by: updater,
+      });
+    }
   }
 
-  // 3. Record in audit_history table
+  // 4. Record in audit_history table
   try {
     await logAuditEvent({
       actorUserId: actorUserId || undefined,
@@ -356,6 +531,8 @@ export async function saveAuthoritativeState(
       entityId: docId,
       action: 'update',
       newValues: {
+        version: nextVersion,
+        previousVersion: currentVersion,
         recordsCount: state?.records?.length || 0,
         paymentsCount: state?.payments?.length || 0,
         submissionsCount: state?.submissions?.length || 0,
@@ -368,7 +545,7 @@ export async function saveAuthoritativeState(
     logger.warn("Audit log record warning (non-fatal):", auditErr);
   }
 
-  return { success: true, updatedAt: timestamp };
+  return { success: true, version: nextVersion, updatedAt: timestamp };
 }
 
 export interface AuditEventEntry {
