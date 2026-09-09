@@ -48,7 +48,22 @@ async function startServer() {
     !currentDirname.includes("dist");
 
   // Cloud Run or container environment assigns PORT (e.g. 8080 or 3000).
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  let PORT = 3000;
+  if (process.env.PORT) {
+    PORT = parseInt(process.env.PORT, 10);
+  } else {
+    const portArgIdx = process.argv.indexOf("--port");
+    if (portArgIdx !== -1 && process.argv[portArgIdx + 1]) {
+      const parsedPort = parseInt(process.argv[portArgIdx + 1], 10);
+      if (!isNaN(parsedPort)) PORT = parsedPort;
+    }
+  }
+
+  let HOST = process.env.HOST || "0.0.0.0";
+  const hostArgIdx = process.argv.indexOf("--host");
+  if (hostArgIdx !== -1 && process.argv[hostArgIdx + 1] && !process.argv[hostArgIdx + 1].startsWith("-")) {
+    HOST = process.argv[hostArgIdx + 1];
+  }
 
   // Apply security response headers globally
   app.use(securityHeaders);
@@ -172,7 +187,6 @@ async function startServer() {
   };
 
   // Start single unified server on PORT (bound to 0.0.0.0 for container & local network ingress)
-  const HOST = process.env.HOST || "0.0.0.0";
   const server = app.listen(PORT, HOST, () => {
     const networkIps = getNetworkIps();
     logger.info(`HTEIM School of Ministry server running:`);

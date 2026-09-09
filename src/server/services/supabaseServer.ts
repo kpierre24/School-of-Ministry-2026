@@ -787,6 +787,29 @@ export async function updateUserRoleInDatabase(
       .eq('id', userId)
       .single();
 
+    // Security Restriction: No client or API call can assign super_admin.
+    if (newRole === 'super_admin') {
+      await logAuditEvent({
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'unknown',
+        entityType: 'super_admin_role',
+        entityId: userId,
+        action: 'unauthorized_super_admin_assignment_attempt',
+        oldValues: { role: previousUser?.role || 'unknown' },
+        newValues: { attemptedRole: 'super_admin' },
+        changedFields: ['role'],
+        reason: reason || 'Attempted client-side assignment of super_admin role',
+        requestId,
+        ipAddress,
+        userAgent,
+      });
+
+      return {
+        success: false,
+        error: 'Security Policy Violation: The super_admin role cannot be assigned via client API calls. Explicit database provisioning is required.',
+      };
+    }
+
     const { data, error } = await supabase
       .from('users')
       .update({ role: newRole, updated_at: new Date().toISOString() })
@@ -798,16 +821,17 @@ export async function updateUserRoleInDatabase(
       return { success: false, error: error.message };
     }
 
+    const isSuperAdminChange = previousUser?.role === 'super_admin' || newRole === 'super_admin';
     await logAuditEvent({
       actorUserId: actorUserId || null,
-      actorRole: actorRole || 'super_admin',
-      entityType: 'user_role',
+      actorRole: actorRole || 'system',
+      entityType: isSuperAdminChange ? 'super_admin_role' : 'user_role',
       entityId: userId,
-      action: 'update',
+      action: previousUser?.role === 'super_admin' && newRole !== 'super_admin' ? 'revoke_super_admin' : 'update',
       oldValues: { role: previousUser?.role || 'unknown' },
       newValues: { role: newRole, userEmail: data?.email },
       changedFields: ['role'],
-      reason: reason || `Updated role to ${newRole}`,
+      reason: reason || `Updated role from ${previousUser?.role || 'unknown'} to ${newRole}`,
       requestId,
       ipAddress,
       userAgent,

@@ -53,9 +53,14 @@ export async function checkEnrollmentMatch(
         (u.studentNumber || "").toLowerCase().trim() === cleanEmail
     );
     if (credMatch) {
+      // Legacy state cannot grant super_admin; sanitize to admin
+      let matchedRole = credMatch.role ? normalizeUserRole(credMatch.role) : "student";
+      if (matchedRole === "super_admin") {
+        matchedRole = "admin";
+      }
       return {
         isEnrolled: true,
-        role: credMatch.role ? normalizeUserRole(credMatch.role) : "student",
+        role: matchedRole,
         studentRecordId: credMatch.studentRecordId || credMatch.studentId,
         studentNumber: credMatch.studentNumber || credMatch.studentId,
         studentName: credMatch.studentName,
@@ -242,7 +247,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
   // Default role is strictly "student" unless configured in database
   let assignedRole: UserRole = "student";
 
-  // Check state database userCredentials for explicit role assignment
+  // Check state database userCredentials for explicit role assignment (legacy state)
   if (state?.userCredentials && Array.isArray(state.userCredentials)) {
     const match = state.userCredentials.find((u: any) => u.email?.toLowerCase().trim() === cleanEmail);
     if (match?.role) {
@@ -250,7 +255,14 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     }
   }
 
-  // If role is present in PostgreSQL users table, use it as database source of truth
+  // Security Policy: Legacy state CANNOT grant super_admin. Downgrade to admin if legacy state claimed super_admin.
+  if (assignedRole === "super_admin") {
+    assignedRole = "admin";
+  }
+
+  // Authoritative Database Role Source of Truth:
+  // super_admin requires explicit database provisioning in the PostgreSQL users table.
+  // Immediate Revocation: Any changes to dbUser.role or dbUser.is_active in PostgreSQL take effect immediately.
   if (dbUser?.role) {
     assignedRole = normalizeUserRole(dbUser.role);
   }
@@ -267,7 +279,8 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     }
 
     if (enrollment.role) {
-      assignedRole = enrollment.role;
+      // Ordinary registration/enrollment can NEVER grant super_admin
+      assignedRole = enrollment.role === "super_admin" ? "admin" : enrollment.role;
     }
 
     try {
