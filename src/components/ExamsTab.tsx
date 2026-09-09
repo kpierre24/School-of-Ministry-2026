@@ -62,6 +62,7 @@ import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
 import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
 import { isDemoAssignment } from '../data/guards';
+import { generateUUID } from '../lib/idGenerator';
 
 type StudentScoreRecord = {
   name: string;
@@ -236,7 +237,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
       if (onNotificationCreated) {
         onNotificationCreated({
-          id: `NOTIF-QUIZ-${Date.now()}`,
+          id: generateUUID(),
           title: `📝 New Active Quiz Published: ${quizData.title}`,
           message: `A new class day quiz "${quizData.title}" (${quizData.totalPoints} pts${quizData.timeLimitMinutes ? `, ${quizData.timeLimitMinutes} min limit` : ''}) is now active. Access it on your Home screen or Exams tab!`,
           type: 'due_date',
@@ -267,7 +268,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     if (!asg?.quizData) return;
 
     const newShareCode = `qz_${Math.random().toString(36).substring(2, 8)}`;
-    const newQuizId = `quiz_${Date.now()}`;
+    const newQuizId = generateUUID();
     const duplicatedQuiz: QuizAssignment = {
       ...quiz,
       id: newQuizId,
@@ -352,7 +353,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     // Notify teacher/admin
     if (onNotificationCreated) {
       onNotificationCreated({
-        id: `NOTIF-QUIZ-${Date.now()}`,
+        id: generateUUID(),
         title: `📝 Quiz Submitted: ${submission.studentName}`,
         message: `${submission.studentName} completed class day quiz with score ${submission.score}/${submission.totalPossible} (${submission.percentage}%).`,
         type: 'submission',
@@ -658,7 +659,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       });
     } else {
       const newAssignment: CustomAssignment = {
-        id: `ASG-${Date.now().toString().slice(-4)}`,
+        id: generateUUID(),
         title: newAsgTitle.trim(),
         moduleTrack: newAsgModule,
         startDate: newAsgStartDate || undefined,
@@ -787,7 +788,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     } else {
       // Create new submission
       const newSub: AssignmentSubmission = {
-        id: `SUB-${activeAssignmentForStudent.id}-${Date.now().toString().slice(-4)}`,
+        id: generateUUID(),
         assignmentId: activeAssignmentForStudent.id,
         studentName: activeStudentName,
         submittedAt: nowStr,
@@ -806,7 +807,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     // Trigger Notification
     if (onNotificationCreated) {
       onNotificationCreated({
-        id: `NOTIF-SUBMIT-${Date.now()}`,
+        id: generateUUID(),
         title: `📄 Submission Uploaded: ${activeStudentName}`,
         message: `${activeStudentName} uploaded document response for "${activeAssignmentForStudent.title}". Pending instructor review & evaluation.`,
         type: 'submission',
@@ -877,7 +878,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     } else {
       // Create new submission on behalf of student with correction
       const newSub: AssignmentSubmission = {
-        id: `SUB-${assignment.id}-${Date.now().toString().slice(-4)}`,
+        id: generateUUID(),
         assignmentId: assignment.id,
         studentName,
         submittedAt: nowStr,
@@ -905,7 +906,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     // Trigger Grading Notification
     if (onNotificationCreated) {
       onNotificationCreated({
-        id: `NOTIF-GRADE-${Date.now()}`,
+        id: generateUUID(),
         title: `🎓 Assignment Graded: ${assignment.title}`,
         message: `${studentName}'s submission received a score of ${correctionScore}/${assignment.maxPoints}.${correctionFeedback ? ` Instructor Feedback: "${correctionFeedback}"` : ''}${correctedFileName ? ' Corrected document attached.' : ''}`,
         type: 'graded',
@@ -973,7 +974,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       setSubmissions(updated);
     } else {
       const newSub: AssignmentSubmission = {
-        id: `SUB-${targetAssignmentId}-${Date.now().toString().slice(-4)}`,
+        id: generateUUID(),
         assignmentId: targetAssignmentId,
         studentName: targetStudentName,
         submittedAt: nowStr,

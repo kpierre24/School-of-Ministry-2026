@@ -194,18 +194,75 @@ export const portalApi = {
     });
   },
 
-  // 5. Payments & Tuition
+  // 5. Payments & Tuition (Authoritative Ledger Architecture)
+  async getInvoices(params?: { studentName?: string; studentId?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.studentName) searchParams.set('studentName', params.studentName);
+    if (params?.studentId) searchParams.set('studentId', params.studentId);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return fetchJson<{ invoices: any[]; total: number }>(`/payments/invoices${query}`);
+  },
+
+  async saveInvoice(invoice: any) {
+    // Note: totalTuition, amountPaid, discount, refund, balance are calculated by the server from invoice_lines
+    return fetchJson<{ status: string; invoice: any }>('/payments/invoices', {
+      method: 'POST',
+      body: JSON.stringify({ invoice }),
+    });
+  },
+
   async getPayments(studentName?: string) {
     const params = new URLSearchParams();
     if (studentName) params.set('studentName', studentName);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return fetchJson<{ payments: any[]; total: number }>(`/payments${query}`);
+    return fetchJson<{ transactions: any[]; total: number }>(`/payments/transactions${query}`);
+  },
+
+  async getTransactions(params?: { invoiceId?: string; studentId?: string; studentName?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.invoiceId) searchParams.set('invoiceId', params.invoiceId);
+    if (params?.studentId) searchParams.set('studentId', params.studentId);
+    if (params?.studentName) searchParams.set('studentName', params.studentName);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return fetchJson<{ transactions: any[]; total: number }>(`/payments/transactions${query}`);
   },
 
   async recordPayment(payment: any) {
-    return fetchJson<{ status: string; payment: any }>('/payments', {
+    // Server recalculates invoice balance from allocations:
+    // balance = invoice total - payments - approved adjustments + applicable charges
+    return fetchJson<{ status: string; payment: any; updatedInvoices?: any[] }>('/payments/transactions', {
       method: 'POST',
       body: JSON.stringify({ payment }),
+    });
+  },
+
+  async getAdjustments(params?: { invoiceId?: string; studentId?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.invoiceId) searchParams.set('invoiceId', params.invoiceId);
+    if (params?.studentId) searchParams.set('studentId', params.studentId);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return fetchJson<{ adjustments: any[]; total: number }>(`/payments/adjustments${query}`);
+  },
+
+  async applyFinancialAdjustment(adjustment: any) {
+    return fetchJson<{ status: string; adjustment: any; updatedInvoice?: any }>('/payments/adjustments', {
+      method: 'POST',
+      body: JSON.stringify({ adjustment }),
+    });
+  },
+
+  async getRefunds(params?: { invoiceId?: string; studentId?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.invoiceId) searchParams.set('invoiceId', params.invoiceId);
+    if (params?.studentId) searchParams.set('studentId', params.studentId);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return fetchJson<{ refunds: any[]; total: number }>(`/payments/refunds${query}`);
+  },
+
+  async recordRefund(refund: any) {
+    return fetchJson<{ status: string; refund: any; updatedInvoices?: any[] }>('/payments/refunds', {
+      method: 'POST',
+      body: JSON.stringify({ refund }),
     });
   },
 
@@ -213,6 +270,8 @@ export const portalApi = {
     return fetchJson<{
       totalPayments: number;
       totalCollected: number;
+      totalBilled: number;
+      totalOutstanding: number;
       pendingCount: number;
       currency: string;
     }>('/payments/summary');

@@ -47,7 +47,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { PaymentRecord, Invoice, PaymentTransaction, Receipt, StudentInstallmentPlan, InstallmentMilestone, SponsorshipDonation } from '../types';
-import { getInvoices, saveInvoices, getTransactions, saveTransactions, getReceipts, saveReceipts, bootstrapFromPaymentRecords } from '../lib/financialWorkflow';
+import { getInvoices, saveInvoices, getTransactions, saveTransactions, getReceipts, saveReceipts, bootstrapFromPaymentRecords, recordPaymentTransaction } from '../lib/financialWorkflow';
+import { generateUUID, getNextSequenceNumber } from '../lib/idGenerator';
 import { generateTuitionReceiptPDF, generateStudentAccountStatementPDF } from '../lib/pdfReceiptGenerator';
 import { BulkPaymentReminderModal } from './BulkPaymentReminderModal';
 import { InstallmentPlanModal } from './InstallmentPlanModal';
@@ -1046,7 +1047,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
               ...m,
               isPaid: true,
               paidDate: new Date().toISOString().slice(0, 10),
-              receiptNumber: `REC-MS-${Date.now().toString().slice(-5)}`
+              receiptNumber: getNextSequenceNumber('receipt')
             };
           }
           return m;
@@ -1188,69 +1189,27 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
     const paymentAmount = Number(recordPaymentAmount);
     if (paymentAmount <= 0) return;
 
-    const transactionId = `TXN-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const receiptNumber = `REC-HTEIM-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-
-    // Create payment transaction
-    const newTx: PaymentTransaction = {
-      id: transactionId,
+    // Authoritative workflow engine:
+    // Recomputes ledger (invoice -> invoice_lines, payment -> payment_allocation)
+    // and calculates balance = invoice total - payments - approved adjustments + applicable charges
+    // with UUID internal IDs and database sequence numbers.
+    const { transaction: newTx, receipt: newReceipt, updatedInvoice } = recordPaymentTransaction({
       invoiceId: selectedInvoiceForPayment.id,
-      studentName: selectedInvoiceForPayment.studentName,
-      studentId: selectedInvoiceForPayment.studentId,
       amount: paymentAmount,
-      paymentDate: recordPaymentDate,
       paymentMethod: recordPaymentMethod,
-      receiptNumber,
-      status: 'Completed',
-      notes: recordPaymentNotes || 'Partial tuition payment/deposit'
-    };
-
-    const updatedTxs = [...transactions, newTx];
-    setTransactions(updatedTxs);
-    saveTransactions(updatedTxs);
-
-    // Create receipt
-    const newReceipt: Receipt = {
-      id: `REC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      receiptNumber,
-      paymentId: transactionId,
-      invoiceId: selectedInvoiceForPayment.id,
-      studentName: selectedInvoiceForPayment.studentName,
-      studentId: selectedInvoiceForPayment.studentId,
-      amountPaid: paymentAmount,
       paymentDate: recordPaymentDate,
-      paymentMethod: recordPaymentMethod,
-      issuedAt: new Date().toISOString().slice(0, 10),
-      notes: recordPaymentNotes || 'Partial tuition payment receipt'
-    };
-
-    const updatedReceipts = [...receipts, newReceipt];
-    setReceipts(updatedReceipts);
-    saveReceipts(updatedReceipts);
-
-    // Update invoice balance and status
-    const updatedInvoices = invoices.map(inv => {
-      if (inv.id === selectedInvoiceForPayment.id) {
-        const newAmountPaid = inv.amountPaid + paymentAmount;
-        const newBalance = Math.max(0, inv.netTuition - newAmountPaid);
-        let calculatedStatus: Invoice['status'] = 'Unpaid';
-        if (newBalance <= 0) {
-          calculatedStatus = 'Paid';
-        } else if (newAmountPaid > 0) {
-          calculatedStatus = 'Partially Paid';
-        }
-        return {
-          ...inv,
-          amountPaid: newAmountPaid,
-          outstandingBalance: newBalance,
-          status: calculatedStatus
-        };
-      }
-      return inv;
+      notes: recordPaymentNotes || 'Partial tuition payment/deposit',
+      recordedBy: userRole === 'admin' ? 'Administrator' : currentStudentName || 'Staff User',
     });
 
+    const updatedTxs = [newTx, ...transactions.filter(t => t.id !== newTx.id)];
+    setTransactions(updatedTxs);
+
+    const updatedReceipts = [newReceipt, ...receipts.filter(r => r.id !== newReceipt.id)];
+    setReceipts(updatedReceipts);
+
+    const updatedInvoices = invoices.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv);
     setInvoices(updatedInvoices);
-    saveInvoices(updatedInvoices);
     syncToPayments(updatedInvoices, updatedTxs);
     setShowRecordCustomPaymentModal(false);
 
@@ -1259,7 +1218,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
       role: 'admin',
       actionCategory: 'Payment Entry',
       actionTitle: 'Payment Recorded',
-      details: `Recorded payment of ${paymentAmount} via ${recordPaymentMethod} for student "${selectedInvoiceForPayment.studentName}". Outstanding balance: ${Math.max(0, selectedInvoiceForPayment.netTuition - (selectedInvoiceForPayment.amountPaid + paymentAmount))}`,
+      details: `Recorded payment of ${paymentAmount} via ${recordPaymentMethod} for student "${selectedInvoiceForPayment.studentName}". Outstanding balance: ${updatedInvoice.outstandingBalance}`,
       targetStudent: selectedInvoiceForPayment.studentName
     });
   };
@@ -1502,7 +1461,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
           if (st.name && !alreadyExists) {
             newRecords.push({
-              id: `pay-auto-${Date.now()}-${idx}`,
+              id: generateUUID(),
               studentName: st.name,
               studentId: `HTEIM-2026-${Math.abs(st.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}`,
               email: st.email || `${(st.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
@@ -1837,7 +1796,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
     const nameClean = newStudentName.trim();
     const newRecord: PaymentRecord = {
-      id: `pay-${Date.now()}`,
+      id: generateUUID(),
       studentName: nameClean,
       studentId: `HTEIM-2026-${Math.abs(nameClean.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)).toString().substring(0, 4)}`,
       email: `${(nameClean || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,

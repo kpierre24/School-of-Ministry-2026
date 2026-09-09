@@ -114,11 +114,73 @@ export type PaymentRecord = {
   isDemo?: boolean;
 };
 
-export type FinancialAdjustmentType = 'discount' | 'scholarship' | 'refund' | 'adjustment' | 'fee_waiver' | 'late_fee';
+export type InvoiceLineType = 
+  | 'tuition' 
+  | 'mandatory_fee' 
+  | 'registration' 
+  | 'course_material' 
+  | 'applicable_charge' 
+  | 'technology_fee' 
+  | 'other';
+
+export type InvoiceLine = {
+  id?: string;
+  invoiceId?: string;
+  lineType: InvoiceLineType;
+  description: string;
+  quantity: number;
+  unitAmount: number;
+  totalAmount: number; // Server-computed: quantity * unitAmount
+  createdAt?: string;
+};
+
+export type PaymentAllocation = {
+  id?: string;
+  paymentId: string;
+  invoiceId: string;
+  allocatedAmount: number;
+  notes?: string;
+  createdAt?: string;
+};
+
+export type RefundAllocation = {
+  id?: string;
+  refundId: string;
+  invoiceId: string;
+  paymentAllocationId?: string;
+  allocatedAmount: number;
+  createdAt?: string;
+};
+
+export type RefundRecord = {
+  id: string; // UUID internal ID
+  refundNumber: string; // Sequence: REF-2026-000001
+  paymentId?: string; // Links to internal payment UUID
+  studentId: string;
+  studentName?: string;
+  amount: number;
+  reason: string;
+  status: 'approved' | 'pending' | 'processed' | 'void' | 'rejected';
+  refundDate: string;
+  approvedBy?: string;
+  notes?: string;
+  allocations?: RefundAllocation[];
+  createdAt?: string;
+};
+
+export type FinancialAdjustmentType = 
+  | 'discount' 
+  | 'scholarship' 
+  | 'refund' 
+  | 'adjustment' 
+  | 'fee_waiver' 
+  | 'late_fee'
+  | 'applicable_charge';
 
 export type FinancialAdjustment = {
-  id: string; // ADJ-2026-XXXX
-  invoiceId: string;
+  id: string; // UUID internal ID
+  adjustmentNumber?: string; // Sequence: ADJ-2026-000001
+  invoiceId: string; // Links to invoice UUID
   studentId: string; // Foreign Key / UUID
   studentName?: string;
   student?: {
@@ -126,16 +188,20 @@ export type FinancialAdjustment = {
     name: string;
   };
   type: FinancialAdjustmentType;
+  isCharge?: boolean; // false = credit (scholarship, discount, fee waiver), true = charge (applicable charge, late fee)
   categoryName: string; // e.g. "Five-Fold Ministry Scholarship", "Early Bird Discount", "Course Drop Refund"
-  amount: number; // positive reduces invoice balance, negative increases
+  amount: number; // strictly positive magnitude
+  status?: 'approved' | 'pending' | 'rejected' | 'void'; // Only approved adjustments affect balance!
   appliedDate: string;
   authorizedBy: string;
   notes?: string;
   receiptOrDocRef?: string;
+  createdAt?: string;
 };
 
 export type Invoice = {
-  id: string; // INV-2026-XXXX
+  id: string; // UUID internal ID
+  invoiceNumber?: string; // Sequence: INV-2026-000001
   studentId: string; // Foreign Key / UUID PK
   studentName?: string;
   student?: {
@@ -151,14 +217,19 @@ export type Invoice = {
   academicYear?: string;
   issueDate: string;
   dueDate: string;
-  totalTuition: number;
-  discounts: number;
-  scholarships: number;
-  refunds?: number;
-  adjustments?: number;
-  netTuition: number; // totalTuition - discounts - scholarships - adjustments + refunds
-  amountPaid: number; // sum of completed transactions
-  outstandingBalance: number; // netTuition - amountPaid
+  lines?: InvoiceLine[];
+  allocations?: PaymentAllocation[];
+  refundAllocations?: RefundAllocation[];
+  adjustmentsList?: FinancialAdjustment[];
+  totalTuition: number; // Server calculated from invoice_lines
+  discounts: number; // Server calculated from approved discounts
+  scholarships: number; // Server calculated from approved scholarships
+  refunds?: number; // Server calculated from approved refund allocations
+  adjustments?: number; // Server calculated from approved applicable charges
+  applicableCharges?: number; // Server calculated from approved charges
+  netTuition: number; // Server calculated: (totalTuition + applicableCharges) - approved discounts/scholarships
+  amountPaid: number; // Server calculated: sum of completed payment allocations - refunds
+  outstandingBalance: number; // Server calculated: invoice total - payments - approved adjustments + applicable charges
   paymentPlan: 'Pay In Full' | 'Monthly Installments' | 'Custom Plan' | string;
   status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Past Due' | 'Refunded' | 'Cancelled';
   notes?: string;
@@ -167,8 +238,9 @@ export type Invoice = {
 };
 
 export type PaymentTransaction = {
-  id: string; // TXN-2026-XXXX
-  invoiceId: string;
+  id: string; // UUID internal ID
+  paymentNumber?: string; // Sequence: PAY-2026-000001
+  invoiceId: string; // Links to invoice UUID
   studentId: string; // Foreign Key / UUID
   studentName?: string;
   student?: {
@@ -179,8 +251,9 @@ export type PaymentTransaction = {
   paymentDate: string;
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Zelle' | 'Check' | 'Scholarship' | 'Cash' | 'PayPal' | 'Stripe' | string;
   paymentReference?: string; // wire confirmation, check #, transaction reference
-  receiptNumber: string; // REC-2026-XXXX
+  receiptNumber: string; // Sequence: RCP-2026-000001
   status: 'Completed' | 'Pending' | 'Failed' | 'Refunded';
+  allocations?: PaymentAllocation[];
   notes?: string;
   recordedBy?: string;
   reconciliationStatus?: 'Reconciled' | 'Unreconciled' | 'Discrepancy';
@@ -191,10 +264,10 @@ export type PaymentTransaction = {
 };
 
 export type Receipt = {
-  id: string; // REC-2026-XXXX
-  receiptNumber: string;
-  paymentId: string; // Links to transaction ID
-  invoiceId: string;
+  id: string; // UUID internal ID
+  receiptNumber: string; // Sequence: RCP-2026-000001
+  paymentId: string; // Links to internal payment UUID
+  invoiceId: string; // Links to internal invoice UUID
   studentId: string; // Foreign Key / UUID
   studentName?: string;
   student?: {
@@ -223,13 +296,13 @@ export { logActivity, logAuditEvent, getAuditLogs } from './lib/auditLogger';
 export type FinancialAuditLog = {
   id: string;
   timestamp: string;
-  action: 'INVOICE_CREATED' | 'PAYMENT_RECORDED' | 'ADJUSTMENT_APPLIED' | 'REFUND_ISSUED' | 'PAYMENT_RECONCILED' | 'INVOICE_UPDATED' | 'SCHOLARSHIP_AWARDED';
+  action: 'INVOICE_CREATED' | 'PAYMENT_RECORDED' | 'ADJUSTMENT_APPLIED' | 'REFUND_ISSUED' | 'PAYMENT_RECONCILED' | 'INVOICE_UPDATED' | 'SCHOLARSHIP_AWARDED' | 'CHARGE_APPLIED';
   actorName: string;
   actorRole: string;
   studentId: string;
   studentName: string;
   entityId: string;
-  entityType: 'invoice' | 'transaction' | 'receipt' | 'adjustment';
+  entityType: 'invoice' | 'transaction' | 'receipt' | 'adjustment' | 'refund';
   amount?: number;
   details: string;
   metadata?: Record<string, any>;

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { SponsorshipDonation } from '../types';
 import { Modal } from './Modal';
+import { generateUUID, getNextSequenceNumber } from '../lib/idGenerator';
 
 interface SponsorScholarshipModalProps {
   isOpen: boolean;
@@ -51,9 +52,9 @@ export const SponsorScholarshipModal: React.FC<SponsorScholarshipModalProps> = (
     e.preventDefault();
     if (!sponsorName.trim() || amount <= 0) return;
 
-    const receiptNum = `SCH-HTEIM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const receiptNum = getNextSequenceNumber('receipt');
     const newDonation: SponsorshipDonation = {
-      id: `spons_${Date.now()}`,
+      id: generateUUID(),
       sponsorName: sponsorName.trim(),
       organization: organization.trim() || 'Faith Partner Ministry',
       sponsorEmail: sponsorEmail.trim(),

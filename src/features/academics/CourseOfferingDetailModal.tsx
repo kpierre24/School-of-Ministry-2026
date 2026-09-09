@@ -31,6 +31,7 @@ import {
   OfferingGradeRecord,
   AcademicStanding 
 } from '../../types/academicEngine';
+import { generateUUID, getNextSequenceNumber } from '../../lib/idGenerator';
 import { UserRole } from '../../lib/userAuth';
 
 interface CourseOfferingDetailModalProps {
@@ -113,9 +114,9 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
     );
 
     const newEnrollment: OfferingStudentEnrollment = {
-      studentId: `st_${Date.now()}`,
+      studentId: generateUUID(),
       studentName: selectedStudentName.trim(),
-      studentNumber: `HTEIM-2026-${String(offering.enrolledStudents.length + 1).padStart(3, '0')}`,
+      studentNumber: getNextSequenceNumber('student'),
       email: matched?.email || `${selectedStudentName.toLowerCase().replace(/\s+/g, '.')}@hteim.edu`,
       avatarUrl: matched?.photoUrl,
       cohortLevel: 'Level 1 Foundation',
@@ -176,7 +177,7 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
     if (!newAsgTitle.trim()) return;
 
     const newAsg: OfferingAssignment = {
-      id: `asg_${Date.now()}`,
+      id: generateUUID(),
       title: newAsgTitle.trim(),
       description: newAsgDesc.trim() || 'Ministerial course assignment.',
       type: 'essay',
@@ -206,7 +207,7 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
     if (!sessionTopic.trim()) return;
 
     const newSession: OfferingAttendanceSession = {
-      id: `att_${Date.now()}`,
+      id: generateUUID(),
       sessionNumber: offering.attendance.length + 1,
       date: sessionDate,
       topic: sessionTopic.trim(),

@@ -5,6 +5,7 @@ import {
   RotateCcw,
   Sliders,
   DollarSign,
+  PlusCircle,
   X,
   Check,
   Building,
@@ -76,9 +77,11 @@ export const FinancialAdjustmentModal: React.FC<FinancialAdjustmentModalProps> =
       setIsSubmitting(true);
       setErrorMessage(null);
 
+      const isCharge = type === 'applicable_charge';
       const result = applyFinancialAdjustment({
         invoiceId: invoice.id,
         type,
+        isCharge,
         categoryName: categoryName.trim(),
         amount: numAmount,
         authorizedBy: authorizedBy.trim(),
@@ -136,64 +139,78 @@ export const FinancialAdjustmentModal: React.FC<FinancialAdjustmentModalProps> =
 
           {/* Adjustment Type Selector */}
           <div>
-            <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
               Adjustment Type *
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <button
                 type="button"
                 onClick={() => setType('scholarship')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                   type === 'scholarship'
                     ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-bold'
                     : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
                 <Award className="w-4 h-4 mb-1" />
-                <p className="text-xs font-black uppercase">Scholarship</p>
-                <p className="text-[10px] opacity-75">Tuition Grant</p>
+                <p className="text-[11px] font-black uppercase">Scholarship</p>
+                <p className="text-[9px] opacity-75">Tuition Grant</p>
               </button>
 
               <button
                 type="button"
                 onClick={() => setType('discount')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                   type === 'discount'
                     ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-bold'
                     : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
                 <Percent className="w-4 h-4 mb-1" />
-                <p className="text-xs font-black uppercase">Discount</p>
-                <p className="text-[10px] opacity-75">Early Bird/Promo</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setType('refund')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  type === 'refund'
-                    ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-bold'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
-                }`}
-              >
-                <RotateCcw className="w-4 h-4 mb-1" />
-                <p className="text-xs font-black uppercase">Refund</p>
-                <p className="text-[10px] opacity-75">Overpayment</p>
+                <p className="text-[11px] font-black uppercase">Discount</p>
+                <p className="text-[9px] opacity-75">Early Bird/Promo</p>
               </button>
 
               <button
                 type="button"
                 onClick={() => setType('fee_waiver')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                   type === 'fee_waiver'
                     ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-bold'
                     : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
                 <Sliders className="w-4 h-4 mb-1" />
-                <p className="text-xs font-black uppercase">Waiver / Fee</p>
-                <p className="text-[10px] opacity-75">Adjustment</p>
+                <p className="text-[11px] font-black uppercase">Fee Waiver</p>
+                <p className="text-[9px] opacity-75">Credit Adjustment</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setType('applicable_charge')}
+                className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                  type === 'applicable_charge'
+                    ? 'border-red-500 bg-red-500/10 text-red-500 font-bold'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                <PlusCircle className="w-4 h-4 mb-1" />
+                <p className="text-[11px] font-black uppercase">Charge</p>
+                <p className="text-[9px] opacity-75">Late/Incidental</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setType('refund')}
+                className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                  type === 'refund'
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-500 font-bold'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                <RotateCcw className="w-4 h-4 mb-1" />
+                <p className="text-[11px] font-black uppercase">Refund</p>
+                <p className="text-[9px] opacity-75">Overpayment</p>
               </button>
             </div>
           </div>

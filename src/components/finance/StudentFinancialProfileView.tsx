@@ -34,6 +34,7 @@ import {
   getAdjustments
 } from '../../lib/financialWorkflow';
 import { generateStudentAccountStatementPDF } from '../../lib/pdfReceiptGenerator';
+import { generateUUID } from '../../lib/idGenerator';
 import { RecordTransactionModal } from './RecordTransactionModal';
 import { FinancialAdjustmentModal } from './FinancialAdjustmentModal';
 import { PrintableReceiptModal } from './PrintableReceiptModal';
@@ -97,7 +98,7 @@ export const StudentFinancialProfileView: React.FC<StudentFinancialProfileViewPr
       const tx = profile.transactions.find(t => t.receiptNumber === receiptNumber);
       if (tx) {
         const dummyReceipt: Receipt = {
-          id: `REC-${receiptNumber}`,
+          id: generateUUID(),
           receiptNumber,
           paymentId: tx.id,
           invoiceId: tx.invoiceId,
