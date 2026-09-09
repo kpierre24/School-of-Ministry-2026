@@ -112,30 +112,32 @@ async function startServer() {
   // Apply general API baseline rate limiting to /api endpoints (1000 requests per 15 min)
   app.use("/api", generalApiRateLimiter);
 
-  // Role-Based Access Control authentication context
-  app.use("/api", authenticate);
-
   // Initialize relational PostgreSQL database tables
   initializeRelationalSchema().catch((e) => logger.warn("Relational init warning:", e));
 
-  // Public API routers with strict rate limiting
-  app.use("/api/auth", authRateLimiter, authRouter);
+  // Explicit Public API Routers (Deliberately mounted before mandatory authentication barrier)
+  app.use("/api/auth", authRateLimiter, authenticate, authRouter);
   app.use("/api/bible", bibleRouter);
 
-  // Protected API routers with specific domain rate limits
-  app.use("/api/students", requireAuth, studentsRouter);
-  app.use("/api/academics", requireAuth, academicsRouter);
-  app.use("/api/attendance", requireAuth, attendanceRouter);
-  app.use("/api/payments", requireAuth, paymentsRateLimiter, paymentsRouter);
-  app.use("/api/library", requireAuth, libraryRouter);
-  app.use("/api/assignments", requireAuth, assignmentsRateLimiter, assignmentsRouter);
-  app.use("/api/audit-logs", requireAuth, adminRateLimiter, auditLogsRouter);
-  app.use("/api/state", requireAuth, stateRateLimiter, stateRouter);
-  app.use("/api/me", requireAuth, meRouter);
-  app.use("/api/notifications", requireAuth, notificationsRouter);
-  app.use("/api/github", requireAuth, githubRateLimiter, githubRouter);
-  app.use("/api/ai", requireAuth, aiRateLimiter, aiRouter);
-  app.use("/api/drive-proxy", requireAuth, driveProxyRateLimiter, driveProxyRouter);
+  // Global Mandatory Authentication Security Barrier:
+  // Every /api route registered after this barrier strictly enforces valid authentication.
+  // Unauthenticated requests are rejected immediately with 401 Unauthorized before reaching any handler.
+  app.use("/api", authenticate, requireAuth);
+
+  // Protected Domain API Routers (Globally secured + specific domain rate limits)
+  app.use("/api/students", studentsRouter);
+  app.use("/api/academics", academicsRouter);
+  app.use("/api/attendance", attendanceRouter);
+  app.use("/api/payments", paymentsRateLimiter, paymentsRouter);
+  app.use("/api/library", libraryRouter);
+  app.use("/api/assignments", assignmentsRateLimiter, assignmentsRouter);
+  app.use("/api/audit-logs", adminRateLimiter, auditLogsRouter);
+  app.use("/api/state", stateRateLimiter, stateRouter);
+  app.use("/api/me", meRouter);
+  app.use("/api/notifications", notificationsRouter);
+  app.use("/api/github", githubRateLimiter, githubRouter);
+  app.use("/api/ai", aiRateLimiter, aiRouter);
+  app.use("/api/drive-proxy", driveProxyRateLimiter, driveProxyRouter);
 
   // Vite middleware for development vs static asset serving in production
   if (isDev) {
