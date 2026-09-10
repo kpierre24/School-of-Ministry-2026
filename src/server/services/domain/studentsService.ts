@@ -509,7 +509,7 @@ export const studentsService = {
    */
   async updateStudent(
     nameOrId: string,
-    data: { level?: string; note?: string; photoUrl?: string },
+    data: { level?: string; note?: string; photoUrl?: string; enrollmentStatus?: string; studentNumber?: string },
     actorUserId?: string,
     actorRole?: string
   ): Promise<{ status: string; student: any }> {
@@ -526,10 +526,15 @@ export const studentsService = {
       const std = studentProfile.student;
 
       if (std.id) {
-        if (data.level) {
+        const studentUpdates: any = { updated_at: new Date().toISOString() };
+        if (data.level) studentUpdates.cohort_level = data.level;
+        if (data.enrollmentStatus) studentUpdates.enrollment_status = data.enrollmentStatus;
+        if (data.studentNumber) studentUpdates.student_number = data.studentNumber;
+
+        if (Object.keys(studentUpdates).length > 1) {
           await supabase
             .from('students')
-            .update({ cohort_level: data.level, updated_at: new Date().toISOString() })
+            .update(studentUpdates)
             .eq('id', std.id);
         }
 
@@ -538,9 +543,11 @@ export const studentsService = {
         if (data.photoUrl !== undefined) updateProf.avatar_url = data.photoUrl;
         if (data.note !== undefined) updateProf.bio = data.note;
 
-        const { data: stdRecord } = await supabase.from('students').select('user_id').eq('id', std.id).single();
-        if (stdRecord?.user_id) {
-          await supabase.from('profiles').update(updateProf).eq('user_id', stdRecord.user_id);
+        if (Object.keys(updateProf).length > 1) {
+          const { data: stdRecord } = await supabase.from('students').select('user_id').eq('id', std.id).single();
+          if (stdRecord?.user_id) {
+            await supabase.from('profiles').update(updateProf).eq('user_id', stdRecord.user_id);
+          }
         }
       }
 
@@ -550,7 +557,7 @@ export const studentsService = {
         entityType: 'student',
         entityId: std.id || cleanQuery,
         action: 'update',
-        oldValues: { level: std.level, note: std.note, photoUrl: std.photoUrl },
+        oldValues: { level: std.level, note: std.note, photoUrl: std.photoUrl, enrollmentStatus: std.enrollmentStatus },
         newValues: data,
         changedFields: Object.keys(data),
         reason: `Student ${std.name || cleanQuery} profile updated`,
@@ -563,6 +570,8 @@ export const studentsService = {
           level: data.level || std.level,
           note: data.note !== undefined ? data.note : std.note,
           photoUrl: data.photoUrl !== undefined ? data.photoUrl : std.photoUrl,
+          enrollmentStatus: data.enrollmentStatus || std.enrollmentStatus,
+          studentNumber: data.studentNumber || std.studentNumber,
         },
       };
     } catch (err: any) {
@@ -570,4 +579,5 @@ export const studentsService = {
       throw err;
     }
   },
+
 };

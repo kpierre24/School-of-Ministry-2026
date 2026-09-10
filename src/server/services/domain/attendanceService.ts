@@ -897,4 +897,86 @@ export const attendanceService = {
       criticalThreshold: '50%',
     };
   },
+
+  /**
+   * Updates an individual attendance record by ID in relational PostgreSQL tables.
+   */
+  async updateAttendanceRecord(
+    id: string,
+    data: {
+      status?: AttendanceStatus | string;
+      notes?: string;
+      manualOverride?: boolean;
+    },
+    actorUserId?: string,
+    actorRole?: string
+  ): Promise<{ status: string; record: any }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+
+    const updates: any = { updated_at: timestamp };
+    let validatedStatus: AttendanceStatus | undefined = undefined;
+    if (data.status) {
+      validatedStatus = validateAttendanceStatus(data.status);
+      updates.status = validatedStatus;
+    }
+    if (data.notes !== undefined) updates.notes = data.notes;
+    if (data.manualOverride !== undefined) updates.manual_override = Boolean(data.manualOverride);
+    if (actorUserId) updates.recorded_by_user_id = actorUserId;
+
+    // 1. Update in attendance_records table
+    let updatedRecord: any = null;
+    try {
+      const { data: rec, error } = await supabase
+        .from('attendance_records')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (!error && rec) {
+        updatedRecord = rec;
+      }
+    } catch (err) {
+      logger.warn('attendance_records update error:', err);
+    }
+
+    // 2. Also attempt update in legacy attendance table
+    try {
+      const { data: legacyRec, error: legacyErr } = await supabase
+        .from('attendance')
+        .update({
+          ...(validatedStatus ? { status: validatedStatus } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes } : {}),
+          ...(actorUserId ? { recorded_by_user_id: actorUserId } : {}),
+          updated_at: timestamp,
+        })
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (!updatedRecord && !legacyErr && legacyRec) {
+        updatedRecord = legacyRec;
+      }
+    } catch (err) {
+      logger.warn('attendance legacy update error:', err);
+    }
+
+    await logAuditEvent({
+      actorUserId: actorUserId || null,
+      actorRole: actorRole || 'teacher',
+      entityType: 'attendance_record',
+      entityId: id,
+      action: 'update',
+      newValues: updates,
+      changedFields: Object.keys(updates),
+      reason: data.notes || 'Attendance record updated',
+    });
+
+    return {
+      status: 'updated',
+      record: updatedRecord || { id, ...data, updatedAt: timestamp },
+    };
+  },
 };
+

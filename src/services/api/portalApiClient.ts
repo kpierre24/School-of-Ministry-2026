@@ -309,6 +309,46 @@ export const portalApi = {
     return fetchJson<{ assignments: any[]; count: number }>('/assignments');
   },
 
+  async createAssignment(data: {
+    title: string;
+    description?: string;
+    courseCode?: string;
+    courseId?: string;
+    dueDate?: string;
+    dueAt?: string;
+    maxScore?: number;
+    maxPoints?: number;
+    weight?: number;
+    isPublished?: boolean;
+    rubric?: any;
+  }) {
+    return fetchJson<{ status: string; assignment: any }>('/assignments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateAssignment(
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      courseCode?: string;
+      dueDate?: string;
+      dueAt?: string;
+      maxScore?: number;
+      maxPoints?: number;
+      weight?: number;
+      isPublished?: boolean;
+      rubric?: any;
+    }
+  ) {
+    return fetchJson<{ status: string; assignment: any }>(`/assignments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
   async getSubmissions(studentName?: string) {
     const params = new URLSearchParams();
     if (studentName) params.set('studentName', studentName);
@@ -332,12 +372,29 @@ export const portalApi = {
     feedback?: string;
     rubricScores?: any;
     overrideReason?: string;
+    courseCode?: string;
   }) {
-    return fetchJson<{ status: string; score: number }>('/assignments/grade', {
+    return fetchJson<{ status: string; score: number }>('/grades', {
       method: 'POST',
       body: JSON.stringify(gradeData),
     });
   },
+
+  async updateGrade(
+    submissionId: string,
+    gradeData: {
+      score?: number;
+      feedback?: string;
+      rubricScores?: any;
+      overrideReason?: string;
+    }
+  ) {
+    return fetchJson<{ status: string; score: number }>(`/grades/${submissionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(gradeData),
+    });
+  },
+
 
   async transitionGradeLifecycle(data: {
     submissionId: string;

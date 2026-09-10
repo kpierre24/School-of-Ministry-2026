@@ -705,4 +705,161 @@ export const assignmentsService = {
       overrideApproved: true,
     };
   },
+
+  /**
+   * Creates a new assignment directly in relational assignments table.
+   */
+  async createAssignment(
+    data: {
+      title: string;
+      description?: string;
+      courseCode?: string;
+      courseId?: string;
+      courseDefinitionId?: string;
+      dueDate?: string;
+      dueAt?: string;
+      maxScore?: number;
+      maxPoints?: number;
+      weight?: number;
+      isPublished?: boolean;
+      rubric?: any;
+      allowedFileTypes?: string[];
+    },
+    actorUser: AuthenticatedUser
+  ): Promise<{ status: string; assignment: any }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+
+    const cleanTitle = data.title?.trim();
+    if (!cleanTitle) {
+      throw new Error('Assignment title is required');
+    }
+
+    const dueAt = data.dueAt || data.dueDate || new Date(Date.now() + 7 * 86400000).toISOString();
+    const maxPoints = data.maxPoints || data.maxScore || 100;
+    const courseCode = data.courseCode || 'MIN-101';
+
+    const insertPayload: any = {
+      title: cleanTitle,
+      description: data.description || '',
+      course_code: courseCode,
+      course_definition_id: data.courseDefinitionId || null,
+      due_at: dueAt,
+      max_points: maxPoints,
+      weight: data.weight || 10,
+      is_published: data.isPublished !== false,
+      rubric: data.rubric || null,
+      created_by_user_id: actorUser.userId,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+
+    let createdId = `asg_${Date.now()}`;
+    try {
+      const { data: inserted, error } = await supabase
+        .from('assignments')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (!error && inserted?.id) {
+        createdId = inserted.id;
+      }
+    } catch (err: any) {
+      logger.warn('Error inserting relational assignment:', err);
+    }
+
+    await logAuditEvent({
+      actorUserId: actorUser.userId,
+      actorRole: actorUser.role,
+      entityType: 'assignment',
+      entityId: createdId,
+      action: 'create',
+      newValues: { title: cleanTitle, courseCode, dueAt, maxPoints },
+      changedFields: ['title', 'course_code', 'due_at', 'max_points'],
+      reason: `Assignment '${cleanTitle}' created`,
+    });
+
+    return {
+      status: 'created',
+      assignment: {
+        id: createdId,
+        title: cleanTitle,
+        description: data.description || '',
+        courseCode,
+        dueDate: dueAt,
+        dueAt,
+        maxScore: maxPoints,
+        maxPoints,
+        weight: data.weight || 10,
+        isPublished: data.isPublished !== false,
+      },
+    };
+  },
+
+  /**
+   * Updates an existing assignment directly in relational assignments table.
+   */
+  async updateAssignment(
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      courseCode?: string;
+      dueDate?: string;
+      dueAt?: string;
+      maxScore?: number;
+      maxPoints?: number;
+      weight?: number;
+      isPublished?: boolean;
+      rubric?: any;
+    },
+    actorUser: AuthenticatedUser
+  ): Promise<{ status: string; assignment: any }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+
+    const updates: any = { updated_at: timestamp };
+    if (data.title !== undefined) updates.title = data.title.trim();
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.courseCode !== undefined) updates.course_code = data.courseCode;
+    if (data.dueAt !== undefined || data.dueDate !== undefined) updates.due_at = data.dueAt || data.dueDate;
+    if (data.maxPoints !== undefined || data.maxScore !== undefined) updates.max_points = data.maxPoints || data.maxScore;
+    if (data.weight !== undefined) updates.weight = data.weight;
+    if (data.isPublished !== undefined) updates.is_published = data.isPublished;
+    if (data.rubric !== undefined) updates.rubric = data.rubric;
+
+    let updatedRec: any = null;
+    try {
+      const { data: updated, error } = await supabase
+        .from('assignments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (!error && updated) {
+        updatedRec = updated;
+      }
+    } catch (err: any) {
+      logger.warn('Error updating relational assignment:', err);
+    }
+
+    await logAuditEvent({
+      actorUserId: actorUser.userId,
+      actorRole: actorUser.role,
+      entityType: 'assignment',
+      entityId: id,
+      action: 'update',
+      newValues: updates,
+      changedFields: Object.keys(updates),
+      reason: `Assignment ${id} updated`,
+    });
+
+    return {
+      status: 'updated',
+      assignment: updatedRec || { id, ...data, updatedAt: timestamp },
+    };
+  },
 };
+

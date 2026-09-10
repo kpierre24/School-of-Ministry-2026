@@ -15,7 +15,10 @@ import { attendanceRouter } from "./src/server/routes/attendance";
 import { paymentsRouter } from "./src/server/routes/payments";
 import { libraryRouter } from "./src/server/routes/library";
 import { assignmentsRouter } from "./src/server/routes/assignments";
+import { gradesRouter } from "./src/server/routes/grades";
+import { invoicesRouter } from "./src/server/routes/invoices";
 import { auditLogsRouter } from "./src/server/routes/auditLogs";
+
 import { stateRouter } from "./src/server/routes/state";
 import { meRouter } from "./src/server/routes/me";
 import { notificationsRouter } from "./src/server/routes/notifications";
@@ -128,9 +131,12 @@ async function startServer() {
   app.use("/api/academics", requireAuth, academicsRouter);
   app.use("/api/attendance", requireAuth, attendanceRouter);
   app.use("/api/payments", requireAuth, paymentsRateLimiter, paymentsRouter);
+  app.use("/api/invoices", requireAuth, paymentsRateLimiter, invoicesRouter);
   app.use("/api/library", requireAuth, libraryRouter);
   app.use("/api/assignments", requireAuth, assignmentsRateLimiter, assignmentsRouter);
+  app.use("/api/grades", requireAuth, assignmentsRateLimiter, gradesRouter);
   app.use("/api/audit-logs", requireAuth, adminRateLimiter, auditLogsRouter);
+
   app.use("/api/state", requireAuth, stateRateLimiter, stateRouter);
   app.use("/api/me", requireAuth, meRouter);
   app.use("/api/notifications", requireAuth, notificationsRouter);

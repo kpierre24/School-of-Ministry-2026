@@ -33,7 +33,69 @@ assignmentsRouter.get(
 );
 
 /**
+ * POST /api/assignments
+ * Creates a new assignment directly in relational assignments table.
+ * RBAC: Requires assignments:write
+ */
+assignmentsRouter.post(
+  "/",
+  requireAuth,
+  requirePermission(["assignments:grade", "grades:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { title, description, courseCode, courseId, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric } = req.body;
+
+      if (!title || typeof title !== "string") {
+        return res.status(400).json({ error: "Assignment title is required" });
+      }
+
+      const result = await assignmentsService.createAssignment(
+        { title, description, courseCode, courseId, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric },
+        user
+      );
+
+      return res.status(201).json(result);
+    } catch (err: any) {
+      logger.error("POST /api/assignments error:", err);
+      return res.status(500).json({ error: err?.message || "Failed to create assignment" });
+    }
+  }
+);
+
+/**
+ * PATCH /api/assignments/:id
+ * Updates an assignment directly in relational assignments table.
+ * RBAC: Requires assignments:grade / grades:write
+ */
+assignmentsRouter.patch(
+  "/:id",
+  requireAuth,
+  requirePermission(["assignments:grade", "grades:write", "all:access"]),
+  async (req: Request, res: Response) => {
+
+    try {
+      const user = req.user!;
+      const id = req.params.id;
+      const { title, description, courseCode, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric } = req.body;
+
+      const result = await assignmentsService.updateAssignment(
+        id,
+        { title, description, courseCode, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric },
+        user
+      );
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error(`PATCH /api/assignments/${req.params.id} error:`, err);
+      return res.status(500).json({ error: err?.message || "Failed to update assignment" });
+    }
+  }
+);
+
+/**
  * GET /api/assignments/submissions
+
  * Retrieves student submissions and rubric grades from relational tables.
  * RBAC: Requires assignments:read or grades:read. Students only retrieve their own submissions.
  */

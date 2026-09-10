@@ -309,3 +309,36 @@ studentsRouter.put(
     }
   }
 );
+
+/**
+ * PATCH /api/students/:id
+ * Updates specific student attributes (level, note, photoUrl, status) in relational database.
+ * Supports identifier by UUID PK or student name.
+ * RBAC: Requires students:write permission
+ */
+studentsRouter.patch(
+  "/:id",
+  requireAuth,
+  requirePermission(["students:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const idOrName = decodeURIComponent(req.params.id).trim();
+      const { level, note, photoUrl, status, enrollmentStatus, studentNumber } = req.body;
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
+
+      const result = await studentsService.updateStudent(
+        idOrName,
+        { level, note, photoUrl, enrollmentStatus: enrollmentStatus || status, studentNumber },
+        actorUserId,
+        actorRole
+      );
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error(`PATCH /api/students/${req.params.id} error:`, err);
+      return res.status(500).json({ error: err?.message || "Failed to update student" });
+    }
+  }
+);
+

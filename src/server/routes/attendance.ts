@@ -46,7 +46,84 @@ attendanceRouter.get(
 );
 
 /**
+ * POST /api/attendance
+ * Records single or batch attendance directly in relational PostgreSQL tables.
+ * RBAC: Requires attendance:write
+ */
+attendanceRouter.post(
+  "/",
+  requireAuth,
+  requirePermission(["attendance:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
+
+      // Handle batch records array
+      if (Array.isArray(req.body?.records)) {
+        const { date, records, sessionId, sessionTitle } = req.body;
+        const result = await attendanceService.recordBatchAttendance(
+          { date, records, sessionId, sessionTitle },
+          actorUserId,
+          actorRole
+        );
+        return res.status(200).json(result);
+      }
+
+      // Handle single check-in payload
+      const { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride } = req.body;
+      if (!date || !status) {
+        return res.status(400).json({ error: "date and status are required" });
+      }
+
+      const result = await attendanceService.recordCheckin(
+        { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride },
+        actorUserId,
+        actorRole
+      );
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error("POST /api/attendance error:", err);
+      return res.status(500).json({ error: err?.message || "Failed to record attendance" });
+    }
+  }
+);
+
+/**
+ * PATCH /api/attendance/:id
+ * Updates an individual attendance record by ID in relational PostgreSQL tables.
+ * RBAC: Requires attendance:write
+ */
+attendanceRouter.patch(
+  "/:id",
+  requireAuth,
+  requirePermission(["attendance:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const { status, notes, manualOverride } = req.body;
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
+
+      const result = await attendanceService.updateAttendanceRecord(
+        id,
+        { status, notes, manualOverride },
+        actorUserId,
+        actorRole
+      );
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error(`PATCH /api/attendance/${req.params.id} error:`, err);
+      return res.status(500).json({ error: err?.message || "Failed to update attendance record" });
+    }
+  }
+);
+
+/**
  * POST /api/attendance/checkin
+
  * Records student check-in status (PRESENT, ABSENT, LATE, EXCUSED) directly in PostgreSQL attendance table.
  * Strictly validates status enum; rejects arbitrary strings.
  * RBAC: Requires attendance:write.
