@@ -2,6 +2,13 @@ import { Router, Request, Response } from "express";
 import { attendanceService, validateAttendanceStatus } from "../services/domain";
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
+import { validateBody } from "../middleware/validation";
+import { 
+  CheckinSchema, 
+  BatchAttendanceSchema, 
+  OverrideAttendanceSchema, 
+  ExcuseAttendanceSchema 
+} from "../schemas/attendance.schema";
 
 export const attendanceRouter = Router();
 
@@ -56,22 +63,12 @@ attendanceRouter.post(
     }),
     allowedRoles: ["super_admin", "admin", "registrar"],
   }),
+  validateBody(CheckinSchema),
   async (req: Request, res: Response) => {
     try {
       const { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride } = req.body;
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
-
-      if ((!studentName && !studentId) || !date) {
-        return res.status(400).json({ error: "studentId or studentName, and date are required" });
-      }
-
-      // Enforce strict enum validation; reject arbitrary strings
-      try {
-        validateAttendanceStatus(status);
-      } catch (valErr: any) {
-        return res.status(400).json({ error: valErr.message });
-      }
 
       const result = await attendanceService.recordCheckin(
         { studentName, studentId, date, status, notes, studentEmail, sessionId, manualOverride },
@@ -98,34 +95,18 @@ attendanceRouter.post(
   "/batch",
   requireAuth,
   requirePermission(["attendance:write", "all:access"]),
+  validateBody(BatchAttendanceSchema),
   async (req: Request, res: Response) => {
     try {
       const { date, records: incomingRecords, sessionId, sessionTitle } = req.body;
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
-
-      if (!date || !Array.isArray(incomingRecords)) {
-        return res.status(400).json({ error: "date and records array are required" });
-      }
-
-      // Enforce strict enum validation across all records; reject arbitrary strings immediately
-      for (let i = 0; i < incomingRecords.length; i++) {
-        const r = incomingRecords[i];
-        try {
-          validateAttendanceStatus(r.status);
-        } catch (valErr: any) {
-          return res.status(400).json({
-            error: `Record #${i + 1} (${r.studentName || r.studentId || 'unknown'}): ${valErr.message}`,
-          });
-        }
-      }
-
+      
       const result = await attendanceService.recordBatchAttendance(
         { date, records: incomingRecords, sessionId, sessionTitle },
         actorUserId,
         actorRole
       );
-
       return res.status(200).json(result);
     } catch (err: any) {
       logger.error("POST /api/attendance/batch error:", err);
@@ -144,6 +125,7 @@ attendanceRouter.post(
   "/override",
   requireAuth,
   requirePermission(["attendance:approve", "all:access"]),
+  validateBody(OverrideAttendanceSchema),
   async (req: Request, res: Response) => {
     try {
       const { studentName, studentId, date, status, reason, sessionId } = req.body;
@@ -201,6 +183,7 @@ attendanceRouter.post(
     }),
     allowedRoles: ["super_admin", "admin", "registrar"],
   }),
+  validateBody(ExcuseAttendanceSchema),
   async (req: Request, res: Response) => {
     try {
       const { studentName, studentId, date, reason, documentUrl } = req.body;

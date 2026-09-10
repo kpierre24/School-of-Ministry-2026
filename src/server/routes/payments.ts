@@ -3,7 +3,7 @@ import { financeService } from "../services/domain";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 import { validateBody } from "../middleware/validation";
-import { RecordPaymentSchema } from "../schemas/finance.schema";
+import { RecordPaymentSchema, InvoiceSchema, AdjustmentSchema, RefundSchema } from "../schemas/finance.schema";
 
 export const paymentsRouter = Router();
 
@@ -50,15 +50,12 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/invoices",
   requirePermission(["finance:write", "all:access"]),
+  validateBody(InvoiceSchema),
   async (req: Request, res: Response) => {
     try {
       const { invoice } = req.body;
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
-
-      if (!invoice || (!invoice.studentName && !invoice.studentId)) {
-        return res.status(400).json({ error: "studentId or studentName is required" });
-      }
 
       const result = await financeService.saveInvoice(invoice, actorUserId, actorRole);
       return res.status(201).json(result);
@@ -163,15 +160,12 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/adjustments",
   requirePermission(["finance:write", "all:access"]),
+  validateBody(AdjustmentSchema),
   async (req: Request, res: Response) => {
     try {
       const { adjustment } = req.body;
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
-
-      if (!adjustment || !adjustment.invoiceId || !adjustment.amount) {
-        return res.status(400).json({ error: "invoiceId and adjustment amount are required" });
-      }
 
       const result = await financeService.applyFinancialAdjustment(adjustment, actorUserId, actorRole);
       return res.status(201).json(result);
@@ -214,15 +208,12 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/refunds",
   requirePermission(["finance:write", "all:access"]),
+  validateBody(RefundSchema),
   async (req: Request, res: Response) => {
     try {
       const { refund } = req.body;
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
-
-      if (!refund || !refund.amount) {
-        return res.status(400).json({ error: "refund amount is required" });
-      }
 
       const result = await financeService.recordRefund(refund, actorUserId, actorRole);
       return res.status(201).json(result);

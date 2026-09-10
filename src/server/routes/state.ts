@@ -54,12 +54,6 @@ stateRouter.get("/", async (req: Request, res: Response) => {
 stateRouter.post(
   "/",
   requirePermission([
-    "students:write",
-    "attendance:write",
-    "grades:write",
-    "finance:write",
-    "assignments:submit",
-    "roles:manage",
     "all:access"
   ]),
   async (req: Request, res: Response) => {
