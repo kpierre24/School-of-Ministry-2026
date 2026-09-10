@@ -3,7 +3,7 @@ import { attendanceService } from './attendanceService';
 import { academicsService } from './academicsService';
 import { assignmentsService } from './assignmentsService';
 import { financeService } from './financeService';
-import { getAuthoritativeState, getServerSupabase, isSupabaseConfigured } from '../supabaseServer';
+import { getServerSupabase, isSupabaseConfigured } from '../supabaseServer';
 import { AuthenticatedUser } from '../../../types/rbac';
 import { logger } from '../../../lib/logger';
 import { MASTER_ENROLLED_STUDENTS, CURRICULUM_CLASS_DAYS } from '../../../data/curriculum';
@@ -14,7 +14,7 @@ import { MASTER_ENROLLED_STUDENTS, CURRICULUM_CLASS_DAYS } from '../../../data/c
  */
 export const stateHydrationService = {
   /**
-   * Hydrates relational tables from initial/authoritative seed if relational tables are empty.
+   * Hydrates relational tables deterministically from static curriculum declarations if empty.
    */
   async ensureRelationalDataSeeded(): Promise<void> {
     if (!isSupabaseConfigured()) return;
@@ -28,10 +28,7 @@ export const stateHydrationService = {
         return;
       }
 
-      logger.info('Relational tables are unseeded. Performing initial migration bootstrap into PostgreSQL tables...');
-
-      // Load initial state or snapshot to populate relational tables
-      const seedState = (await getAuthoritativeState()) || {};
+      logger.info('Relational tables are unseeded. Performing deterministic migration bootstrap into PostgreSQL tables...');
 
       // 1. Seed Academic Years & Terms
       const { data: year } = await supabase
@@ -71,23 +68,20 @@ export const stateHydrationService = {
 
       // 2. Seed Master Courses & Offerings
       const defaultCourses = [
-        { code: 'MIN-101', title: 'Biblical Foundations & Covenant Life', core_module_number: 1 },
-        { code: 'MIN-102', title: 'Spiritual Authority & Prayer Warfare', core_module_number: 2 },
-        { code: 'MIN-103', title: 'Prophetic Ministry & Holy Spirit Gifts', core_module_number: 3 },
-        { code: 'MIN-104', title: 'Pastoral Leadership & Church Administration', core_module_number: 4 },
-        { code: 'MIN-105', title: 'Evangelism, Missions & Community Impact', core_module_number: 5 },
-        { code: 'MIN-106', title: 'Ministerial Ethics, Integrity & Honor', core_module_number: 6 },
+        { code: 'MIN-101', title: 'Biblical Foundations & Covenant Life', core_module_number: 1, credits: 5.0, department: 'Biblical Studies' },
+        { code: 'MIN-102', title: 'Spiritual Authority & Prayer Warfare', core_module_number: 2, credits: 5.0, department: 'Ministry Practice' },
+        { code: 'MIN-103', title: 'Prophetic Ministry & Holy Spirit Gifts', core_module_number: 3, credits: 5.0, department: 'Ministry Practice' },
+        { code: 'MIN-104', title: 'Pastoral Leadership & Church Administration', core_module_number: 4, credits: 5.0, department: 'Leadership' },
+        { code: 'MIN-105', title: 'Evangelism, Missions & Community Impact', core_module_number: 5, credits: 5.0, department: 'Missions' },
+        { code: 'MIN-106', title: 'Ministerial Ethics, Integrity & Honor', core_module_number: 6, credits: 5.0, department: 'Ethics' },
       ];
 
       for (const c of defaultCourses) {
         await supabase.from('course_definitions').upsert(c, { onConflict: 'code' });
       }
 
-      // 3. Seed Students & Profiles
-      const studentLevels = seedState.studentLevels || {};
-      const studentPhotos = seedState.studentPhotos || {};
-      const studentNotes = seedState.studentNotes || {};
-      const studentNames = Object.keys(studentLevels).length > 0 ? Object.keys(studentLevels) : MASTER_ENROLLED_STUDENTS;
+      // 3. Seed Students & Profiles deterministically
+      const studentNames = MASTER_ENROLLED_STUDENTS;
 
       for (let i = 0; i < studentNames.length; i++) {
         const name = studentNames[i];
@@ -108,14 +102,12 @@ export const stateHydrationService = {
             user_id: user.id,
             first_name: firstName,
             last_name: lastName,
-            avatar_url: studentPhotos[name.toLowerCase().trim()] || null,
-            bio: studentNotes[name] || '',
           }, { onConflict: 'user_id' });
 
           await supabase.from('students').upsert({
             user_id: user.id,
             student_number: studentNumber,
-            cohort_level: studentLevels[name] || 'Level 1 Foundation',
+            cohort_level: 'Level 1 Foundation',
             enrollment_status: 'active',
             admission_date: '2026-01-10',
           }, { onConflict: 'user_id' });
@@ -216,9 +208,40 @@ export const stateHydrationService = {
 
       return composedState;
     } catch (err) {
-      logger.error('Error composing state from relational tables, falling back to cached snapshot:', err);
-      // Fallback if relational queries encounter an error
-      return getAuthoritativeState(user.email);
+      logger.error('Error composing state from relational tables:', err);
+      return {
+        version: 2,
+        isRelationalAuthoritative: true,
+        updatedAt: new Date().toISOString(),
+        academicYears: [],
+        terms: [],
+        activeTermId: null,
+        masterCourses: [],
+        courses: [],
+        courseOfferings: [],
+        students: [],
+        studentLevels: {},
+        studentPhotos: {},
+        studentNotes: {},
+        records: [],
+        classDays: CURRICULUM_CLASS_DAYS,
+        excusedAbsences: {},
+        customAssignments: [],
+        submissions: [],
+        rubricScores: {},
+        invoices: [],
+        transactions: [],
+        payments: [],
+        receipts: [],
+        adjustments: [],
+        libraryResources: [],
+        sheetsUrl: '',
+        portalConfig: {
+          policyThreshold: '75%',
+          honorThreshold: '85%',
+          criticalThreshold: '50%',
+        },
+      };
     }
   },
 };
