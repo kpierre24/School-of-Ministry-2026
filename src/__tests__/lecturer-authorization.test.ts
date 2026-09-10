@@ -3,7 +3,7 @@ import { verifyLecturerCourseInDatabase } from '../server/middleware/rbac';
 import * as supabaseServer from '../server/services/supabaseServer';
 import { AuthenticatedUser } from '../types/rbac';
 
-describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
+describe('verifyLecturerCourseInDatabase - Relational Identity Model', () => {
   const lecturerUser: AuthenticatedUser = {
     uid: 'firebase-lecturer-123',
     userId: 'c1111111-1111-4111-8111-111111111111',
@@ -21,7 +21,7 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
     vi.clearAllMocks();
   });
 
-  it('should immediately return false if user role is not lecturer', async () => {
+  it('should immediately return false if user role is not lecturer or teacher', async () => {
     const studentUser: AuthenticatedUser = {
       ...lecturerUser,
       role: 'student',
@@ -36,7 +36,7 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
     expect(isAssigned).toBe(false);
   });
 
-  it('should authorize lecturer via direct targeted query on course_offerings using course_definition_id', async () => {
+  it('should authorize lecturer via relational chain: users.id -> course_offerings.lecturer_user_id -> course_definition_id', async () => {
     const mockSupabase = {
       from: vi.fn((table: string) => {
         if (table === 'course_definitions') {
@@ -53,8 +53,8 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
         if (table === 'course_offerings') {
           const chain: any = {
             select: vi.fn().mockReturnThis(),
-            or: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
             is: vi.fn().mockReturnThis(),
             limit: vi.fn().mockReturnThis(),
             maybeSingle: vi.fn().mockResolvedValue({
@@ -66,8 +66,8 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
         }
         return {
           select: vi.fn().mockReturnThis(),
-          or: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
           is: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
         };
@@ -79,11 +79,11 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
     const isAssigned = await verifyLecturerCourseInDatabase(lecturerUser, 'SOM-101');
     expect(isAssigned).toBe(true);
 
-    // Verify course_offerings was queried with limit(1) instead of selecting all records
+    // Verify course_offerings was queried by lecturer_user_id
     expect(mockSupabase.from).toHaveBeenCalledWith('course_offerings');
   });
 
-  it('should reject lecturer if targeted course_offerings query returns null', async () => {
+  it('should reject lecturer if course_offerings has no matching lecturer_user_id and course_definition_id', async () => {
     const mockSupabase = {
       from: vi.fn((table: string) => {
         if (table === 'course_definitions') {
@@ -100,24 +100,12 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
         if (table === 'course_offerings') {
           return {
             select: vi.fn().mockReturnThis(),
-            or: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
             is: vi.fn().mockReturnThis(),
             limit: vi.fn().mockReturnThis(),
             maybeSingle: vi.fn().mockResolvedValue({
               data: null,
-              error: null,
-            }),
-          };
-        }
-        if (table === 'users') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            or: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            is: vi.fn().mockReturnThis(),
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { assigned_courses: [] },
               error: null,
             }),
           };
@@ -133,6 +121,9 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
 
     const isAssigned = await verifyLecturerCourseInDatabase(lecturerUser, 'SOM-101');
     expect(isAssigned).toBe(false);
+
+    // users table should NOT be queried for assigned_courses fallback
+    expect(mockSupabase.from).not.toHaveBeenCalledWith('users');
   });
 
   it('should accept direct UUID course definition parameter without querying course_definitions', async () => {
@@ -141,8 +132,8 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
         if (table === 'course_offerings') {
           return {
             select: vi.fn().mockReturnThis(),
-            or: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
             is: vi.fn().mockReturnThis(),
             limit: vi.fn().mockReturnThis(),
             maybeSingle: vi.fn().mockResolvedValue({
@@ -165,6 +156,56 @@ describe('verifyLecturerCourseInDatabase - Targeted Query Optimization', () => {
 
     // course_definitions table should NOT be queried when input is already a UUID
     expect(mockSupabase.from).not.toHaveBeenCalledWith('course_definitions');
+    expect(mockSupabase.from).toHaveBeenCalledWith('course_offerings');
+  });
+
+  it('should resolve non-UUID userId to users.id from users table before querying course_offerings', async () => {
+    const unnormalizedLecturer: AuthenticatedUser = {
+      ...lecturerUser,
+      userId: 'firebase-uid-only',
+      id: 'firebase-uid-only',
+    };
+
+    const mockSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'users') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: lecturerUser.userId },
+              error: null,
+            }),
+          };
+        }
+        if (table === 'course_offerings') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: offeringId },
+              error: null,
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }),
+    };
+
+    vi.spyOn(supabaseServer, 'getServerSupabase').mockReturnValue(mockSupabase as any);
+
+    const isAssigned = await verifyLecturerCourseInDatabase(unnormalizedLecturer, courseDefId);
+    expect(isAssigned).toBe(true);
+
+    // Verified lookup in users table by firebase_uid
+    expect(mockSupabase.from).toHaveBeenCalledWith('users');
     expect(mockSupabase.from).toHaveBeenCalledWith('course_offerings');
   });
 });

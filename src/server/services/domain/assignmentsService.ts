@@ -21,49 +21,43 @@ export const assignmentsService = {
         if (user && user.role === 'student') {
           filtered = assignments.filter((a: any) => a.is_published !== false);
         } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
-          const cleanEmail = (user.email || '').trim().toLowerCase();
-          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
-
-          // Query course_offerings to find matching courses
-          const { data: offerings } = await supabase
-            .from('course_offerings')
-            .select(`
-              id,
-              course_definition_id,
-              lecturer_email,
-              lecturer_name,
-              course_definitions (
-                id,
-                code
-              )
-            `)
-            .is('deleted_at', null);
+          let lecturerUserId = (user.userId || user.id || '').trim();
+          const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!UUID_REGEX.test(lecturerUserId)) {
+            const { data: u } = await supabase
+              .from('users')
+              .select('id')
+              .or(`firebase_uid.eq.${user.uid || lecturerUserId},id.eq.${lecturerUserId}`)
+              .is('deleted_at', null)
+              .maybeSingle();
+            if (u?.id) lecturerUserId = u.id;
+          }
 
           const allowedCourseIdentifiers = new Set<string>();
 
-          // Also add any explicitly assigned courses from user record
-          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
-          assignedFromUser.forEach(c => {
-            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
-          });
+          if (UUID_REGEX.test(lecturerUserId)) {
+            // Relational query: users.id -> course_offerings.lecturer_user_id -> course_definition_id
+            const { data: offerings } = await supabase
+              .from('course_offerings')
+              .select(`
+                id,
+                course_definition_id,
+                lecturer_user_id,
+                course_definitions (
+                  id,
+                  code
+                )
+              `)
+              .eq('lecturer_user_id', lecturerUserId)
+              .is('deleted_at', null);
 
-          if (offerings) {
-            offerings.forEach((off: any) => {
-              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
-              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
-
-              const lecturerMatches =
-                (cleanEmail && offLecturerEmail === cleanEmail) ||
-                (cleanName && offLecturerName === cleanName) ||
-                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
-                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
-
-              if (lecturerMatches) {
+            if (offerings) {
+              offerings.forEach((off: any) => {
                 if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
                 if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
                 if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
-              }
-            });
+              });
+            }
           }
 
           filtered = assignments.filter((a: any) => {
@@ -189,49 +183,43 @@ export const assignmentsService = {
                      ((sub as any).student_id && ((sub as any).student_id === studentUuid || (sub as any).student_id === userUuid))
           );
         } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
-          const cleanEmail = (user.email || '').trim().toLowerCase();
-          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
-
-          // Query course_offerings to find matching courses
-          const { data: offerings } = await supabase
-            .from('course_offerings')
-            .select(`
-              id,
-              course_definition_id,
-              lecturer_email,
-              lecturer_name,
-              course_definitions (
-                id,
-                code
-              )
-            `)
-            .is('deleted_at', null);
+          let lecturerUserId = (user.userId || user.id || '').trim();
+          const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!UUID_REGEX.test(lecturerUserId)) {
+            const { data: u } = await supabase
+              .from('users')
+              .select('id')
+              .or(`firebase_uid.eq.${user.uid || lecturerUserId},id.eq.${lecturerUserId}`)
+              .is('deleted_at', null)
+              .maybeSingle();
+            if (u?.id) lecturerUserId = u.id;
+          }
 
           const allowedCourseIdentifiers = new Set<string>();
 
-          // Also add any explicitly assigned courses from user record
-          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
-          assignedFromUser.forEach(c => {
-            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
-          });
+          if (UUID_REGEX.test(lecturerUserId)) {
+            // Relational query: users.id -> course_offerings.lecturer_user_id -> course_definition_id
+            const { data: offerings } = await supabase
+              .from('course_offerings')
+              .select(`
+                id,
+                course_definition_id,
+                lecturer_user_id,
+                course_definitions (
+                  id,
+                  code
+                )
+              `)
+              .eq('lecturer_user_id', lecturerUserId)
+              .is('deleted_at', null);
 
-          if (offerings) {
-            offerings.forEach((off: any) => {
-              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
-              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
-
-              const lecturerMatches =
-                (cleanEmail && offLecturerEmail === cleanEmail) ||
-                (cleanName && offLecturerName === cleanName) ||
-                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
-                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
-
-              if (lecturerMatches) {
+            if (offerings) {
+              offerings.forEach((off: any) => {
                 if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
                 if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
                 if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
-              }
-            });
+              });
+            }
           }
 
           result = formatted.filter((sub) => {

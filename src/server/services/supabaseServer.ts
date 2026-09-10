@@ -1225,6 +1225,19 @@ export async function provisionOrApproveUserByAdmin({
       // Non-blocking student linkage fallback
     }
 
+    // Link corresponding course_offerings table records if role is lecturer or teacher
+    if (savedUser?.id && (normalizedRole === 'lecturer' || normalizedRole === 'teacher')) {
+      try {
+        await supabase
+          .from('course_offerings')
+          .update({ lecturer_user_id: savedUser.id })
+          .ilike('lecturer_email', cleanEmail)
+          .is('lecturer_user_id', null);
+      } catch {
+        // Non-blocking course_offerings linkage fallback
+      }
+    }
+
     // Authoritative Audit Log
     try {
       await logAuditEvent({

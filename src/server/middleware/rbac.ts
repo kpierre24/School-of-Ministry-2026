@@ -862,32 +862,36 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
  * Verifies whether a lecturer is assigned to teach a course by querying the authoritative database.
  * Does NOT trust client-supplied or unverified in-memory claims.
  *
- * Uses targeted SQL queries:
- * SELECT 1 FROM course_offerings WHERE lecturer_user_id = ? AND course_definition_id = ?
- * Eliminates full table scans and in-memory JavaScript filtering for optimal speed, security, and auditability.
+ * Uses the pure relational identity chain:
+ * users.id -> course_offerings.lecturer_user_id -> course_definition_id
+ *
+ * SELECT 1 FROM course_offerings 
+ * WHERE lecturer_user_id = users.id 
+ *   AND (course_definition_id = course_definition_id OR id = course_definition_id)
+ *   AND deleted_at IS NULL 
+ * LIMIT 1;
  */
 export async function verifyLecturerCourseInDatabase(
   user: AuthenticatedUser,
   courseCode: string
 ): Promise<boolean> {
-  if (!user || user.role !== "lecturer" || !courseCode) {
+  if (!user || (user.role !== "lecturer" && user.role !== "teacher") || !courseCode) {
     return false;
   }
 
   const cleanCourse = courseCode.trim().toUpperCase();
-  const cleanEmail = (user.email || "").trim().toLowerCase();
   let lecturerUserId = (user.userId || user.id || "").trim();
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   try {
     const supabase = getServerSupabase();
 
-    // 1. Resolve internal lecturer UUID if not already a valid UUID
+    // 1. Resolve internal lecturer UUID (users.id)
     if (!UUID_REGEX.test(lecturerUserId)) {
       const { data: u, error: uErr } = await supabase
         .from("users")
         .select("id")
-        .or(`firebase_uid.eq.${user.uid || lecturerUserId},email.eq.${cleanEmail}`)
+        .or(`firebase_uid.eq.${user.uid || lecturerUserId},id.eq.${lecturerUserId}`)
         .is("deleted_at", null)
         .maybeSingle();
 
@@ -897,6 +901,11 @@ export async function verifyLecturerCourseInDatabase(
       if (u?.id) {
         lecturerUserId = u.id;
       }
+    }
+
+    if (!UUID_REGEX.test(lecturerUserId)) {
+      // Cannot authorize without a valid relational users.id
+      return false;
     }
 
     // 2. Resolve course_definition_id from courseCode (which may be a UUID or course code e.g. 'SOM-101')
@@ -939,64 +948,26 @@ export async function verifyLecturerCourseInDatabase(
       }
     }
 
-    // 3. Direct targeted query:
-    // SELECT 1 FROM course_offerings WHERE lecturer_user_id = ? AND course_definition_id = ?
-    if (courseDefinitionId) {
-      const hasValidLecturerUuid = UUID_REGEX.test(lecturerUserId);
-
-      let query = supabase
-        .from("course_offerings")
-        .select("id")
-        .or(`course_definition_id.eq.${courseDefinitionId},id.eq.${courseDefinitionId}`)
-        .is("deleted_at", null);
-
-      if (hasValidLecturerUuid && cleanEmail) {
-        query = query.or(`lecturer_user_id.eq.${lecturerUserId},lecturer_email.eq.${cleanEmail}`);
-      } else if (hasValidLecturerUuid) {
-        query = query.eq("lecturer_user_id", lecturerUserId);
-      } else if (cleanEmail) {
-        query = query.eq("lecturer_email", cleanEmail);
-      }
-
-      const { data: offering, error: offErr } = await query.limit(1).maybeSingle();
-
-      if (offErr) {
-        throw new DatabaseServiceError("Database error querying course_offerings by lecturer and course", offErr);
-      }
-
-      if (offering) {
-        return true;
-      }
+    if (!courseDefinitionId) {
+      return false;
     }
 
-    // 4. Secondary fallback: Check `users` table for database-persisted assigned_courses array
-    const userQuery = supabase
-      .from("users")
-      .select("id, email, assigned_courses, role")
-      .is("deleted_at", null);
+    // 3. Relational query:
+    // users.id -> course_offerings.lecturer_user_id -> course_definition_id
+    const { data: offering, error: offErr } = await supabase
+      .from("course_offerings")
+      .select("id")
+      .eq("lecturer_user_id", lecturerUserId)
+      .or(`course_definition_id.eq.${courseDefinitionId},id.eq.${courseDefinitionId}`)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
 
-    const { data: dbUser, error: userErr } = await (UUID_REGEX.test(lecturerUserId) && cleanEmail
-      ? userQuery.or(`id.eq.${lecturerUserId},email.eq.${cleanEmail}`)
-      : UUID_REGEX.test(lecturerUserId)
-      ? userQuery.eq("id", lecturerUserId)
-      : userQuery.eq("email", cleanEmail)
-    ).maybeSingle();
-
-    if (userErr) {
-      throw new DatabaseServiceError("Database error querying users table for assigned courses", userErr);
+    if (offErr) {
+      throw new DatabaseServiceError("Database error querying course_offerings by lecturer and course", offErr);
     }
 
-    if (dbUser?.assigned_courses && Array.isArray(dbUser.assigned_courses)) {
-      const hasAssignment = dbUser.assigned_courses.some((c: string) => {
-        const upper = String(c).trim().toUpperCase();
-        return upper === cleanCourse || cleanCourse.includes(upper);
-      });
-      if (hasAssignment) {
-        return true;
-      }
-    }
-
-    return false;
+    return Boolean(offering);
   } catch (err) {
     if (err instanceof DatabaseServiceError || (err as any)?.isDatabaseError) {
       throw err;
