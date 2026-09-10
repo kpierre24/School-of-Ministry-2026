@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-const AttendanceStatusEnum = z.enum(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'], {
-  errorMap: () => ({ message: "Invalid attendance status" })
-});
+const AttendanceStatusEnum = z.enum(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
+  .refine(val => ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'].includes(val), {
+    message: "Invalid attendance status"
+  });
 
 export const CheckinSchema = z.object({
   studentId: z.string().uuid().optional(),
