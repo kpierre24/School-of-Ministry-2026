@@ -34,7 +34,18 @@ jobs:
       - name: Migration Execution & Status Verification
         run: |
           echo "Executing migrations on production..."
-          supabase link --project-ref $PROJECT_ID --password $SUPABASE_DB_PASSWORD
+
+          # Guard: fail with a clear message if required secrets are not configured
+          if [ -z "$PROJECT_ID" ]; then
+            echo "::error::SUPABASE_PROJECT_ID secret is not set. Add it in Settings → Secrets → Actions."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::SUPABASE_DB_PASSWORD secret is not set. Add it in Settings → Secrets → Actions."
+            exit 1
+          fi
+
+          supabase link --project-ref "$PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
           supabase db push
 
       - name: Verify Constraint Deployments
