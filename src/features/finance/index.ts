@@ -12,7 +12,7 @@ export * from './hooks/useFinance';
 
 // Components
 export * from './components/FinancePage';
-export * from './components/FinancialSummary';
+export { FinancialSummary as FinancialSummaryComponent } from './components/FinancialSummary';
 export * from './components/InvoiceList';
 export * from './components/InvoiceDetails';
 export * from './components/InvoiceForm';
