@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { getServerSupabase } from "../services/supabaseServer";
+import { getServerSupabase, logAuditEvent } from "../services/supabaseServer";
 import { verifyIdToken } from "../services/firebaseAuth";
 import { UserRole, Permission, AuthenticatedUser, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from "../../types/rbac";
 import { logger } from "../../lib/logger";
@@ -34,21 +34,64 @@ export function toDbUserRole(role: UserRole): "admin" | "teacher" | "student" | 
 }
 
 /**
- * Enrollment-based Policy:
- * Verifies whether an email or student number corresponds to an active enrollment
- * or pre-configured record strictly in PostgreSQL relational tables before activating a user account.
+ * Checks if a candidate role is an administrative role ('admin' or 'super_admin').
+ * Administrative roles must NEVER be granted through automatic enrollment.
  */
-export async function checkEnrollmentMatch(
-  cleanEmail: string,
-  supabase: any
-): Promise<{
+export function isAdministrativeRole(role?: string | null): boolean {
+  if (!role) return false;
+  const clean = role.toLowerCase().trim();
+  if (clean === "staff") return false;
+  const norm = normalizeUserRole(clean);
+  return norm === "super_admin" || norm === "admin";
+}
+
+/**
+ * Checks if a candidate role is an elevated faculty or staff role
+ * requiring explicit administrator approval before account activation.
+ */
+export function isElevatedStaffOrLecturerRole(role?: string | null): boolean {
+  if (!role) return false;
+  const clean = role.toLowerCase().trim();
+  if (clean === "staff") return true;
+  const norm = normalizeUserRole(clean);
+  return (
+    norm === "lecturer" ||
+    norm === "teacher" ||
+    norm === "registrar" ||
+    norm === "finance_officer" ||
+    norm === "librarian"
+  );
+}
+
+export interface SourceRecordDetails {
+  table: "profiles" | "students" | "course_offerings" | string;
+  id?: string;
+  matchedField: string;
+  matchedValue: string;
+  originalRole?: string;
+  recordSummary?: Record<string, any>;
+}
+
+export interface EnrollmentMatchResult {
   isEnrolled: boolean;
   role?: UserRole;
   studentRecordId?: string;
   studentNumber?: string;
   studentName?: string;
   assignedCourses?: string[];
-}> {
+  sourceRecord?: SourceRecordDetails;
+}
+
+/**
+ * Enrollment-based Policy:
+ * Verifies whether an email or student number corresponds to an active enrollment
+ * or pre-configured record strictly in PostgreSQL relational tables before activating a user account.
+ * Captures source record details and rationale for audit persistence.
+ */
+export async function checkEnrollmentMatch(
+  cleanEmail: string,
+  supabase: any
+): Promise<EnrollmentMatchResult> {
   if (!cleanEmail) return { isEnrolled: false };
 
   // Check relational database profiles, students, and course_offerings tables in PostgreSQL
@@ -69,7 +112,6 @@ export async function checkEnrollmentMatch(
       let matchedRole: UserRole = "student";
       if (prof.role) {
         matchedRole = normalizeUserRole(prof.role);
-        if (matchedRole === "super_admin") matchedRole = "admin";
       }
       return {
         isEnrolled: true,
@@ -77,6 +119,20 @@ export async function checkEnrollmentMatch(
         studentRecordId: std?.id,
         studentNumber: std?.student_number,
         studentName: `${prof.first_name || ""} ${prof.last_name || ""}`.trim() || undefined,
+        sourceRecord: {
+          table: "profiles",
+          id: prof.id,
+          matchedField: "email",
+          matchedValue: cleanEmail,
+          originalRole: prof.role,
+          recordSummary: {
+            profileId: prof.id,
+            email: prof.email,
+            role: prof.role,
+            studentRecordId: std?.id,
+            studentNumber: std?.student_number,
+          },
+        },
       };
     }
 
@@ -97,6 +153,17 @@ export async function checkEnrollmentMatch(
         role: "student",
         studentRecordId: stdDirect.id,
         studentNumber: stdDirect.student_number,
+        sourceRecord: {
+          table: "students",
+          id: stdDirect.id,
+          matchedField: "student_number|id",
+          matchedValue: cleanEmail,
+          originalRole: "student",
+          recordSummary: {
+            studentRecordId: stdDirect.id,
+            studentNumber: stdDirect.student_number,
+          },
+        },
       };
     }
 
@@ -116,6 +183,18 @@ export async function checkEnrollmentMatch(
         isEnrolled: true,
         role: "lecturer",
         studentName: facultyOffering.lecturer_name,
+        sourceRecord: {
+          table: "course_offerings",
+          id: facultyOffering.id,
+          matchedField: "lecturer_email",
+          matchedValue: cleanEmail,
+          originalRole: "lecturer",
+          recordSummary: {
+            courseOfferingId: facultyOffering.id,
+            lecturerName: facultyOffering.lecturer_name,
+            lecturerEmail: cleanEmail,
+          },
+        },
       };
     }
   } catch (dbErr) {
@@ -224,7 +303,11 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
 
   // Enrollment-based Policy:
   // If user does not exist in PostgreSQL users table, check PostgreSQL enrollment/profile records.
-  // Account is ONLY activated if a valid enrollment match is found in PostgreSQL.
+  // Account activation enforces strict separated provisioning rules:
+  // 1. Students may be automatically activated from valid enrollment.
+  // 2. Lecturers and staff require explicit administrator approval prior to activation.
+  // 3. Administrative roles must never be granted through automatic enrollment.
+  // 4. All provisioning events are authoritatively logged with source record and reason.
   if (!dbUser && cleanEmail) {
     const enrollment = await checkEnrollmentMatch(cleanEmail, supabase);
 
@@ -233,30 +316,100 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
       return null;
     }
 
-    if (enrollment.role) {
-      // Ordinary registration/enrollment can NEVER grant super_admin
-      assignedRole = enrollment.role === "super_admin" ? "admin" : enrollment.role;
+    const candidateRole = enrollment.role ? normalizeUserRole(enrollment.role) : "student";
+    const requestId = (req.headers["x-request-id"] as string) || undefined;
+    const ipAddress = (req.ip || req.socket?.remoteAddress || "unknown-ip") as string;
+    const userAgent = req.headers["user-agent"] as string | undefined;
+
+    // RULE 1: Administrative roles must NEVER be granted through automatic enrollment
+    if (isAdministrativeRole(candidateRole)) {
+      logger.error(
+        `SECURITY VIOLATION: Blocked automatic administrative account provisioning attempt for ${cleanEmail} (candidate role: ${candidateRole})`
+      );
+
+      try {
+        await logAuditEvent({
+          actorUserId: null,
+          actorRole: "system",
+          entityType: "user_provisioning",
+          entityId: cleanEmail,
+          action: "provisioning_blocked_admin_prohibited",
+          oldValues: null,
+          newValues: {
+            email: cleanEmail,
+            attemptedRole: candidateRole,
+            sourceRecord: enrollment.sourceRecord,
+            status: "blocked_prohibited",
+          },
+          reason: "Security Policy: Administrative roles must never be granted through automatic enrollment",
+          requestId,
+          ipAddress,
+          userAgent,
+        });
+      } catch (auditErr) {
+        logger.warn("Warning logging admin provisioning block audit event:", auditErr);
+      }
+
+      return null;
+    }
+
+    // RULE 2: Lecturers and staff require explicit administrator approval prior to activation
+    if (isElevatedStaffOrLecturerRole(candidateRole)) {
+      logger.warn(
+        `Account provisioning pending administrator approval for ${cleanEmail} (candidate elevated role: ${candidateRole})`
+      );
+
+      try {
+        await logAuditEvent({
+          actorUserId: null,
+          actorRole: "system",
+          entityType: "user_provisioning",
+          entityId: cleanEmail,
+          action: "provisioning_blocked_approval_required",
+          oldValues: null,
+          newValues: {
+            email: cleanEmail,
+            candidateRole: candidateRole,
+            sourceRecord: enrollment.sourceRecord,
+            status: "pending_approval",
+          },
+          reason: "Security Policy: Lecturers and staff require administrator approval prior to account activation",
+          requestId,
+          ipAddress,
+          userAgent,
+        });
+      } catch (auditErr) {
+        logger.warn("Warning logging lecturer/staff approval requirement audit event:", auditErr);
+      }
+
+      return null;
+    }
+
+    // RULE 3: Students may be automatically activated from valid enrollment
+    if (candidateRole !== "student") {
+      logger.warn(`Rejected automatic provisioning for unapproved role '${candidateRole}' for ${cleanEmail}`);
+      return null;
     }
 
     try {
-      const dbRole = toDbUserRole(assignedRole);
       const { data: createdUser, error: insertErr } = await supabase
         .from("users")
         .insert({
           email: cleanEmail,
-          role: dbRole,
+          role: "student",
           is_active: true,
         })
         .select("id, email, role, is_active, assigned_courses")
         .maybeSingle();
 
       if (insertErr) {
-        throw new DatabaseServiceError("Failed to activate user account in database", insertErr);
+        throw new DatabaseServiceError("Failed to activate student account in database", insertErr);
       }
 
       if (createdUser) {
         dbUser = createdUser;
-        logger.info(`Activated enrolled user account in PostgreSQL for ${cleanEmail} (role: ${dbRole})`);
+        assignedRole = "student";
+        logger.info(`Activated enrolled student account in PostgreSQL for ${cleanEmail}`);
 
         // If enrollment matched a database student record, link user_id
         if (enrollment.studentRecordId) {
@@ -270,13 +423,41 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
             logger.warn("Warning linking student record user_id:", updateErr);
           }
         }
+
+        // RULE 4: Provisioning events should be logged with the source record and reason
+        try {
+          await logAuditEvent({
+            actorUserId: createdUser.id,
+            actorRole: "system",
+            entityType: "user_provisioning",
+            entityId: createdUser.id,
+            action: "auto_provision_student",
+            oldValues: null,
+            newValues: {
+              userId: createdUser.id,
+              email: cleanEmail,
+              role: "student",
+              studentRecordId: enrollment.studentRecordId,
+              studentNumber: enrollment.studentNumber,
+              studentName: enrollment.studentName,
+              sourceRecord: enrollment.sourceRecord,
+              status: "active",
+            },
+            reason: "Automatic student account activation from verified enrollment record",
+            requestId,
+            ipAddress,
+            userAgent,
+          });
+        } catch (auditErr) {
+          logger.warn("Warning logging student auto-provisioning audit event:", auditErr);
+        }
       }
     } catch (insertErr) {
       if (insertErr instanceof DatabaseServiceError || (insertErr as any)?.isDatabaseError) {
         throw insertErr;
       }
       logger.error("Could not insert user into PostgreSQL database users table:", insertErr);
-      throw new DatabaseServiceError("Database error during account activation", insertErr);
+      throw new DatabaseServiceError("Database error during student account activation", insertErr);
     }
   }
 

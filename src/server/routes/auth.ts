@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, getDatabaseUsers, updateUserRoleInDatabase } from "../services/supabaseServer";
+import { getAuthoritativeState, getDatabaseUsers, updateUserRoleInDatabase, provisionOrApproveUserByAdmin, getPendingAccountApprovals } from "../services/supabaseServer";
 import { UserRole, ROLE_DEFINITIONS, normalizeUserRole } from "../../types/rbac";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
@@ -176,3 +176,79 @@ authRouter.patch(
     }
   }
 );
+
+/**
+ * GET /api/auth/pending-approvals
+ * Lists faculty and staff candidate accounts awaiting administrator approval.
+ * RBAC: Requires users:manage
+ */
+authRouter.get(
+  "/pending-approvals",
+  requirePermission(["users:manage", "all:access"]),
+  async (_req: Request, res: Response) => {
+    try {
+      const pending = await getPendingAccountApprovals();
+      return res.status(200).json({
+        pending,
+        count: pending.length,
+      });
+    } catch (err: any) {
+      logger.error("GET /api/auth/pending-approvals error:", err);
+      return res.status(500).json({ error: "Failed to fetch pending approvals" });
+    }
+  }
+);
+
+/**
+ * POST /api/auth/users/provision
+ * Explicitly provisions or approves a user account (e.g. lecturer, staff, student) by an administrator.
+ * RBAC: Requires users:manage
+ */
+authRouter.post(
+  "/users/provision",
+  requirePermission(["users:manage", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const { email, role, reason, assignedCourses, sourceRecord } = req.body;
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
+      const requestId = (req.headers["x-request-id"] as string) || undefined;
+      const ipAddress = req.ip || req.socket.remoteAddress || "unknown-ip";
+      const userAgent = req.headers["user-agent"];
+
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Valid email is required" });
+      }
+
+      if (!role || typeof role !== "string") {
+        return res.status(400).json({ error: "role is required" });
+      }
+
+      const result = await provisionOrApproveUserByAdmin({
+        email,
+        role,
+        actorUserId,
+        actorRole,
+        reason,
+        assignedCourses,
+        sourceRecord,
+        requestId,
+        ipAddress,
+        userAgent,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error || "Failed to provision user" });
+      }
+
+      return res.status(200).json({
+        status: "provisioned",
+        user: result.user,
+      });
+    } catch (err: any) {
+      logger.error("POST /api/auth/users/provision error:", err);
+      return res.status(500).json({ error: "Failed to provision user" });
+    }
+  }
+);
+

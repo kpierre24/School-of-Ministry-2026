@@ -749,14 +749,16 @@ export const financeService = {
     actorUserId?: string,
     actorRole?: string
   ): Promise<{ status: string; payment: any; updatedInvoices?: any[] }> {
+    // Validate cheap input constraints before acquiring any privileged resources
+    const amount = Number(paymentInput.amount || 0);
+    if (isNaN(amount) || amount <= 0) {
+      throw new Error('Payment amount must be greater than zero');
+    }
+
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
 
     try {
-      const amount = Number(paymentInput.amount || 0);
-      if (isNaN(amount) || amount <= 0) {
-        throw new Error('Payment amount must be greater than zero');
-      }
 
       // Resolve student
       let studentId = paymentInput.studentId;

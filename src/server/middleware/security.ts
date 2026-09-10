@@ -48,7 +48,8 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000, bucket
       }
       
       // 2. Fallback to Express trusted IP (which properly parses x-forwarded-for when trust proxy is configured)
-      const ip = ipKeyGenerator(req) || "unknown-ip";
+      const rawIp = req.ip || req.socket.remoteAddress || "127.0.0.1";
+      const ip = ipKeyGenerator(rawIp) || "unknown-ip";
       return `${bucketName}:ip:${ip}`;
     },
     // Handler triggered when limit is exceeded

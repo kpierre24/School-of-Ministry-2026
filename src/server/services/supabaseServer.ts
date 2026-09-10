@@ -2,7 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { logger } from '../../lib/logger';
 import { sanitizeProductionState, isDemoRecord, isDemoUser } from '../../data/guards';
-import { AuthenticatedUser } from '../../types/rbac';
+import { AuthenticatedUser, normalizeUserRole } from '../../types/rbac';
 
 let serverSupabaseClient: SupabaseClient | null = null;
 
@@ -53,6 +53,13 @@ export function getServerSupabase(): SupabaseClient {
 
   logger.info("Initialized authoritative server-side Supabase client with SUPABASE_SERVICE_ROLE_KEY");
   return serverSupabaseClient;
+}
+
+/**
+ * Test & mocking helper to set the internal server Supabase client.
+ */
+export function setServerSupabaseClient(client: any): void {
+  serverSupabaseClient = client;
 }
 
 export class StateConcurrencyError extends Error {
@@ -1004,3 +1011,268 @@ export async function updateUserRoleInDatabase(
     return { success: false, error: err.message || 'Failed to update user role' };
   }
 }
+
+/**
+ * Maps application UserRole to PostgreSQL users table check constraint:
+ * ('admin' | 'teacher' | 'student' | 'staff')
+ */
+function toDbUserRole(role: string): "admin" | "teacher" | "student" | "staff" {
+  if (role === "super_admin" || role === "admin") return "admin";
+  if (role === "lecturer" || role === "teacher") return "teacher";
+  if (role === "registrar" || role === "finance_officer" || role === "librarian" || role === "staff") return "staff";
+  return "student";
+}
+
+/**
+ * Explicitly provisions or approves a user account (e.g. lecturer, staff, student) by an administrator.
+ * Authoritatively persists the record in PostgreSQL users table and records an audit trail.
+ */
+export async function provisionOrApproveUserByAdmin({
+  email,
+  role,
+  actorUserId,
+  actorRole,
+  reason,
+  assignedCourses,
+  sourceRecord,
+  requestId,
+  ipAddress,
+  userAgent,
+}: {
+  email: string;
+  role: string;
+  actorUserId: string;
+  actorRole: string;
+  reason?: string;
+  assignedCourses?: string[];
+  sourceRecord?: any;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}): Promise<{ success: boolean; user?: any; error?: string }> {
+  try {
+    const supabase = getServerSupabase();
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail) {
+      return { success: false, error: 'Valid email is required for account provisioning' };
+    }
+
+    const normalizedRole = normalizeUserRole(role);
+
+    // Security Restriction: No client/API call can assign super_admin.
+    if (normalizedRole === 'super_admin') {
+      try {
+        await logAuditEvent({
+          actorUserId: actorUserId || null,
+          actorRole: actorRole || 'unknown',
+          entityType: 'super_admin_role',
+          entityId: cleanEmail,
+          action: 'unauthorized_super_admin_provisioning_attempt',
+          oldValues: null,
+          newValues: { attemptedRole: 'super_admin', email: cleanEmail },
+          changedFields: ['role'],
+          reason: reason || 'Attempted administrative API assignment of super_admin role',
+          requestId,
+          ipAddress,
+          userAgent,
+        });
+      } catch (auditErr) {
+        logger.warn('Warning writing super_admin provisioning rejection audit event:', auditErr);
+      }
+
+      return {
+        success: false,
+        error: 'Security Policy Violation: The super_admin role cannot be assigned via client API calls. Explicit database provisioning is required.',
+      };
+    }
+
+    const dbRole = toDbUserRole(normalizedRole);
+
+    // Check if user already exists in PostgreSQL users table
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, email, role, is_active, assigned_courses')
+      .eq('email', cleanEmail)
+      .maybeSingle();
+
+    let savedUser: any = null;
+    let action = 'admin_provision_user';
+
+    if (existingUser) {
+      action = 'admin_approve_user';
+      const updatePayload: any = {
+        role: dbRole,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      };
+      if (Array.isArray(assignedCourses)) {
+        updatePayload.assigned_courses = assignedCourses;
+      }
+
+      const { data: updated, error: updateErr } = await supabase
+        .from('users')
+        .update(updatePayload)
+        .eq('id', existingUser.id)
+        .select('id, email, role, is_active, assigned_courses, updated_at')
+        .single();
+
+      if (updateErr) {
+        return { success: false, error: `Failed to update user approval: ${updateErr.message}` };
+      }
+      savedUser = updated;
+    } else {
+      const insertPayload: any = {
+        email: cleanEmail,
+        role: dbRole,
+        is_active: true,
+      };
+      if (Array.isArray(assignedCourses) && assignedCourses.length > 0) {
+        insertPayload.assigned_courses = assignedCourses;
+      }
+
+      const { data: created, error: insertErr } = await supabase
+        .from('users')
+        .insert(insertPayload)
+        .select('id, email, role, is_active, assigned_courses, created_at')
+        .single();
+
+      if (insertErr) {
+        return { success: false, error: `Failed to provision user: ${insertErr.message}` };
+      }
+      savedUser = created;
+    }
+
+    // Link corresponding students table record if role is student or if a matching record exists
+    try {
+      const { data: matchedStudent } = await supabase
+        .from('students')
+        .select('id')
+        .or(`student_number.eq.${cleanEmail},id.eq.${cleanEmail}`)
+        .is('user_id', null)
+        .maybeSingle();
+
+      if (matchedStudent?.id && savedUser?.id) {
+        await supabase
+          .from('students')
+          .update({ user_id: savedUser.id })
+          .eq('id', matchedStudent.id);
+      }
+    } catch {
+      // Non-blocking student linkage fallback
+    }
+
+    // Authoritative Audit Log
+    try {
+      await logAuditEvent({
+        actorUserId: actorUserId || null,
+        actorRole: actorRole || 'admin',
+        entityType: 'user_provisioning',
+        entityId: savedUser.id,
+        action: action,
+        oldValues: existingUser ? { role: existingUser.role, is_active: existingUser.is_active } : null,
+        newValues: {
+          userId: savedUser.id,
+          email: cleanEmail,
+          role: dbRole,
+          assignedRole: normalizedRole,
+          is_active: true,
+          sourceRecord: sourceRecord || { type: 'admin_approval', actorUserId },
+        },
+        changedFields: existingUser ? ['role', 'is_active'] : ['email', 'role', 'is_active'],
+        reason: reason || `Explicit administrator approval and activation of ${normalizedRole} account`,
+        requestId,
+        ipAddress,
+        userAgent,
+      });
+    } catch (auditErr) {
+      logger.warn('Warning writing admin provisioning audit event:', auditErr);
+    }
+
+    return { success: true, user: savedUser };
+  } catch (err: any) {
+    logger.error('Exception during administrator account provisioning:', err);
+    return { success: false, error: err.message || 'Failed to provision user account' };
+  }
+}
+
+/**
+ * Retrieves prospective faculty and staff accounts that match profile or course records
+ * but have not yet been activated/approved in PostgreSQL users table.
+ */
+export async function getPendingAccountApprovals(): Promise<any[]> {
+  try {
+    const supabase = getServerSupabase();
+    
+    // 1. Get existing active users
+    const { data: users } = await supabase
+      .from('users')
+      .select('email, role, is_active');
+
+    const activeUserEmails = new Set(
+      (users || []).filter((u: any) => u.is_active).map((u: any) => (u.email || '').toLowerCase().trim())
+    );
+
+    const pendingList: any[] = [];
+
+    // 2. Query course_offerings for lecturer emails not yet in users table
+    const { data: offerings } = await supabase
+      .from('course_offerings')
+      .select('id, course_id, lecturer_name, lecturer_email')
+      .not('lecturer_email', 'is', null);
+
+    if (offerings) {
+      for (const off of offerings) {
+        const email = (off.lecturer_email || '').toLowerCase().trim();
+        if (email && !activeUserEmails.has(email) && !pendingList.some((p) => p.email === email)) {
+          pendingList.push({
+            email,
+            suggestedRole: 'lecturer',
+            candidateName: off.lecturer_name,
+            sourceTable: 'course_offerings',
+            sourceId: off.id,
+            details: { courseId: off.course_id },
+          });
+        }
+      }
+    }
+
+    // 3. Query profiles for lecturer or staff roles not yet in users table
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, role')
+      .not('role', 'is', null);
+
+    if (profiles) {
+      for (const prof of profiles) {
+        const email = (prof.email || '').toLowerCase().trim();
+        const role = prof.role ? normalizeUserRole(prof.role) : '';
+        if (
+          email &&
+          (role === 'lecturer' ||
+            role === 'teacher' ||
+            role === 'staff' ||
+            role === 'registrar' ||
+            role === 'finance_officer' ||
+            role === 'librarian') &&
+          !activeUserEmails.has(email) &&
+          !pendingList.some((p) => p.email === email)
+        ) {
+          pendingList.push({
+            email,
+            suggestedRole: role,
+            candidateName: `${prof.first_name || ''} ${prof.last_name || ''}`.trim(),
+            sourceTable: 'profiles',
+            sourceId: prof.id,
+            details: { profileRole: prof.role },
+          });
+        }
+      }
+    }
+
+    return pendingList;
+  } catch (err) {
+    logger.warn('Exception querying pending account approvals:', err);
+    return [];
+  }
+}
+

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { 
   Users, 
@@ -40,6 +40,18 @@ import {
   getFacultyEmailFromName
 } from '../lib/userAuth';
 import { StudentSummary, FacultyTeacher } from '../types';
+import { getAuthHeaders } from '../lib/rbacClient';
+import { AppUser } from '../lib/userAuth';
+
+interface PendingApproval {
+  id: string;
+  email: string;
+  name?: string;
+  requested_role: string;
+  source_record?: string;
+  reason?: string;
+  created_at?: string;
+}
 
 interface UserManagementModalProps {
   isOpen: boolean;
@@ -50,6 +62,8 @@ interface UserManagementModalProps {
   facultyTeachers?: FacultyTeacher[];
   currentAdminEmail?: string;
   onTriggerCloudSync?: () => void;
+  /** Authenticated admin — needed to attach auth headers to provisioning API calls */
+  appUser?: AppUser | null;
 }
 
 export const UserManagementModal: React.FC<UserManagementModalProps> = ({
@@ -60,9 +74,79 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   uniqueStudents = [],
   facultyTeachers = [],
   currentAdminEmail = DEFAULT_ADMIN_EMAIL,
-  onTriggerCloudSync
+  onTriggerCloudSync,
+  appUser
 }) => {
   const dialogRef = useAccessibleModal(isOpen, onClose);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'directory' | 'pending'>('directory');
+
+  // ── Pending Approvals ──────────────────────────────────────────────────────
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [denyingId, setDenyingId] = useState<string | null>(null);
+  const [approveReason, setApproveReason] = useState<Record<string, string>>({});
+
+  const fetchPendingApprovals = useCallback(async () => {
+    setPendingLoading(true);
+    setPendingError(null);
+    try {
+      const res = await fetch('/api/auth/pending-approvals', {
+        headers: getAuthHeaders(appUser),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setPendingApprovals(data.pending ?? []);
+    } catch (err: any) {
+      setPendingError(err.message || 'Failed to load pending approvals');
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [appUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchPendingApprovals();
+    }
+  }, [isOpen, fetchPendingApprovals]);
+
+  const handleApprove = async (approval: PendingApproval) => {
+    setApprovingId(approval.id);
+    try {
+      const res = await fetch('/api/auth/users/provision', {
+        method: 'POST',
+        headers: getAuthHeaders(appUser),
+        body: JSON.stringify({
+          email: approval.email,
+          role: approval.requested_role,
+          reason: approveReason[approval.id] || 'Approved by administrator via portal',
+          sourceRecord: approval.source_record,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setPendingApprovals(prev => prev.filter(p => p.id !== approval.id));
+      setSuccessToast(`Account for ${approval.name || approval.email} approved as ${approval.requested_role}.`);
+    } catch (err: any) {
+      setPendingError(err.message || 'Approval failed');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleDenyApproval = (approval: PendingApproval) => {
+    setDenyingId(approval.id);
+    // Remove from local queue immediately; a future POST /deny endpoint can persist this
+    setPendingApprovals(prev => prev.filter(p => p.id !== approval.id));
+    setSuccessToast(`Access request for ${approval.name || approval.email} has been denied and removed.`);
+    setDenyingId(null);
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
@@ -389,28 +473,35 @@ Access Portal: ${window.location.origin}
           </button>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 text-xs">
-          <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Total Users</span>
-            <span className="text-lg font-black text-slate-900 dark:text-white">{stats.total}</span>
-          </div>
-          <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider block">Teachers & Faculty</span>
-            <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{stats.teachers}</span>
-          </div>
-          <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-extrabold text-emerald-500 uppercase tracking-wider block">Students</span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{stats.students}</span>
-          </div>
-          <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-extrabold text-amber-500 uppercase tracking-wider block">Pending 1st Login</span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400">{stats.pendingChange}</span>
-          </div>
-          <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-extrabold text-purple-500 uppercase tracking-wider block">Admins</span>
-            <span className="text-lg font-black text-purple-600 dark:text-purple-400">{stats.admins}</span>
-          </div>
+        {/* Tab Bar */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab('directory')}
+            className={`flex items-center gap-2 px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'directory'
+                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            User Directory
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex items-center gap-2 px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'pending'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-white dark:bg-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            Pending Approvals
+            {pendingApprovals.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-amber-500 text-white text-[9px] font-black rounded-full">
+                {pendingApprovals.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Success Toast */}
@@ -425,6 +516,32 @@ Access Portal: ${window.location.origin}
             </button>
           </div>
         )}
+
+        {/* ── Directory Tab ── */}
+        {activeTab === 'directory' && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 text-xs">
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Total Users</span>
+                <span className="text-lg font-black text-slate-900 dark:text-white">{stats.total}</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider block">Teachers & Faculty</span>
+                <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{stats.teachers}</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-extrabold text-emerald-500 uppercase tracking-wider block">Students</span>
+                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{stats.students}</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-extrabold text-amber-500 uppercase tracking-wider block">Pending 1st Login</span>
+                <span className="text-lg font-black text-amber-600 dark:text-amber-400">{stats.pendingChange}</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-extrabold text-purple-500 uppercase tracking-wider block">Admins</span>
+                <span className="text-lg font-black text-purple-600 dark:text-purple-400">{stats.admins}</span>
+              </div>
+            </div>
 
         {/* Action Toolbar & Filters */}
         <div className="p-4 sm:p-6 pb-2 space-y-3 flex-shrink-0">
@@ -747,6 +864,99 @@ Access Portal: ${window.location.origin}
             </div>
           </div>
         </div>
+          </>
+        )}
+
+        {/* ── Pending Approvals Panel ── */}
+        {activeTab === 'pending' && (
+          <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                  Accounts Awaiting Administrator Approval
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Lecturer and staff accounts blocked from automatic provisioning require your explicit sign-off.
+                </p>
+              </div>
+              <button onClick={fetchPendingApprovals} disabled={pendingLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50">
+                <RefreshCw className={`w-3.5 h-3.5 ${pendingLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+            {pendingError && (
+              <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs font-bold flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                <span>{pendingError}</span>
+              </div>
+            )}
+            {pendingLoading && pendingApprovals.length === 0 && (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}
+              </div>
+            )}
+            {!pendingLoading && !pendingError && pendingApprovals.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <p className="font-bold text-sm text-slate-700 dark:text-slate-200">All clear — no pending approvals</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-xs">Elevated-role accounts blocked during enrollment will appear here for your review.</p>
+              </div>
+            )}
+            {!pendingLoading && pendingApprovals.length > 0 && (
+              <div className="space-y-3">
+                {pendingApprovals.map(approval => (
+                  <div key={approval.id} className="bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 shadow-xs">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center flex-shrink-0">
+                          <UserCheck className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm text-slate-900 dark:text-white truncate">{approval.name || approval.email}</div>
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono mt-0.5">
+                            <Mail className="w-3 h-3 flex-shrink-0" /><span className="truncate">{approval.email}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              <ShieldCheck className="w-3 h-3" />Requested: {approval.requested_role}
+                            </span>
+                            {approval.source_record && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                <Info className="w-3 h-3" />Source: {approval.source_record}
+                              </span>
+                            )}
+                            {approval.created_at && <span className="text-[10px] text-slate-400">{new Date(approval.created_at).toLocaleDateString()}</span>}
+                          </div>
+                          {approval.reason && <p className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-400 italic">"{approval.reason}"</p>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => handleDenyApproval(approval)} disabled={denyingId === approval.id || approvingId === approval.id}
+                            className="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer disabled:opacity-50">
+                            Deny
+                          </button>
+                          <button onClick={() => handleApprove(approval)} disabled={approvingId === approval.id || denyingId === approval.id}
+                            className="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1">
+                            {approvingId === approval.id ? <><RefreshCw className="w-3 h-3 animate-spin" />Approving…</> : <><Check className="w-3 h-3" />Approve</>}
+                          </button>
+                        </div>
+                        <input type="text" placeholder="Approval reason (optional)"
+                          value={approveReason[approval.id] || ''}
+                          onChange={e => setApproveReason(prev => ({ ...prev, [approval.id]: e.target.value }))}
+                          className="w-48 px-2.5 py-1.5 text-[11px] font-medium bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Modal Dialog for Create / Edit User */}
         {showCreateModal && (

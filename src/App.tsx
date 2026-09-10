@@ -5100,6 +5100,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           facultyTeachers={facultyTeachers}
           currentAdminEmail="kpierre24@gmail.com"
           onTriggerCloudSync={handlePushToCloud}
+          appUser={appUser}
         />
       )}
 
