@@ -12,6 +12,7 @@ import * as firebaseAuth from '../server/services/firebaseAuth';
 // Mock the external logger
 vi.mock('../lib/logger', () => ({
   logger: {
+    debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -164,11 +165,12 @@ describe('Automatic Account Provisioning Security Controls', () => {
       expect(user?.userId).toBe('user-uuid-mary-123');
       expect(user?.studentRecordId).toBe('std-rec-uuid-1');
 
-      // Users table inserted with role 'student'
+      // Users table inserted with role 'student' and immutable firebase_uid
       expect(insertUserMock).toHaveBeenCalledWith({
         email: studentEmail,
         role: 'student',
         is_active: true,
+        firebase_uid: 'firebase-uid-mary',
       });
 
       // Audit event was logged with source record and reason

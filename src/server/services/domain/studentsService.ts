@@ -132,7 +132,8 @@ export const studentsService = {
 
         // If user is a student, filter to own profile by UUID foreign key
         if (user && user.role === 'student') {
-          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+          const studentUuid = user.studentRecordId || user.userId;
           const userUuid = user.userId || user.id;
           list = list.filter((s) => s.id === studentUuid || s.id === userUuid || (s as any).userId === userUuid || (s as any).user_id === userUuid);
         }

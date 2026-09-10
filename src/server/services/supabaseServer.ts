@@ -293,21 +293,28 @@ export async function getAuthorizedStateForUser(user: AuthenticatedUser): Promis
 
   // 2. Apply strict role-based data scoping
   if (user.role === 'student') {
-    const studentRecordId = (user.studentRecordId || user.studentId || '').trim().toLowerCase();
+    // UUID-typed identifier (students.id / users.id) — never a registration code
+    const studentRecordId = (user.studentRecordId || '').trim().toLowerCase();
+    // Registration code (students.student_number e.g. SOM-2026-001) — never a UUID
+    const studentNumber = (user.studentNumber || '').trim().toLowerCase();
     const cleanUserId = (user.userId || user.id || user.uid || '').trim().toLowerCase();
 
     // Strict ownership matching based on UUID foreign keys (students.id or users.id)
     const matchesStudent = (rec: any) => {
       if (!rec) return false;
       const recStudentId = String(rec.student_id || rec.studentId || '').trim().toLowerCase();
+      const recStudentNumber = String(rec.student_number || rec.studentNumber || '').trim().toLowerCase();
       const recUserId = String(rec.user_id || rec.userId || '').trim().toLowerCase();
       const recId = String(rec.id || '').trim().toLowerCase();
 
+      // UUID comparisons — match UUID columns against UUID values only
       if (studentRecordId && recStudentId && recStudentId === studentRecordId) return true;
       if (studentRecordId && recId && recId === studentRecordId) return true;
       if (cleanUserId && recUserId && recUserId === cleanUserId) return true;
       if (cleanUserId && recStudentId && recStudentId === cleanUserId) return true;
       if (studentRecordId && recUserId && recUserId === studentRecordId) return true;
+      // Registration-code comparison — match student_number column against registration code only
+      if (studentNumber && recStudentNumber && recStudentNumber === studentNumber) return true;
       return false;
     };
 
@@ -444,22 +451,29 @@ export async function saveAuthoritativeStateForUser(
   if (user.role === 'student') {
     const existing = await getAuthoritativeState('shared_default_state');
     if (existing) {
-      const studentRecordId = (user.studentRecordId || user.studentId || '').trim().toLowerCase();
-      const userId = (user.userId || user.id || user.uid || '').trim().toLowerCase();
+      // UUID-typed identifier (students.id / users.id) — never a registration code
+    const studentRecordId = (user.studentRecordId || '').trim().toLowerCase();
+    // Registration code (students.student_number e.g. SOM-2026-001) — never a UUID
+    const studentNumber = (user.studentNumber || '').trim().toLowerCase();
+    const userId = (user.userId || user.id || user.uid || '').trim().toLowerCase();
 
-      const matchesStudent = (rec: any) => {
-        if (!rec) return false;
-        const recStudentId = String(rec.student_id || rec.studentId || '').trim().toLowerCase();
-        const recUserId = String(rec.user_id || rec.userId || '').trim().toLowerCase();
-        const recId = String(rec.id || '').trim().toLowerCase();
+    const matchesStudent = (rec: any) => {
+      if (!rec) return false;
+      const recStudentId = String(rec.student_id || rec.studentId || '').trim().toLowerCase();
+      const recStudentNumber = String(rec.student_number || rec.studentNumber || '').trim().toLowerCase();
+      const recUserId = String(rec.user_id || rec.userId || '').trim().toLowerCase();
+      const recId = String(rec.id || '').trim().toLowerCase();
 
-        if (studentRecordId && recStudentId && recStudentId === studentRecordId) return true;
-        if (studentRecordId && recId && recId === studentRecordId) return true;
-        if (userId && recUserId && recUserId === userId) return true;
-        if (userId && recStudentId && recStudentId === userId) return true;
-        if (studentRecordId && recUserId && recUserId === studentRecordId) return true;
-        return false;
-      };
+      // UUID comparisons — match UUID columns against UUID values only
+      if (studentRecordId && recStudentId && recStudentId === studentRecordId) return true;
+      if (studentRecordId && recId && recId === studentRecordId) return true;
+      if (userId && recUserId && recUserId === userId) return true;
+      if (userId && recStudentId && recStudentId === userId) return true;
+      if (studentRecordId && recUserId && recUserId === studentRecordId) return true;
+      // Registration-code comparison — match student_number column against registration code only
+      if (studentNumber && recStudentNumber && recStudentNumber === studentNumber) return true;
+      return false;
+    };
 
       // Merge student's submissions and self assessments into existing institutional state
       const existingSubmissions = Array.isArray(existing.submissions) ? existing.submissions : [];
@@ -766,16 +780,26 @@ export async function logAuditEvent(entry: AuditEventEntry): Promise<boolean> {
       if (isUuid(rawActor)) {
         resolvedUserId = rawActor;
       } else {
-        // If an email/username is passed, query users table to retrieve the canonical UUID
+        // If an email/username/firebase_uid is passed, query users table to retrieve the canonical UUID
         try {
-          const { data: userRecord } = await supabase
+          const { data: userByUid } = await supabase
             .from('users')
             .select('id')
-            .eq('email', rawActor.toLowerCase().trim())
-            .single();
+            .eq('firebase_uid', rawActor)
+            .maybeSingle();
           
-          if (userRecord?.id) {
-            resolvedUserId = userRecord.id;
+          if (userByUid?.id) {
+            resolvedUserId = userByUid.id;
+          } else {
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('id')
+              .eq('email', rawActor.toLowerCase().trim())
+              .maybeSingle();
+            
+            if (userRecord?.id) {
+              resolvedUserId = userRecord.id;
+            }
           }
         } catch {
           // Non-blocking lookup fallback
@@ -1038,6 +1062,7 @@ export async function provisionOrApproveUserByAdmin({
   requestId,
   ipAddress,
   userAgent,
+  firebaseUid,
 }: {
   email: string;
   role: string;
@@ -1049,6 +1074,7 @@ export async function provisionOrApproveUserByAdmin({
   requestId?: string;
   ipAddress?: string;
   userAgent?: string;
+  firebaseUid?: string;
 }): Promise<{ success: boolean; user?: any; error?: string }> {
   try {
     const supabase = getServerSupabase();
@@ -1088,12 +1114,25 @@ export async function provisionOrApproveUserByAdmin({
 
     const dbRole = toDbUserRole(normalizedRole);
 
-    // Check if user already exists in PostgreSQL users table
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id, email, role, is_active, assigned_courses')
-      .eq('email', cleanEmail)
-      .maybeSingle();
+    // Check if user already exists in PostgreSQL users table (primary: firebase_uid, secondary: email)
+    let existingUser: any = null;
+    if (firebaseUid) {
+      const { data: userByUid } = await supabase
+        .from('users')
+        .select('id, email, role, is_active, assigned_courses, firebase_uid')
+        .eq('firebase_uid', firebaseUid)
+        .maybeSingle();
+      if (userByUid) existingUser = userByUid;
+    }
+
+    if (!existingUser) {
+      const { data: userByEmail } = await supabase
+        .from('users')
+        .select('id, email, role, is_active, assigned_courses, firebase_uid')
+        .eq('email', cleanEmail)
+        .maybeSingle();
+      if (userByEmail) existingUser = userByEmail;
+    }
 
     let savedUser: any = null;
     let action = 'admin_provision_user';
@@ -1108,12 +1147,15 @@ export async function provisionOrApproveUserByAdmin({
       if (Array.isArray(assignedCourses)) {
         updatePayload.assigned_courses = assignedCourses;
       }
+      if (firebaseUid && !existingUser.firebase_uid) {
+        updatePayload.firebase_uid = firebaseUid;
+      }
 
       const { data: updated, error: updateErr } = await supabase
         .from('users')
         .update(updatePayload)
         .eq('id', existingUser.id)
-        .select('id, email, role, is_active, assigned_courses, updated_at')
+        .select('id, email, role, is_active, assigned_courses, firebase_uid, updated_at')
         .single();
 
       if (updateErr) {
@@ -1126,6 +1168,9 @@ export async function provisionOrApproveUserByAdmin({
         role: dbRole,
         is_active: true,
       };
+      if (firebaseUid) {
+        insertPayload.firebase_uid = firebaseUid;
+      }
       if (Array.isArray(assignedCourses) && assignedCourses.length > 0) {
         insertPayload.assigned_courses = assignedCourses;
       }
@@ -1133,13 +1178,32 @@ export async function provisionOrApproveUserByAdmin({
       const { data: created, error: insertErr } = await supabase
         .from('users')
         .insert(insertPayload)
-        .select('id, email, role, is_active, assigned_courses, created_at')
+        .select('id, email, role, is_active, assigned_courses, firebase_uid, created_at')
         .single();
 
       if (insertErr) {
         return { success: false, error: `Failed to provision user: ${insertErr.message}` };
       }
       savedUser = created;
+    }
+
+    // Record immutable identity mapping in user_identities
+    if (firebaseUid && savedUser?.id) {
+      try {
+        await supabase
+          .from('user_identities')
+          .upsert(
+            {
+              user_id: savedUser.id,
+              provider: 'firebase',
+              provider_uid: firebaseUid,
+              email: cleanEmail,
+            },
+            { onConflict: 'provider,provider_uid' }
+          );
+      } catch (idErr) {
+        logger.debug('user_identities upsert note:', idErr);
+      }
     }
 
     // Link corresponding students table record if role is student or if a matching record exists

@@ -209,7 +209,7 @@ authRouter.post(
   requirePermission(["users:manage", "all:access"]),
   async (req: Request, res: Response) => {
     try {
-      const { email, role, reason, assignedCourses, sourceRecord } = req.body;
+      const { email, role, reason, assignedCourses, sourceRecord, firebaseUid } = req.body;
       const actorUserId = req.user!.userId;
       const actorRole = req.user!.role;
       const requestId = (req.headers["x-request-id"] as string) || undefined;
@@ -235,6 +235,7 @@ authRouter.post(
         requestId,
         ipAddress,
         userAgent,
+        firebaseUid,
       });
 
       if (!result.success) {

@@ -265,8 +265,8 @@ export const assignmentsService = {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
 
-    // 9.1 Derive studentId from server context (Never trust client)
-    let studentId = user.studentId;
+    // 9.1 Derive studentRecordId from server context strictly as a UUID (Never trust client)
+    let studentId = user.studentRecordId;
     if (!studentId && user.userId) {
       const { data: std } = await supabase
         .from('students')

@@ -60,8 +60,14 @@ export function getAuthHeaders(appUser: AppUser | null | undefined): Record<stri
   headers['x-user-email'] = appUser.email;
   headers['x-user-role'] = cleanRole;
   
-  if (appUser.studentId) {
-    headers['x-student-id'] = appUser.studentId;
+  if (appUser.studentRecordId) {
+    headers['x-student-record-id'] = appUser.studentRecordId;
+  }
+  if (appUser.studentNumber) {
+    headers['x-student-number'] = appUser.studentNumber;
+  }
+  if (appUser.studentRecordId || appUser.studentId) {
+    headers['x-student-id'] = appUser.studentRecordId || appUser.studentId!;
   }
   if (appUser.studentName || appUser.name) {
     headers['x-student-name'] = appUser.studentName || appUser.name;
@@ -72,7 +78,9 @@ export function getAuthHeaders(appUser: AppUser | null | undefined): Record<stri
     id: appUser.id,
     email: appUser.email,
     role: cleanRole,
-    studentId: appUser.studentId,
+    studentRecordId: appUser.studentRecordId,
+    studentNumber: appUser.studentNumber,
+    studentId: appUser.studentRecordId || appUser.studentId,
     studentName: appUser.studentName || appUser.name
   };
   try {

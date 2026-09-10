@@ -255,7 +255,8 @@ export const attendanceService = {
 
         let filtered = formattedRecords;
         if (user && user.role === 'student') {
-          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+          const studentUuid = user.studentRecordId || user.userId;
           const userUuid = user.userId || user.id;
           filtered = formattedRecords.filter(
             (r) => (r.studentId && (r.studentId === studentUuid || r.studentId === userUuid)) ||
@@ -415,7 +416,8 @@ export const attendanceService = {
 
         let filtered = formattedRecords;
         if (user && user.role === 'student') {
-          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+          const studentUuid = user.studentRecordId || user.userId;
           const userUuid = user.userId || user.id;
           filtered = formattedRecords.filter(
             (r) => (r.studentId && (r.studentId === studentUuid || r.studentId === userUuid)) ||

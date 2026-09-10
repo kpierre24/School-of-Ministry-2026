@@ -61,12 +61,13 @@ export interface AuthenticatedUser {
   email: string;
   name: string;
   role: UserRole;
-  studentId?: string;    // Aliased to studentRecordId or studentNumber for backward compatibility
-  studentRecordId?: string; // Database students table UUID (id)
-  studentNumber?: string;   // Administrative registration number (student_number)
+  studentRecordId?: string; // Database students table UUID (students.id)
+  studentNumber?: string;   // Administrative registration code (students.student_number)
   studentName?: string;
   assignedCourses?: string[];
   permissions: Permission[];
+  /** @deprecated Use explicit studentRecordId (UUID) or studentNumber (registration code) instead. Strictly aliases studentRecordId (UUID). */
+  studentId?: string;
 }
 
 export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {

@@ -468,7 +468,8 @@ export const financeService = {
           // Lecturers/Teachers have no authorization to view financial records
           return { invoices: [], total: 0 };
         } else if (user && user.role === 'student') {
-          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+          const studentUuid = user.studentRecordId || user.userId;
           const userUuid = user.userId || user.id;
           result = formatted.filter(
             (i) => (i.studentId && (i.studentId === studentUuid || i.studentId === userUuid)) ||
@@ -719,7 +720,8 @@ export const financeService = {
           // Lecturers/Teachers have no authorization to view transaction ledgers
           return { transactions: [], total: 0 };
         } else if (user && user.role === 'student') {
-          const studentUuid = user.studentRecordId || user.studentId || user.userId;
+          // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+          const studentUuid = user.studentRecordId || user.userId;
           const userUuid = user.userId || user.id;
           result = formatted.filter(
             (t) => (t.studentId && (t.studentId === studentUuid || t.studentId === userUuid)) ||
@@ -1124,7 +1126,8 @@ export const financeService = {
       const adjustments = data || [];
 
       if (user && user.role === 'student') {
-        const studentUuid = user.studentRecordId || user.studentId || user.userId;
+        // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+        const studentUuid = user.studentRecordId || user.userId;
         const userUuid = user.userId || user.id;
         const filtered = adjustments.filter(
           (a: any) => (a.student_id && (a.student_id === studentUuid || a.student_id === userUuid))
@@ -1164,7 +1167,8 @@ export const financeService = {
       const refunds = data || [];
 
       if (user && user.role === 'student') {
-        const studentUuid = user.studentRecordId || user.studentId || user.userId;
+        // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
+        const studentUuid = user.studentRecordId || user.userId;
         const userUuid = user.userId || user.id;
         const filtered = refunds.filter(
           (r: any) => (r.student_id && (r.student_id === studentUuid || r.student_id === userUuid))

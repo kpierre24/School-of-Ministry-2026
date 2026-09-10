@@ -9,7 +9,10 @@ export interface AppUser {
   role: UserRole;
   username?: string;
   studentName?: string; // If role is student, links to student profile name
-  studentId?: string; // Student ID for messaging and records
+  studentRecordId?: string; // Database students table UUID (students.id)
+  studentNumber?: string;   // Administrative registration code (students.student_number)
+  /** @deprecated Use explicit studentRecordId (UUID) or studentNumber instead */
+  studentId?: string;       // Strictly aliases studentRecordId (UUID)
   assignedCourses?: string[];
   permissions?: Permission[];
   moduleOrDepartment?: string;

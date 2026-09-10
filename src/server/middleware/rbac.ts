@@ -260,30 +260,117 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     return null;
   }
 
-  // 2. Query PostgreSQL users table for user role, active status, and assigned_courses
+  // 2. Authoritative Identity Lookup (Primary: firebase_uid -> internal_user_id)
   const supabase = getServerSupabase();
   let dbUser: any = null;
 
-  if (cleanEmail) {
+  try {
+    // 2a. Primary Lookup: user_identities table for provider = 'firebase' and provider_uid = firebaseUid
     try {
-      const { data, error } = await supabase
+      const { data: identityRecord, error: idErr } = await supabase
+        .from("user_identities")
+        .select("user_id, users(id, email, role, is_active, assigned_courses, firebase_uid)")
+        .eq("provider", "firebase")
+        .eq("provider_uid", firebaseUid)
+        .maybeSingle();
+
+      if (!idErr && identityRecord?.users) {
+        dbUser = Array.isArray(identityRecord.users) ? identityRecord.users[0] : identityRecord.users;
+      }
+    } catch {
+      // Non-blocking fallback to users table
+    }
+
+    // 2b. Primary Direct Column Check: users.firebase_uid
+    if (!dbUser && firebaseUid) {
+      const { data: directUser, error: directErr } = await supabase
         .from("users")
-        .select("id, email, role, is_active, assigned_courses")
+        .select("id, email, role, is_active, assigned_courses, firebase_uid")
+        .eq("firebase_uid", firebaseUid)
+        .maybeSingle();
+
+      if (directErr) {
+        throw new DatabaseServiceError("Database error looking up user by firebase_uid", directErr);
+      }
+      if (directUser) {
+        dbUser = directUser;
+      }
+    }
+
+    // 2c. Secondary / Migration Linking:
+    // If not yet mapped by firebase_uid, check if legacy user exists with matching cleanEmail
+    if (!dbUser && cleanEmail) {
+      const { data: legacyUser, error: legacyErr } = await supabase
+        .from("users")
+        .select("id, email, role, is_active, assigned_courses, firebase_uid")
         .eq("email", cleanEmail)
         .maybeSingle();
 
-      if (error) {
-        throw new DatabaseServiceError("Database error looking up user in users table", error);
+      if (legacyErr) {
+        throw new DatabaseServiceError("Database error looking up legacy user in users table", legacyErr);
       }
-      if (data) {
-        dbUser = data;
+
+      if (legacyUser) {
+        dbUser = legacyUser;
+
+        // Establish immutable mapping for legacy user
+        try {
+          await supabase
+            .from("users")
+            .update({ firebase_uid: firebaseUid, updated_at: new Date().toISOString() })
+            .eq("id", legacyUser.id)
+            .is("firebase_uid", null);
+
+          await supabase
+            .from("user_identities")
+            .insert({
+              user_id: legacyUser.id,
+              provider: "firebase",
+              provider_uid: firebaseUid,
+              email: cleanEmail,
+            });
+
+          logger.info(`Linked legacy user to immutable firebase_uid: ${firebaseUid} -> ${legacyUser.id}`);
+        } catch (linkErr) {
+          logger.warn("Non-blocking error auto-linking legacy identity mapping:", linkErr);
+        }
       }
-    } catch (dbErr: any) {
-      if (dbErr instanceof DatabaseServiceError || dbErr?.isDatabaseError) {
-        throw dbErr;
-      }
-      logger.error("Error querying PostgreSQL database users table:", dbErr);
-      throw new DatabaseServiceError("Database outage or error during user lookup", dbErr);
+    }
+  } catch (dbErr: any) {
+    if (dbErr instanceof DatabaseServiceError || dbErr?.isDatabaseError) {
+      throw dbErr;
+    }
+    logger.error("Error querying PostgreSQL database users table:", dbErr);
+    throw new DatabaseServiceError("Database outage or error during user lookup", dbErr);
+  }
+
+  // 3. Email Synchronization as a Profile Attribute
+  // When a user has been resolved by immutable firebase_uid and their token email changed,
+  // synchronize the email attribute without mutating the primary identity key or role.
+  if (dbUser && cleanEmail && dbUser.email && dbUser.email.toLowerCase().trim() !== cleanEmail) {
+    const previousEmail = dbUser.email;
+    try {
+      await supabase
+        .from("users")
+        .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+        .eq("id", dbUser.id);
+
+      dbUser.email = cleanEmail;
+      logger.info(`Synchronized profile email attribute for user ${dbUser.id}: ${previousEmail} -> ${cleanEmail}`);
+
+      await logAuditEvent({
+        actorUserId: dbUser.id,
+        actorRole: dbUser.role || "student",
+        entityType: "user_profile",
+        entityId: dbUser.id,
+        action: "update_profile_email",
+        oldValues: { email: previousEmail },
+        newValues: { email: cleanEmail },
+        changedFields: ["email"],
+        reason: "Synchronized email from verified Firebase ID token as a profile attribute",
+      });
+    } catch (syncErr) {
+      logger.warn("Non-blocking warning syncing profile email attribute:", syncErr);
     }
   }
 
@@ -398,8 +485,9 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
           email: cleanEmail,
           role: "student",
           is_active: true,
+          firebase_uid: firebaseUid,
         })
-        .select("id, email, role, is_active, assigned_courses")
+        .select("id, email, role, is_active, assigned_courses, firebase_uid")
         .maybeSingle();
 
       if (insertErr) {
@@ -409,7 +497,21 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
       if (createdUser) {
         dbUser = createdUser;
         assignedRole = "student";
-        logger.info(`Activated enrolled student account in PostgreSQL for ${cleanEmail}`);
+        logger.info(`Activated enrolled student account in PostgreSQL for ${cleanEmail} (uid: ${firebaseUid})`);
+
+        // Record in user_identities table for multi-identity mapping
+        try {
+          await supabase
+            .from("user_identities")
+            .insert({
+              user_id: createdUser.id,
+              provider: "firebase",
+              provider_uid: firebaseUid,
+              email: cleanEmail,
+            });
+        } catch (idErr) {
+          logger.debug("user_identities insert note:", idErr);
+        }
 
         // If enrollment matched a database student record, link user_id
         if (enrollment.studentRecordId) {
@@ -464,7 +566,6 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
   // Look up student linkage and student identity strictly from PostgreSQL
   let studentRecordId: string | undefined = undefined;
   let studentNumber: string | undefined = undefined;
-  let studentId: string | undefined = undefined;
   let studentName: string | undefined = decoded.name;
   let assignedCourses: string[] = Array.isArray(dbUser?.assigned_courses) ? dbUser.assigned_courses : [];
 
@@ -485,7 +586,6 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
       if (studentRecord) {
         if (studentRecord.id) studentRecordId = studentRecord.id;
         if (studentRecord.student_number) studentNumber = studentRecord.student_number;
-        studentId = studentRecord.id || studentRecord.student_number;
       }
     } catch (studentErr) {
       if (studentErr instanceof DatabaseServiceError || (studentErr as any)?.isDatabaseError) {
@@ -496,17 +596,36 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     }
   }
 
-  // Fallback to query profiles table in PostgreSQL for student record & name if not linked by user_id yet
-  if (!studentRecordId && cleanEmail) {
+  // Look up profiles table in PostgreSQL for student record & name (primary by user_id, fallback by email)
+  if (!studentRecordId) {
     try {
-      const { data: prof, error: profLookupError } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, students(id, student_number)")
-        .eq("email", cleanEmail)
-        .maybeSingle();
+      let prof: any = null;
 
-      if (profLookupError) {
-        throw new DatabaseServiceError("Database error looking up profiles table", profLookupError);
+      if (dbUser?.id) {
+        const { data: profByUid, error: profUidErr } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, students(id, student_number)")
+          .eq("user_id", dbUser.id)
+          .maybeSingle();
+
+        if (!profUidErr && profByUid) {
+          prof = profByUid;
+        }
+      }
+
+      if (!prof && cleanEmail) {
+        const { data: profByEmail, error: profEmailErr } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, students(id, student_number)")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+
+        if (profEmailErr) {
+          throw new DatabaseServiceError("Database error looking up profiles table", profEmailErr);
+        }
+        if (profByEmail) {
+          prof = profByEmail;
+        }
       }
 
       if (prof) {
@@ -514,9 +633,8 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
         if (fullProfName) studentName = fullProfName;
         const std = Array.isArray(prof.students) ? prof.students[0] : prof.students;
         if (std) {
-          studentRecordId = std.id;
-          studentNumber = std.student_number;
-          studentId = std.id || std.student_number;
+          if (std.id) studentRecordId = std.id;
+          if (std.student_number) studentNumber = std.student_number;
         }
       }
     } catch (profErr) {
@@ -528,16 +646,11 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     }
   }
 
-  // Fallbacks to maintain consistency across studentRecordId, studentNumber, and studentId
-  if (!studentRecordId && studentId && studentId.includes("-") && studentId.length > 20) {
-    studentRecordId = studentId;
-  } else if (!studentNumber && studentId) {
-    studentNumber = studentId;
-  }
-
-  if (!studentId) {
-    studentId = studentRecordId || studentNumber;
-  }
+  // Explicit identifier semantics:
+  // studentRecordId: PostgreSQL students table UUID (students.id)
+  // studentNumber: Institutional registration code (students.student_number)
+  // studentId: Strictly an alias for studentRecordId (UUID) for backward compatibility, NEVER studentNumber
+  const studentId = studentRecordId;
 
   const roleDef = ROLE_DEFINITIONS[assignedRole] || ROLE_DEFINITIONS.student;
   const permissions: Permission[] = roleDef ? roleDef.permissions : [];
@@ -550,9 +663,9 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     email: cleanEmail,
     name: studentName || cleanEmail.split("@")[0],
     role: assignedRole,
-    studentId,
     studentRecordId,
     studentNumber,
+    studentId,
     studentName,
     assignedCourses,
     permissions,
@@ -643,6 +756,8 @@ export function requirePermission(permission: Permission | Permission[]) {
  */
 export interface ResourceOwnershipOptions {
   getTarget: (req: Request) => {
+    targetStudentRecordId?: string;
+    targetStudentNumber?: string;
     targetStudentId?: string;
     targetStudentName?: string;
     targetEmail?: string;
@@ -674,7 +789,9 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
     }
 
     // 3. Extract target identifiers from request
-    const { targetStudentId, targetStudentName, targetEmail, courseCode } = options.getTarget(req);
+    const targets = options.getTarget(req);
+    const targetStudentId = targets.targetStudentRecordId || targets.targetStudentNumber || targets.targetStudentId;
+    const { targetStudentName, targetEmail, courseCode } = targets;
 
     // 4. Lecturer check: Course scope is strictly required and verified against relational assignment tables in database
     if (role === "lecturer" || role === "teacher") {
@@ -856,15 +973,19 @@ export async function verifyStudentOwnershipInDatabase(
   if (!user) return false;
 
   const cleanUserId = (user.userId || user.id || "").trim().toLowerCase();
-  const cleanStudentRecordId = (user.studentRecordId || user.studentId || "").trim().toLowerCase();
+  const cleanStudentRecordId = (user.studentRecordId || "").trim().toLowerCase();
+  const cleanStudentNumber = (user.studentNumber || "").trim().toLowerCase();
   const cleanUserEmail = (user.email || "").trim().toLowerCase();
 
   const cleanTargetId = (targetStudentId || "").trim().toLowerCase();
   const cleanTargetEmail = (targetEmail || "").trim().toLowerCase();
 
-  // 1. Exact immutable UUID matching against target parameters
+  // 1. Exact identifier matching (evaluating UUID against UUID, and registration number against registration number)
   if (cleanTargetId) {
     if (cleanStudentRecordId && cleanTargetId === cleanStudentRecordId) {
+      return true;
+    }
+    if (cleanStudentNumber && cleanTargetId === cleanStudentNumber) {
       return true;
     }
     if (cleanUserId && cleanTargetId === cleanUserId) {
@@ -877,16 +998,16 @@ export async function verifyStudentOwnershipInDatabase(
     return true;
   }
 
-  // 3. Database lookup: Verify target identifier against students table by UUID foreign key
+  // 3. Database lookup: Verify target identifier against students table by UUID or registration number
   if (cleanTargetId) {
     try {
       const supabase = getServerSupabase();
 
-      // Query students table by id (UUID) or user_id (UUID)
+      // Query students table by id (UUID), user_id (UUID), or student_number (string)
       const { data: stdRecords, error } = await supabase
         .from("students")
-        .select("id, user_id")
-        .or(`id.eq.${cleanTargetId},user_id.eq.${cleanTargetId}`);
+        .select("id, user_id, student_number")
+        .or(`id.eq.${cleanTargetId},user_id.eq.${cleanTargetId},student_number.eq.${cleanTargetId}`);
 
       if (error) {
         throw new DatabaseServiceError("Database error querying students table for student ownership", error);
@@ -896,9 +1017,11 @@ export async function verifyStudentOwnershipInDatabase(
         const isOwned = stdRecords.some((rec: any) => {
           const recId = (rec.id || "").trim().toLowerCase();
           const recUserId = (rec.user_id || "").trim().toLowerCase();
+          const recNumber = (rec.student_number || "").trim().toLowerCase();
 
           return (
             (cleanStudentRecordId && recId === cleanStudentRecordId) ||
+            (cleanStudentNumber && recNumber === cleanStudentNumber) ||
             (cleanUserId && (recUserId === cleanUserId || recId === cleanUserId))
           );
         });
@@ -907,7 +1030,7 @@ export async function verifyStudentOwnershipInDatabase(
           return true;
         }
       }
-    } catch (dbErr) {
+    } catch (dbErr: any) {
       if (dbErr instanceof DatabaseServiceError || (dbErr as any)?.isDatabaseError) {
         throw dbErr;
       }
@@ -915,4 +1038,6 @@ export async function verifyStudentOwnershipInDatabase(
       throw new DatabaseServiceError("Database student ownership verification failed", dbErr);
     }
   }
+
+  return false;
 }

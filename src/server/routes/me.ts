@@ -24,7 +24,8 @@ meRouter.get("/", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
     let studentProfile = null;
-    const identifier = user.studentId || user.studentName || user.name || user.email;
+    // Prefer explicit UUID for lookup; fall back to name/email for backward-compat
+    const identifier = user.studentRecordId || user.studentNumber || user.studentName || user.name || user.email;
     if (identifier) {
       studentProfile = await studentsService.getStudentByNameOrId(identifier, user);
     }
@@ -32,7 +33,9 @@ meRouter.get("/", async (req: Request, res: Response) => {
     return res.status(200).json({
       user: {
         userId: user.userId,
-        studentId: user.studentId || null,
+        studentId: user.studentId || null,          // deprecated alias — always UUID
+        studentRecordId: user.studentRecordId || null, // authoritative UUID
+        studentNumber: user.studentNumber || null,     // registration code e.g. SOM-2026-001
         email: user.email,
         name: user.name || user.studentName,
         studentName: user.studentName || user.name,
@@ -56,7 +59,8 @@ meRouter.get("/", async (req: Request, res: Response) => {
 meRouter.get("/grades", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const studentId = user.studentId;
+    // Prefer studentRecordId (UUID) for submission lookup
+    const studentId = user.studentRecordId || user.studentId;
     const studentName = user.studentName || user.name;
 
     const subResult = await assignmentsService.getSubmissions({ studentId, studentName }, user);
@@ -97,7 +101,8 @@ meRouter.get("/attendance", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
     const attData = await attendanceService.getAttendance(user);
-    const targetId = user.studentId;
+    // Use UUID for record matching; fall back to name for legacy records
+    const targetId = user.studentRecordId || user.studentId;
     const normName = (user.studentName || user.name || user.email.split("@")[0]).toLowerCase().trim();
 
     const studentRecords = (attData.records || []).filter((r: any) => {
@@ -119,7 +124,8 @@ meRouter.get("/attendance", async (req: Request, res: Response) => {
     const rate = totalSessions > 0 ? Math.round(((presentCount + excusedCount) / totalSessions) * 100) : 100;
 
     return res.status(200).json({
-      studentId: user.studentId || null,
+      studentId: user.studentRecordId || user.studentId || null,
+      studentNumber: user.studentNumber || null,
       studentName: user.studentName || user.name || user.email.split("@")[0],
       totalSessions,
       presentCount,
@@ -167,14 +173,15 @@ meRouter.get("/invoices", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
     const invRes = await financeService.getInvoices(
-      { studentId: user.studentId, studentName: user.studentName || user.name },
+      { studentId: user.studentRecordId || user.studentId, studentName: user.studentName || user.name },
       user
     );
 
     return res.status(200).json({
       invoices: invRes.invoices || [],
       total: invRes.total || 0,
-      studentId: user.studentId || null,
+      studentId: user.studentRecordId || user.studentId || null,
+      studentNumber: user.studentNumber || null,
       studentName: user.studentName || user.name || user.email.split("@")[0],
     });
   } catch (err: any) {
@@ -192,14 +199,15 @@ meRouter.get("/payments", async (req: Request, res: Response) => {
   try {
     const user = req.user!;
     const txnRes = await financeService.getTransactions(
-      { studentId: user.studentId, studentName: user.studentName || user.name },
+      { studentId: user.studentRecordId || user.studentId, studentName: user.studentName || user.name },
       user
     );
 
     return res.status(200).json({
       payments: txnRes.transactions || [],
       total: txnRes.total || 0,
-      studentId: user.studentId || null,
+      studentId: user.studentRecordId || user.studentId || null,
+      studentNumber: user.studentNumber || null,
       studentName: user.studentName || user.name || user.email.split("@")[0],
     });
   } catch (err: any) {
