@@ -600,6 +600,8 @@ export type ClassDay = {
   name: string;
   cohortId?: string;
   academicYear?: number;
+  date?: string;
+  isLocked?: boolean;
 };
 
 export type StudentSummary = {
