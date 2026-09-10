@@ -4,41 +4,10 @@ import fs from "fs";
 import os from "os";
 import dotenv from "dotenv";
 
-import { githubRouter } from "./src/server/routes/github";
-import { aiRouter } from "./src/server/routes/ai";
-import { driveProxyRouter } from "./src/server/routes/driveProxy";
-import { bibleRouter } from "./src/server/routes/bible";
-import { authRouter } from "./src/server/routes/auth";
-import { studentsRouter } from "./src/server/routes/students";
-import { academicsRouter } from "./src/server/routes/academics";
-import { attendanceRouter } from "./src/server/routes/attendance";
-import { paymentsRouter } from "./src/server/routes/payments";
-import { libraryRouter } from "./src/server/routes/library";
-import { assignmentsRouter } from "./src/server/routes/assignments";
-import { gradesRouter } from "./src/server/routes/grades";
-import { invoicesRouter } from "./src/server/routes/invoices";
-import { auditLogsRouter } from "./src/server/routes/auditLogs";
-
-import { stateRouter } from "./src/server/routes/state";
-import { meRouter } from "./src/server/routes/me";
-import { notificationsRouter } from "./src/server/routes/notifications";
-import { initializeRelationalSchema, stateHydrationService } from "./src/server/services/domain";
-import { validateSupabaseServerConfig, isSupabaseConfigured } from "./src/server/services/supabaseServer";
+import { createApp } from "./src/server/app";
+import { initializeRelationalSchema } from "./src/server/services/domain";
+import { isSupabaseConfigured } from "./src/server/services/supabaseServer";
 import { logger } from "./src/lib/logger";
-import {
-  securityHeaders,
-  sanitizeBody,
-  generalApiRateLimiter,
-  authRateLimiter,
-  aiRateLimiter,
-  paymentsRateLimiter,
-  assignmentsRateLimiter,
-  driveProxyRateLimiter,
-  adminRateLimiter,
-  stateRateLimiter,
-  githubRateLimiter,
-} from "./src/server/middleware/security";
-import { authenticate, requireAuth } from "./src/server/middleware/rbac";
 
 dotenv.config();
 
@@ -56,9 +25,10 @@ async function startServer() {
     logger.info("[Supabase Server] Privileged SUPABASE_SERVICE_ROLE_KEY configured and verified.");
   }
 
-  const app = express();
-  // Trust the frontend proxy/load balancer (e.g., Cloud Run load balancer or Nginx)
-  app.set("trust proxy", 1);
+  // Initialize relational PostgreSQL database tables
+  initializeRelationalSchema().catch((e) => logger.warn("Relational init warning:", e));
+
+  const app = createApp();
   const isDev =
     process.env.NODE_ENV !== "production" &&
     !currentFilename.endsWith(".cjs") &&
@@ -87,62 +57,6 @@ async function startServer() {
     }
   }
 
-  // Apply security response headers globally
-  app.use(securityHeaders);
-
-  // Health check routes first (unrate-limited for deployment platforms and container probes)
-  const healthResponse = (_req: express.Request, res: express.Response) => {
-    res.status(200).json({
-      status: "ok",
-      service: "hteim-school-of-ministry",
-      timestamp: new Date().toISOString(),
-    });
-  };
-
-  app.get("/api/health", healthResponse);
-  app.get("/health", healthResponse);
-  app.get("/healthz", healthResponse);
-  app.get("/_health", healthResponse);
-  app.get("/livez", healthResponse);
-  app.get("/readyz", healthResponse);
-  app.get("/ping", (_req, res) => res.status(200).send("pong"));
-
-  // Limit payload size to prevent payload bombing attacks
-  app.use(express.json({ limit: "15mb" }));
-
-  // Sanitize incoming JSON bodies
-  app.use(sanitizeBody);
-
-  // Apply general API baseline rate limiting to /api endpoints (1000 requests per 15 min)
-  app.use("/api", generalApiRateLimiter);
-
-  // Initialize relational PostgreSQL database tables
-  initializeRelationalSchema().catch((e) => logger.warn("Relational init warning:", e));
-
-  // Role-Based Access Control authentication context (attaches req.user if authorization token present)
-  app.use("/api", authenticate);
-
-  // Explicit Public API Routers (deliberately mounted without requireAuth)
-  app.use("/api/auth", authRateLimiter, authRouter);
-  app.use("/api/bible", bibleRouter);
-
-  // Protected Domain API Routers (strictly require verified authentication via explicit requireAuth middleware)
-  app.use("/api/students", requireAuth, studentsRouter);
-  app.use("/api/academics", requireAuth, academicsRouter);
-  app.use("/api/attendance", requireAuth, attendanceRouter);
-  app.use("/api/payments", requireAuth, paymentsRateLimiter, paymentsRouter);
-  app.use("/api/invoices", requireAuth, paymentsRateLimiter, invoicesRouter);
-  app.use("/api/library", requireAuth, libraryRouter);
-  app.use("/api/assignments", requireAuth, assignmentsRateLimiter, assignmentsRouter);
-  app.use("/api/grades", requireAuth, assignmentsRateLimiter, gradesRouter);
-  app.use("/api/audit-logs", requireAuth, adminRateLimiter, auditLogsRouter);
-
-  app.use("/api/state", requireAuth, stateRateLimiter, stateRouter);
-  app.use("/api/me", requireAuth, meRouter);
-  app.use("/api/notifications", requireAuth, notificationsRouter);
-  app.use("/api/github", requireAuth, githubRateLimiter, githubRouter);
-  app.use("/api/ai", requireAuth, aiRateLimiter, aiRouter);
-  app.use("/api/drive-proxy", requireAuth, driveProxyRateLimiter, driveProxyRouter);
 
   // Vite middleware for development vs static asset serving in production
   if (isDev) {

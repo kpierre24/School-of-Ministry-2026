@@ -144,7 +144,7 @@ gradesRouter.post(
  */
 gradesRouter.post(
   "/override",
-  requirePermission(["grades:write", "all:access"]),
+  requirePermission(["grades:write", "grades:release", "all:access"]),
   async (req: Request, res: Response) => {
     try {
       const { submissionId, score, feedback, reason } = req.body;

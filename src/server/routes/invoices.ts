@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { financeService } from "../services/domain";
 import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
+import { getServerSupabase } from "../services/supabaseServer";
 import { logger } from "../../lib/logger";
 import { validateBody } from "../middleware/validation";
 import { InvoiceSchema, AdjustmentSchema } from "../schemas/finance.schema";
@@ -54,8 +55,34 @@ invoicesRouter.get(
     try {
       const user = req.user!;
       const invoiceId = req.params.id;
-      const result = await financeService.getInvoices(undefined, user);
+      const supabase = getServerSupabase();
 
+      // Check if invoice exists in PostgreSQL database
+      const { data: rawInvoice } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, student_id")
+        .or(`id.eq.${invoiceId},invoice_number.eq.${invoiceId}`)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (!rawInvoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      // Enforce student resource ownership: Student A cannot access Student B's invoice
+      if (user.role === "student") {
+        const studentUuid = (user.studentRecordId || user.userId || "").toLowerCase().trim();
+        const invoiceStudentId = (rawInvoice.student_id || "").toLowerCase().trim();
+        if (invoiceStudentId && invoiceStudentId !== studentUuid) {
+          logger.warn(`Student ${user.email} attempted to access invoice ${invoiceId} belonging to student ${rawInvoice.student_id}`);
+          return res.status(403).json({
+            error: "Access Denied: You do not have permission to view another student's invoice.",
+            code: "RESOURCE_OWNERSHIP_DENIED"
+          });
+        }
+      }
+
+      const result = await financeService.getInvoices(undefined, user);
       const invoice = result.invoices.find((i: any) => i.id === invoiceId || i.invoiceNumber === invoiceId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
