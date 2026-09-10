@@ -453,6 +453,114 @@ export function requirePermission(permission: Permission | Permission[]) {
 }
 
 /**
+ * Resource Ownership Verification Middleware
+ * 
+ * Verifies that the authenticated user either:
+ * 1. Has an elevated administrative role (Super Admin, Admin, Registrar, Finance Officer, etc.), OR
+ * 2. Is the assigned faculty lecturer for the specific course, verified strictly against the database, OR
+ * 3. Owns the resource verified strictly by immutable studentId / user_id database record comparison.
+ */
+export interface ResourceOwnershipOptions {
+  getTarget: (req: Request) => {
+    targetStudentId?: string;
+    targetStudentName?: string;
+    targetEmail?: string;
+    courseCode?: string;
+  };
+  allowedRoles?: UserRole[];
+}
+
+export function requireResourceOwnership(options: ResourceOwnershipOptions) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
+    }
+
+    const { role, email } = req.user;
+
+    // 1. Super Admin is always authorized
+    if (role === "super_admin") {
+      return next();
+    }
+
+    // 2. Check explicitly allowed administrative roles (excluding lecturer and teacher!)
+    // Note: Lecturers and faculty must never bypass via allowedRoles; they must be verified with courseCode against the database.
+    const allowedRoles: UserRole[] = (options.allowedRoles || ["super_admin", "admin", "registrar"])
+      .filter((r): r is UserRole => r !== "lecturer" && r !== "teacher");
+
+    if (allowedRoles.includes(role)) {
+      return next();
+    }
+
+    // 3. Extract target identifiers from request
+    const { targetStudentId, targetStudentName, targetEmail, courseCode } = options.getTarget(req);
+
+    // 4. Lecturer check: Course scope is strictly required and verified against relational assignment tables in database
+    if (role === "lecturer" || role === "teacher") {
+      if (!courseCode) {
+        return res.status(400).json({
+          error: "Course context is required",
+          code: "COURSE_SCOPE_REQUIRED",
+          details: "Lecturers and faculty must provide a courseCode parameter or body field to access scoped student records."
+        });
+      }
+
+      // Verify course assignment from database (never trust client claims or unverified state)
+      try {
+        const isAssigned = await verifyLecturerCourseInDatabase(req.user, courseCode);
+        if (isAssigned) {
+          return next();
+        }
+      } catch (dbErr: any) {
+        logger.error("Course assignment verification failed due to database error:", dbErr);
+        return res.status(503).json({
+          error: "Service Unavailable: Database verification failed",
+          code: "DATABASE_UNAVAILABLE",
+          details: "Could not verify course assignment due to a database service error."
+        });
+      }
+
+      logger.warn(`Lecturer course verification failed for ${email} (Role: ${role}) targeting course [${courseCode}]`);
+      return res.status(403).json({
+        error: `Access Denied: You are not assigned as the lecturer for course ${courseCode} in the database.`,
+        code: "LECTURER_COURSE_UNASSIGNED",
+        details: "Lecturer access is restricted to courses actively assigned to the faculty member in the database."
+      });
+    }
+
+    // 5. Student Ownership Check: Validate strictly using immutable internal IDs against database records.
+    // Do NOT authorize based on name, email prefix, display name, or partial strings.
+    try {
+      const isOwner = await verifyStudentOwnershipInDatabase(
+        req.user,
+        targetStudentId,
+        targetStudentName,
+        targetEmail
+      );
+
+      if (isOwner) {
+        return next();
+      }
+    } catch (dbErr: any) {
+      logger.error("Student ownership verification failed due to database error:", dbErr);
+      return res.status(503).json({
+        error: "Service Unavailable: Database verification failed",
+        code: "DATABASE_UNAVAILABLE",
+        details: "Could not verify resource ownership due to a database service error."
+      });
+    }
+
+    // Access Denied
+    logger.warn(`Resource Ownership Check Failed for ${email} (Role: ${role}) targeting [ID: ${targetStudentId}, Name: ${targetStudentName}, Email: ${targetEmail}]`);
+    return res.status(403).json({
+      error: "Access Denied: You do not have ownership or authority to view or modify this student's private record.",
+      code: "RESOURCE_OWNERSHIP_DENIED",
+      details: "Students may only access their own grades, attendance, and financial ledgers verified by immutable ID."
+    });
+  };
+}
+
+/**
  * Verifies whether a lecturer is assigned to teach a course by querying the authoritative database.
  * Does NOT trust client-supplied or unverified in-memory claims.
  */
@@ -626,114 +734,4 @@ export async function verifyStudentOwnershipInDatabase(
       throw new DatabaseServiceError("Database student ownership verification failed", dbErr);
     }
   }
-
-  return false;
-}
-
-/**
- * Resource Ownership Verification Middleware
- * 
- * Verifies that the authenticated user either:
- * 1. Has an elevated administrative role (Super Admin, Admin, Registrar, Finance Officer, etc.), OR
- * 2. Is the assigned faculty lecturer for the specific course, verified strictly against the database, OR
- * 3. Owns the resource verified strictly by immutable studentId / user_id database record comparison.
- */
-export interface ResourceOwnershipOptions {
-  getTarget: (req: Request) => {
-    targetStudentId?: string;
-    targetStudentName?: string;
-    targetEmail?: string;
-    courseCode?: string;
-  };
-  allowedRoles?: UserRole[];
-}
-
-export function requireResourceOwnership(options: ResourceOwnershipOptions) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({ error: "Authentication required", code: "UNAUTHENTICATED" });
-    }
-
-    const { role, email } = req.user;
-
-    // 1. Super Admin is always authorized
-    if (role === "super_admin") {
-      return next();
-    }
-
-    // 2. Check explicitly allowed administrative roles (excluding lecturer and teacher!)
-    // Note: Lecturers and faculty must never bypass via allowedRoles; they must be verified with courseCode against the database.
-    const allowedRoles: UserRole[] = (options.allowedRoles || ["super_admin", "admin", "registrar"])
-      .filter((r): r is UserRole => r !== "lecturer" && r !== "teacher");
-
-    if (allowedRoles.includes(role)) {
-      return next();
-    }
-
-    // 3. Extract target identifiers from request
-    const { targetStudentId, targetStudentName, targetEmail, courseCode } = options.getTarget(req);
-
-    // 4. Lecturer check: Course scope is strictly required and verified against relational assignment tables in database
-    if (role === "lecturer" || role === "teacher") {
-      if (!courseCode) {
-        return res.status(400).json({
-          error: "Course context is required",
-          code: "COURSE_SCOPE_REQUIRED",
-          details: "Lecturers and faculty must provide a courseCode parameter or body field to access scoped student records."
-        });
-      }
-
-      // Verify course assignment from database (never trust client claims or unverified state)
-      try {
-        const isAssigned = await verifyLecturerCourseInDatabase(req.user, courseCode);
-        if (isAssigned) {
-          return next();
-        }
-      } catch (dbErr: any) {
-        logger.error("Course assignment verification failed due to database error:", dbErr);
-        return res.status(503).json({
-          error: "Service Unavailable: Database verification failed",
-          code: "DATABASE_UNAVAILABLE",
-          details: "Could not verify course assignment due to a database service error."
-        });
-      }
-
-      logger.warn(`Lecturer course verification failed for ${email} (Role: ${role}) targeting course [${courseCode}]`);
-      return res.status(403).json({
-        error: `Access Denied: You are not assigned as the lecturer for course ${courseCode} in the database.`,
-        code: "LECTURER_COURSE_UNASSIGNED",
-        details: "Lecturer access is restricted to courses actively assigned to the faculty member in the database."
-      });
-    }
-
-    // 5. Student Ownership Check: Validate strictly using immutable internal IDs against database records.
-    // Do NOT authorize based on name, email prefix, display name, or partial strings.
-    try {
-      const isOwner = await verifyStudentOwnershipInDatabase(
-        req.user,
-        targetStudentId,
-        targetStudentName,
-        targetEmail
-      );
-
-      if (isOwner) {
-        return next();
-      }
-    } catch (dbErr: any) {
-      logger.error("Student ownership verification failed due to database error:", dbErr);
-      return res.status(503).json({
-        error: "Service Unavailable: Database verification failed",
-        code: "DATABASE_UNAVAILABLE",
-        details: "Could not verify resource ownership due to a database service error."
-      });
-    }
-
-    // Access Denied
-    logger.warn(`Resource Ownership Check Failed for ${email} (Role: ${role}) targeting [ID: ${targetStudentId}, Name: ${targetStudentName}, Email: ${targetEmail}]`);
-    return res.status(403).json({
-      error: "Access Denied: You do not have ownership or authority to view or modify this student's private record.",
-      code: "RESOURCE_OWNERSHIP_DENIED",
-      details: "Students may only access their own grades, attendance, and financial ledgers verified by immutable ID."
-    });
-  };
 }

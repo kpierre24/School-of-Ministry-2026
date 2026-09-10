@@ -139,9 +139,15 @@ assignmentsRouter.post(
   "/grade",
   requireAuth,
   requirePermission(["assignments:grade", "grades:write", "all:access"]),
+  requireResourceOwnership({
+    getTarget: (req) => ({
+      courseCode: req.body.courseCode, // Assumes frontend sends courseCode for verification
+    }),
+    allowedRoles: ["super_admin", "admin", "registrar"],
+  }),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId, assignmentId, studentId, score, feedback, rubricScores, overrideReason } = req.body;
+      const { submissionId, assignmentId, studentId, score, feedback, rubricScores, overrideReason, courseCode } = req.body;
       const actorUser = req.user!;
 
       // 9.4 Staff check

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { financeService } from "../services/domain";
-import { requireAuth, requirePermission } from "../middleware/rbac";
+import { requireAuth, requirePermission, requireResourceOwnership } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 import { validateBody } from "../middleware/validation";
 import { RecordPaymentSchema, InvoiceSchema, AdjustmentSchema, RefundSchema } from "../schemas/finance.schema";
@@ -19,6 +19,12 @@ paymentsRouter.use(requireAuth);
 paymentsRouter.get(
   "/invoices",
   requirePermission(["finance:read", "all:access"]),
+  requireResourceOwnership({
+    getTarget: (req) => ({
+      targetStudentId: (req.query.studentId as string) || undefined,
+    }),
+    allowedRoles: ["super_admin", "admin", "finance_officer", "registrar"],
+  }),
   async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -107,6 +113,12 @@ paymentsRouter.get(
 paymentsRouter.post(
   "/transactions",
   requirePermission(["finance:write", "all:access"]),
+  requireResourceOwnership({
+    getTarget: (req) => ({
+      targetStudentId: (req.body.payment?.studentId || req.body.transaction?.studentId) as string,
+    }),
+    allowedRoles: ["super_admin", "admin", "finance_officer", "registrar"],
+  }),
   validateBody(RecordPaymentSchema),
   async (req: Request, res: Response) => {
     try {

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { createClient } from "redis";
 import { logger } from "../../lib/logger";
@@ -48,7 +48,7 @@ export function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000, bucket
       }
       
       // 2. Fallback to Express trusted IP (which properly parses x-forwarded-for when trust proxy is configured)
-      const ip = req.ip || req.socket.remoteAddress || "unknown-ip";
+      const ip = ipKeyGenerator(req) || "unknown-ip";
       return `${bucketName}:ip:${ip}`;
     },
     // Handler triggered when limit is exceeded
