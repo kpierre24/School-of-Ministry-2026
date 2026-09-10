@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { stateHydrationService } from "../services/domain";
-import { saveAuthoritativeStateForUser, StateConcurrencyError } from "../services/supabaseServer";
-import { requireAuth, requirePermission } from "../middleware/rbac";
+import { requireAuth } from "../middleware/rbac";
 import { logger } from "../../lib/logger";
 
 export const stateRouter = Router();

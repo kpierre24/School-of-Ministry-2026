@@ -7,7 +7,6 @@ import {
   financeService,
   stateHydrationService,
 } from "../services/domain";
-import { saveAuthoritativeStateForUser, StateConcurrencyError } from "../services/supabaseServer";
 import { logger } from "../../lib/logger";
 
 export const meRouter = Router();
@@ -258,69 +257,19 @@ meRouter.get("/state", async (req: Request, res: Response) => {
 
 /**
  * POST /api/me/state
- * Saves state authoritatively for the authenticated user based on req.user.userId.
- * Enforces optimistic concurrency (version checking). Returns 409 Conflict if state has been modified concurrently.
+ * DEPRECATED / DISALLOWED: /api/me/state is strictly a GET-only read-composition endpoint.
+ * Mutations must be executed via domain-specific relational REST endpoints:
+ * - POST /api/students & PATCH /api/students/:id
+ * - POST /api/attendance & PATCH /api/attendance/:id
+ * - POST /api/assignments & POST /api/assignments/:id/submissions
+ * - POST /api/grades
+ * - POST /api/invoices & POST /api/payments
+ * - POST /api/notifications
  */
-meRouter.post(
-  "/state",
-  requirePermission([
-    "students:write",
-    "attendance:write",
-    "grades:write",
-    "finance:write",
-    "assignments:submit",
-    "roles:manage",
-    "all:access"
-  ]),
-  async (req: Request, res: Response) => {
-    try {
-      const user = req.user!;
-      const { state, expectedVersion: bodyVersion, actionDescription } = req.body;
+meRouter.post("/state", (req: Request, res: Response) => {
+  return res.status(405).json({
+    error: "Method Not Allowed: /api/me/state is a read-only composition endpoint. Mutations must be executed via domain-specific relational endpoints (/api/students, /api/attendance, /api/grades, /api/assignments, /api/invoices, /api/payments).",
+    code: "MUTATION_ENDPOINT_DEPRECATED",
+  });
+});
 
-      if (!state || typeof state !== "object") {
-        return res.status(400).json({ error: "State object is required" });
-      }
-
-      // Extract expectedVersion from body or headers (If-Match / x-expected-version) or state payload
-      let expectedVersion: number | null | undefined = undefined;
-      if (typeof bodyVersion === "number") {
-        expectedVersion = bodyVersion;
-      } else if (req.headers["if-match"]) {
-        const raw = String(req.headers["if-match"]).replace(/["\s]/g, "");
-        const parsed = parseInt(raw, 10);
-        if (!isNaN(parsed)) expectedVersion = parsed;
-      } else if (req.headers["x-expected-version"]) {
-        const parsed = parseInt(String(req.headers["x-expected-version"]), 10);
-        if (!isNaN(parsed)) expectedVersion = parsed;
-      } else if (typeof state?.version === "number") {
-        expectedVersion = state.version;
-      }
-
-      const result = await saveAuthoritativeStateForUser(user, state, actionDescription, expectedVersion);
-      return res.status(200).json({
-        success: true,
-        version: result.version,
-        updatedAt: result.updatedAt,
-        userId: user.userId,
-        source: "relational_postgresql",
-      });
-    } catch (err: any) {
-      if (err instanceof StateConcurrencyError || err?.code === "CONCURRENCY_CONFLICT" || err?.status === 409) {
-        logger.warn(`[MeRouter] Concurrency conflict (409) for user ${req.user?.userId}:`, {
-          expectedVersion: err.expectedVersion,
-          currentVersion: err.currentVersion,
-        });
-        return res.status(409).json({
-          error: "State concurrency conflict. The application state was modified by another user or session.",
-          code: "CONCURRENCY_CONFLICT",
-          expectedVersion: err.expectedVersion,
-          currentVersion: err.currentVersion,
-          currentUpdatedAt: err.currentUpdatedAt,
-        });
-      }
-
-      logger.error("POST /api/me/state error:", err);
-      return res.status(500).json({ error: "Failed to save state to database" });
-    }
-  }
-);
