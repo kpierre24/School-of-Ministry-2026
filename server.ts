@@ -61,7 +61,7 @@ async function startServer() {
     !currentFilename.endsWith(".cjs") &&
     !currentDirname.includes("dist");
 
-  // Cloud Run or container environment assigns PORT (e.g. 8080 or 3000).
+  // Bind to 0.0.0.0 and port 3000 for container ingress routing
   let PORT = 3000;
   if (process.env.PORT) {
     PORT = parseInt(process.env.PORT, 10);
@@ -73,8 +73,7 @@ async function startServer() {
     }
   }
 
-  const defaultHost = isDev ? "127.0.0.1" : "0.0.0.0";
-  let HOST = process.env.HOST || defaultHost;
+  let HOST = process.env.HOST || "0.0.0.0";
   const hostArgIdx = process.argv.indexOf("--host");
   if (hostArgIdx !== -1) {
     const nextArg = process.argv[hostArgIdx + 1];
