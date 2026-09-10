@@ -33,7 +33,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
     const p = safePayments.find(pay => pay && pay.studentName && (pay?.studentName || '').toLowerCase().trim() === (s?.name || '').toLowerCase().trim());
     const hasPastDue = p?.status === 'Past Due';
     const isAttRisk = (s.rate ?? 100) < 75;
-    const isGradeRisk = (s.avgScore ?? 82) < 75;
+    const isGradeRisk = s.avgScore !== null && s.avgScore !== undefined && s.avgScore < 75;
     return isAttRisk || isGradeRisk || hasPastDue;
   });
 
@@ -41,7 +41,7 @@ export const AtRiskNotificationModal: React.FC<AtRiskNotificationModalProps> = (
     ? passedAtRiskStudents.map(s => ({
         name: s.studentName,
         rate: s.attendanceRate ?? 70,
-        avgScore: s.averageScore ?? 75
+        avgScore: s.averageScore ?? null
       }))
     : calculatedAtRisk;
 

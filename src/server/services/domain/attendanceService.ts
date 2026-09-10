@@ -140,7 +140,7 @@ export const attendanceService = {
 
     try {
       // 1. Query hierarchical attendance_records joined with attendance_sessions and students
-      const { data: recData, error: recError } = await supabase
+      let query = supabase
         .from('attendance_records')
         .select(`
           id,
@@ -173,8 +173,17 @@ export const attendanceService = {
             )
           )
         `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .is('deleted_at', null);
+
+      if (user && user.role === 'student') {
+        const studentUuid = user.studentRecordId || user.userId;
+        if (studentUuid) {
+          query = query.eq('student_id', studentUuid);
+        }
+      }
+
+      query = query.order('created_at', { ascending: false });
+      const { data: recData, error: recError } = await query;
 
       if (!recError && recData && recData.length > 0) {
         const uniqueSessionsMap = new Map<string, any>();

@@ -133,7 +133,12 @@ export const assignmentsService = {
         query = query.eq('assignment_id', filters.assignmentId);
       }
 
-      if (filters?.studentId) {
+      if (user && user.role === 'student') {
+        const studentUuid = user.studentRecordId || user.studentId || user.userId;
+        if (studentUuid) {
+          query = query.eq('student_id', studentUuid);
+        }
+      } else if (filters?.studentId) {
         query = query.eq('student_id', filters.studentId);
       }
 

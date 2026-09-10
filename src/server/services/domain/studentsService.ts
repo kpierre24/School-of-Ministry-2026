@@ -16,22 +16,41 @@ export interface StudentSummary {
   attendanceRate: number;
   isAtRisk: boolean;
   isCritical: boolean;
-  averageGrade: number;
+  averageGrade: number | null;
   submissionsCount: number;
   standing?: string;
   enrollmentStatus?: string;
 }
 
+export interface GetStudentsOptions {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  studentId?: string;
+  cohortLevel?: string;
+  enrollmentStatus?: string;
+}
+
 export const studentsService = {
   /**
-   * Retrieves all students with joined profile and summary metrics from relational tables.
+   * Retrieves students with joined profile and summary metrics from relational tables.
+   * For student requests, queries are filtered at the database level rather than loading all students in memory.
    */
-  async getStudents(user?: AuthenticatedUser): Promise<{ students: StudentSummary[]; total: number; atRiskCount: number }> {
+  async getStudents(
+    user?: AuthenticatedUser,
+    options?: GetStudentsOptions
+  ): Promise<{ students: StudentSummary[]; total: number; atRiskCount: number }> {
     const supabase = getServerSupabase();
 
     try {
-      // 1. Fetch from relational students table joined with profiles and users
-      const { data: dbStudents, error: studentErr } = await supabase
+      const isStudent = user?.role === 'student';
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const studentRecordUuid = user?.studentRecordId && UUID_REGEX.test(user.studentRecordId) ? user.studentRecordId : null;
+      const userUuid = (user?.userId || user?.id) && UUID_REGEX.test(user?.userId || user?.id || '') ? (user?.userId || user?.id) : null;
+      const studentNumber = user?.studentNumber ? user.studentNumber.trim() : null;
+
+      // 1. Fetch from relational students table joined with profiles and users with database-level filtering
+      let studentQuery = supabase
         .from('students')
         .select(`
           id,
@@ -52,98 +71,175 @@ export const studentsService = {
             is_active
           )
         `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true });
+        .is('deleted_at', null);
 
-      // 2. Also fetch attendance metrics & submissions from relational tables
-      const { data: attendanceData } = await supabase
+      if (isStudent) {
+        // Direct database-level filtering for student identity
+        if (studentRecordUuid && userUuid) {
+          studentQuery = studentQuery.or(`id.eq.${studentRecordUuid},user_id.eq.${userUuid}`);
+        } else if (studentRecordUuid) {
+          studentQuery = studentQuery.eq('id', studentRecordUuid);
+        } else if (userUuid) {
+          studentQuery = studentQuery.eq('user_id', userUuid);
+        } else if (studentNumber) {
+          studentQuery = studentQuery.eq('student_number', studentNumber);
+        } else {
+          // Student has no valid identity credentials, cannot match any student record
+          return { students: [], total: 0, atRiskCount: 0 };
+        }
+      } else {
+        // Staff query filters pushed to database
+        if (options?.studentId && UUID_REGEX.test(options.studentId)) {
+          studentQuery = studentQuery.eq('id', options.studentId);
+        }
+        if (options?.cohortLevel) {
+          studentQuery = studentQuery.eq('cohort_level', options.cohortLevel);
+        }
+        if (options?.enrollmentStatus) {
+          studentQuery = studentQuery.eq('enrollment_status', options.enrollmentStatus);
+        }
+        if (options?.search) {
+          const term = options.search.trim();
+          studentQuery = studentQuery.or(`student_number.ilike.%${term}%`);
+        }
+        if (typeof options?.limit === 'number' && options.limit > 0) {
+          const offset = typeof options.offset === 'number' && options.offset >= 0 ? options.offset : 0;
+          studentQuery = studentQuery.range(offset, offset + options.limit - 1);
+        }
+      }
+
+      studentQuery = studentQuery.order('created_at', { ascending: true });
+
+      const { data: dbStudents, error: studentErr } = await studentQuery;
+
+      if (studentErr) {
+        logger.warn('Error querying students from relational table:', studentErr);
+      }
+
+      if (!dbStudents || dbStudents.length === 0) {
+        return { students: [], total: 0, atRiskCount: 0 };
+      }
+
+      const targetStudentIds = dbStudents.map((s: any) => s.id).filter(Boolean);
+
+      // 2. Fetch attendance metrics & submissions from relational tables, scoped to targeted student IDs at the DB level
+      let attendanceQuery = supabase
         .from('attendance')
         .select('student_id, session_date, status')
         .is('deleted_at', null);
 
-      const { data: submissionsData } = await supabase
+      let submissionsQuery = supabase
         .from('submissions')
         .select('id, student_id, status, grades(points_awarded)')
         .is('deleted_at', null);
 
-      if (dbStudents && dbStudents.length > 0) {
-        // Group attendance by student_id
-        const attByStudent = new Map<string, { present: number; excused: number; total: number }>();
-        const sessionDates = new Set<string>();
+      // When querying for a specific student or scoped student list, push filter down to database
+      if (isStudent || (targetStudentIds.length > 0 && targetStudentIds.length <= 100)) {
+        attendanceQuery = attendanceQuery.in('student_id', targetStudentIds);
+        submissionsQuery = submissionsQuery.in('student_id', targetStudentIds);
+      }
 
-        (attendanceData || []).forEach((att: any) => {
-          if (att.session_date) sessionDates.add(att.session_date);
-          const current = attByStudent.get(att.student_id) || { present: 0, excused: 0, total: 0 };
-          current.total += 1;
-          const st = (att.status || '').toLowerCase();
-          if (st === 'present' || st === 'tardy') current.present += 1;
-          else if (st === 'excused') current.excused += 1;
-          attByStudent.set(att.student_id, current);
+      const [
+        { data: attendanceData },
+        { data: submissionsData },
+        sessionResult
+      ] = await Promise.all([
+        attendanceQuery,
+        submissionsQuery,
+        // When student is filtered at DB level, query global attendance_sessions for authoritative curriculum session dates
+        isStudent
+          ? supabase.from('attendance_sessions').select('session_date').is('deleted_at', null)
+          : Promise.resolve({ data: null })
+      ]);
+
+      // Group attendance by student_id
+      const attByStudent = new Map<string, { present: number; excused: number; total: number }>();
+      const sessionDates = new Set<string>();
+
+      if (isStudent && sessionResult?.data) {
+        (sessionResult.data || []).forEach((sess: any) => {
+          if (sess.session_date) sessionDates.add(sess.session_date);
         });
+      }
 
-        // Group submissions by student_id
-        const subsByStudent = new Map<string, { count: number; totalPoints: number; gradedCount: number }>();
-        (submissionsData || []).forEach((sub: any) => {
-          const current = subsByStudent.get(sub.student_id) || { count: 0, totalPoints: 0, gradedCount: 0 };
-          current.count += 1;
-          const grade = sub.grades?.[0] || sub.grades;
-          if (grade && typeof grade.points_awarded === 'number') {
-            current.totalPoints += grade.points_awarded;
-            current.gradedCount += 1;
-          }
-          subsByStudent.set(sub.student_id, current);
-        });
+      (attendanceData || []).forEach((att: any) => {
+        if (att.session_date) sessionDates.add(att.session_date);
+        const current = attByStudent.get(att.student_id) || { present: 0, excused: 0, total: 0 };
+        current.total += 1;
+        const st = (att.status || '').toLowerCase();
+        if (st === 'present' || st === 'tardy') current.present += 1;
+        else if (st === 'excused') current.excused += 1;
+        attByStudent.set(att.student_id, current);
+      });
 
-        const totalGlobalSessions = Math.max(sessionDates.size, 1);
-
-        let list: StudentSummary[] = dbStudents.map((s: any) => {
-          const p = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
-          const u = Array.isArray(s.users) ? s.users[0] : s.users;
-          const fullName = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : (s.student_number || 'Student');
-          const att = attByStudent.get(s.id) || { present: 0, excused: 0, total: 0 };
-          const subs = subsByStudent.get(s.id) || { count: 0, totalPoints: 0, gradedCount: 0 };
-
-          const effectivePresent = att.present + att.excused;
-          const rate = totalGlobalSessions > 0 ? Math.round((effectivePresent / totalGlobalSessions) * 100) : 100;
-          const isAtRisk = rate < 75;
-          const isCritical = rate <= 50;
-          const avgGrade = subs.gradedCount > 0 ? Math.round(subs.totalPoints / subs.gradedCount) : 85;
-
-          return {
-            id: s.id,
-            name: fullName,
-            studentNumber: s.student_number,
-            email: u?.email || '',
-            level: s.cohort_level || 'Level 1 Foundation',
-            photoUrl: p?.avatar_url || null,
-            note: p?.bio || '',
-            totalSessions: totalGlobalSessions,
-            presentCount: att.present,
-            excusedCount: att.excused,
-            attendanceRate: rate,
-            isAtRisk,
-            isCritical,
-            averageGrade: avgGrade,
-            submissionsCount: subs.count,
-            standing: avgGrade >= 85 ? 'High Distinction' : rate >= 75 ? 'Satisfactory' : 'At-Risk',
-            enrollmentStatus: s.enrollment_status || 'active',
-          };
-        });
-
-        // If user is a student, filter to own profile by UUID foreign key
-        if (user && user.role === 'student') {
-          // Use only UUID-typed identifiers; never mix in studentNumber (registration code)
-          const studentUuid = user.studentRecordId || user.userId;
-          const userUuid = user.userId || user.id;
-          list = list.filter((s) => s.id === studentUuid || s.id === userUuid || (s as any).userId === userUuid || (s as any).user_id === userUuid);
+      // Group submissions by student_id
+      const subsByStudent = new Map<string, { count: number; totalPoints: number; gradedCount: number }>();
+      (submissionsData || []).forEach((sub: any) => {
+        const current = subsByStudent.get(sub.student_id) || { count: 0, totalPoints: 0, gradedCount: 0 };
+        current.count += 1;
+        const grade = sub.grades?.[0] || sub.grades;
+        if (grade && typeof grade.points_awarded === 'number') {
+          current.totalPoints += grade.points_awarded;
+          current.gradedCount += 1;
         }
+        subsByStudent.set(sub.student_id, current);
+      });
+
+      const totalGlobalSessions = Math.max(sessionDates.size, 1);
+
+      let list: StudentSummary[] = dbStudents.map((s: any) => {
+        const p = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
+        const u = Array.isArray(s.users) ? s.users[0] : s.users;
+        const fullName = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : (s.student_number || 'Student');
+        const att = attByStudent.get(s.id) || { present: 0, excused: 0, total: 0 };
+        const subs = subsByStudent.get(s.id) || { count: 0, totalPoints: 0, gradedCount: 0 };
+
+        const effectivePresent = att.present + att.excused;
+        const rate = totalGlobalSessions > 0 ? Math.round((effectivePresent / totalGlobalSessions) * 100) : 100;
+        const avgGrade = subs.gradedCount > 0 ? Math.round(subs.totalPoints / subs.gradedCount) : null;
+        const isAtRisk = rate < 75 || (avgGrade !== null && avgGrade < 75);
+        const isCritical = rate <= 50 || (avgGrade !== null && avgGrade < 50);
+        const standing = avgGrade === null
+          ? 'Not Yet Graded'
+          : avgGrade >= 85
+            ? 'High Distinction'
+            : (avgGrade >= 75 && rate >= 75)
+              ? 'Satisfactory'
+              : 'At-Risk';
 
         return {
-          students: list,
-          total: list.length,
-          atRiskCount: list.filter((s) => s.isAtRisk).length,
+          id: s.id,
+          name: fullName,
+          studentNumber: s.student_number,
+          email: u?.email || '',
+          level: s.cohort_level || 'Level 1 Foundation',
+          photoUrl: p?.avatar_url || null,
+          note: p?.bio || '',
+          totalSessions: totalGlobalSessions,
+          presentCount: att.present,
+          excusedCount: att.excused,
+          attendanceRate: rate,
+          isAtRisk,
+          isCritical,
+          averageGrade: avgGrade,
+          submissionsCount: subs.count,
+          standing,
+          enrollmentStatus: s.enrollment_status || 'active',
         };
+      });
+
+      // Defense-in-depth: If user is a student, ensure only own profile is returned
+      if (isStudent) {
+        const studentUuid = user.studentRecordId || user.userId;
+        const userUuid = user.userId || user.id;
+        list = list.filter((s) => s.id === studentUuid || s.id === userUuid || (s as any).userId === userUuid || (s as any).user_id === userUuid);
       }
+
+      return {
+        students: list,
+        total: list.length,
+        atRiskCount: list.filter((s) => s.isAtRisk).length,
+      };
     } catch (err) {
       logger.warn('Error reading from relational students table, using fallback:', err);
     }
@@ -245,6 +341,25 @@ export const studentsService = {
       const totalSessions = Math.max(attendanceHistory.length, 1);
       const attendanceRate = Math.round(((presentCount + excusedCount) / totalSessions) * 100);
 
+      let totalGradePoints = 0;
+      let gradedCount = 0;
+      submissions.forEach((s: any) => {
+        if (typeof s.score === 'number' && !isNaN(s.score)) {
+          totalGradePoints += s.score;
+          gradedCount += 1;
+        }
+      });
+      const avgGrade = gradedCount > 0 ? Math.round(totalGradePoints / gradedCount) : null;
+      const isAtRisk = attendanceRate < 75 || (avgGrade !== null && avgGrade < 75);
+      const isCritical = attendanceRate <= 50 || (avgGrade !== null && avgGrade < 50);
+      const standing = avgGrade === null
+        ? 'Not Yet Graded'
+        : avgGrade >= 85
+          ? 'High Distinction'
+          : (avgGrade >= 75 && attendanceRate >= 75)
+            ? 'Satisfactory'
+            : 'At-Risk';
+
       const summary: StudentSummary = {
         id: studentId,
         name: studentName,
@@ -257,11 +372,11 @@ export const studentsService = {
         presentCount,
         excusedCount,
         attendanceRate,
-        isAtRisk: attendanceRate < 75,
-        isCritical: attendanceRate <= 50,
-        averageGrade: 88,
+        isAtRisk,
+        isCritical,
+        averageGrade: avgGrade,
         submissionsCount: submissions.length,
-        standing: attendanceRate < 75 ? 'At-Risk' : 'Satisfactory',
+        standing,
       };
 
       return {

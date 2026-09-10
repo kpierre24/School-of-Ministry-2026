@@ -81,18 +81,18 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
 
   // At-Risk & Readiness status
   const attRate = student?.rate ?? 80;
-  const avgScore = student?.avgScore ?? 82;
-  const isAtRisk = attRate < 75 || avgScore < 75 || balance > 0;
+  const avgScore = student?.avgScore ?? null;
+  const isAtRisk = attRate < 75 || (avgScore !== null && avgScore < 75) || balance > 0;
   
   let readinessStatus: 'On Track' | 'Needs Attention' | 'Critical' = 'On Track';
-  if (attRate <= 50 || avgScore < 60) {
+  if (attRate <= 50 || (avgScore !== null && avgScore < 60)) {
     readinessStatus = 'Critical';
   } else if (attRiskCheck(attRate, avgScore, balance)) {
     readinessStatus = 'Needs Attention';
   }
 
-  function attRiskCheck(rate: number, score: number, bal: number) {
-    return rate < 75 || score < 75 || bal > 300;
+  function attRiskCheck(rate: number, score: number | null, bal: number) {
+    return rate < 75 || (score !== null && score < 75) || bal > 300;
   }
 
   // Calculate 6 Module Completion Percentages
@@ -100,7 +100,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
     { name: 'Module 1: Hermeneutics & Word', code: 'MOD-101', pct: attRate >= 75 ? 100 : 80, status: 'Completed' },
     { name: 'Module 2: Soul Winning & Evangelism', code: 'MOD-201', pct: attRate >= 75 ? 100 : 70, status: 'Completed' },
     { name: 'Module 3: Ministerial Ethics & Integrity', code: 'MOD-301', pct: Math.min(100, Math.round(attRate * 1.1)), status: 'In Progress' },
-    { name: 'Module 4: Apostolic Governance & Five-Fold', code: 'MOD-401', pct: Math.min(100, Math.round(avgScore)), status: 'In Progress' },
+    { name: 'Module 4: Apostolic Governance & Five-Fold', code: 'MOD-401', pct: avgScore !== null ? Math.min(100, Math.round(avgScore)) : 0, status: avgScore !== null ? 'In Progress' : 'Upcoming' },
     { name: 'Module 5: Prophetic Ministry & Discernment', code: 'MOD-501', pct: attRate >= 80 ? 60 : 30, status: 'Upcoming' },
     { name: 'Module 6: School of Pastors & Teachers', code: 'MOD-601', pct: 0, status: 'Upcoming' },
   ];
@@ -151,13 +151,13 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
     studentName: student.name,
     attendanceRate: attRate,
     meetsAttendance: attRate >= 75,
-    averageGrade: avgScore,
-    meetsGrade: avgScore >= 75,
+    averageGrade: avgScore ?? undefined,
+    meetsGrade: avgScore !== null && avgScore >= 75,
     assignmentsCompleted: studentSubmissions.filter(s => s.status === 'Graded').length,
     totalAssignments: assignments.length || 4,
     meetsAssignments: true,
     tuitionPaid: balance === 0,
-    isReadyForGraduation: attRate >= 75 && avgScore >= 75 && balance === 0
+    isReadyForGraduation: attRate >= 75 && avgScore !== null && avgScore >= 75 && balance === 0
   };
 
   const handleAddNoteSubmit = (e: React.FormEvent) => {
@@ -255,7 +255,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
               <div className="bg-slate-950/80 p-2.5 px-3.5 rounded-xl border border-white/10 text-center">
                 <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Average Grade</p>
                 <p className="text-base font-black text-amber-400">
-                  {avgScore}%
+                  {avgScore !== null ? `${avgScore}%` : 'Not Yet Graded'}
                 </p>
               </div>
 
@@ -388,7 +388,7 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                     <span className="text-amber-600 font-extrabold">Pass = 75%+</span>
                   </div>
                   <div className="text-2xl font-black text-slate-900 dark:text-white flex items-center justify-between">
-                    <span>{avgScore}%</span>
+                    <span>{avgScore !== null ? `${avgScore}%` : 'Not Yet Graded'}</span>
                     <Award className="w-6 h-6 text-amber-500" />
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -663,10 +663,14 @@ export const Student360ProfileModal: React.FC<Student360ProfileModalProps> = ({
                   </div>
 
                   <div className={`p-3 rounded-xl border flex items-center justify-between ${
-                    graduationChecklist.meetsGrade ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-emerald-900 dark:text-emerald-200' : 'bg-rose-50 border-rose-300 text-rose-900'
+                    graduationChecklist.meetsGrade
+                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-emerald-900 dark:text-emerald-200'
+                      : avgScore === null
+                        ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        : 'bg-rose-50 border-rose-300 text-rose-900'
                   }`}>
                     <span className="font-bold">Scripture Grade Average (≥75%):</span>
-                    <span className="font-black">{avgScore}% {graduationChecklist.meetsGrade ? '✓' : '✕'}</span>
+                    <span className="font-black">{avgScore !== null ? `${avgScore}% ${graduationChecklist.meetsGrade ? '✓' : '✕'}` : 'Not Yet Graded'}</span>
                   </div>
 
                   <div className="p-3 rounded-xl border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-emerald-900 dark:text-emerald-200 flex items-center justify-between">

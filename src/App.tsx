@@ -3227,7 +3227,7 @@ export default function App() {
       rate: 100,
       attended: classDays.length,
       totalDays: classDays.length || 1,
-      avgScore: 95,
+      avgScore: null,
       attendanceByDay: {},
       photoUrl: studentPhotos[(sName || '').toLowerCase().trim()] || ''
     };
@@ -4586,7 +4586,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                         awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
                         criteria: `Demonstrated commitment with ${s.rate.toFixed(1)}% class attendance.`,
                         rate: s.rate,
-                        avgScore: s.avgScore || 90
+                        avgScore: s.avgScore ?? undefined
                       });
                       setShowCertificateModal(true);
                     }}

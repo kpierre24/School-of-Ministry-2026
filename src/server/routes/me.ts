@@ -74,15 +74,22 @@ meRouter.get("/grades", async (req: Request, res: Response) => {
         gradedCount++;
       }
     }
-    const gpaPercent = gradedCount > 0 ? Math.round(totalGrade / gradedCount) : 88;
-    const honorRoll = gpaPercent >= 85;
+    const gpaPercent = gradedCount > 0 ? Math.round(totalGrade / gradedCount) : null;
+    const honorRoll = gpaPercent !== null ? gpaPercent >= 85 : false;
+    const standing = gpaPercent === null
+      ? "Not Yet Graded"
+      : honorRoll
+        ? "High Distinction"
+        : gpaPercent >= 75
+          ? "Satisfactory"
+          : "At-Risk";
 
     return res.status(200).json({
       studentId: studentId || null,
       studentName: studentName || user.email.split("@")[0],
       averageGrade: gpaPercent,
       honorRoll,
-      standing: honorRoll ? "High Distinction" : gpaPercent >= 75 ? "Satisfactory" : "At-Risk",
+      standing,
       submissions,
       rubricScores: subResult.rubricScores?.[studentName || ""] || null,
     });

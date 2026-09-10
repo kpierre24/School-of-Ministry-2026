@@ -271,7 +271,12 @@ export const financeService = {
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      if (filterObj?.studentId) {
+      if (user && user.role === 'student') {
+        const studentUuid = user.studentRecordId || user.userId;
+        if (studentUuid) {
+          query = query.eq('student_id', studentUuid);
+        }
+      } else if (filterObj?.studentId) {
         query = query.eq('student_id', filterObj.studentId);
       }
 
@@ -678,7 +683,12 @@ export const financeService = {
         .is('deleted_at', null)
         .order('payment_date', { ascending: false });
 
-      if (filters?.studentId) {
+      if (user && user.role === 'student') {
+        const studentUuid = user.studentRecordId || user.userId;
+        if (studentUuid) {
+          query = query.eq('student_id', studentUuid);
+        }
+      } else if (filters?.studentId) {
         query = query.eq('student_id', filters.studentId);
       }
 

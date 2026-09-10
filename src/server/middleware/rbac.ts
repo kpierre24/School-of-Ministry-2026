@@ -861,6 +861,10 @@ export function requireResourceOwnership(options: ResourceOwnershipOptions) {
 /**
  * Verifies whether a lecturer is assigned to teach a course by querying the authoritative database.
  * Does NOT trust client-supplied or unverified in-memory claims.
+ *
+ * Uses targeted SQL queries:
+ * SELECT 1 FROM course_offerings WHERE lecturer_user_id = ? AND course_definition_id = ?
+ * Eliminates full table scans and in-memory JavaScript filtering for optimal speed, security, and auditability.
  */
 export async function verifyLecturerCourseInDatabase(
   user: AuthenticatedUser,
@@ -872,69 +876,111 @@ export async function verifyLecturerCourseInDatabase(
 
   const cleanCourse = courseCode.trim().toUpperCase();
   const cleanEmail = (user.email || "").trim().toLowerCase();
-  const cleanName = (user.studentName || user.name || "").trim().toLowerCase();
-  const userId = user.userId || user.id || "";
+  let lecturerUserId = (user.userId || user.id || "").trim();
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   try {
     const supabase = getServerSupabase();
 
-    // 1. Check relational `course_offerings` table in PostgreSQL
-    const { data: offerings, error: offErr } = await supabase
-      .from("course_offerings")
-      .select(`
-        id,
-        course_definition_id,
-        lecturer_email,
-        lecturer_name,
-        status,
-        course_definitions (
-          id,
-          code
-        )
-      `)
-      .is("deleted_at", null);
+    // 1. Resolve internal lecturer UUID if not already a valid UUID
+    if (!UUID_REGEX.test(lecturerUserId)) {
+      const { data: u, error: uErr } = await supabase
+        .from("users")
+        .select("id")
+        .or(`firebase_uid.eq.${user.uid || lecturerUserId},email.eq.${cleanEmail}`)
+        .is("deleted_at", null)
+        .maybeSingle();
 
-    if (offErr) {
-      throw new DatabaseServiceError("Database error querying course_offerings table", offErr);
+      if (uErr) {
+        throw new DatabaseServiceError("Database error resolving lecturer user ID", uErr);
+      }
+      if (u?.id) {
+        lecturerUserId = u.id;
+      }
     }
 
-    if (offerings && offerings.length > 0) {
-      const isAssigned = offerings.some((off: any) => {
-        const offLecturerEmail = (off.lecturer_email || "").trim().toLowerCase();
-        const offLecturerName = (off.lecturer_name || "").trim().toLowerCase();
+    // 2. Resolve course_definition_id from courseCode (which may be a UUID or course code e.g. 'SOM-101')
+    let courseDefinitionId: string | null = null;
+    if (UUID_REGEX.test(cleanCourse)) {
+      courseDefinitionId = cleanCourse;
+    } else {
+      // Lookup by course code in course_definitions
+      const { data: def, error: defErr } = await supabase
+        .from("course_definitions")
+        .select("id")
+        .ilike("code", cleanCourse)
+        .is("deleted_at", null)
+        .maybeSingle();
 
-        const lecturerMatches =
-          (cleanEmail && offLecturerEmail === cleanEmail) ||
-          (cleanName && offLecturerName === cleanName) ||
-          (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ""))) ||
-          (cleanEmail && offLecturerName.includes(cleanEmail.split("@")[0]));
+      if (defErr) {
+        throw new DatabaseServiceError("Database error resolving course definition by code", defErr);
+      }
 
-        if (!lecturerMatches) return false;
+      if (def?.id) {
+        courseDefinitionId = def.id;
+      } else {
+        // Handle course title or prefixed code if applicable
+        const codeMatch = cleanCourse.match(/[A-Z]{2,4}-?[0-9]{3}/);
+        if (codeMatch) {
+          const { data: matchDef, error: matchErr } = await supabase
+            .from("course_definitions")
+            .select("id")
+            .ilike("code", codeMatch[0])
+            .is("deleted_at", null)
+            .maybeSingle();
 
-        const codeFromDef = (off.course_definitions?.code || "").trim().toUpperCase();
-        const defId = (off.course_definition_id || "").trim().toUpperCase();
-        const offId = (off.id || "").trim().toUpperCase();
+          if (matchErr) {
+            throw new DatabaseServiceError("Database error resolving matched course definition code", matchErr);
+          }
+          if (matchDef?.id) {
+            courseDefinitionId = matchDef.id;
+          }
+        }
+      }
+    }
 
-        return (
-          codeFromDef === cleanCourse ||
-          defId === cleanCourse ||
-          offId === cleanCourse ||
-          cleanCourse.includes(codeFromDef || "___") ||
-          (codeFromDef && cleanCourse.startsWith(codeFromDef))
-        );
-      });
+    // 3. Direct targeted query:
+    // SELECT 1 FROM course_offerings WHERE lecturer_user_id = ? AND course_definition_id = ?
+    if (courseDefinitionId) {
+      const hasValidLecturerUuid = UUID_REGEX.test(lecturerUserId);
 
-      if (isAssigned) {
+      let query = supabase
+        .from("course_offerings")
+        .select("id")
+        .or(`course_definition_id.eq.${courseDefinitionId},id.eq.${courseDefinitionId}`)
+        .is("deleted_at", null);
+
+      if (hasValidLecturerUuid && cleanEmail) {
+        query = query.or(`lecturer_user_id.eq.${lecturerUserId},lecturer_email.eq.${cleanEmail}`);
+      } else if (hasValidLecturerUuid) {
+        query = query.eq("lecturer_user_id", lecturerUserId);
+      } else if (cleanEmail) {
+        query = query.eq("lecturer_email", cleanEmail);
+      }
+
+      const { data: offering, error: offErr } = await query.limit(1).maybeSingle();
+
+      if (offErr) {
+        throw new DatabaseServiceError("Database error querying course_offerings by lecturer and course", offErr);
+      }
+
+      if (offering) {
         return true;
       }
     }
 
-    // 2. Check `users` table for database-persisted assigned_courses array
-    const { data: dbUser, error: userErr } = await supabase
+    // 4. Secondary fallback: Check `users` table for database-persisted assigned_courses array
+    const userQuery = supabase
       .from("users")
       .select("id, email, assigned_courses, role")
-      .or(`id.eq.${userId},email.eq.${cleanEmail}`)
-      .maybeSingle();
+      .is("deleted_at", null);
+
+    const { data: dbUser, error: userErr } = await (UUID_REGEX.test(lecturerUserId) && cleanEmail
+      ? userQuery.or(`id.eq.${lecturerUserId},email.eq.${cleanEmail}`)
+      : UUID_REGEX.test(lecturerUserId)
+      ? userQuery.eq("id", lecturerUserId)
+      : userQuery.eq("email", cleanEmail)
+    ).maybeSingle();
 
     if (userErr) {
       throw new DatabaseServiceError("Database error querying users table for assigned courses", userErr);

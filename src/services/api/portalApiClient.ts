@@ -381,7 +381,7 @@ export const portalApi = {
     return fetchJson<{
       studentId: string | null;
       studentName: string;
-      averageGrade: number;
+      averageGrade: number | null;
       honorRoll: boolean;
       standing: string;
       submissions: any[];

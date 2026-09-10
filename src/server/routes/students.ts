@@ -27,7 +27,21 @@ studentsRouter.get(
         });
       }
 
-      const result = await studentsService.getStudents(user);
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+      const search = req.query.search as string | undefined;
+      const cohortLevel = req.query.cohortLevel as string | undefined;
+      const enrollmentStatus = req.query.enrollmentStatus as string | undefined;
+      const studentId = req.query.studentId as string | undefined;
+
+      const result = await studentsService.getStudents(user, {
+        limit,
+        offset,
+        search,
+        cohortLevel,
+        enrollmentStatus,
+        studentId,
+      });
 
       return res.status(200).json({
         students: result.students,
@@ -73,14 +87,21 @@ studentsRouter.get(
           gradedCount++;
         }
       }
-      const gpaPercent = gradedCount > 0 ? Math.round(totalGrade / gradedCount) : 88;
-      const honorRoll = gpaPercent >= 85;
+      const gpaPercent = gradedCount > 0 ? Math.round(totalGrade / gradedCount) : null;
+      const honorRoll = gpaPercent !== null ? gpaPercent >= 85 : false;
+      const standing = gpaPercent === null
+        ? "Not Yet Graded"
+        : honorRoll
+          ? "High Distinction"
+          : gpaPercent >= 75
+            ? "Satisfactory"
+            : "At-Risk";
 
       return res.status(200).json({
         studentName,
         averageGrade: gpaPercent,
         honorRoll,
-        standing: honorRoll ? "High Distinction" : gpaPercent >= 75 ? "Satisfactory" : "At-Risk",
+        standing,
         submissions,
         rubricScores: subResult.rubricScores?.[studentName] || null,
         authorizedRequester: {
