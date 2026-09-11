@@ -88,7 +88,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
         <path d="M10 66h24v24H10zM14 70v16h16V70zM18 74h8v8h-8z" fill="#0f172a" />
         {/* Decorative QR Data Grid Patterns */}
         <path
-          d="M40 10h6v6h-6zM50 10h6v6h-6zM40 20h12v6H40zM56 20h6v6h-6zM40 30h6v6h-6zM50 30h12v6H50z M10 40h6v6h-6zM20 40h12v6H20zM36 40h6v6h-6zM46 40h16v6H46zM66 40h6v6h-6zM76 40h14v6H76z M10 50h1[...]"
+          d="M40 10h6v6h-6zM50 10h6v6h-6zM40 20h12v6H40zM56 20h6v6h-6zM40 30h6v6h-6zM50 30h12v6H50z M10 40h6v6h-6zM20 40h12v6H20zM36 40h6v6h-6zM46 40h16v6H46zM66 40h6v6h-6zM76 40h14v6H76z M10 50h12v6H10zM26 50h6v6h-6zM36 50h12v6H36zM52 50h6v6h-6zM62 50h14v6H62zM80 50h10v6H80z M10 60h6v6h-6zM20 60h6v6h-6zM30 60h12v6H30zM46 60h6v6h-6zM56 60h14v6H56zM74 60h16v6H74z M40 70h6v6h-6zM50 70h12v6H50zM66 70h6v6h-6zM76 70h14v6H76z M40 80h12v6H40zM56 80h10v6H56zM70 80h6v6h-6zM80 80h10v6H80z M40 90h6v6h-6zM50 90h16v6H50zM70 90h20v6H70z"
           fill="#1e293b"
         />
         {/* Center HTEIM Logo Accent in QR Code */}
@@ -100,7 +100,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
 
   return (
     <div className="modal-material-scrim fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 md:p-6 overflow-y-auto">
-      <div className="modal-material-dialog relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-xl md:rounded-xl shadow-xl overflow-hidden flex flex-col my-auto text-slate-100 [...]">
+      <div className="modal-material-dialog relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-xl md:rounded-xl shadow-xl overflow-hidden flex flex-col my-auto text-slate-100 max-h-[92vh]">
         {/* Header Bar */}
         <div className="modal-material-header bg-slate-950/90 border-b border-slate-800 p-4 sm:p-5 flex items-center justify-between gap-4 sticky top-0 z-20">
           <div className="flex items-center gap-3">
@@ -226,7 +226,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                         HTEIM ERP PWA & TWA Configuration Package
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
-                        Export the complete Web App Manifest, Service Worker configuration, and Trusted Web Activity (TWA) parameters. Use with Google's Bubblewrap CLI to compile signed Android A[...]
+                        Export the complete Web App Manifest, Service Worker configuration, and Trusted Web Activity (TWA) parameters. Use with Google's Bubblewrap CLI to compile signed Android APK/AAB binaries for the Google Play Store.
                       </p>
                     </div>
 
@@ -250,7 +250,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     <button
                       onClick={() => handleDownloadConfig()}
                       disabled={downloadingApk}
-                      className="w-full sm:w-auto px-5 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base rou[...]"
+                      className="w-full sm:w-auto px-5 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base rounded-xl shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
                       {downloadingApk ? (
                         <>
@@ -485,7 +485,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
                   <button
                     onClick={handleCopyLink}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center ju[...]"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {copiedLink ? (
                       <>
@@ -504,7 +504,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     href={`mailto:?subject=HTEIM%20ERP%20Mobile%20App&body=Access%20the%20HTEIM%20School%20of%20Ministry%20Mobile%20Portal%20here:%20${encodeURIComponent(
                       appUrl
                     )}`}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 curs[...]"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <Share2 className="w-4 h-4" />
                     <span>Send Link via Email</span>
@@ -579,7 +579,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => handleDownloadConfig(`${customAppName.replace(/\s+/g, '-')}-v2.4.0`)}
-                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-purple-600/20 transition-all flex items-center gap-[...]"
+                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-purple-600/20 transition-all flex items-center gap-2 cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Compile & Download Custom APK</span>
