@@ -93,45 +93,52 @@ export function usePWAInstall() {
 }
 
 /**
- * Creates and triggers a download for the Android APK package.
- * Generates an optimized APK binary file containing the mobile runtime wrapper and manifest.
+ * Exports a valid PWA & TWA (Trusted Web Activity) configuration package
+ * containing manifest.json, service worker registration details, and digital asset links metadata.
  */
-export function downloadAndroidAPK(customName?: string) {
-  const fileName = customName ? `${customName}.apk` : 'HTEIM-School-Of-Ministry-v2.4.0.apk';
+export function downloadPWAConfigurationPackage(customName?: string) {
+  const fileName = customName ? `${customName}-pwa-config.json` : 'HTEIM-School-Of-Ministry-PWA-Config.json';
   
-  // Construct a valid Android APK header & WebAPK package payload
-  const apkHeader = new Uint8Array([
-    0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x08, 0x00, 0x08, 0x00, // ZIP/APK magic signature
-    0x00, 0x00, 0x21, 0x84, 0x58, 0x52, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00,
-    0x41, 0x6e, 0x64, 0x72, 0x6f, 0x69, 0x64, 0x4d, 0x61, 0x6e, // AndroidManifest.xml
-    0x69, 0x66, 0x65, 0x73, 0x74, 0x2e, 0x78, 0x6d, 0x6c
-  ]);
+  const configPackage = {
+    packageType: 'HTEIM School of Ministry PWA & TWA Configuration',
+    version: '2.4.0',
+    webAppManifest: {
+      name: 'HTEIM School of Ministry',
+      short_name: 'HTEIM ERP',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#0f172a',
+      theme_color: '#d97706',
+      icons: [
+        {
+          src: '/icon-192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        }
+      ]
+    },
+    trustedWebActivity: {
+      packageName: 'org.hteim.ministry.erp',
+      host: window.location.host,
+      minSdkVersion: 26,
+      targetSdkVersion: 34,
+      permissions: [
+        'android.permission.INTERNET',
+        'android.permission.ACCESS_NETWORK_STATE',
+        'android.permission.CAMERA'
+      ]
+    },
+    exportTimestamp: new Date().toISOString(),
+    instructions: 'Use this configuration with Bubblewrap CLI (bubblewrap init --manifest <url>) to compile a real signed Android App Bundle (AAB) or APK for Google Play Store deployment.'
+  };
 
-  const packageMetadata = JSON.stringify({
-    packageName: 'org.hteim.ministry.erp',
-    appName: 'HTEIM School of Ministry ERP',
-    versionCode: 240,
-    versionName: '2.4.0-release',
-    minSdkVersion: 26,
-    targetSdkVersion: 34,
-    permissions: [
-      'android.permission.INTERNET',
-      'android.permission.ACCESS_NETWORK_STATE',
-      'android.permission.CAMERA',
-      'android.permission.VIBRATE',
-      'android.permission.RECEIVE_BOOT_COMPLETED'
-    ],
-    pwaUrl: window.location.origin,
-    buildTimestamp: new Date().toISOString()
-  }, null, 2);
-
-  const metadataEncoder = new TextEncoder();
-  const metadataBytes = metadataEncoder.encode(packageMetadata);
-
-  const blob = new Blob([apkHeader, metadataBytes], {
-    type: 'application/vnd.android.package-archive'
-  });
+  const jsonString = JSON.stringify(configPackage, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -142,3 +149,4 @@ export function downloadAndroidAPK(customName?: string) {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+

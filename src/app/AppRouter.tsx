@@ -1,9 +1,10 @@
 import { ApplicationShell } from './ApplicationShell';
-import { VALID_TABS, getTabFromLocation, navigation, getNavigationItem } from './navigation';
+import { VALID_TABS, getTabFromLocation, navigation, getNavigationItem, isNavigationAccessible } from './navigation';
 import { PortalFooter, MobileBottomNav } from '../components/layout';
 import { FloatingQuizBanner } from '../features/assignments';
 import { PWAInstallButton } from "../components/PWAInstallButton";
 import { AppHeader } from '../components/AppHeader';
+import { PageLoader } from '../components/PageLoader';
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { LogoImage } from '../components/LogoImage';
 import { motion, AnimatePresence } from 'motion/react';
@@ -4367,7 +4368,7 @@ export function AppRouter() {
           {(() => {
             const navItem = getNavigationItem(activeErpTab) || navigation[0];
             const PageComponent = navItem.component;
-            const isAccessible = !navItem.adminOrTeacherOnly || appUser?.role !== "student";
+            const isAccessible = isNavigationAccessible(navItem, appUser?.role, (appUser as any)?.permissions);
             const pageProps = getPropsForTab(navItem.id);
 
             return (
@@ -4381,7 +4382,9 @@ export function AppRouter() {
                 className="flex-1 w-full"
               >
                 {isAccessible ? (
-                  <PageComponent {...pageProps} />
+                  <Suspense fallback={<PageLoader />}>
+                    <PageComponent {...pageProps} />
+                  </Suspense>
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Access Restricted</h3>

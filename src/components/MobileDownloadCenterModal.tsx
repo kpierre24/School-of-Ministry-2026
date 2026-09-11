@@ -26,7 +26,7 @@ import {
   ArrowRight,
   ChevronRight
 } from 'lucide-react';
-import { usePWAInstall, downloadAndroidAPK } from '../lib/pwa';
+import { usePWAInstall, downloadPWAConfigurationPackage } from '../lib/pwa';
 
 interface MobileDownloadCenterModalProps {
   isOpen: boolean;
@@ -67,12 +67,12 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleDownloadAPK = (name?: string) => {
+  const handleDownloadConfig = (name?: string) => {
     setDownloadingApk(true);
     setTimeout(() => {
-      downloadAndroidAPK(name || 'HTEIM-School-Of-Ministry-v2.4.0');
+      downloadPWAConfigurationPackage(name || 'HTEIM-School-Of-Ministry-v2.4.0');
       setDownloadingApk(false);
-      setBuildSuccessMessage('✅ Android APK Download Started! Check your device Downloads folder.');
+      setBuildSuccessMessage('✅ PWA & TWA Configuration Package Downloaded! Use with Bubblewrap CLI or install via browser.');
       setTimeout(() => setBuildSuccessMessage(null), 5000);
     }, 600);
   };
@@ -202,42 +202,42 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
           {/* ================= TAB 1: ANDROID APK DOWNLOAD ================= */}
           {activeTab === 'apk' && (
             <div className="space-y-6">
-              {/* Main APK Download Card */}
+              {/* Main PWA / TWA Config Export Card */}
               <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/30 border border-slate-800/80 rounded-xl p-5 sm:p-6 shadow-lg">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                   <div className="space-y-3 max-w-xl">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-lg flex items-center gap-1.5">
+                      <span className="px-2.5 py-1 bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-bold rounded-lg flex items-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Official Signed Build
+                        Valid PWA Manifest & TWA Spec
                       </span>
                       <span className="px-2.5 py-1 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg flex items-center gap-1.5">
                         <Cpu className="w-3.5 h-3.5 text-amber-400" />
-                        ARM64 / Universal
+                        Bubblewrap CLI Ready
                       </span>
                       <span className="px-2.5 py-1 bg-slate-800 text-slate-300 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                        <HardDrive className="w-3.5 h-3.5 text-sky-400" />
-                        18.4 MB
+                        <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+                        JSON Bundle
                       </span>
                     </div>
 
                     <div>
                       <h3 className="text-lg sm:text-xl font-black text-white">
-                        HTEIM ERP Android APK Installer
+                        HTEIM ERP PWA & TWA Configuration Package
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
-                        Download the standalone native Android package for smartphones and tablets. Complete with offline attendance registers, camera QR student check-in, and instant push notifications.
+                        Export the complete Web App Manifest, Service Worker configuration, and Trusted Web Activity (TWA) parameters. Use with Google's Bubblewrap CLI to compile signed Android APK/AAB binaries for the Google Play Store.
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 text-xs">
                       <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl">
-                        <div className="text-slate-400 text-[11px]">Minimum OS</div>
-                        <div className="text-slate-200 font-bold">Android 8.0+ (API 26)</div>
+                        <div className="text-slate-400 text-[11px]">Format</div>
+                        <div className="text-slate-200 font-bold">JSON Config Spec</div>
                       </div>
                       <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl">
-                        <div className="text-slate-400 text-[11px]">Architecture</div>
-                        <div className="text-slate-200 font-bold">arm64-v8a / x86_64</div>
+                        <div className="text-slate-400 text-[11px]">Target Runtime</div>
+                        <div className="text-slate-200 font-bold">Bubblewrap / TWA</div>
                       </div>
                       <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl col-span-2 sm:col-span-1">
                         <div className="text-slate-400 text-[11px]">Package ID</div>
@@ -248,25 +248,25 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
 
                   <div className="w-full lg:w-auto flex flex-col items-stretch gap-3 shrink-0">
                     <button
-                      onClick={() => handleDownloadAPK()}
+                      onClick={() => handleDownloadConfig()}
                       disabled={downloadingApk}
                       className="w-full sm:w-auto px-5 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base rounded-xl shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
                       {downloadingApk ? (
                         <>
                           <RefreshCw className="w-5 h-5 animate-spin" />
-                          <span>Generating APK Package...</span>
+                          <span>Exporting Config Package...</span>
                         </>
                       ) : (
                         <>
                           <Download className="w-5 h-5" />
-                          <span>Download Android APK (18.4 MB)</span>
+                          <span>Download TWA Config (.JSON)</span>
                         </>
                       )}
                     </button>
 
                     <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-                      <span>SHA-256 Checksum:</span>
+                      <span>Config Checksum:</span>
                       <button
                         onClick={handleCopyHash}
                         className="text-amber-400 hover:text-amber-300 font-mono flex items-center gap-1 cursor-pointer"
@@ -288,11 +288,11 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                 </div>
               </div>
 
-              {/* Sideloading Installation Steps */}
+              {/* TWA Compilation & PWA Installation Guide */}
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-4">
                 <div className="flex items-center gap-2 text-white font-bold text-sm">
                   <Terminal className="w-4 h-4 text-amber-400" />
-                  <span>How to Install APK on Android (Sideload Guide)</span>
+                  <span>PWA Installation & Android TWA Compilation Guide</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -300,9 +300,9 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 font-black text-xs flex items-center justify-center">
                       1
                     </div>
-                    <div className="font-bold text-slate-200 text-xs">Download APK File</div>
+                    <div className="font-bold text-slate-200 text-xs">Instant PWA Install</div>
                     <p className="text-slate-400 text-xs leading-relaxed">
-                      Tap the <strong className="text-slate-200">Download APK</strong> button above to save the installer to your device.
+                      On mobile Chrome or Safari, tap <strong className="text-slate-200">"Install PWA"</strong> in the top tab for an instant standalone app experience.
                     </p>
                   </div>
 
@@ -310,9 +310,9 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 font-black text-xs flex items-center justify-center">
                       2
                     </div>
-                    <div className="font-bold text-slate-200 text-xs">Allow Unknown Sources</div>
+                    <div className="font-bold text-slate-200 text-xs">Download TWA Config</div>
                     <p className="text-slate-400 text-xs leading-relaxed">
-                      Open Android Settings → Security / Chrome → Toggle <strong className="text-slate-200">"Allow from this source"</strong>.
+                      Download the official <strong className="text-slate-200">TWA Config JSON</strong> package containing web manifest and asset links metadata.
                     </p>
                   </div>
 
@@ -320,9 +320,9 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 font-black text-xs flex items-center justify-center">
                       3
                     </div>
-                    <div className="font-bold text-slate-200 text-xs">Launch & Use</div>
+                    <div className="font-bold text-slate-200 text-xs">Compile with Bubblewrap</div>
                     <p className="text-slate-400 text-xs leading-relaxed">
-                      Open your device <strong className="text-slate-200">Downloads</strong> folder, tap the APK, and launch the HTEIM ERP app!
+                      Run <code className="text-amber-300 font-mono text-[11px]">bubblewrap init</code> with your deployed URL to generate real signed APKs for the Play Store.
                     </p>
                   </div>
                 </div>

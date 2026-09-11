@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { TabType } from '../types';
-import { Permission } from '../types/rbac';
+import { Permission, ROLE_DEFINITIONS } from '../types/rbac';
 import { 
   Sparkles, 
   UserCheck, 
@@ -16,19 +16,18 @@ import {
   LucideIcon
 } from 'lucide-react';
 
-import {
-  DashboardPage,
-  StudentsPage,
-  AttendancePage,
-  CoursesPage,
-  ExamsPage,
-  SchedulePage,
-  LibraryPage,
-  NotesPage,
-  FinancePage,
-  MessagesPage,
-  ReportsPage
-} from '../pages';
+// Code-split lazy imports for feature and page modules
+export const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+export const StudentsPage = lazy(() => import('@/features/students').then(m => ({ default: m.StudentsPage })));
+export const AttendancePage = lazy(() => import('../pages/AttendancePage'));
+export const CoursesPage = lazy(() => import('../pages/CoursesPage'));
+export const ExamsPage = lazy(() => import('@/features/grades').then(m => ({ default: m.GradesPage })));
+export const SchedulePage = lazy(() => import('../pages/SchedulePage'));
+export const LibraryPage = lazy(() => import('../pages/LibraryPage'));
+export const FinancePage = lazy(() => import('@/features/finance').then(m => ({ default: m.FinancePage })));
+export const MessagesPage = lazy(() => import('../pages/MessagesPage'));
+export const ReportsPage = lazy(() => import('../pages/ReportsPage'));
+export const NotesPage = lazy(() => import('../pages/NotesPage'));
 
 export interface NavigationItem {
   id: string;
@@ -38,9 +37,6 @@ export interface NavigationItem {
   icon?: LucideIcon;
   description?: string;
   aliases?: string[];
-  adminOnly?: boolean;
-  adminOrTeacherOnly?: boolean;
-  paymentOnly?: boolean;
   badgeAlert?: boolean;
   badgeCount?: number;
 }
@@ -60,15 +56,13 @@ export interface NavItem {
   tab: TabType;
   label: string;
   Icon: LucideIcon;
-  adminOnly?: boolean;
-  adminOrTeacherOnly?: boolean;
-  paymentOnly?: boolean;
   badgeAlert?: boolean;
   badgeCount?: number;
 }
 
 /**
  * Core Navigation registry mapping routes, components, and permission scopes.
+ * Role -> determines permissions; Permissions -> determine navigation visibility.
  */
 export const navigation: NavigationItem[] = [
   {
@@ -84,10 +78,9 @@ export const navigation: NavigationItem[] = [
     id: 'students',
     label: 'Students',
     component: StudentsPage,
-    permissions: ['students:read'],
+    permissions: ['students:write', 'attendance:write'],
     icon: GraduationCap,
     description: 'Student directory, individual academic profiles, transcripts, and notes',
-    adminOrTeacherOnly: true,
   },
   {
     id: 'attendance',
@@ -138,7 +131,6 @@ export const navigation: NavigationItem[] = [
     icon: DollarSign,
     description: 'Tuition statements, installment plans, receipts, and sponsorship funds',
     aliases: ['finance'],
-    paymentOnly: true,
   },
   {
     id: 'messages',
@@ -155,7 +147,6 @@ export const navigation: NavigationItem[] = [
     permissions: ['audit:read'],
     icon: FileText,
     description: 'Cohort summary trends, at-risk flags, retention rates, and charts',
-    adminOrTeacherOnly: true,
   },
   {
     id: 'notes',
@@ -283,15 +274,15 @@ export const PORTAL_ROUTES: RouteConfig[] = [
 export const DESKTOP_NAV_ITEMS: NavItem[] = [
   { tab: 'home', label: 'Home', Icon: Sparkles },
   { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
-  { tab: 'students', label: 'Students', Icon: GraduationCap, adminOnly: true },
+  { tab: 'students', label: 'Students', Icon: GraduationCap },
   { tab: 'courses', label: 'Courses', Icon: BookOpen },
   { tab: 'exams', label: 'Exams', Icon: Award },
   { tab: 'notes', label: 'Notes & Bible', Icon: BookOpenCheck },
   { tab: 'schedule', label: 'Schedule', Icon: Calendar },
   { tab: 'library', label: 'Library', Icon: Bookmark },
-  { tab: 'payments', label: 'Payments', Icon: DollarSign, paymentOnly: true },
+  { tab: 'payments', label: 'Payments', Icon: DollarSign },
   { tab: 'messages', label: 'Messages', Icon: MessageSquare },
-  { tab: 'reports', label: 'Reports', Icon: FileText, adminOrTeacherOnly: true },
+  { tab: 'reports', label: 'Reports', Icon: FileText },
 ];
 
 /**
@@ -304,23 +295,28 @@ export function getNavigationItem(idOrTab: string): NavigationItem | undefined {
 }
 
 /**
- * Checks if a user has access to a navigation item based on role or permissions.
+ * Checks if a user has access to a navigation item based on role-to-permissions mapping.
+ * Role -> determines permissions; Permissions -> determine navigation visibility.
  */
 export function isNavigationAccessible(item: NavigationItem, role?: string, userPermissions?: Permission[]): boolean {
   if (!role) {
-    return item.id === 'dashboard' || item.id === 'courses' || item.id === 'schedule' || item.id === 'library';
-  }
-  if (role === 'super_admin' || role === 'admin') return true;
-  if (item.adminOnly && role !== 'admin') return false;
-  if (item.adminOrTeacherOnly && role === 'student') return false;
-  if (item.paymentOnly && role === 'teacher') return false;
-
-  if (userPermissions && userPermissions.length > 0) {
-    if (userPermissions.includes('all:access')) return true;
-    return item.permissions.some(perm => userPermissions.includes(perm));
+    const explicitlyPublicIds = ['dashboard', 'courses', 'schedule', 'library', 'notes'];
+    return explicitlyPublicIds.includes(item.id);
   }
 
-  return true;
+  // Authoritative permission resolution: role determines permissions, permissions determine access
+  const effectivePermissions: Permission[] = (userPermissions && userPermissions.length > 0)
+    ? userPermissions
+    : (ROLE_DEFINITIONS[role]?.permissions || []);
+
+  if (effectivePermissions.includes('all:access')) return true;
+
+  if (!item.permissions || item.permissions.length === 0) {
+    const explicitlyPublicIds = ['dashboard', 'courses', 'schedule', 'library', 'notes'];
+    return explicitlyPublicIds.includes(item.id);
+  }
+
+  return item.permissions.some(perm => effectivePermissions.includes(perm));
 }
 
 export function getTabFromLocation(): TabType {
@@ -348,11 +344,10 @@ export function getNavRoutesForRole(role?: string): RouteConfig[] {
   return PORTAL_ROUTES.filter(r => isRouteAccessible(r.tab, role));
 }
 
-export function filterNavItemsForUser(items: NavItem[], userRole?: string): NavItem[] {
+export function filterNavItemsForUser(items: NavItem[], userRole?: string, userPermissions?: Permission[]): NavItem[] {
   return items.filter(item => {
-    if (item.adminOnly && userRole === 'student') return false;
-    if (item.adminOrTeacherOnly && userRole === 'student') return false;
-    if (item.paymentOnly && userRole === 'teacher') return false;
-    return true;
+    const fullNavItem = navigation.find(n => n.id === item.tab);
+    if (!fullNavItem) return true;
+    return isNavigationAccessible(fullNavItem, userRole, userPermissions);
   });
 }
