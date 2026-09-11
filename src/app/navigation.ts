@@ -31,7 +31,7 @@ export const NotesPage = lazy(() => import('../pages/NotesPage'));
 
 /**
  * Single Canonical Route Registry interface.
- * Defines every aspect of a route in one place.
+ * Authorization model: Role -> Permissions -> Route Access -> Navigation Access.
  */
 export interface CanonicalRoute {
   id: TabType;
@@ -42,7 +42,6 @@ export interface CanonicalRoute {
   icon: LucideIcon;
   iconName: string;
   permissions: Permission[];
-  allowedRoles: Array<'student' | 'teacher' | 'admin' | 'guest'>;
   aliases?: string[];
   isQuickNav?: boolean;
   isDesktopNav?: boolean;
@@ -69,7 +68,7 @@ export interface RouteConfig {
   tab: TabType;
   label: string;
   description: string;
-  allowedRoles: Array<'student' | 'teacher' | 'admin' | 'guest'>;
+  allowedRoles: string[];
   badge?: string;
   iconName: string;
   Icon?: LucideIcon;
@@ -104,6 +103,8 @@ export interface CommandPaletteRouteItem {
 /**
  * CANONICAL ROUTE REGISTRY — The Single Source of Truth for all portal navigation,
  * route guards, permission scopes, command palette entries, breadcrumbs, and layout views.
+ * 
+ * Authorization is permission-driven (Role -> Permissions -> Route Access).
  */
 export const CANONICAL_ROUTES: CanonicalRoute[] = [
   {
@@ -114,8 +115,7 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     component: DashboardPage,
     icon: Sparkles,
     iconName: 'Sparkles',
-    permissions: ['students:read'],
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    permissions: [],
     aliases: ['dashboard'],
     isQuickNav: true,
     isDesktopNav: true,
@@ -130,7 +130,6 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     icon: UserCheck,
     iconName: 'UserCheck',
     permissions: ['attendance:read'],
-    allowedRoles: ['student', 'teacher', 'admin'],
     isQuickNav: true,
     isDesktopNav: true,
     isMobileNav: true,
@@ -142,8 +141,7 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     component: StudentsPage,
     icon: GraduationCap,
     iconName: 'GraduationCap',
-    permissions: ['students:write', 'attendance:write'],
-    allowedRoles: ['teacher', 'admin'],
+    permissions: ['students:write'],
     isQuickNav: true,
     isDesktopNav: true,
     isMobileNav: true,
@@ -156,8 +154,7 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     component: CoursesPage,
     icon: BookOpen,
     iconName: 'BookOpen',
-    permissions: ['students:read'],
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    permissions: [],
     isQuickNav: true,
     isDesktopNav: true,
     isMobileNav: true,
@@ -172,7 +169,6 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     icon: Award,
     iconName: 'Award',
     permissions: ['grades:read'],
-    allowedRoles: ['student', 'teacher', 'admin'],
     aliases: ['grades'],
     isQuickNav: true,
     isDesktopNav: true,
@@ -185,8 +181,7 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     component: SchedulePage,
     icon: Calendar,
     iconName: 'Calendar',
-    permissions: ['students:read'],
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    permissions: [],
     isQuickNav: true,
     isDesktopNav: true,
     isMobileNav: true,
@@ -200,8 +195,7 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     component: LibraryPage,
     icon: Bookmark,
     iconName: 'Bookmark',
-    permissions: ['students:read'],
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    permissions: [],
     isQuickNav: true,
     isDesktopNav: true,
     isMobileNav: true,
@@ -216,7 +210,6 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     icon: DollarSign,
     iconName: 'DollarSign',
     permissions: ['finance:read'],
-    allowedRoles: ['student', 'teacher', 'admin'],
     aliases: ['finance'],
     isQuickNav: true,
     isDesktopNav: true,
@@ -231,7 +224,6 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     icon: MessageSquare,
     iconName: 'MessageSquare',
     permissions: ['students:read'],
-    allowedRoles: ['student', 'teacher', 'admin'],
     isQuickNav: false,
     isDesktopNav: true,
     isMobileNav: true,
@@ -245,7 +237,6 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     icon: FileText,
     iconName: 'BarChart3',
     permissions: ['audit:read'],
-    allowedRoles: ['teacher', 'admin'],
     isQuickNav: false,
     isDesktopNav: true,
     isMobileNav: true,
@@ -258,14 +249,33 @@ export const CANONICAL_ROUTES: CanonicalRoute[] = [
     component: NotesPage,
     icon: BookOpenCheck,
     iconName: 'FileText',
-    permissions: ['students:read'],
-    allowedRoles: ['student', 'teacher', 'admin'],
+    permissions: [],
     isQuickNav: false,
     isDesktopNav: true,
     isMobileNav: true,
     isPublic: true,
   },
 ];
+
+/**
+ * Computes allowed roles for a route dynamically from ROLE_DEFINITIONS.
+ * Ensures Role -> Permission -> Route mapping remains 100% single-source.
+ */
+export function getAllowedRolesForRoute(route: CanonicalRoute): string[] {
+  if (route.isPublic || !route.permissions || route.permissions.length === 0) {
+    return ['student', 'teacher', 'admin', 'guest'];
+  }
+  const matchingRoles: string[] = ['guest'];
+  Object.entries(ROLE_DEFINITIONS).forEach(([roleKey, roleDef]) => {
+    if (
+      roleDef.permissions.includes('all:access') ||
+      route.permissions.some(p => roleDef.permissions.includes(p))
+    ) {
+      matchingRoles.push(roleKey);
+    }
+  });
+  return matchingRoles;
+}
 
 // 1. DERIVED: All valid tab identifiers including primary IDs and aliases
 export const VALID_TABS: TabType[] = CANONICAL_ROUTES.reduce<TabType[]>((acc, route) => {
@@ -296,7 +306,9 @@ export const PORTAL_ROUTES: RouteConfig[] = CANONICAL_ROUTES.map(route => ({
   tab: route.id,
   label: route.label,
   description: route.description,
-  allowedRoles: route.allowedRoles,
+  get allowedRoles() {
+    return getAllowedRolesForRoute(route);
+  },
   iconName: route.iconName,
   Icon: route.icon,
   isQuickNav: route.isQuickNav,
@@ -342,7 +354,8 @@ export function getNavigationItem(idOrTab: string): NavigationItem | undefined {
 }
 
 /**
- * Centralized Permission Guard checking whether a user has access to a route item.
+ * Centralized Permission Guard checking whether a user/role has access to a route item.
+ * Evaluates authorization according to: Role -> Permissions -> Route Access -> Navigation.
  */
 export function isNavigationAccessible(
   item: NavigationItem | CanonicalRoute, 
@@ -351,18 +364,24 @@ export function isNavigationAccessible(
 ): boolean {
   const route = getCanonicalRoute(item.id) || (item as CanonicalRoute);
   
+  if (route.isPublic) {
+    return true;
+  }
+
   if (!role) {
-    return !!route.isPublic || route.allowedRoles?.includes('guest') || false;
+    return false;
   }
 
   const effectivePermissions: Permission[] = (userPermissions && userPermissions.length > 0)
     ? userPermissions
     : (ROLE_DEFINITIONS[role]?.permissions || []);
 
-  if (effectivePermissions.includes('all:access')) return true;
+  if (effectivePermissions.includes('all:access')) {
+    return true;
+  }
 
   if (!route.permissions || route.permissions.length === 0) {
-    return !!route.isPublic || route.allowedRoles?.includes('guest') || false;
+    return true;
   }
 
   return route.permissions.some(perm => effectivePermissions.includes(perm));
