@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import mammoth from 'mammoth';
-import { evaluateLesson } from '../lib/api/ai';
-import { logger } from '../lib/logger';
+import { evaluateLesson } from '../../../lib/api/ai';
+import { logger } from '../../../lib/logger';
 import { 
   BookOpen, 
   Search, 
@@ -46,17 +46,17 @@ import {
   Flame,
   Layers
 } from 'lucide-react';
-import { EmptyState } from './UXPrimitives';
-import { Modal } from './Modal';
-import { LibraryResource, MediaResource } from '../types';
-import { UserRole } from '../lib/userAuth';
-import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from './ClassroomMediaPlayer';
-import { parseVideoMediaUrl } from '../lib/mediaUtils';
-import { DocumentReaderModal } from './DocumentReaderModal';
-import { ScriptureHoverPopover } from './ScriptureHoverPopover';
-import { ScriptureFlashcardsModal } from './ScriptureFlashcardsModal';
-import { parseTextWithScriptures, extractScriptureReferences } from '../utils/scriptureDetector';
-import { createNoteFromLibraryExcerpt } from '../utils/notesStorage';
+import { EmptyState } from '../../../components/UXPrimitives';
+import { Modal } from '../../../components/Modal';
+import { LibraryResource, MediaResource } from '../../../types';
+import { UserRole } from '../../../lib/userAuth';
+import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from '../../../components/ClassroomMediaPlayer';
+import { parseVideoMediaUrl } from '../../../lib/mediaUtils';
+import { DocumentReaderModal } from '../../../components/DocumentReaderModal';
+import { ScriptureHoverPopover } from '../../../components/ScriptureHoverPopover';
+import { ScriptureFlashcardsModal } from '../../../components/ScriptureFlashcardsModal';
+import { parseTextWithScriptures, extractScriptureReferences } from '../../../utils/scriptureDetector';
+import { createNoteFromLibraryExcerpt } from '../../../utils/notesStorage';
 
 export const CURRICULUM_MODULES = [
   { code: 'SOM-MOD-1', title: 'Mod 1: Intro', fullName: 'Module 1: Introduction & Foundations' },

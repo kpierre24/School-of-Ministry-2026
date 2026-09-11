@@ -97,6 +97,7 @@ import { MobileDownloadCenterModal } from './components/MobileDownloadCenterModa
 import { ManageClassDaysModal } from './components/ManageClassDaysModal';
 import { SheetMergeConflictModal } from './components/SheetMergeConflictModal';
 import { OfflineSyncDrawer } from './components/OfflineSyncDrawer';
+import { FinancePage } from './features/finance';
 import { PINCheckinQRModal } from './components/PINCheckinQRModal';
 import { RoleManagementModal } from './components/RoleManagementModal';
 import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from './lib/attendanceLock';
@@ -132,7 +133,7 @@ import { StudentsTab } from './components/StudentsTab';
 import { CoursesTab, INITIAL_COURSES } from './components/CoursesTab';
 import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from './components/ExamsTab';
 import { ScheduleTab, INITIAL_SCHEDULE } from './components/ScheduleTab';
-import { LibraryTab, INITIAL_RESOURCES } from './components/LibraryTab';
+import { LibraryTab, INITIAL_RESOURCES } from './features/library/components/LibraryTab';
 import { PaymentTab, INITIAL_PAYMENTS } from './components/PaymentTab';
 import { MessagesTab, INITIAL_MESSAGES } from './components/MessagesTab';
 import { ReportsTab } from './components/ReportsTab';
@@ -4473,7 +4474,23 @@ create policy "Allow public update" on app_states for update using (true) with c
             </motion.div>
           )}
 
-          {activeErpTab === 'payments' && (appUser?.role === 'admin' || appUser?.role === 'student') && (
+          {activeErpTab === 'payments' && appUser?.role === 'admin' && (
+            <motion.div
+              key="finance"
+              variants={pageFadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={pageFadeTransition}
+              className="flex-1 w-full"
+            >
+              <ErrorBoundary label="Finance Page">
+                <FinancePage />
+              </ErrorBoundary>
+            </motion.div>
+          )}
+
+          {activeErpTab === 'payments' && appUser?.role === 'student' && (
             <motion.div
               key="payments"
               variants={pageFadeVariants}
@@ -4487,7 +4504,7 @@ create policy "Allow public update" on app_states for update using (true) with c
                 <ErrorBoundary label="Payments Tab">
                   <LazyPaymentTab
                 availableStudents={uniqueStudents.map(s => ({ name: s.name || '', email: `${(s.name || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu` }))}
-                isAdmin={appUser?.role === 'admin'}
+                isAdmin={false}
                 userRole={appUser?.role}
                 currentStudentName={appUser?.studentName || appUser?.name}
                 payments={payments}

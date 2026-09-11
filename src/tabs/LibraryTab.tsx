@@ -1,1 +1,1 @@
-export { LibraryTab as default } from '../components/LibraryTab';
+export { LibraryTab as default } from '../features/library/components/LibraryTab';
