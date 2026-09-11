@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { usePWAInstall } from '../hooks/usePWAInstall';
+import { usePWAInstall } from '../lib/pwa';
 import { Download, Info, X } from 'lucide-react';
 
 export const PWAInstallButton: React.FC = () => {

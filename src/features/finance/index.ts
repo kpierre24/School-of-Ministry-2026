@@ -5,6 +5,7 @@ export { InvoiceList } from './components/InvoiceList';
 export { InvoiceDetails } from './components/InvoiceDetails';
 export { InvoiceForm } from './components/InvoiceForm';
 export { PaymentForm } from './components/PaymentForm';
+export { PaymentHistory } from './components/PaymentHistory';
 export { AdjustmentForm } from './components/AdjustmentForm';
 export { RefundForm } from './components/RefundForm';
 

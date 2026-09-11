@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { ExaminationsPage } from '../features/examinations';
 import { LazyExamsTab } from '../components/tabs';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
@@ -6,7 +7,7 @@ export interface ExamsPageProps {
   students: any[];
   allQuizSheets: any[];
   rubricScores: Record<string, any>;
-  onUpdateRubric: (studentName: string, rubric: any) => void;
+  onUpdateRubric: (studentName: string, rubric: any, val?: any) => void;
   userRole?: string;
   currentStudentName?: string;
   onNotificationCreated?: (notif: any) => void;
@@ -19,9 +20,9 @@ export interface ExamsPageProps {
   isLoggingIn?: boolean;
   onGoogleLogin?: () => void;
   onGoogleLogout?: () => void;
-  sheetUrl: string;
-  setSheetUrl: (url: string) => void;
-  onLoadSheets: (url: string) => void;
+  sheetUrl?: string;
+  setSheetUrl?: (url: string) => void;
+  onLoadSheets?: (url: string) => void;
   isLoadingSheets?: boolean;
   lastSyncedTime?: any;
   recentSheets?: string[];
@@ -30,13 +31,14 @@ export interface ExamsPageProps {
 
 export const ExamsPage: React.FC<ExamsPageProps> = (props) => {
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
-      <ErrorBoundary label="Exams Tab">
-        <LazyExamsTab {...(props as any)} />
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading Examinations...</div>}>
+      <ErrorBoundary label="Examinations Page">
+        <ExaminationsPage {...(props as any)} />
       </ErrorBoundary>
     </Suspense>
   );
 };
+
 
 export const GradesPage = ExamsPage;
 export default ExamsPage;
