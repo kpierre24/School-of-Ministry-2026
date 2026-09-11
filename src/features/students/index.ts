@@ -1,14 +1,24 @@
-export * from './components/StudentsPage';
-export * from './components/StudentTable';
-export * from './components/StudentCard';
-export * from './components/StudentForm';
-export * from './components/StudentDetails';
-export * from './components/StudentFilters';
-export * from './components/StudentSearch';
+// Components
+export { StudentsPage } from './components/StudentsPage';
+export { StudentTable } from './components/StudentTable';
+export { StudentCard } from './components/StudentCard';
+export { StudentForm } from './components/StudentForm';
+export { StudentDetails } from './components/StudentDetails';
+export { StudentFilters } from './components/StudentFilters';
+export { StudentSearch } from './components/StudentSearch';
+export { StudentDetailModal } from './StudentDetailModal';
+export { StudentTranscriptModal } from './StudentTranscriptModal';
+export { CertificateModal } from './CertificateModal';
 
-export * from './hooks/useStudents';
-export * from './hooks/useStudent';
-export * from './hooks/useStudentMutations';
+// Hooks
+export { useStudents, type UseStudentsProps } from './hooks/useStudents';
+export { useStudent } from './hooks/useStudent';
+export { useStudentMutations } from './hooks/useStudentMutations';
 
+// Services & Canonicalization
 export * from './services/studentsService';
+export * from './studentCanonicalization';
+
+// Types
 export * from './types';
+export type { StudentSummary as Student } from '../../types';

@@ -1,2 +1,11 @@
+// Components
+export { LibraryTab } from './components/LibraryTab';
+
+// Hooks
+export { useLibrary } from './hooks/useLibrary';
+
+// Services
 export * from './services/libraryService';
-export * from './hooks/useLibrary';
+
+// Types
+export * from './types';

@@ -1,7 +1,12 @@
-export * from './components/Dashboard';
-export * from './components/StatCard';
-export * from './components/AttendanceSummary';
-export * from './components/GradeSummary';
-export * from './components/UpcomingEvents';
-export * from './hooks/useDashboard';
+// Components
+export { Dashboard } from './components/Dashboard';
+export { StatCard } from './components/StatCard';
+export { AttendanceSummary } from './components/AttendanceSummary';
+export { GradeSummary } from './components/GradeSummary';
+export { UpcomingEvents } from './components/UpcomingEvents';
+
+// Hooks
+export { useDashboard } from './hooks/useDashboard';
+
+// Services
 export * from './services/dashboardService';
