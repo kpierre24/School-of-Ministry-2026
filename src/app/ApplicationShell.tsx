@@ -16,7 +16,7 @@ import { AppHeader } from '../components/AppHeader';
 import { PortalFooter, MobileBottomNav, MobileMoreMenuDrawer, BackToTopButton } from '../components/layout';
 import { FloatingQuizBanner } from '../features/assignments';
 import { OfflineSyncDrawer } from '../components/OfflineSyncDrawer';
-import { navigation, isNavigationAccessible, NavigationItem } from './navigation';
+import { getDesktopNavigation } from './navigation';
 
 export interface ApplicationShellProps {
   children: React.ReactNode;
@@ -162,13 +162,12 @@ export function ApplicationShell({
   setShowOfflineDrawer = () => {},
 }: ApplicationShellProps) {
   const visibleNavItems = React.useMemo(() => {
-    return navigation
-      .filter(item => isNavigationAccessible(item, appUser?.role, (appUser as any)?.permissions))
+    return getDesktopNavigation(appUser?.role, (appUser as any)?.permissions)
       .map(item => ({
-        tab: (item.aliases?.includes('home') ? 'home' : item.id) as TabType,
+        tab: item.id as TabType,
         id: item.id,
-        label: item.label,
-        Icon: item.icon || Sparkles,
+        label: item.shortLabel || item.label,
+        Icon: item.icon,
       }));
   }, [appUser?.role, (appUser as any)?.permissions]);
 

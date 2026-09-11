@@ -29,6 +29,30 @@ export const MessagesPage = lazy(() => import('../pages/MessagesPage'));
 export const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 export const NotesPage = lazy(() => import('../pages/NotesPage'));
 
+/**
+ * Single Canonical Route Registry interface.
+ * Defines every aspect of a route in one place.
+ */
+export interface CanonicalRoute {
+  id: TabType;
+  label: string;
+  shortLabel?: string;
+  description: string;
+  component: React.ComponentType<any>;
+  icon: LucideIcon;
+  iconName: string;
+  permissions: Permission[];
+  allowedRoles: Array<'student' | 'teacher' | 'admin' | 'guest'>;
+  aliases?: string[];
+  isQuickNav?: boolean;
+  isDesktopNav?: boolean;
+  isMobileNav?: boolean;
+  badgeCount?: number;
+  badgeAlert?: boolean;
+  isPublic?: boolean;
+}
+
+// Backward-compatibility interfaces
 export interface NavigationItem {
   id: string;
   label: string;
@@ -60,284 +84,371 @@ export interface NavItem {
   badgeCount?: number;
 }
 
+export interface BreadcrumbItem {
+  label: string;
+  tab: TabType;
+  icon?: LucideIcon;
+}
+
+export interface CommandPaletteRouteItem {
+  id: string;
+  category: string;
+  title: string;
+  subtitle: string;
+  tab: TabType;
+  icon: LucideIcon;
+  badge?: string;
+  badgeColor?: string;
+}
+
 /**
- * Core Navigation registry mapping routes, components, and permission scopes.
- * Role -> determines permissions; Permissions -> determine navigation visibility.
+ * CANONICAL ROUTE REGISTRY — The Single Source of Truth for all portal navigation,
+ * route guards, permission scopes, command palette entries, breadcrumbs, and layout views.
  */
-export const navigation: NavigationItem[] = [
+export const CANONICAL_ROUTES: CanonicalRoute[] = [
   {
-    id: 'dashboard',
+    id: 'home',
     label: 'Dashboard',
-    component: DashboardPage,
-    permissions: ['students:read'],
-    icon: Sparkles,
+    shortLabel: 'Home',
     description: 'School overview, dean message, announcements, and quick access',
-    aliases: ['home'],
-  },
-  {
-    id: 'students',
-    label: 'Students',
-    component: StudentsPage,
-    permissions: ['students:write', 'attendance:write'],
-    icon: GraduationCap,
-    description: 'Student directory, individual academic profiles, transcripts, and notes',
+    component: DashboardPage,
+    icon: Sparkles,
+    iconName: 'Sparkles',
+    permissions: ['students:read'],
+    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    aliases: ['dashboard'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
+    isPublic: true,
   },
   {
     id: 'attendance',
     label: 'Attendance',
-    component: AttendancePage,
-    permissions: ['attendance:read'],
-    icon: UserCheck,
     description: 'Class session logs, 75% policy compliance, and check-in records',
+    component: AttendancePage,
+    icon: UserCheck,
+    iconName: 'UserCheck',
+    permissions: ['attendance:read'],
+    allowedRoles: ['student', 'teacher', 'admin'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
+  },
+  {
+    id: 'students',
+    label: 'Students',
+    description: 'Student directory, individual academic profiles, transcripts, and notes',
+    component: StudentsPage,
+    icon: GraduationCap,
+    iconName: 'GraduationCap',
+    permissions: ['students:write', 'attendance:write'],
+    allowedRoles: ['teacher', 'admin'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
   },
   {
     id: 'courses',
     label: '6 Modules',
-    component: CoursesPage,
-    permissions: ['students:read'],
-    icon: BookOpen,
+    shortLabel: 'Courses',
     description: 'Curriculum syllabus, foundational modules, objectives, and teachers',
+    component: CoursesPage,
+    icon: BookOpen,
+    iconName: 'BookOpen',
+    permissions: ['students:read'],
+    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
+    isPublic: true,
   },
   {
     id: 'exams',
     label: 'Exams & Grades',
-    component: ExamsPage,
-    permissions: ['grades:read'],
-    icon: Award,
+    shortLabel: 'Exams',
     description: 'Classroom quizzes, scripture tests, timed evaluations, and gradebook',
+    component: ExamsPage,
+    icon: Award,
+    iconName: 'Award',
+    permissions: ['grades:read'],
+    allowedRoles: ['student', 'teacher', 'admin'],
     aliases: ['grades'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
   },
   {
     id: 'schedule',
     label: 'Schedule',
-    component: SchedulePage,
-    permissions: ['students:read'],
-    icon: Calendar,
     description: 'Term calendar, live session times, lecture dates, and holidays',
+    component: SchedulePage,
+    icon: Calendar,
+    iconName: 'Calendar',
+    permissions: ['students:read'],
+    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
+    isPublic: true,
   },
   {
     id: 'library',
     label: 'Library & Media',
-    component: LibraryPage,
-    permissions: ['students:read'],
-    icon: Bookmark,
+    shortLabel: 'Library',
     description: 'Study handouts, sermon recordings, PDF lesson guides, and resources',
+    component: LibraryPage,
+    icon: Bookmark,
+    iconName: 'Bookmark',
+    permissions: ['students:read'],
+    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
+    isPublic: true,
   },
   {
     id: 'payments',
     label: 'Tuition & Fees',
-    component: FinancePage,
-    permissions: ['finance:read'],
-    icon: DollarSign,
+    shortLabel: 'Payments',
     description: 'Tuition statements, installment plans, receipts, and sponsorship funds',
+    component: FinancePage,
+    icon: DollarSign,
+    iconName: 'DollarSign',
+    permissions: ['finance:read'],
+    allowedRoles: ['student', 'teacher', 'admin'],
     aliases: ['finance'],
+    isQuickNav: true,
+    isDesktopNav: true,
+    isMobileNav: true,
   },
   {
     id: 'messages',
     label: 'Faculty Messages',
-    component: MessagesPage,
-    permissions: ['students:read'],
-    icon: MessageSquare,
+    shortLabel: 'Messages',
     description: 'Direct inquiries, academic announcements, and student guidance threads',
+    component: MessagesPage,
+    icon: MessageSquare,
+    iconName: 'MessageSquare',
+    permissions: ['students:read'],
+    allowedRoles: ['student', 'teacher', 'admin'],
+    isQuickNav: false,
+    isDesktopNav: true,
+    isMobileNav: true,
   },
   {
     id: 'reports',
     label: 'Analytics & Reports',
-    component: ReportsPage,
-    permissions: ['audit:read'],
-    icon: FileText,
+    shortLabel: 'Reports',
     description: 'Cohort summary trends, at-risk flags, retention rates, and charts',
+    component: ReportsPage,
+    icon: FileText,
+    iconName: 'BarChart3',
+    permissions: ['audit:read'],
+    allowedRoles: ['teacher', 'admin'],
+    isQuickNav: false,
+    isDesktopNav: true,
+    isMobileNav: true,
   },
   {
     id: 'notes',
     label: 'Study Notes & Bible',
+    shortLabel: 'Notes & Bible',
+    description: 'Personal ministerial notes, King James scripture references, and journal',
     component: NotesPage,
-    permissions: ['students:read'],
     icon: BookOpenCheck,
-    description: 'Personal ministerial notes, King James scripture references, and journal',
-  },
-];
-
-export const VALID_TABS: TabType[] = [
-  'home', 
-  'attendance', 
-  'students', 
-  'courses', 
-  'exams', 
-  'schedule', 
-  'library', 
-  'payments', 
-  'messages', 
-  'reports', 
-  'notes'
-];
-
-export const PORTAL_ROUTES: RouteConfig[] = [
-  {
-    tab: 'home',
-    label: 'Home',
-    description: 'School overview, dean message, announcements, and quick access',
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
-    iconName: 'Sparkles',
-    Icon: Sparkles,
-    isQuickNav: true,
-  },
-  {
-    tab: 'attendance',
-    label: 'Attendance',
-    description: 'Class session logs, 75% policy compliance, and check-in records',
-    allowedRoles: ['student', 'teacher', 'admin'],
-    iconName: 'UserCheck',
-    Icon: UserCheck,
-    isQuickNav: true,
-  },
-  {
-    tab: 'students',
-    label: 'Students',
-    description: 'Student directory, individual academic profiles, transcripts, and notes',
-    allowedRoles: ['teacher', 'admin'],
-    iconName: 'GraduationCap',
-    Icon: GraduationCap,
-    isQuickNav: true,
-  },
-  {
-    tab: 'courses',
-    label: '6 Modules',
-    description: 'Curriculum syllabus, foundational modules, objectives, and teachers',
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
-    iconName: 'BookOpen',
-    Icon: BookOpen,
-    isQuickNav: true,
-  },
-  {
-    tab: 'exams',
-    label: 'Exams & Quizzes',
-    description: 'Classroom quizzes, scripture tests, timed evaluations, and gradebook',
-    allowedRoles: ['student', 'teacher', 'admin'],
-    iconName: 'Award',
-    Icon: Award,
-    isQuickNav: true,
-  },
-  {
-    tab: 'schedule',
-    label: 'Schedule',
-    description: 'Term calendar, live session times, lecture dates, and holidays',
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
-    iconName: 'Calendar',
-    Icon: Calendar,
-    isQuickNav: true,
-  },
-  {
-    tab: 'library',
-    label: 'Library & Media',
-    description: 'Study handouts, sermon recordings, PDF lesson guides, and resources',
-    allowedRoles: ['student', 'teacher', 'admin', 'guest'],
-    iconName: 'Bookmark',
-    Icon: Bookmark,
-    isQuickNav: true,
-  },
-  {
-    tab: 'payments',
-    label: 'Tuition & Fees',
-    description: 'Tuition statements, installment plans, receipts, and sponsorship funds',
-    allowedRoles: ['student', 'teacher', 'admin'],
-    iconName: 'DollarSign',
-    Icon: DollarSign,
-    isQuickNav: true,
-  },
-  {
-    tab: 'messages',
-    label: 'Faculty Messages',
-    description: 'Direct inquiries, academic announcements, and student guidance threads',
-    allowedRoles: ['student', 'teacher', 'admin'],
-    iconName: 'MessageSquare',
-    Icon: MessageSquare,
-  },
-  {
-    tab: 'reports',
-    label: 'Analytics & Reports',
-    description: 'Cohort summary trends, at-risk flags, retention rates, and charts',
-    allowedRoles: ['teacher', 'admin'],
-    iconName: 'BarChart3',
-    Icon: FileText,
-  },
-  {
-    tab: 'notes',
-    label: 'Study Notes & Bible',
-    description: 'Personal ministerial notes, King James scripture references, and journal',
-    allowedRoles: ['student', 'teacher', 'admin'],
     iconName: 'FileText',
-    Icon: BookOpenCheck,
+    permissions: ['students:read'],
+    allowedRoles: ['student', 'teacher', 'admin'],
+    isQuickNav: false,
+    isDesktopNav: true,
+    isMobileNav: true,
+    isPublic: true,
   },
 ];
 
-export const DESKTOP_NAV_ITEMS: NavItem[] = [
-  { tab: 'home', label: 'Home', Icon: Sparkles },
-  { tab: 'attendance', label: 'Attendance', Icon: UserCheck },
-  { tab: 'students', label: 'Students', Icon: GraduationCap },
-  { tab: 'courses', label: 'Courses', Icon: BookOpen },
-  { tab: 'exams', label: 'Exams', Icon: Award },
-  { tab: 'notes', label: 'Notes & Bible', Icon: BookOpenCheck },
-  { tab: 'schedule', label: 'Schedule', Icon: Calendar },
-  { tab: 'library', label: 'Library', Icon: Bookmark },
-  { tab: 'payments', label: 'Payments', Icon: DollarSign },
-  { tab: 'messages', label: 'Messages', Icon: MessageSquare },
-  { tab: 'reports', label: 'Reports', Icon: FileText },
-];
+// 1. DERIVED: All valid tab identifiers including primary IDs and aliases
+export const VALID_TABS: TabType[] = CANONICAL_ROUTES.reduce<TabType[]>((acc, route) => {
+  acc.push(route.id);
+  if (route.aliases) {
+    route.aliases.forEach(alias => {
+      if (!acc.includes(alias as TabType)) acc.push(alias as TabType);
+    });
+  }
+  return acc;
+}, []);
+
+// 2. DERIVED: Legacy `navigation` structure derived from CANONICAL_ROUTES
+export const navigation: NavigationItem[] = CANONICAL_ROUTES.map(route => ({
+  id: route.id,
+  label: route.label,
+  component: route.component,
+  permissions: route.permissions,
+  icon: route.icon,
+  description: route.description,
+  aliases: route.aliases,
+  badgeAlert: route.badgeAlert,
+  badgeCount: route.badgeCount,
+}));
+
+// 3. DERIVED: Legacy `PORTAL_ROUTES` structure derived from CANONICAL_ROUTES
+export const PORTAL_ROUTES: RouteConfig[] = CANONICAL_ROUTES.map(route => ({
+  tab: route.id,
+  label: route.label,
+  description: route.description,
+  allowedRoles: route.allowedRoles,
+  iconName: route.iconName,
+  Icon: route.icon,
+  isQuickNav: route.isQuickNav,
+}));
+
+// 4. DERIVED: Legacy `DESKTOP_NAV_ITEMS` derived from CANONICAL_ROUTES
+export const DESKTOP_NAV_ITEMS: NavItem[] = CANONICAL_ROUTES
+  .filter(route => route.isDesktopNav !== false)
+  .map(route => ({
+    tab: route.id,
+    label: route.shortLabel || route.label,
+    Icon: route.icon,
+    badgeAlert: route.badgeAlert,
+    badgeCount: route.badgeCount,
+  }));
 
 /**
- * Finds a navigation entry by ID or alias.
+ * Finds a canonical route definition by ID or alias.
  */
-export function getNavigationItem(idOrTab: string): NavigationItem | undefined {
-  return navigation.find(
+export function getCanonicalRoute(idOrTab: string): CanonicalRoute | undefined {
+  return CANONICAL_ROUTES.find(
     item => item.id === idOrTab || item.aliases?.includes(idOrTab)
   );
 }
 
 /**
- * Checks if a user has access to a navigation item based on role-to-permissions mapping.
- * Role -> determines permissions; Permissions -> determine navigation visibility.
+ * Finds a navigation entry by ID or alias (backward compatible helper).
  */
-export function isNavigationAccessible(item: NavigationItem, role?: string, userPermissions?: Permission[]): boolean {
+export function getNavigationItem(idOrTab: string): NavigationItem | undefined {
+  const canonical = getCanonicalRoute(idOrTab);
+  if (!canonical) return undefined;
+  return {
+    id: canonical.id,
+    label: canonical.label,
+    component: canonical.component,
+    permissions: canonical.permissions,
+    icon: canonical.icon,
+    description: canonical.description,
+    aliases: canonical.aliases,
+    badgeAlert: canonical.badgeAlert,
+    badgeCount: canonical.badgeCount,
+  };
+}
+
+/**
+ * Centralized Permission Guard checking whether a user has access to a route item.
+ */
+export function isNavigationAccessible(
+  item: NavigationItem | CanonicalRoute, 
+  role?: string, 
+  userPermissions?: Permission[]
+): boolean {
+  const route = getCanonicalRoute(item.id) || (item as CanonicalRoute);
+  
   if (!role) {
-    const explicitlyPublicIds = ['dashboard', 'courses', 'schedule', 'library', 'notes'];
-    return explicitlyPublicIds.includes(item.id);
+    return !!route.isPublic || route.allowedRoles?.includes('guest') || false;
   }
 
-  // Authoritative permission resolution: role determines permissions, permissions determine access
   const effectivePermissions: Permission[] = (userPermissions && userPermissions.length > 0)
     ? userPermissions
     : (ROLE_DEFINITIONS[role]?.permissions || []);
 
   if (effectivePermissions.includes('all:access')) return true;
 
-  if (!item.permissions || item.permissions.length === 0) {
-    const explicitlyPublicIds = ['dashboard', 'courses', 'schedule', 'library', 'notes'];
-    return explicitlyPublicIds.includes(item.id);
+  if (!route.permissions || route.permissions.length === 0) {
+    return !!route.isPublic || route.allowedRoles?.includes('guest') || false;
   }
 
-  return item.permissions.some(perm => effectivePermissions.includes(perm));
+  return route.permissions.some(perm => effectivePermissions.includes(perm));
 }
 
+/**
+ * Unified Route Accessibility check by TabType and optional Role / Permissions.
+ */
+export function isRouteAccessible(tab: TabType, role?: string, userPermissions?: Permission[]): boolean {
+  const route = getCanonicalRoute(tab);
+  if (!route) return false;
+  return isNavigationAccessible(route, role, userPermissions);
+}
+
+/**
+ * Retrieves location tab parameter from current URL, defaulting to 'home'.
+ */
 export function getTabFromLocation(): TabType {
   if (typeof window === 'undefined') return 'home';
   const candidate = new URLSearchParams(window.location.search).get('tab') as TabType | null;
   return candidate && VALID_TABS.includes(candidate) ? candidate : 'home';
 }
 
-export function isRouteAccessible(tab: TabType, role?: string): boolean {
-  const route = PORTAL_ROUTES.find(r => r.tab === tab);
-  if (!route) return false;
-  if (!role) {
-    return route.allowedRoles.includes('guest');
-  }
-  return route.allowedRoles.includes(role as 'student' | 'teacher' | 'admin');
-}
-
+/**
+ * Determines default initial route based on user role.
+ */
 export function getDefaultRouteForRole(role?: string): TabType {
   if (role === 'student') return 'home';
-  if (role === 'teacher' || role === 'admin') return 'attendance';
+  if (role === 'teacher' || role === 'admin' || role === 'super_admin') return 'attendance';
   return 'home';
+}
+
+// ── DERIVED LAYOUT & ACCESS FILTERS ──────────────────────────────────────────────
+
+/**
+ * Derives desktop navigation items dynamically filtered by user role & permissions.
+ */
+export function getDesktopNavigation(userRole?: string, userPermissions?: Permission[]): CanonicalRoute[] {
+  return CANONICAL_ROUTES.filter(r => r.isDesktopNav !== false && isNavigationAccessible(r, userRole, userPermissions));
+}
+
+/**
+ * Derives mobile navigation items dynamically filtered by user role & permissions.
+ */
+export function getMobileNavigation(userRole?: string, userPermissions?: Permission[]): CanonicalRoute[] {
+  return CANONICAL_ROUTES.filter(r => r.isMobileNav !== false && isNavigationAccessible(r, userRole, userPermissions));
+}
+
+/**
+ * Derives quick navigation routes for dashboard quick action grids.
+ */
+export function getQuickNavigation(userRole?: string, userPermissions?: Permission[]): CanonicalRoute[] {
+  return CANONICAL_ROUTES.filter(r => r.isQuickNav && isNavigationAccessible(r, userRole, userPermissions));
+}
+
+/**
+ * Derives breadcrumb trail hierarchy for any route tab.
+ */
+export function getBreadcrumbs(tab: TabType): BreadcrumbItem[] {
+  const route = getCanonicalRoute(tab);
+  const rootItem: BreadcrumbItem = { label: 'HTEIM Portal', tab: 'home', icon: Sparkles };
+  if (!route || route.id === 'home') {
+    return [rootItem];
+  }
+  return [
+    rootItem,
+    { label: route.label, tab: route.id, icon: route.icon }
+  ];
+}
+
+/**
+ * Derives Command Palette search entries directly from the Canonical Route Registry.
+ */
+export function getCommandPaletteRoutes(userRole?: string, userPermissions?: Permission[]): CommandPaletteRouteItem[] {
+  return CANONICAL_ROUTES
+    .filter(r => isNavigationAccessible(r, userRole, userPermissions))
+    .map(r => ({
+      id: `route-${r.id}`,
+      category: 'Actions & Views',
+      title: `Go to ${r.label}`,
+      subtitle: r.description,
+      tab: r.id,
+      icon: r.icon,
+      badge: 'View',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+    }));
 }
 
 export function getNavRoutesForRole(role?: string): RouteConfig[] {
@@ -345,9 +456,6 @@ export function getNavRoutesForRole(role?: string): RouteConfig[] {
 }
 
 export function filterNavItemsForUser(items: NavItem[], userRole?: string, userPermissions?: Permission[]): NavItem[] {
-  return items.filter(item => {
-    const fullNavItem = navigation.find(n => n.id === item.tab);
-    if (!fullNavItem) return true;
-    return isNavigationAccessible(fullNavItem, userRole, userPermissions);
-  });
+  return items.filter(item => isRouteAccessible(item.tab, userRole, userPermissions));
 }
+

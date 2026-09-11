@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { TabType } from '../types';
 import { AppUser } from '../lib/userAuth';
+import { getCommandPaletteRoutes } from '../app/navigation';
+
 
 export interface CommandPaletteItem {
   id: string;
@@ -117,92 +119,21 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   // Build searchable list
   const allItems: CommandPaletteItem[] = [];
 
-  // 1. Core Navigation & System Actions
-  allItems.push({
-    id: 'nav-home',
-    category: 'Actions & Views',
-    title: 'Go to Home Dashboard',
-    subtitle: 'Overview, Pillars & Ministry Curriculum Highlights',
-    icon: <Sparkles className="w-4 h-4 text-amber-500" />,
-    badge: 'View',
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-    action: () => { onNavigate('home'); onClose(); }
+  // 1. Core Navigation & System Actions derived from Canonical Route Registry
+  const canonicalRouteItems = getCommandPaletteRoutes(appUser?.role, appUser?.permissions);
+  canonicalRouteItems.forEach(routeItem => {
+    const IconComp = routeItem.icon;
+    allItems.push({
+      id: routeItem.id,
+      category: 'Actions & Views',
+      title: routeItem.title,
+      subtitle: routeItem.subtitle,
+      icon: <IconComp className="w-4 h-4 text-amber-500" />,
+      badge: routeItem.badge,
+      badgeColor: routeItem.badgeColor,
+      action: () => { onNavigate(routeItem.tab); onClose(); }
+    });
   });
-
-  if (appUser) {
-    allItems.push(
-      {
-        id: 'nav-attendance',
-        category: 'Actions & Views',
-        title: 'Open Student Attendance Portal',
-        subtitle: 'Live Attendance Records & Class Check-In Sheets',
-        icon: <UserCheck className="w-4 h-4 text-indigo-500" />,
-        badge: 'View',
-        badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        action: () => { onNavigate('attendance'); onClose(); }
-      },
-      {
-        id: 'nav-students',
-        category: 'Actions & Views',
-        title: 'Open Students Directory',
-        subtitle: 'View Student Roster, Contact Profiles & Enrolment Levels',
-        icon: <User className="w-4 h-4 text-emerald-500" />,
-        badge: 'View',
-        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        action: () => { onNavigate('students'); onClose(); }
-      },
-      {
-        id: 'nav-courses',
-        category: 'Actions & Views',
-        title: 'Courses & Curriculum Modules',
-        subtitle: 'Browse 6 Core Ministry Modules & Syllabi Details',
-        icon: <BookOpen className="w-4 h-4 text-blue-500" />,
-        badge: 'View',
-        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
-        action: () => { onNavigate('courses'); onClose(); }
-      },
-      {
-        id: 'nav-exams',
-        category: 'Actions & Views',
-        title: 'Exams, Assignments & Evaluations',
-        subtitle: 'Scripture Examinations, Quizzes & Grade Books',
-        icon: <Award className="w-4 h-4 text-amber-600" />,
-        badge: 'View',
-        badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
-        action: () => { onNavigate('exams'); onClose(); }
-      },
-      {
-        id: 'nav-schedule',
-        category: 'Actions & Views',
-        title: 'Academic Calendar & Schedule',
-        subtitle: 'Classroom Days, Lecture Slots & Room Locations',
-        icon: <Calendar className="w-4 h-4 text-purple-500" />,
-        badge: 'View',
-        badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
-        action: () => { onNavigate('schedule'); onClose(); }
-      },
-      {
-        id: 'nav-library',
-        category: 'Actions & Views',
-        title: 'Digital Library & Reading Resources',
-        subtitle: 'Download Handouts, Manuals & Theological Syllabi',
-        icon: <Bookmark className="w-4 h-4 text-teal-500" />,
-        badge: 'View',
-        badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
-        action: () => { onNavigate('library'); onClose(); }
-      },
-      {
-        id: 'nav-payments',
-        category: 'Actions & Views',
-        title: 'Tuition Statements & Payment Ledger',
-        subtitle: 'Receipts, Payment Options & Financial Records',
-        icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
-        badge: 'View',
-        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        action: () => { onNavigate('payments'); onClose(); }
-      }
-    );
-  }
 
   // System Tool Triggers
   if (appUser?.role !== 'student') {
