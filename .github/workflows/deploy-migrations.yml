@@ -50,7 +50,7 @@ jobs:
 
       - name: Verify Constraint Deployments
         run: |
-          npm install
+          npm ci
           npm run db:validate-constraints
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
