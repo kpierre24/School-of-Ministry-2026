@@ -37,15 +37,17 @@ export function usePWAInstall() {
     // Check if running as PWA (standalone)
     const checkStandalone = () => {
       const isStandaloneMode =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes('android-app://');
-      setIsStandalone(isStandaloneMode);
+        (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+        (typeof window !== 'undefined' && (window.navigator as any)?.standalone === true) ||
+        (typeof document !== 'undefined' && document.referrer.includes('android-app://'));
+      setIsStandalone(Boolean(isStandaloneMode));
     };
 
     checkStandalone();
-    const standaloneMediaQuery = window.matchMedia('(display-mode: standalone)');
-    standaloneMediaQuery.addEventListener('change', checkStandalone);
+    const standaloneMediaQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(display-mode: standalone)')
+      : null;
+    standaloneMediaQuery?.addEventListener?.('change', checkStandalone);
 
     if (typeof window !== 'undefined') {
       const userAgent = window.navigator.userAgent.toLowerCase();
@@ -59,7 +61,7 @@ export function usePWAInstall() {
     listeners.push(handlePrompt);
 
     return () => {
-      standaloneMediaQuery.removeEventListener('change', checkStandalone);
+      standaloneMediaQuery?.removeEventListener?.('change', checkStandalone);
       const idx = listeners.indexOf(handlePrompt);
       if (idx > -1) listeners.splice(idx, 1);
     };

@@ -181,14 +181,16 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
   }, [cohorts, students]);
 
   const filteredCohorts = useMemo(() => {
-    if (!searchQuery.trim()) return cohorts;
+    // New cohorts (e.g. upcoming/non-current cohorts like Class of 2027) are strictly restricted to administrators
+    const accessibleCohorts = isAdmin ? cohorts : cohorts.filter(c => c.isCurrent);
+    if (!searchQuery.trim()) return accessibleCohorts;
     const q = searchQuery.toLowerCase().trim();
-    return cohorts.filter(c => 
+    return accessibleCohorts.filter(c => 
       c.name.toLowerCase().includes(q) || 
       c.academicYear.toString().includes(q) || 
       (c.term && c.term.toLowerCase().includes(q))
     );
-  }, [cohorts, searchQuery]);
+  }, [cohorts, searchQuery, isAdmin]);
 
   const filteredStudents = useMemo(() => {
     if (!studentSearch.trim()) return students;
@@ -265,7 +267,7 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Cohorts ({cohorts.length})</span>
+              <span>Cohorts ({filteredCohorts.length})</span>
             </button>
 
             {isAdmin && (
@@ -370,6 +372,11 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                                 Primary Year
                               </span>
                             )}
+                            {!c.isCurrent && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                                Admin Only
+                              </span>
+                            )}
                             {c.isArchived && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-1">
                                 <Archive className="w-3 h-3" /> Archived
@@ -463,6 +470,10 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                             <button
                               type="button"
                               onClick={() => {
+                                if (!isAdmin && !c.isCurrent) {
+                                  showNotification('Permission Denied: The new cohort is restricted to administrators.');
+                                  return;
+                                }
                                 onSelectActiveCohort(c.id);
                                 showNotification(`Switched portal view to ${c.name}`);
                               }}

@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Invoice, PaymentRecord } from '../types';
 import { invoiceService } from '../services/invoiceService';
 
-export function useInvoices(paymentRecords: PaymentRecord[] = []) {
+const EMPTY_PAYMENT_RECORDS: PaymentRecord[] = [];
+
+export function useInvoices(paymentRecords: PaymentRecord[] = EMPTY_PAYMENT_RECORDS) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 

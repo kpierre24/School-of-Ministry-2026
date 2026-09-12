@@ -1276,9 +1276,28 @@ export function AppRouter() {
     localStorage.setItem('hteim_active_cohort_id', activeCohortId);
   }, [activeCohortId]);
 
+  // Guard active cohort: New/upcoming cohorts (e.g. Class of 2027) are strictly restricted to admin users
   const activeCohort = useMemo(() => {
-    return cohorts.find(c => c.id === activeCohortId) || cohorts[0] || DEFAULT_COHORTS[0];
-  }, [cohorts, activeCohortId]);
+    const currentPrimary = cohorts.find(c => c.isCurrent) || cohorts[0] || DEFAULT_COHORTS[0];
+    if (appUser?.role !== 'admin') {
+      const selected = cohorts.find(c => c.id === activeCohortId);
+      if (selected && !selected.isCurrent) {
+        return currentPrimary;
+      }
+    }
+    return cohorts.find(c => c.id === activeCohortId) || currentPrimary;
+  }, [cohorts, activeCohortId, appUser?.role]);
+
+  // If a non-admin user is logged in while a restricted new cohort is active, automatically reset activeCohortId to the current primary cohort
+  useEffect(() => {
+    if (appUser && appUser.role !== 'admin') {
+      const active = cohorts.find(c => c.id === activeCohortId);
+      if (active && !active.isCurrent) {
+        const defaultCohortId = cohorts.find(c => c.isCurrent)?.id || 'cohort_2026';
+        setActiveCohortId(defaultCohortId);
+      }
+    }
+  }, [appUser, activeCohortId, cohorts]);
 
   const handleSaveCohort = (cohort: Cohort) => {
     if (appUser?.role !== 'admin') {
@@ -4333,7 +4352,7 @@ export function AppRouter() {
         }}
         activeCohort={activeCohort}
         onOpenCohortModal={() => {
-          if (appUser?.role === 'admin' || appUser?.role === 'teacher') {
+          if (appUser?.role === 'admin') {
             setShowCohortModal(true);
           }
         }}
@@ -4551,6 +4570,11 @@ export function AppRouter() {
         cohorts={cohorts}
         activeCohortId={activeCohortId}
         onSelectActiveCohort={(id) => {
+          const target = cohorts.find(c => c.id === id);
+          if (appUser?.role !== 'admin' && target && !target.isCurrent) {
+            showToast('error', 'Access Denied', 'The new cohort is restricted to institutional administrators.');
+            return;
+          }
           setActiveCohortId(id);
           setShowCohortModal(false);
         }}

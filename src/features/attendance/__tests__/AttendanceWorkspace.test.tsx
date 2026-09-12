@@ -77,6 +77,7 @@ describe('AttendanceWorkspace — Attendance Operations & Policy Verification', 
     effectiveClassDays: mockClassDays,
     classDayStats: {},
     trendChartData: [],
+    getStudentBadges: vi.fn(() => []),
     syncing: false,
     onManualSync: vi.fn(),
     onToggleAttendance: vi.fn(),
@@ -85,7 +86,7 @@ describe('AttendanceWorkspace — Attendance Operations & Policy Verification', 
   it('renders student attendance workspace', () => {
     render(<AttendanceWorkspace {...defaultProps} />);
 
-    expect(screen.getByText('Philip the Evangelist')).toBeDefined();
-    expect(screen.getByText('Stephen the Martyr')).toBeDefined();
+    expect(screen.getAllByText('Philip the Evangelist').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Stephen the Martyr').length).toBeGreaterThan(0);
   });
 });

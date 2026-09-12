@@ -1,5 +1,4 @@
 import { Invoice, PaymentTransaction, FinancialAdjustment, RefundRecord, FinancialAuditLog, PaymentRecord } from '../types';
-import { INITIAL_PAYMENTS } from '../../../components/PaymentTab';
 import { isDemoPayment } from '../../../data/guards';
 import { generateUUID, getNextSequenceNumber } from '../../../lib/idGenerator';
 

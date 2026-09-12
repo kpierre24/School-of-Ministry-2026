@@ -37,7 +37,7 @@ describe('StudentsPage — User Interface & Business Behavior', () => {
   it('renders summary statistics metrics correctly', () => {
     render(<StudentsPage initialStudents={mockStudents} />);
 
-    expect(screen.getByText('Total Students')).toBeDefined();
+    expect(screen.getByText('Total Enrolled')).toBeDefined();
     expect(screen.getByText('Sarah Connor')).toBeDefined();
     expect(screen.getByText('John Connor')).toBeDefined();
   });
@@ -45,6 +45,7 @@ describe('StudentsPage — User Interface & Business Behavior', () => {
   it('renders student search box and add student trigger button', () => {
     render(<StudentsPage initialStudents={mockStudents} />);
 
-    expect(screen.getByText(/add student/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/search by name/i)).toBeDefined();
+    expect(screen.getByText(/enroll student/i)).toBeDefined();
   });
 });
