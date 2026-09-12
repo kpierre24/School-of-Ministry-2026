@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AppNotification } from '../../types';
+import type { AppNotification } from '../../types';
 
 export interface ToastItem {
   id: string;

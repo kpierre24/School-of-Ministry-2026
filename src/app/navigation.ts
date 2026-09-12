@@ -21,7 +21,7 @@ export const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 export const StudentsPage = lazy(() => import('@/features/students').then(m => ({ default: m.StudentsPage })));
 export const AttendancePage = lazy(() => import('../pages/AttendancePage'));
 export const CoursesPage = lazy(() => import('../pages/CoursesPage'));
-export const ExamsPage = lazy(() => import('@/features/grades').then(m => ({ default: m.GradesPage })));
+export const ExamsPage = lazy(() => import('@/features/grades/components/GradesPage').then(m => ({ default: m.GradesPage })));
 export const SchedulePage = lazy(() => import('../pages/SchedulePage'));
 export const LibraryPage = lazy(() => import('../pages/LibraryPage'));
 export const FinancePage = lazy(() => import('@/features/finance').then(m => ({ default: m.FinancePage })));
