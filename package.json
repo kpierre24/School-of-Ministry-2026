@@ -77,7 +77,17 @@
   },
   "optionalDependencies": {
     "@esbuild/linux-x64": "^0.25.12",
+    "@napi-rs/canvas-linux-x64-gnu": "^1.0.9",
+    "@napi-rs/canvas-linux-x64-musl": "^1.0.9",
+    "@oxc-transform/binding-linux-x64-gnu": "^0.111.0",
+    "@oxc-transform/binding-linux-x64-musl": "^0.111.0",
+    "@rolldown/binding-linux-x64-gnu": "^1.0.0-rc.1",
+    "@rolldown/binding-linux-x64-musl": "^1.0.0-rc.1",
     "@rollup/rollup-linux-x64-gnu": "^4.62.4",
-    "@rollup/rollup-linux-x64-musl": "^4.62.4"
+    "@rollup/rollup-linux-x64-musl": "^4.62.4",
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.3.3",
+    "@tailwindcss/oxide-linux-x64-musl": "^4.3.3",
+    "lightningcss-linux-x64-gnu": "^1.32.0",
+    "lightningcss-linux-x64-musl": "^1.32.0"
   }
 }
