@@ -1281,6 +1281,10 @@ export function AppRouter() {
   }, [cohorts, activeCohortId]);
 
   const handleSaveCohort = (cohort: Cohort) => {
+    if (appUser?.role !== 'admin') {
+      showToast('error', 'Access Denied', 'Only administrators can create or update cohorts.');
+      return;
+    }
     setCohorts(prev => {
       const idx = prev.findIndex(c => c.id === cohort.id);
       if (idx >= 0) {
@@ -1293,6 +1297,10 @@ export function AppRouter() {
   };
 
   const handleDeleteCohort = (cohortId: string) => {
+    if (appUser?.role !== 'admin') {
+      showToast('error', 'Access Denied', 'Only administrators can delete cohorts.');
+      return;
+    }
     setCohorts(prev => prev.filter(c => c.id !== cohortId));
     if (activeCohortId === cohortId) {
       setActiveCohortId('cohort_2026');
@@ -1300,10 +1308,18 @@ export function AppRouter() {
   };
 
   const handleArchiveToggleCohort = (cohortId: string) => {
+    if (appUser?.role !== 'admin') {
+      showToast('error', 'Access Denied', 'Only administrators can archive cohorts.');
+      return;
+    }
     setCohorts(prev => prev.map(c => c.id === cohortId ? { ...c, isArchived: !c.isArchived } : c));
   };
 
   const handleAssignStudentCohort = (studentName: string, cohortId: string) => {
+    if (appUser?.role !== 'admin') {
+      showToast('error', 'Access Denied', 'Only administrators can assign student cohorts.');
+      return;
+    }
     const key = `hteim_student_cohort_${studentName.toLowerCase().trim()}`;
     localStorage.setItem(key, cohortId);
   };
@@ -4316,7 +4332,11 @@ export function AppRouter() {
           }
         }}
         activeCohort={activeCohort}
-        onOpenCohortModal={() => setShowCohortModal(true)}
+        onOpenCohortModal={() => {
+          if (appUser?.role === 'admin' || appUser?.role === 'teacher') {
+            setShowCohortModal(true);
+          }
+        }}
         onGoHome={() => setActiveErpTab('home')}
         onOpenLogin={() => setShowLoginModal(true)}
         onLogout={handleAppLogout}
@@ -4520,7 +4540,7 @@ export function AppRouter() {
           setShowSettingsModal(false);
           setShowAdminAuditModal(true);
         }}
-        onOpenCohortManager={() => setShowCohortModal(true)}
+        onOpenCohortManager={appUser?.role === 'admin' ? () => setShowCohortModal(true) : undefined}
         onPhotosMigrated={handlePushToCloud}
       />
 

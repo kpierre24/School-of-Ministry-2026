@@ -53,13 +53,21 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
   onCloneCurriculum,
   students = [],
   courses = [],
-  userRole = 'admin',
+  userRole = 'user',
   onAssignStudentCohort
 }) => {
+  const isAdmin = userRole === 'admin';
   const [activeTab, setActiveTab] = useState<'list' | 'create' | 'assign'>('list');
   const [editingCohort, setEditingCohort] = useState<Cohort | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
+
+  // Enforce list-only view for non-admin users
+  React.useEffect(() => {
+    if (!isAdmin && activeTab !== 'list') {
+      setActiveTab('list');
+    }
+  }, [isAdmin, activeTab]);
 
   // Form State for Create / Edit
   const [formData, setFormData] = useState<Partial<Cohort>>({
@@ -87,6 +95,10 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
   };
 
   const handleStartCreate = () => {
+    if (!isAdmin) {
+      showNotification('Administrator privileges required to create cohorts.');
+      return;
+    }
     const nextYear = Math.max(...cohorts.map(c => c.academicYear || 2026), 2026) + 1;
     setFormData({
       id: `cohort_${nextYear}`,
@@ -108,6 +120,10 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
   };
 
   const handleStartEdit = (c: Cohort) => {
+    if (!isAdmin) {
+      showNotification('Administrator privileges required to edit cohorts.');
+      return;
+    }
     setFormData({ ...c });
     setEditingCohort(c);
     setShouldClone(false);
@@ -116,6 +132,10 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert('Unauthorized: Only administrators can create or modify cohorts.');
+      return;
+    }
     if (!formData.name?.trim() || !formData.academicYear) {
       alert('Please provide a cohort name and valid academic year.');
       return;
@@ -209,13 +229,17 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">Cohort & Academic Year Management</h2>
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  {isAdmin ? 'Cohort & Academic Year Management' : 'Academic Cohorts'}
+                </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/30 border border-indigo-400/40 text-indigo-200">
-                  Multi-Cohort Foundation
+                  {isAdmin ? 'Multi-Cohort Foundation' : 'Curriculum View'}
                 </span>
               </div>
               <p className="text-xs text-indigo-200/80 mt-0.5">
-                Organize students, curriculum rosters, and grading cycles across graduating classes (2026, 2027, etc.).
+                {isAdmin
+                  ? 'Organize students, curriculum rosters, and grading cycles across graduating classes (2026, 2027, etc.).'
+                  : 'View academic cohorts and switch the portal curriculum view.'}
               </p>
             </div>
           </div>
@@ -244,19 +268,21 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
               <span>Cohorts ({cohorts.length})</span>
             </button>
 
-            <button
-              onClick={handleStartCreate}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'create' && !editingCohort
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add New Cohort</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={handleStartCreate}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'create' && !editingCohort
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add New Cohort</span>
+              </button>
+            )}
 
-            {students.length > 0 && (
+            {isAdmin && students.length > 0 && (
               <button
                 onClick={() => setActiveTab('assign')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -297,14 +323,16 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleStartCreate}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create Cohort (e.g. 2027)</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleStartCreate}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Cohort (e.g. 2027)</span>
+                  </button>
+                )}
               </div>
 
               {/* Cohorts Grid */}
@@ -353,40 +381,42 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleStartEdit(c)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            title="Edit Cohort Details"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-
-                          {cohorts.length > 1 && (
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => {
-                                if (confirmDeleteId === c.id) {
-                                  onDeleteCohort(c.id);
-                                  setConfirmDeleteId(null);
-                                  showNotification(`Cohort "${c.name}" deleted.`);
-                                } else {
-                                  setConfirmDeleteId(c.id);
-                                  setTimeout(() => setConfirmDeleteId(null), 4000);
-                                }
-                              }}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                confirmDeleteId === c.id
-                                  ? 'bg-rose-600 text-white'
-                                  : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-                              }`}
-                              title={confirmDeleteId === c.id ? 'Click again to confirm deletion' : 'Delete Cohort'}
+                              onClick={() => handleStartEdit(c)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              title="Edit Cohort Details"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                        </div>
+
+                            {cohorts.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirmDeleteId === c.id) {
+                                    onDeleteCohort(c.id);
+                                    setConfirmDeleteId(null);
+                                    showNotification(`Cohort "${c.name}" deleted.`);
+                                  } else {
+                                    setConfirmDeleteId(c.id);
+                                    setTimeout(() => setConfirmDeleteId(null), 4000);
+                                  }
+                                }}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  confirmDeleteId === c.id
+                                    ? 'bg-rose-600 text-white'
+                                    : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+                                }`}
+                                title={confirmDeleteId === c.id ? 'Click again to confirm deletion' : 'Delete Cohort'}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Description */}
@@ -448,13 +478,15 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                           )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => onArchiveToggle(c.id)}
-                          className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        >
-                          {c.isArchived ? 'Restore' : 'Archive'}
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => onArchiveToggle(c.id)}
+                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            {c.isArchived ? 'Restore' : 'Archive'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -476,7 +508,8 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
 
           {/* TAB 2: CREATE / EDIT COHORT */}
           {activeTab === 'create' && (
-            <form onSubmit={handleSaveForm} className="space-y-4">
+            isAdmin ? (
+              <form onSubmit={handleSaveForm} className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
@@ -681,11 +714,25 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                 </button>
               </div>
             </form>
-          )}
+          ) : (
+            <div className="p-8 text-center space-y-3">
+              <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm">Admin Access Required</h4>
+              <p className="text-xs text-slate-500">Creating and configuring academic cohorts is restricted to institutional administrators.</p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('list')}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Return to Cohort Overview
+              </button>
+            </div>
+          ))}
 
           {/* TAB 3: ROSTER ASSIGNMENT */}
           {activeTab === 'assign' && (
-            <div className="space-y-4">
+            isAdmin ? (
+              <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
@@ -763,7 +810,20 @@ export const CohortManagementModal: React.FC<CohortManagementModalProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          ) : (
+            <div className="p-8 text-center space-y-3">
+              <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm">Admin Access Required</h4>
+              <p className="text-xs text-slate-500">Assigning student rosters across cohorts is restricted to institutional administrators.</p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('list')}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Return to Cohort Overview
+              </button>
+            </div>
+          ))}
         </div>
 
         {/* Modal Footer */}
