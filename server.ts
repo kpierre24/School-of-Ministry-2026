@@ -95,11 +95,39 @@ async function startServer() {
     }
   });
 
+  // If in production / Cloud Run and PORT is configured to a different port (e.g. 8080),
+  // bind that port as well to satisfy Cloud Run ingress health checks and routing.
+  let cloudRunServer: ReturnType<typeof app.listen> | null = null;
+  const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
+  if (envPort && !isNaN(envPort) && envPort !== PORT) {
+    try {
+      cloudRunServer = app.listen(envPort, HOST, () => {
+        logger.info(`Cloud Run ingress listener active on http://${HOST}:${envPort}`);
+      });
+      cloudRunServer.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "EADDRINUSE") {
+          logger.info(`Port ${envPort} occupied by reverse proxy sandbox. Relying on primary port ${PORT}.`);
+        } else {
+          logger.warn(`Cloud Run secondary port ${envPort} encountered non-fatal error:`, err);
+        }
+      });
+    } catch (e) {
+      logger.warn(`Could not start secondary listener on port ${envPort}:`, e);
+    }
+  }
+
   const shutdown = () => {
     logger.info("Server shutting down gracefully...");
     server.close(() => {
-      logger.info("Server listener closed gracefully.");
-      process.exit(0);
+      if (cloudRunServer) {
+        cloudRunServer.close(() => {
+          logger.info("All server listeners closed gracefully.");
+          process.exit(0);
+        });
+      } else {
+        logger.info("Server listener closed gracefully.");
+        process.exit(0);
+      }
     });
   };
 

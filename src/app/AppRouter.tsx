@@ -4207,6 +4207,7 @@ export function AppRouter() {
           allQuizSheets,
           rubricScores,
           onUpdateRubric: handleUpdateRubric,
+          appUser,
           userRole: appUser?.role,
           currentStudentName: appUser?.studentName || appUser?.name,
           onNotificationCreated: (notif: any) => CentralNotificationService.setNotifications([notif as any, ...CentralNotificationService.getNotifications()]),
