@@ -5,6 +5,7 @@ export interface EmptyStateProps {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  secondaryAction?: React.ReactNode;
   icon?: React.ReactNode;
   className?: string;
 }
@@ -13,22 +14,33 @@ export function EmptyState({
   title,
   description,
   action,
+  secondaryAction,
   icon,
   className = '',
 }: EmptyStateProps) {
   return (
     <div
-      className={`material-feedback flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-8 text-center ${className}`}
+      className={`flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center dark:bg-slate-900/40 dark:border-slate-800 ${className}`}
+      role="status"
     >
       <div
-        className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--md-primary-container)] text-[var(--md-primary)]"
+        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--md-primary-container)] text-[var(--color-primary)] shadow-xs dark:bg-sky-950/60 dark:text-sky-300"
         aria-hidden="true"
       >
-        {icon || <Inbox className="h-6 w-6" />}
+        {icon || <Inbox className="h-7 w-7" />}
       </div>
-      <h2 className="text-base font-bold text-[var(--md-on-surface)]">{title}</h2>
-      {description && <p className="mt-1 max-w-md text-sm text-[var(--md-on-surface-variant)]">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      <h3 className="text-base font-bold text-[var(--color-text)] dark:text-slate-100">{title}</h3>
+      {description && (
+        <p className="mt-1.5 max-w-md text-sm text-[var(--color-text-muted)] dark:text-slate-400">
+          {description}
+        </p>
+      )}
+      {(action || secondaryAction) && (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {action}
+          {secondaryAction}
+        </div>
+      )}
     </div>
   );
 }
