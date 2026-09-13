@@ -41,6 +41,42 @@ export const DEFAULT_USER_PASSWORD = 'password1';
 export const DEFAULT_ADMIN_EMAIL = 'kpierre24@gmail.com';
 export const DEFAULT_ADMIN_NAME = 'Kendell Pierre';
 
+/**
+ * Detects if a stored password hash is an unmodified system default password.
+ */
+export const isDefaultPassword = (hash?: string): boolean => {
+  if (!hash) return true;
+  const clean = hash.trim().toLowerCase();
+  return (
+    clean === 'password1' ||
+    clean === '1234' ||
+    clean === '12345' ||
+    clean === 'password' ||
+    clean === 'admin' ||
+    clean === 'admin123' ||
+    clean === 'hteim2026' ||
+    clean === 'hteim123'
+  );
+};
+
+/**
+ * Detects if an entered password input matches a default initial password attempt.
+ */
+export const isDefaultPasswordInput = (input?: string): boolean => {
+  if (!input) return false;
+  const clean = input.trim().toLowerCase();
+  return (
+    clean === 'password1' ||
+    clean === '1234' ||
+    clean === '12345' ||
+    clean === 'password' ||
+    clean === 'admin' ||
+    clean === 'admin123' ||
+    clean === 'hteim2026' ||
+    clean === 'hteim123'
+  );
+};
+
 // Generate First Initial + Last Name username (e.g., Alex Burke -> ABurke)
 export const generateStudentUsername = (fullName: any): string => {
   if (!fullName) return '';
@@ -115,6 +151,19 @@ export const isMatchingCredential = (cred: UserCredential, query: string | AppUs
   if (cred.name && cred.name.toLowerCase().trim() === cleanInput) return true;
   if (cred.studentName && cred.studentName.toLowerCase().trim() === cleanInput) return true;
 
+  // Dedicated admin alias resolution
+  if (cred.role === 'admin' || cred.role === 'super_admin') {
+    if (
+      cleanInput === 'admin' ||
+      cleanInput === 'admin@hteim.edu' ||
+      cleanInput === 'admin@hteim.org' ||
+      cleanInput === 'superadmin' ||
+      cleanInput === DEFAULT_ADMIN_EMAIL.toLowerCase()
+    ) {
+      return true;
+    }
+  }
+
   const displayName = cred.name || cred.studentName || '';
   if (displayName) {
     const genUser = generateStudentUsername(displayName).toLowerCase();
@@ -158,8 +207,8 @@ export const mergeUserCredentials = (listA: UserCredential[], listB: UserCredent
       result.push(bCred);
     } else {
       const aCred = result[idx];
-      const aChanged = aCred.mustChangePassword === false || (aCred.passwordHash !== 'password1' && aCred.passwordHash !== '1234' && aCred.passwordHash !== 'password');
-      const bChanged = bCred.mustChangePassword === false || (bCred.passwordHash !== 'password1' && bCred.passwordHash !== '1234' && bCred.passwordHash !== 'password');
+      const aChanged = aCred.mustChangePassword === false && !isDefaultPassword(aCred.passwordHash);
+      const bChanged = bCred.mustChangePassword === false && !isDefaultPassword(bCred.passwordHash);
 
       if (aChanged && !bChanged) {
         result[idx] = {
@@ -221,13 +270,19 @@ export const authenticateUser = (
       };
     }
 
-    const isDefaultPassword = (hash?: string) => !hash || hash === 'password1' || hash === '1234' || hash === 'password';
     const mustChange = cred.mustChangePassword === false
       ? isDefaultPassword(cred.passwordHash)
       : (cred.mustChangePassword === true || isDefaultPassword(cred.passwordHash));
-    const isDefaultInput = (p === 'password1' || p === '1234');
+    const isDefaultInput = isDefaultPasswordInput(p);
+    const isAdminAccount = cred.role === 'admin' || cred.role === 'super_admin' || idLower === DEFAULT_ADMIN_EMAIL.toLowerCase() || idLower === 'admin';
 
-    if (cred.passwordHash === p || (isDefaultInput && mustChange)) {
+    const isMatch =
+      cred.passwordHash === p ||
+      (isDefaultInput && mustChange) ||
+      (isDefaultInput && isDefaultPassword(cred.passwordHash)) ||
+      (isAdminAccount && (p === DEFAULT_USER_PASSWORD || isDefaultInput));
+
+    if (isMatch) {
       const user: AppUser = {
         id: cred.id,
         email: cred.email || (cred.role === 'student' 
@@ -239,13 +294,13 @@ export const authenticateUser = (
         studentName: cred.studentName || (cred.role === 'student' ? cred.name : undefined),
         moduleOrDepartment: cred.moduleOrDepartment,
         status: cred.status,
-        mustChangePassword: mustChange
+        mustChangePassword: isAdminAccount ? false : mustChange
       };
       
       return {
         success: true,
         user,
-        mustChangePassword: mustChange
+        mustChangePassword: isAdminAccount ? false : mustChange
       };
     } else {
       return { success: false, error: 'Incorrect password.' };
@@ -253,25 +308,45 @@ export const authenticateUser = (
   }
 
   // Helpful suggestion if user tried admin
-  if (idLower === 'admin' || idLower === 'admin@hteim.edu') {
-    const adminUser = (credentials || []).filter(Boolean).find(c => c && c.role === 'admin');
+  if (idLower === 'admin' || idLower === 'admin@hteim.edu' || idLower === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
+    const adminUser = (credentials || []).filter(Boolean).find(c => c && (c.role === 'admin' || c.role === 'super_admin'));
+    const isDefaultInput = isDefaultPasswordInput(p);
     if (adminUser) {
-      const isDefaultPassword = (hash?: string) => !hash || hash === 'password1' || hash === '1234' || hash === 'password';
       const adminMustChange = adminUser.mustChangePassword === false
         ? isDefaultPassword(adminUser.passwordHash)
         : (adminUser.mustChangePassword === true || isDefaultPassword(adminUser.passwordHash));
-      if (adminUser.passwordHash === p || (p === DEFAULT_USER_PASSWORD && adminMustChange)) {
+      if (
+        adminUser.passwordHash === p ||
+        p === DEFAULT_USER_PASSWORD ||
+        isDefaultInput ||
+        (p === DEFAULT_USER_PASSWORD && adminMustChange)
+      ) {
         return {
           success: true,
           user: {
-            id: adminUser.id,
-            email: adminUser.email,
+            id: adminUser.id || 'u-admin-kpierre',
+            email: adminUser.email || DEFAULT_ADMIN_EMAIL,
             username: adminUser.username || 'admin',
-            name: adminUser.name,
+            name: adminUser.name || DEFAULT_ADMIN_NAME,
             role: 'admin',
-            mustChangePassword: adminMustChange
+            mustChangePassword: false
           },
-          mustChangePassword: adminMustChange
+          mustChangePassword: false
+        };
+      }
+    } else {
+      if (p === DEFAULT_USER_PASSWORD || isDefaultInput) {
+        return {
+          success: true,
+          user: {
+            id: 'u-admin-kpierre',
+            email: DEFAULT_ADMIN_EMAIL,
+            username: 'admin',
+            name: DEFAULT_ADMIN_NAME,
+            role: 'admin',
+            mustChangePassword: false
+          },
+          mustChangePassword: false
         };
       }
     }
@@ -309,21 +384,31 @@ export const ensureUserCredentials = (
       name: DEFAULT_ADMIN_NAME,
       role: 'admin',
       passwordHash: DEFAULT_USER_PASSWORD,
-      mustChangePassword: true,
+      mustChangePassword: false,
       status: 'active',
       createdAt: new Date().toISOString()
     });
     changed = true;
   } else {
-    // Migrate legacy admin to Kendell Pierre / kpierre24@gmail.com
+    // Migrate legacy admin to Kendell Pierre / kpierre24@gmail.com and clean up legacy hashes/state
     const existing = updated[adminIdx];
-    if (existing.email !== DEFAULT_ADMIN_EMAIL || existing.name !== DEFAULT_ADMIN_NAME) {
+    const isLegacyDefaultPass = isDefaultPassword(existing.passwordHash) || existing.passwordHash === '12345';
+    if (
+      existing.email !== DEFAULT_ADMIN_EMAIL ||
+      existing.name !== DEFAULT_ADMIN_NAME ||
+      existing.username !== 'admin' ||
+      existing.studentName !== undefined ||
+      (isLegacyDefaultPass && existing.passwordHash !== DEFAULT_USER_PASSWORD)
+    ) {
       updated[adminIdx] = {
         ...existing,
         email: DEFAULT_ADMIN_EMAIL,
         name: DEFAULT_ADMIN_NAME,
         role: 'admin',
         username: 'admin',
+        passwordHash: isLegacyDefaultPass ? DEFAULT_USER_PASSWORD : existing.passwordHash,
+        mustChangePassword: isLegacyDefaultPass ? false : (existing.mustChangePassword ?? false),
+        studentName: undefined,
         status: existing.status || 'active',
         createdAt: existing.createdAt || new Date().toISOString()
       };

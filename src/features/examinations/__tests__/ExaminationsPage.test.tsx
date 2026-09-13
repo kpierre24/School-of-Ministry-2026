@@ -18,8 +18,8 @@ describe('ExaminationsPage — Assessment Portal Operations', () => {
   it('renders page header and navigation sub-tabs', () => {
     render(<ExaminationsPage {...defaultProps} />);
 
-    expect(screen.getByText('Examinations & Academic Assessment')).toBeDefined();
-    expect(screen.getByText('Assignments & Coursework')).toBeDefined();
-    expect(screen.getByText('Grade Matrix & Rubrics')).toBeDefined();
+    expect(screen.getByText('Exams, Written Assignments & Evaluations')).toBeDefined();
+    expect(screen.getByText('Written Assignments')).toBeDefined();
+    expect(screen.getByText('Quiz Score Matrix')).toBeDefined();
   });
 });
