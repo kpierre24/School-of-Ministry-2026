@@ -18,6 +18,9 @@ import { SyncedAppState } from '../lib/firebaseSync';
 import { handleError } from '../lib/errorHandler';
 import { logger } from '../lib/logger';
 import { sanitizeProductionState } from '../data/guards';
+import { cacheService } from './api/cacheService';
+import { backgroundSyncWorker } from './backgroundSyncWorker';
+import { performanceMonitor } from './performanceMonitor';
 
 export interface DataSyncStatus {
   isOnline: boolean;
@@ -40,8 +43,19 @@ export function setLastKnownStateVersion(version: number | null) {
  * Loads the current workspace state from Express API / Supabase PostgreSQL as authoritative source.
  */
 export async function loadAuthoritativeState(userEmail: string | null | undefined): Promise<SyncedAppState | null> {
+  const emailKey = userEmail || 'default_public';
+  performanceMonitor.startTrace(`load_authoritative_state_${emailKey}`);
+
+  // 1. In-memory & storage caching layer strategy
+  const cachedState = cacheService.get<SyncedAppState>(`authoritative_state_${emailKey}`);
+  if (cachedState) {
+    logger.info(`[CacheService] Cache hit for authoritative_state_${emailKey}`);
+    performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+    return cachedState;
+  }
+
   try {
-    // 1. Primary path: Fetch authoritative state via Express API -> Supabase PostgreSQL
+    // 2. Primary path: Fetch dynamically composed state via Express API -> Supabase PostgreSQL domain tables
     const apiState = await portalApi.loadAuthoritativeState(userEmail || undefined);
     if (apiState) {
       if (typeof (apiState as any).version === 'number') {
@@ -52,79 +66,63 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
       } catch {
         // Safe ignore for storage quota
       }
+
+      // Cache the result for 5 minutes (300,000ms) to prevent duplicate heavy loads on rapid tab re-renders/focus
+      cacheService.set(`authoritative_state_${emailKey}`, apiState, 5 * 60 * 1000);
+
+      const duration = performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+      if (duration) {
+        performanceMonitor.recordDashboardRender(duration, 'StatePull');
+      }
+
       return apiState;
     }
 
-    // 2. Direct Supabase fallback if Express endpoint returned empty/null
-    const docId = userEmail 
-      ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` 
-      : 'shared_default_state';
-
-    const { data, error } = await supabase
-      .from('app_states')
-      .select('state, version')
-      .eq('id', docId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      if (error.code === '42P01') {
-        handleError(error, `loadAuthoritativeState - table app_states does not exist`, 'database');
-        return null;
-      }
-    }
-
-    if (data?.state) {
-      const stateObj = data.state;
-      const ver = Number(data.version) || Number(stateObj.version) || 1;
-      stateObj.version = ver;
-      lastKnownStateVersion = ver;
-      try {
-        localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(stateObj));
-      } catch {}
-      return stateObj;
-    }
-
-    // Fallback to shared_default_state if user-specific record does not exist
-    if (docId !== 'shared_default_state') {
-      const fallback = await supabase
-        .from('app_states')
-        .select('state, version')
-        .eq('id', 'shared_default_state')
-        .single();
-
-      if (fallback.data?.state) {
-        const fallbackObj = fallback.data.state;
-        const ver = Number(fallback.data.version) || Number(fallbackObj.version) || 1;
-        fallbackObj.version = ver;
-        lastKnownStateVersion = ver;
-        return fallbackObj;
-      }
-    }
-
-    return null;
-  } catch (err: any) {
-    handleError(err, 'loadAuthoritativeState - PostgreSQL load failure', 'database');
-    // Read-only offline cache fallback
+    // 3. Offline snapshot cache fallback if network unreachable
     try {
       const cached = localStorage.getItem('hteim_offline_state_snapshot');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+        return parsed;
+      }
     } catch {
       // Return null if no offline snapshot
     }
+
+    performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+    return null;
+  } catch (err: any) {
+    handleError(err, 'loadAuthoritativeState - Relational composition load failure', 'database');
+    // Read-only offline cache fallback
+    try {
+      const cached = localStorage.getItem('hteim_offline_state_snapshot');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+        return parsed;
+      }
+    } catch {
+      // Return null if no offline snapshot
+    }
+    performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
     return null;
   }
 }
 
 /**
- * Saves state authoritatively via Express API -> Supabase PostgreSQL.
- * Enforces optimistic concurrency (expectedVersion).
+ * Caches local state snapshot for offline responsiveness.
+ * In the pure relational architecture, persistence is executed via domain REST endpoints:
+ * (/api/students, /api/attendance, /api/grades, /api/assignments, /api/invoices, /api/payments).
  */
 export async function saveAuthoritativeState(
   userEmail: string | null | undefined,
   state: SyncedAppState,
   actionDescription?: string,
-  expectedVersion?: number | null
+  _expectedVersion?: number | null
 ): Promise<boolean> {
+  const emailKey = userEmail || 'default_public';
+
   try {
     // Guard: Demo state must never be saved to production database
     if (state.dataSource === 'demo' || (state as any).isDemo === true) {
@@ -133,96 +131,33 @@ export async function saveAuthoritativeState(
     }
 
     const cleanState = sanitizeProductionState(state);
-    const versionToSend = typeof expectedVersion === 'number'
-      ? expectedVersion
-      : (typeof (cleanState as any).version === 'number'
-          ? (cleanState as any).version
-          : (lastKnownStateVersion ?? undefined));
 
-    // 1. Update temporary offline snapshot cache
+    // Update temporary local offline snapshot cache
     try {
       localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(cleanState));
     } catch {
       // Quota exceeded ignore
     }
 
-    // 2. Authoritative save through Express API layer -> Supabase PostgreSQL
-    const savedViaApi = await portalApi.saveAuthoritativeState(
-      cleanState,
-      userEmail || undefined,
-      actionDescription || 'State updated from portal',
-      versionToSend
-    );
+    // Invalidate memory caches to force next load to pull fresh
+    cacheService.invalidate(`authoritative_state_${emailKey}`);
 
-    if (savedViaApi) {
-      if (typeof (cleanState as any).version === 'number') {
-        lastKnownStateVersion = (cleanState as any).version;
-      }
-      return true;
+    // If offline, enqueue sync worker task
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      backgroundSyncWorker.enqueueTask(
+        'GENERIC',
+        actionDescription || 'Save State Snapshot Offline',
+        { email: userEmail, stateSnapshot: cleanState }
+      );
     }
 
-    // 3. Fallback direct client write to Supabase app_states if Express API had an issue
-    const docId = userEmail 
-      ? `user_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` 
-      : 'shared_default_state';
-    const timestamp = new Date().toISOString();
-    const updater = userEmail || 'anonymous';
-    const nextVer = (versionToSend ? versionToSend + 1 : (lastKnownStateVersion ? lastKnownStateVersion + 1 : 2));
-    (cleanState as any).version = nextVer;
-
-    const { error } = await supabase
-      .from('app_states')
-      .upsert({
-        id: docId,
-        state: cleanState,
-        version: nextVer,
-        updated_at: timestamp,
-        updated_by: updater,
-      });
-
-    if (error) {
-      // Fallback without version column if not yet migrated
-      const { error: fallbackErr } = await supabase
-        .from('app_states')
-        .upsert({
-          id: docId,
-          state: cleanState,
-          updated_at: timestamp,
-          updated_by: updater,
-        });
-
-      if (fallbackErr) {
-        handleError(fallbackErr, 'saveAuthoritativeState - Supabase direct upsert failure', 'database');
-        return false;
-      }
-    }
-
-    if (docId !== 'shared_default_state') {
-      try {
-        await supabase.from('app_states').upsert({
-          id: 'shared_default_state',
-          state: cleanState,
-          version: nextVer,
-          updated_at: timestamp,
-          updated_by: updater,
-        });
-      } catch {
-        await supabase.from('app_states').upsert({
-          id: 'shared_default_state',
-          state: cleanState,
-          updated_at: timestamp,
-          updated_by: updater,
-        });
-      }
-    }
-
-    lastKnownStateVersion = nextVer;
     return true;
   } catch (err: any) {
-    handleError(err, 'saveAuthoritativeState - Persistence failure', 'database');
+    logger.warn('Local state cache snapshot update notice:', err);
     return false;
   }
 }
+
 
 /**
  * Subscribes to Supabase Realtime changes for PostgreSQL postgres_changes events.

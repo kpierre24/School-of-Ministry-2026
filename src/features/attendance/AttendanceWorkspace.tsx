@@ -88,7 +88,7 @@ export interface AttendanceTabProps {
   effectiveClassDays: any[];
   classDayStats: Record<string, { count: number; percentage: number }>;
   trendChartData: any[];
-  getStudentBadges: (student: any) => any[];
+  getStudentBadges?: (student: any) => any[];
   handleToggleStudentAttendance: (name: string, dayId: string, status: string) => void;
   handleAddClassDay: () => void;
   handleEditClassDayTitle: (dayId: string, newName: string) => void;
@@ -170,7 +170,7 @@ export function AttendanceTab({
   effectiveClassDays,
   classDayStats,
   trendChartData,
-  getStudentBadges,
+  getStudentBadges = () => [],
   handleToggleStudentAttendance,
   handleAddClassDay,
   handleEditClassDayTitle,

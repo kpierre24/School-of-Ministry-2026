@@ -70,7 +70,8 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [useDirectStream, setUseDirectStream] = useState(true);
+  const [useDirectStream, setUseDirectStream] = useState(false);
+  const [youtubeEmbedMode, setYoutubeEmbedMode] = useState<'nocookie' | 'standard'>('nocookie');
   const [timestampNoteToast, setTimestampNoteToast] = useState<string | null>(null);
 
   // Timestamp Seeking
@@ -392,20 +393,31 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                   {/* Ambient Glow Backdrop under video */}
                   <div className="absolute -inset-4 bg-indigo-500/15 blur-2xl pointer-events-none rounded-xl" />
 
-                  {parsedMedia.isYouTube || parsedMedia.isVimeo || parsedMedia.isLoom ? (
+                  {parsedMedia.isYouTube ? (
+                    <iframe
+                      src={youtubeEmbedMode === 'nocookie' ? parsedMedia.embedUrl : (parsedMedia.standardEmbedUrl || parsedMedia.embedUrl)}
+                      className="w-full h-full border-0 rounded-xl relative z-10"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title={currentTrack.title}
+                    />
+                  ) : parsedMedia.isVimeo || parsedMedia.isLoom ? (
                     <iframe
                       src={parsedMedia.embedUrl}
                       className="w-full h-full border-0 rounded-xl relative z-10"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
                       title={currentTrack.title}
                     />
                   ) : (isDriveVideo && !useDirectStream) ? (
                     <iframe
                       src={parsedMedia.embedUrl}
                       className="w-full h-full border-0 rounded-xl relative z-10"
-                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allow="autoplay; encrypted-media; picture-in-picture; web-share"
                       allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
                       title={currentTrack.title}
                     />
                   ) : (
@@ -433,6 +445,31 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                         : 'Direct HTML5 Stream'}
                     </span>
                     
+                    {parsedMedia.isYouTube && (
+                      <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setYoutubeEmbedMode('nocookie')}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                            youtubeEmbedMode === 'nocookie' ? 'bg-rose-600 text-white font-black' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title="Uses youtube-nocookie.com to bypass third-party cookie iframe blocking"
+                        >
+                          No-Cookie Embed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setYoutubeEmbedMode('standard')}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                            youtubeEmbedMode === 'standard' ? 'bg-rose-600 text-white font-black' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title="Standard youtube.com embed"
+                        >
+                          Standard
+                        </button>
+                      </div>
+                    )}
+
                     {isDriveVideo && (
                       <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden p-0.5">
                         <button
@@ -470,18 +507,37 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                       </button>
                     )}
                     <a
-                      href={currentTrack.url}
+                      href={parsedMedia.directWatchUrl || currentTrack.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-slate-300 hover:text-white font-bold flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-all"
+                      className="text-white font-extrabold flex items-center gap-1.5 bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 px-3 py-1 rounded-lg text-xs shadow-md transition-all cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      {isDriveVideo ? 'Open in Drive' : 'Open Link'}
+                      {parsedMedia.isYouTube ? 'Watch on YouTube' : isDriveVideo ? 'Open in Drive' : 'Open Link'}
                     </a>
                   </div>
                 </div>
 
-                {/* Informational Guidance for Google Drive links */}
+                {/* Informational Guidance for YouTube / Drive links */}
+                {parsedMedia.isYouTube && (
+                  <div className="p-2.5 bg-rose-950/40 border border-rose-800/60 rounded-lg text-[11px] text-rose-200/90 leading-relaxed flex items-center justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>YouTube Stream Helper:</strong> If YouTube displays <em>"This content is blocked"</em> in your current browser session, YouTube restricts nested iframe playback. Click <strong>Watch on YouTube</strong> or toggle between <strong>No-Cookie Embed</strong> and <strong>Standard</strong> above to launch directly!
+                      </div>
+                    </div>
+                    <a
+                      href={parsedMedia.directWatchUrl || currentTrack.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] rounded-md transition-all flex items-center gap-1 shadow-sm"
+                    >
+                      <ExternalLink className="w-3 h-3" /> Launch Video
+                    </a>
+                  </div>
+                )}
+
                 {isDriveVideo && (
                   <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] text-amber-200/90 leading-relaxed flex items-start gap-2">
                     <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />

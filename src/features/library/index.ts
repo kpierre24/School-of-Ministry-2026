@@ -1,3 +1,11 @@
-export * from '../../components/LibraryTab';
-export * from '../../components/DocumentReaderModal';
-export * from '../../components/DocumentVersionPreviewModal';
+// Components
+export { LibraryTab } from './components/LibraryTab';
+
+// Hooks
+export { useLibrary } from './hooks/useLibrary';
+
+// Services
+export * from './services/libraryService';
+
+// Types
+export * from './types';

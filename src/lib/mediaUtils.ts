@@ -10,10 +10,17 @@ export function extractGoogleDriveFileId(url: string): string | null {
   // Standard Google Drive file URL patterns:
   // https://drive.google.com/file/d/FILE_ID/view?usp=sharing
   // https://drive.google.com/open?id=FILE_ID
+  // https://drive.google.com/uc?id=FILE_ID
   // https://docs.google.com/file/d/FILE_ID/edit
-  const match = trimmed.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/.*\/d\/)([a-zA-Z0-9_-]{20,})/i);
+  const match = trimmed.match(/(?:drive\.google\.com\/(?:file\/(?:u\/\d+\/)?d\/|open\?id=|uc\?id=)|docs\.google\.com\/.*\/d\/)([a-zA-Z0-9_-]{20,})/i);
   if (match && match[1]) {
     return match[1];
+  }
+
+  // Check query parameter id=...
+  const queryMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{20,})/i);
+  if (queryMatch && queryMatch[1]) {
+    return queryMatch[1];
   }
   
   // Check if raw alphanumeric file ID
@@ -38,12 +45,24 @@ export function getGoogleDriveViewUrl(fileId: string): string {
 
 export function extractYouTubeVideoId(url: string): string | null {
   if (!url) return null;
-  const match = url.trim().match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([a-zA-Z0-9_-]{11})/i);
-  return match && match[1] ? match[1] : null;
+  const trimmed = url.trim();
+  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/i);
+  if (match && match[1]) return match[1];
+
+  // Additional check for query parameter ?v=... anywhere in URL
+  const vMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
+  if (vMatch && vMatch[1]) return vMatch[1];
+
+  return null;
 }
 
-export function getYouTubeEmbedUrl(videoId: string): string {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+export function getYouTubeEmbedUrl(videoId: string, nocookie = true): string {
+  const host = nocookie ? 'www.youtube-nocookie.com' : 'www.youtube.com';
+  return `https://${host}/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
+}
+
+export function getYouTubeWatchUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
 export function extractVimeoVideoId(url: string): string | null {
@@ -72,6 +91,8 @@ export interface ParsedVideoMedia {
   type: VideoSourceType;
   fileId?: string;
   embedUrl: string;
+  standardEmbedUrl?: string;
+  directWatchUrl?: string;
   proxyStreamUrl?: string;
   originalUrl: string;
   isDrive: boolean;
@@ -100,6 +121,7 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
       fileId: gdriveId,
       embedUrl: getGoogleDriveEmbedUrl(gdriveId),
       proxyStreamUrl: getGoogleDriveDirectStreamUrl(gdriveId),
+      directWatchUrl: getGoogleDriveViewUrl(gdriveId),
       originalUrl: url,
       isDrive: true,
       isYouTube: false,
@@ -113,7 +135,9 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     return {
       type: 'youtube',
       fileId: youtubeId,
-      embedUrl: getYouTubeEmbedUrl(youtubeId),
+      embedUrl: getYouTubeEmbedUrl(youtubeId, true), // no-cookie host by default
+      standardEmbedUrl: getYouTubeEmbedUrl(youtubeId, false),
+      directWatchUrl: getYouTubeWatchUrl(youtubeId),
       originalUrl: url,
       isDrive: false,
       isYouTube: true,

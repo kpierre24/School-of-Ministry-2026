@@ -21,49 +21,43 @@ export const assignmentsService = {
         if (user && user.role === 'student') {
           filtered = assignments.filter((a: any) => a.is_published !== false);
         } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
-          const cleanEmail = (user.email || '').trim().toLowerCase();
-          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
-
-          // Query course_offerings to find matching courses
-          const { data: offerings } = await supabase
-            .from('course_offerings')
-            .select(`
-              id,
-              course_definition_id,
-              lecturer_email,
-              lecturer_name,
-              course_definitions (
-                id,
-                code
-              )
-            `)
-            .is('deleted_at', null);
+          let lecturerUserId = (user.userId || user.id || '').trim();
+          const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!UUID_REGEX.test(lecturerUserId)) {
+            const { data: u } = await supabase
+              .from('users')
+              .select('id')
+              .or(`firebase_uid.eq.${user.uid || lecturerUserId},id.eq.${lecturerUserId}`)
+              .is('deleted_at', null)
+              .maybeSingle();
+            if (u?.id) lecturerUserId = u.id;
+          }
 
           const allowedCourseIdentifiers = new Set<string>();
 
-          // Also add any explicitly assigned courses from user record
-          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
-          assignedFromUser.forEach(c => {
-            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
-          });
+          if (UUID_REGEX.test(lecturerUserId)) {
+            // Relational query: users.id -> course_offerings.lecturer_user_id -> course_definition_id
+            const { data: offerings } = await supabase
+              .from('course_offerings')
+              .select(`
+                id,
+                course_definition_id,
+                lecturer_user_id,
+                course_definitions (
+                  id,
+                  code
+                )
+              `)
+              .eq('lecturer_user_id', lecturerUserId)
+              .is('deleted_at', null);
 
-          if (offerings) {
-            offerings.forEach((off: any) => {
-              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
-              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
-
-              const lecturerMatches =
-                (cleanEmail && offLecturerEmail === cleanEmail) ||
-                (cleanName && offLecturerName === cleanName) ||
-                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
-                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
-
-              if (lecturerMatches) {
+            if (offerings) {
+              offerings.forEach((off: any) => {
                 if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
                 if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
                 if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
-              }
-            });
+              });
+            }
           }
 
           filtered = assignments.filter((a: any) => {
@@ -133,7 +127,12 @@ export const assignmentsService = {
         query = query.eq('assignment_id', filters.assignmentId);
       }
 
-      if (filters?.studentId) {
+      if (user && user.role === 'student') {
+        const studentUuid = user.studentRecordId || user.studentId || user.userId;
+        if (studentUuid) {
+          query = query.eq('student_id', studentUuid);
+        }
+      } else if (filters?.studentId) {
         query = query.eq('student_id', filters.studentId);
       }
 
@@ -184,49 +183,43 @@ export const assignmentsService = {
                      ((sub as any).student_id && ((sub as any).student_id === studentUuid || (sub as any).student_id === userUuid))
           );
         } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
-          const cleanEmail = (user.email || '').trim().toLowerCase();
-          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
-
-          // Query course_offerings to find matching courses
-          const { data: offerings } = await supabase
-            .from('course_offerings')
-            .select(`
-              id,
-              course_definition_id,
-              lecturer_email,
-              lecturer_name,
-              course_definitions (
-                id,
-                code
-              )
-            `)
-            .is('deleted_at', null);
+          let lecturerUserId = (user.userId || user.id || '').trim();
+          const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!UUID_REGEX.test(lecturerUserId)) {
+            const { data: u } = await supabase
+              .from('users')
+              .select('id')
+              .or(`firebase_uid.eq.${user.uid || lecturerUserId},id.eq.${lecturerUserId}`)
+              .is('deleted_at', null)
+              .maybeSingle();
+            if (u?.id) lecturerUserId = u.id;
+          }
 
           const allowedCourseIdentifiers = new Set<string>();
 
-          // Also add any explicitly assigned courses from user record
-          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
-          assignedFromUser.forEach(c => {
-            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
-          });
+          if (UUID_REGEX.test(lecturerUserId)) {
+            // Relational query: users.id -> course_offerings.lecturer_user_id -> course_definition_id
+            const { data: offerings } = await supabase
+              .from('course_offerings')
+              .select(`
+                id,
+                course_definition_id,
+                lecturer_user_id,
+                course_definitions (
+                  id,
+                  code
+                )
+              `)
+              .eq('lecturer_user_id', lecturerUserId)
+              .is('deleted_at', null);
 
-          if (offerings) {
-            offerings.forEach((off: any) => {
-              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
-              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
-
-              const lecturerMatches =
-                (cleanEmail && offLecturerEmail === cleanEmail) ||
-                (cleanName && offLecturerName === cleanName) ||
-                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
-                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
-
-              if (lecturerMatches) {
+            if (offerings) {
+              offerings.forEach((off: any) => {
                 if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
                 if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
                 if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
-              }
-            });
+              });
+            }
           }
 
           result = formatted.filter((sub) => {
@@ -712,4 +705,161 @@ export const assignmentsService = {
       overrideApproved: true,
     };
   },
+
+  /**
+   * Creates a new assignment directly in relational assignments table.
+   */
+  async createAssignment(
+    data: {
+      title: string;
+      description?: string;
+      courseCode?: string;
+      courseId?: string;
+      courseDefinitionId?: string;
+      dueDate?: string;
+      dueAt?: string;
+      maxScore?: number;
+      maxPoints?: number;
+      weight?: number;
+      isPublished?: boolean;
+      rubric?: any;
+      allowedFileTypes?: string[];
+    },
+    actorUser: AuthenticatedUser
+  ): Promise<{ status: string; assignment: any }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+
+    const cleanTitle = data.title?.trim();
+    if (!cleanTitle) {
+      throw new Error('Assignment title is required');
+    }
+
+    const dueAt = data.dueAt || data.dueDate || new Date(Date.now() + 7 * 86400000).toISOString();
+    const maxPoints = data.maxPoints || data.maxScore || 100;
+    const courseCode = data.courseCode || 'MIN-101';
+
+    const insertPayload: any = {
+      title: cleanTitle,
+      description: data.description || '',
+      course_code: courseCode,
+      course_definition_id: data.courseDefinitionId || null,
+      due_at: dueAt,
+      max_points: maxPoints,
+      weight: data.weight || 10,
+      is_published: data.isPublished !== false,
+      rubric: data.rubric || null,
+      created_by_user_id: actorUser.userId,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+
+    let createdId = `asg_${Date.now()}`;
+    try {
+      const { data: inserted, error } = await supabase
+        .from('assignments')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (!error && inserted?.id) {
+        createdId = inserted.id;
+      }
+    } catch (err: any) {
+      logger.warn('Error inserting relational assignment:', err);
+    }
+
+    await logAuditEvent({
+      actorUserId: actorUser.userId,
+      actorRole: actorUser.role,
+      entityType: 'assignment',
+      entityId: createdId,
+      action: 'create',
+      newValues: { title: cleanTitle, courseCode, dueAt, maxPoints },
+      changedFields: ['title', 'course_code', 'due_at', 'max_points'],
+      reason: `Assignment '${cleanTitle}' created`,
+    });
+
+    return {
+      status: 'created',
+      assignment: {
+        id: createdId,
+        title: cleanTitle,
+        description: data.description || '',
+        courseCode,
+        dueDate: dueAt,
+        dueAt,
+        maxScore: maxPoints,
+        maxPoints,
+        weight: data.weight || 10,
+        isPublished: data.isPublished !== false,
+      },
+    };
+  },
+
+  /**
+   * Updates an existing assignment directly in relational assignments table.
+   */
+  async updateAssignment(
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      courseCode?: string;
+      dueDate?: string;
+      dueAt?: string;
+      maxScore?: number;
+      maxPoints?: number;
+      weight?: number;
+      isPublished?: boolean;
+      rubric?: any;
+    },
+    actorUser: AuthenticatedUser
+  ): Promise<{ status: string; assignment: any }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+
+    const updates: any = { updated_at: timestamp };
+    if (data.title !== undefined) updates.title = data.title.trim();
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.courseCode !== undefined) updates.course_code = data.courseCode;
+    if (data.dueAt !== undefined || data.dueDate !== undefined) updates.due_at = data.dueAt || data.dueDate;
+    if (data.maxPoints !== undefined || data.maxScore !== undefined) updates.max_points = data.maxPoints || data.maxScore;
+    if (data.weight !== undefined) updates.weight = data.weight;
+    if (data.isPublished !== undefined) updates.is_published = data.isPublished;
+    if (data.rubric !== undefined) updates.rubric = data.rubric;
+
+    let updatedRec: any = null;
+    try {
+      const { data: updated, error } = await supabase
+        .from('assignments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (!error && updated) {
+        updatedRec = updated;
+      }
+    } catch (err: any) {
+      logger.warn('Error updating relational assignment:', err);
+    }
+
+    await logAuditEvent({
+      actorUserId: actorUser.userId,
+      actorRole: actorUser.role,
+      entityType: 'assignment',
+      entityId: id,
+      action: 'update',
+      newValues: updates,
+      changedFields: Object.keys(updates),
+      reason: `Assignment ${id} updated`,
+    });
+
+    return {
+      status: 'updated',
+      assignment: updatedRec || { id, ...data, updatedAt: timestamp },
+    };
+  },
 };
+

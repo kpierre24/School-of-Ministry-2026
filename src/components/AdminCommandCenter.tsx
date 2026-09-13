@@ -336,7 +336,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
       const sum = studentsWithScores.reduce((acc, curr) => acc + (curr.avgScore || 0), 0);
       return Math.round(sum / studentsWithScores.length);
     }
-    return 88; // Default initial class benchmark
+    return null;
   }, [gradedSubmissions, students]);
 
   const coursePerformanceData = useMemo(() => {
@@ -538,7 +538,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               <span className="text-[10px] font-extrabold uppercase tracking-wider font-mono">Academic</span>
               <GraduationCap className="w-4 h-4 text-indigo-400" />
             </div>
-            <p className="text-2xl font-display font-black text-white tracking-tight">{averageGradeOverall}%</p>
+            <p className="text-2xl font-display font-black text-white tracking-tight">{averageGradeOverall !== null ? `${averageGradeOverall}%` : 'N/A'}</p>
             <div className="flex items-center justify-between text-[11px] mt-1">
               <span className="text-slate-400 font-medium">Average Grade</span>
               {unmarkedSubmissions.length > 0 && (
@@ -1131,7 +1131,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
 
               <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-900">
                 <p className="text-[10px] font-mono font-bold text-emerald-800 dark:text-emerald-400 uppercase">Class Grade Avg</p>
-                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-1">{averageGradeOverall}%</p>
+                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-1">{averageGradeOverall !== null ? `${averageGradeOverall}%` : 'N/A'}</p>
               </div>
             </div>
 

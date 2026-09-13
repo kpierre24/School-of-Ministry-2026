@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAuthoritativeState, getDatabaseUsers, updateUserRoleInDatabase, provisionOrApproveUserByAdmin, getPendingAccountApprovals } from "../services/supabaseServer";
+import { getDatabaseUsers, updateUserRoleInDatabase, provisionOrApproveUserByAdmin, getPendingAccountApprovals } from "../services/supabaseServer";
 import { UserRole, ROLE_DEFINITIONS, normalizeUserRole } from "../../types/rbac";
 import { requireAuth, requirePermission } from "../middleware/rbac";
 import { logger } from "../../lib/logger";

@@ -9,6 +9,7 @@
 import { logger } from '../../lib/logger';
 import { SyncedAppState } from '../../lib/firebaseSync';
 import { getAuthoritativeFirebaseIdToken } from '../firebaseAdapter';
+import { getAuthHeaders } from '../../lib/rbacClient';
 
 const API_BASE = '/api';
 
@@ -24,6 +25,20 @@ async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promis
     }
   } catch {
     // Non-blocking
+  }
+
+  // Fallback to local session authenticated user headers if idToken not present
+  if (!authHeaders['Authorization']) {
+    try {
+      const savedUserStr = typeof localStorage !== 'undefined' ? localStorage.getItem('hteim_current_user') : null;
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        const headers = getAuthHeaders(savedUser);
+        Object.assign(authHeaders, headers);
+      }
+    } catch {
+      // Non-blocking
+    }
   }
 
   const response = await fetch(url, {
@@ -309,6 +324,46 @@ export const portalApi = {
     return fetchJson<{ assignments: any[]; count: number }>('/assignments');
   },
 
+  async createAssignment(data: {
+    title: string;
+    description?: string;
+    courseCode?: string;
+    courseId?: string;
+    dueDate?: string;
+    dueAt?: string;
+    maxScore?: number;
+    maxPoints?: number;
+    weight?: number;
+    isPublished?: boolean;
+    rubric?: any;
+  }) {
+    return fetchJson<{ status: string; assignment: any }>('/assignments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateAssignment(
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      courseCode?: string;
+      dueDate?: string;
+      dueAt?: string;
+      maxScore?: number;
+      maxPoints?: number;
+      weight?: number;
+      isPublished?: boolean;
+      rubric?: any;
+    }
+  ) {
+    return fetchJson<{ status: string; assignment: any }>(`/assignments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
   async getSubmissions(studentName?: string) {
     const params = new URLSearchParams();
     if (studentName) params.set('studentName', studentName);
@@ -325,6 +380,15 @@ export const portalApi = {
     });
   },
 
+  async getGrades(params?: { studentId?: string; studentName?: string; assignmentId?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.studentId) searchParams.set('studentId', params.studentId);
+    if (params?.studentName) searchParams.set('studentName', params.studentName);
+    if (params?.assignmentId) searchParams.set('assignmentId', params.assignmentId);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return fetchJson<{ grades: any[]; rubricScores: any; count: number }>(`/grades${query}`);
+  },
+
   async gradeSubmission(gradeData: {
     submissionId?: string;
     studentName?: string;
@@ -332,12 +396,29 @@ export const portalApi = {
     feedback?: string;
     rubricScores?: any;
     overrideReason?: string;
+    courseCode?: string;
   }) {
-    return fetchJson<{ status: string; score: number }>('/assignments/grade', {
+    return fetchJson<{ status: string; score: number }>('/grades', {
       method: 'POST',
       body: JSON.stringify(gradeData),
     });
   },
+
+  async updateGrade(
+    submissionId: string,
+    gradeData: {
+      score?: number;
+      feedback?: string;
+      rubricScores?: any;
+      overrideReason?: string;
+    }
+  ) {
+    return fetchJson<{ status: string; score: number }>(`/grades/${submissionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(gradeData),
+    });
+  },
+
 
   async transitionGradeLifecycle(data: {
     submissionId: string;
@@ -381,7 +462,7 @@ export const portalApi = {
     return fetchJson<{
       studentId: string | null;
       studentName: string;
-      averageGrade: number;
+      averageGrade: number | null;
       honorRoll: boolean;
       standing: string;
       submissions: any[];

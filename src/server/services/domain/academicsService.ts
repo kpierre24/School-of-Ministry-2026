@@ -138,11 +138,25 @@ export const academicsService = {
     const timestamp = new Date().toISOString();
 
     try {
+      let lecturerUserId = offering.lecturerUserId || offering.lecturer_user_id || null;
+      if (!lecturerUserId && offering.lecturerEmail) {
+        const { data: u } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', offering.lecturerEmail.trim().toLowerCase())
+          .is('deleted_at', null)
+          .maybeSingle();
+        if (u?.id) {
+          lecturerUserId = u.id;
+        }
+      }
+
       const offeringPayload = {
         id: offering.id,
-        course_definition_id: offering.courseDefinitionId || offering.courseId,
+        course_definition_id: offering.courseDefinitionId || offering.course_definition_id || offering.courseId,
         term_id: offering.termId,
         academic_year_id: offering.academicYearId,
+        lecturer_user_id: lecturerUserId,
         lecturer_name: offering.lecturerName || 'Faculty Instructor',
         lecturer_title: offering.lecturerTitle || 'Pastor / Lecturer',
         lecturer_email: offering.lecturerEmail || '',

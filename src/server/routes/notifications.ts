@@ -463,8 +463,8 @@ notificationsRouter.post('/', async (req: Request, res: Response) => {
 });
 
 /**
- * 3. PUT /api/notifications/:id/read
- * Mark a single notification as read.
+ * 3. PUT /api/notifications/:id/read or PATCH /api/notifications/:id
+ * Mark a single notification as read or update fields.
  */
 notificationsRouter.put('/:id/read', (req: Request, res: Response) => {
   const { id } = req.params;
@@ -475,6 +475,29 @@ notificationsRouter.put('/:id/read', (req: Request, res: Response) => {
   notif.read = true;
   res.json({ success: true, notification: notif });
 });
+
+notificationsRouter.patch('/:id/read', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const notif = memoryNotifications.find(n => n.id === id);
+  if (!notif) {
+    return res.status(404).json({ success: false, error: 'Notification not found' });
+  }
+  notif.read = true;
+  res.json({ success: true, notification: notif });
+});
+
+notificationsRouter.patch('/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const notifIndex = memoryNotifications.findIndex(n => n.id === id);
+  if (notifIndex === -1) {
+    return res.status(404).json({ success: false, error: 'Notification not found' });
+  }
+  const existing = memoryNotifications[notifIndex];
+  const updated = { ...existing, ...req.body, id: existing.id };
+  memoryNotifications[notifIndex] = updated;
+  res.json({ success: true, notification: updated });
+});
+
 
 /**
  * 4. PUT /api/notifications/read-all

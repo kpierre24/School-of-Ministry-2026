@@ -11,7 +11,70 @@ export const paymentsRouter = Router();
 paymentsRouter.use(requireAuth);
 
 /**
+ * GET /api/payments
+ * Retrieves payments / transactions from relational database.
+ * RBAC: Requires finance:read
+ */
+paymentsRouter.get(
+  "/",
+  requirePermission(["finance:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const invoiceId = (req.query.invoiceId as string) || undefined;
+      const studentId = (req.query.studentId as string) || undefined;
+      const studentName = (req.query.studentName as string) || undefined;
+
+      const result = await financeService.getTransactions({ invoiceId, studentId, studentName }, user);
+
+      return res.status(200).json({
+        payments: result.transactions,
+        transactions: result.transactions,
+        total: result.total,
+      });
+    } catch (err: any) {
+      logger.error("GET /api/payments error:", err);
+      return res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  }
+);
+
+/**
+ * POST /api/payments
+ * Records a payment transaction and allocates to invoices directly in relational tables.
+ * RBAC: Requires finance:write
+ */
+paymentsRouter.post(
+  "/",
+  requirePermission(["finance:write", "all:access"]),
+  requireResourceOwnership({
+    getTarget: (req) => ({
+      targetStudentId: (req.body.payment?.studentId || req.body.transaction?.studentId || req.body.studentId) as string,
+    }),
+    allowedRoles: ["super_admin", "admin", "finance_officer", "registrar"],
+  }),
+  async (req: Request, res: Response) => {
+    try {
+      const pmtPayload = req.body.transaction || req.body.payment || req.body;
+      const actorUserId = req.user!.userId;
+      const actorRole = req.user!.role;
+
+      if (!pmtPayload || (!pmtPayload.studentName && !pmtPayload.studentId) || !pmtPayload.amount) {
+        return res.status(400).json({ error: "studentId or studentName, and amount are required" });
+      }
+
+      const result = await financeService.recordPayment(pmtPayload, actorUserId, actorRole);
+      return res.status(201).json(result);
+    } catch (err: any) {
+      logger.error("POST /api/payments error:", err);
+      return res.status(500).json({ error: err?.message || "Failed to record payment" });
+    }
+  }
+);
+
+/**
  * GET /api/payments/invoices
+
  * Retrieves invoices from relational invoices table.
  * Derived server-side from lines, allocations, refunds, and adjustments.
  * RBAC: Requires finance:read. Students can only view their own invoices.

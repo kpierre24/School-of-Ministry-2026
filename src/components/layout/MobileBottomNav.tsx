@@ -1,7 +1,7 @@
-import React from 'react';
-import { Sparkles, UserCheck, BookOpen, DollarSign, GraduationCap, Award, Bookmark, Calendar, Menu } from 'lucide-react';
-
-export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' | 'schedule' | 'library' | 'payments' | 'messages' | 'reports' | 'notes';
+import React, { useMemo } from 'react';
+import { Menu } from 'lucide-react';
+import { TabType } from '../../types';
+import { getMobileNavigation } from '../../app/navigation';
 
 export interface MobileBottomNavProps {
   appUser: any;
@@ -20,24 +20,29 @@ export function MobileBottomNav({
   setShowMobileMoreMenu,
   unreadMessagesCount,
 }: MobileBottomNavProps) {
-  const navItems = appUser ? (
-    appUser.role === 'student' ? [
-      { tab: 'home', Icon: Sparkles, label: 'Home' },
-      { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-      { tab: 'courses', Icon: BookOpen, label: 'Courses' },
-      { tab: 'payments', Icon: DollarSign, label: 'Tuition' },
-    ] : [
-      { tab: 'home', Icon: Sparkles, label: 'Home' },
-      { tab: 'attendance', Icon: UserCheck, label: 'Attendance' },
-      { tab: 'students', Icon: GraduationCap, label: 'Students' },
-      { tab: 'exams', Icon: Award, label: 'Exams' },
-    ]
-  ) : [
-    { tab: 'home', Icon: Sparkles, label: 'Home' },
-    { tab: 'courses', Icon: BookOpen, label: '6 Modules' },
-    { tab: 'library', Icon: Bookmark, label: 'Media' },
-    { tab: 'schedule', Icon: Calendar, label: 'Schedule' },
-  ];
+  const navItems = useMemo(() => {
+    const canonicalMobileItems = getMobileNavigation(appUser?.role, appUser?.permissions);
+    
+    // Pick primary 4 tabs for bottom bar depending on user role profile
+    if (appUser?.role === 'student') {
+      const preferred = ['home', 'attendance', 'courses', 'payments'];
+      return canonicalMobileItems
+        .filter(r => preferred.includes(r.id))
+        .map(r => ({ tab: r.id, Icon: r.icon, label: r.shortLabel || r.label }));
+    } else if (appUser) {
+      const preferred = ['home', 'attendance', 'students', 'exams'];
+      return canonicalMobileItems
+        .filter(r => preferred.includes(r.id))
+        .map(r => ({ tab: r.id, Icon: r.icon, label: r.shortLabel || r.label }));
+    }
+    
+    // Guest default
+    const preferred = ['home', 'courses', 'library', 'schedule'];
+    return canonicalMobileItems
+      .filter(r => preferred.includes(r.id))
+      .map(r => ({ tab: r.id, Icon: r.icon, label: r.shortLabel || r.label }));
+  }, [appUser?.role, appUser?.permissions]);
+
 
   return (
     <nav 

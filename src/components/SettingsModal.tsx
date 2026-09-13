@@ -706,7 +706,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       )}
 
                       {/* Cohort & Academic Year Management */}
-                      {onOpenCohortManager && (
+                      {onOpenCohortManager && userRole === 'admin' && (
                         <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-indigo-50/80 rounded-xl border border-indigo-200">
                           <div>
                             <h4 className="font-bold text-indigo-950 text-xs flex items-center gap-1.5">

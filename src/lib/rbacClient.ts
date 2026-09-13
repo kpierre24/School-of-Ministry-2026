@@ -1,6 +1,7 @@
 import { UserRole, Permission, RoleDefinition, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from '../types/rbac';
 import { TabType } from '../types';
 import { AppUser } from './userAuth';
+import { isRouteAccessible } from '../app/navigation';
 
 /**
  * Returns role metadata definition with styling and permission scopes.
@@ -29,13 +30,11 @@ export function getAllRoles(): RoleDefinition[] {
 
 /**
  * Checks if a given user/role can access a primary portal navigation tab.
+ * Evaluates authorization according to: Role -> Permissions -> Route Access -> Navigation.
  */
 export function canAccessTab(role: UserRole | string | undefined | null, tab: TabType): boolean {
   const norm = normalizeUserRole(role);
-  if (norm === 'super_admin') return true;
-  const def = ROLE_DEFINITIONS[norm];
-  if (!def) return false;
-  return def.accessibleTabs.includes(tab);
+  return isRouteAccessible(tab, norm);
 }
 
 /**

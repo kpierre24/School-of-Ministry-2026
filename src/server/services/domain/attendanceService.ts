@@ -140,7 +140,7 @@ export const attendanceService = {
 
     try {
       // 1. Query hierarchical attendance_records joined with attendance_sessions and students
-      const { data: recData, error: recError } = await supabase
+      let query = supabase
         .from('attendance_records')
         .select(`
           id,
@@ -173,8 +173,17 @@ export const attendanceService = {
             )
           )
         `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .is('deleted_at', null);
+
+      if (user && user.role === 'student') {
+        const studentUuid = user.studentRecordId || user.userId;
+        if (studentUuid) {
+          query = query.eq('student_id', studentUuid);
+        }
+      }
+
+      query = query.order('created_at', { ascending: false });
+      const { data: recData, error: recError } = await query;
 
       if (!recError && recData && recData.length > 0) {
         const uniqueSessionsMap = new Map<string, any>();
@@ -264,49 +273,43 @@ export const attendanceService = {
                    ((r as any).student_id && ((r as any).student_id === studentUuid || (r as any).student_id === userUuid))
           );
         } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
-          const cleanEmail = (user.email || '').trim().toLowerCase();
-          const cleanName = (user.studentName || user.name || '').trim().toLowerCase();
-
-          // Query course_offerings to find matching courses
-          const { data: offerings } = await supabase
-            .from('course_offerings')
-            .select(`
-              id,
-              course_definition_id,
-              lecturer_email,
-              lecturer_name,
-              course_definitions (
-                id,
-                code
-              )
-            `)
-            .is('deleted_at', null);
+          let lecturerUserId = (user.userId || user.id || '').trim();
+          const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!UUID_REGEX.test(lecturerUserId)) {
+            const { data: u } = await supabase
+              .from('users')
+              .select('id')
+              .or(`firebase_uid.eq.${user.uid || lecturerUserId},id.eq.${lecturerUserId}`)
+              .is('deleted_at', null)
+              .maybeSingle();
+            if (u?.id) lecturerUserId = u.id;
+          }
 
           const allowedCourseIdentifiers = new Set<string>();
 
-          // Also add any explicitly assigned courses from user record
-          const assignedFromUser = Array.isArray(user.assignedCourses) ? user.assignedCourses : [];
-          assignedFromUser.forEach(c => {
-            if (c) allowedCourseIdentifiers.add(String(c).trim().toUpperCase());
-          });
+          if (UUID_REGEX.test(lecturerUserId)) {
+            // Relational query: users.id -> course_offerings.lecturer_user_id -> course_definition_id
+            const { data: offerings } = await supabase
+              .from('course_offerings')
+              .select(`
+                id,
+                course_definition_id,
+                lecturer_user_id,
+                course_definitions (
+                  id,
+                  code
+                )
+              `)
+              .eq('lecturer_user_id', lecturerUserId)
+              .is('deleted_at', null);
 
-          if (offerings) {
-            offerings.forEach((off: any) => {
-              const offLecturerEmail = (off.lecturer_email || '').trim().toLowerCase();
-              const offLecturerName = (off.lecturer_name || '').trim().toLowerCase();
-
-              const lecturerMatches =
-                (cleanEmail && offLecturerEmail === cleanEmail) ||
-                (cleanName && offLecturerName === cleanName) ||
-                (cleanName && offLecturerEmail.includes(cleanName.replace(/\s+/g, ''))) ||
-                (cleanEmail && offLecturerName.includes(cleanEmail.split('@')[0]));
-
-              if (lecturerMatches) {
+            if (offerings) {
+              offerings.forEach((off: any) => {
                 if (off.id) allowedCourseIdentifiers.add(String(off.id).trim().toUpperCase());
                 if (off.course_definition_id) allowedCourseIdentifiers.add(String(off.course_definition_id).trim().toUpperCase());
                 if (off.course_definitions?.code) allowedCourseIdentifiers.add(String(off.course_definitions.code).trim().toUpperCase());
-              }
-            });
+              });
+            }
           }
 
           filtered = formattedRecords.filter((r) => {
@@ -894,4 +897,86 @@ export const attendanceService = {
       criticalThreshold: '50%',
     };
   },
+
+  /**
+   * Updates an individual attendance record by ID in relational PostgreSQL tables.
+   */
+  async updateAttendanceRecord(
+    id: string,
+    data: {
+      status?: AttendanceStatus | string;
+      notes?: string;
+      manualOverride?: boolean;
+    },
+    actorUserId?: string,
+    actorRole?: string
+  ): Promise<{ status: string; record: any }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+
+    const updates: any = { updated_at: timestamp };
+    let validatedStatus: AttendanceStatus | undefined = undefined;
+    if (data.status) {
+      validatedStatus = validateAttendanceStatus(data.status);
+      updates.status = validatedStatus;
+    }
+    if (data.notes !== undefined) updates.notes = data.notes;
+    if (data.manualOverride !== undefined) updates.manual_override = Boolean(data.manualOverride);
+    if (actorUserId) updates.recorded_by_user_id = actorUserId;
+
+    // 1. Update in attendance_records table
+    let updatedRecord: any = null;
+    try {
+      const { data: rec, error } = await supabase
+        .from('attendance_records')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (!error && rec) {
+        updatedRecord = rec;
+      }
+    } catch (err) {
+      logger.warn('attendance_records update error:', err);
+    }
+
+    // 2. Also attempt update in legacy attendance table
+    try {
+      const { data: legacyRec, error: legacyErr } = await supabase
+        .from('attendance')
+        .update({
+          ...(validatedStatus ? { status: validatedStatus } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes } : {}),
+          ...(actorUserId ? { recorded_by_user_id: actorUserId } : {}),
+          updated_at: timestamp,
+        })
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (!updatedRecord && !legacyErr && legacyRec) {
+        updatedRecord = legacyRec;
+      }
+    } catch (err) {
+      logger.warn('attendance legacy update error:', err);
+    }
+
+    await logAuditEvent({
+      actorUserId: actorUserId || null,
+      actorRole: actorRole || 'teacher',
+      entityType: 'attendance_record',
+      entityId: id,
+      action: 'update',
+      newValues: updates,
+      changedFields: Object.keys(updates),
+      reason: data.notes || 'Attendance record updated',
+    });
+
+    return {
+      status: 'updated',
+      record: updatedRecord || { id, ...data, updatedAt: timestamp },
+    };
+  },
 };
+

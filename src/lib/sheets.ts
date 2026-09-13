@@ -121,6 +121,7 @@ export const extractPublicSheetNames = (html: string): string[] => {
 };
 
 export const KNOWN_CURRICULUM_SHEETS: Array<{ name: string; gid: string }> = [
+  { name: "School of the Pastors Pt3", gid: "1993821034" },
   { name: "School of the Pastors Pt2", gid: "1782631722" },
   { name: "School of the Pastors pt 1", gid: "341965343" },
   { name: "Apostolic Pt 3", gid: "265985311" },
