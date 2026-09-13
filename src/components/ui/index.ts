@@ -15,6 +15,7 @@ export * from './Skeleton';
 export * from './MetricCard';
 export * from './StatusCard';
 export * from './ActionCard';
+export * from './WhatsNextCard';
 export * from './Spinner';
 
 // Existing Shared Primitives & Utilities for backward compatibility
