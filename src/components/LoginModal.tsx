@@ -14,12 +14,15 @@ import {
   RefreshCw,
   Mail,
   LogOut,
-  BookMarked
+  BookMarked,
+  Fingerprint
 } from 'lucide-react';
 import { AppUser, UserRole, UserCredential } from '../lib/userAuth';
 import { loginWithSupabaseAuth as authenticateWithSupabase } from '../services/authService';
 import { updatePasswordInSupabase } from '../lib/supabaseAuth';
 import { classifyError, handleError } from '../lib/errorHandler';
+import { authenticateWithBiometrics, isBiometricAvailable, getEnrolledBiometricProfiles } from '../lib/biometricAuth';
+import { triggerHapticFeedback } from '../lib/capacitorBridge';
 
 interface LoginModalProps {
   isOpen?: boolean;
@@ -84,6 +87,66 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [scriptureIndex, setScriptureIndex] = useState(0);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isBiometricBusy, setIsBiometricBusy] = useState(false);
+  const [hasBiometrics, setHasBiometrics] = useState(false);
+
+  React.useEffect(() => {
+    isBiometricAvailable().then((avail) => {
+      setHasBiometrics(avail || getEnrolledBiometricProfiles().length > 0);
+    });
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    triggerHapticFeedback('medium');
+    setIsBiometricBusy(true);
+    setErrorMessage(null);
+
+    try {
+      const bioRes = await authenticateWithBiometrics(emailInput || undefined);
+      if (bioRes.success && bioRes.profile) {
+        // Find matching credential
+        const targetEmail = bioRes.profile.email.toLowerCase();
+        const cred = userCredentials.find(
+          (c) => c.email.toLowerCase() === targetEmail || (c.username && c.username.toLowerCase() === targetEmail)
+        );
+
+        if (cred) {
+          const authUser: AppUser = {
+            id: cred.id,
+            email: cred.email,
+            name: cred.name,
+            role: cred.role,
+            username: cred.username,
+            studentName: cred.studentName,
+            status: cred.status,
+          };
+          triggerHapticFeedback('success');
+          onLoginSuccess(authUser);
+          if (onClose) onClose();
+        } else {
+          // Fallback to active tab profile or profile name
+          const fallbackUser: AppUser = {
+            id: bioRes.profile.userId || `user_${Date.now()}`,
+            email: bioRes.profile.email,
+            name: bioRes.profile.userName || 'HTEIM Member',
+            role: activeTab,
+            status: 'active',
+          };
+          triggerHapticFeedback('success');
+          onLoginSuccess(fallbackUser);
+          if (onClose) onClose();
+        }
+      } else {
+        triggerHapticFeedback('error');
+        setErrorMessage(bioRes.error || 'Biometric authentication was cancelled.');
+      }
+    } catch (err: any) {
+      triggerHapticFeedback('error');
+      setErrorMessage(err.message || 'Biometric login failed');
+    } finally {
+      setIsBiometricBusy(false);
+    }
+  };
 
   // First-time login change password states
   const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
@@ -499,6 +562,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </>
               )}
             </button>
+
+            {/* Biometric One-Tap Login Button (Phase 9) */}
+            {hasBiometrics && (
+              <button
+                type="button"
+                onClick={handleBiometricLogin}
+                disabled={isBiometricBusy}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                aria-label="Sign in with Face ID or Fingerprint"
+              >
+                {isBiometricBusy ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
+                    <span>Scanning Biometrics...</span>
+                  </>
+                ) : (
+                  <>
+                    <Fingerprint className="w-4 h-4 text-amber-500" />
+                    <span>Sign in with Fingerprint / Face ID</span>
+                  </>
+                )}
+              </button>
+            )}
 
             {/* Quick Demo Access Bar */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px]">

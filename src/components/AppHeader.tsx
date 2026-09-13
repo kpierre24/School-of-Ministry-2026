@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { LogoImage } from './LogoImage';
 import { PWAInstallButton } from './PWAInstallButton';
 import { NotificationCenter } from './NotificationCenter';
+import { SyncIndicator } from './SyncIndicator';
 import {
   GraduationCap,
   ChevronDown,
@@ -20,6 +21,7 @@ import {
   LogOut,
   Lock,
   Menu,
+  Command,
 } from 'lucide-react';
 import { AppUser } from '../lib/userAuth';
 import { TabType, AppNotification, Cohort } from '../types';
@@ -57,6 +59,8 @@ export interface AppHeaderProps {
   onToggleMobileDrawer: () => void;
   onOpenOfflineDrawer?: () => void;
   onOpenPINCheckin?: () => void;
+  isOffline?: boolean;
+  pendingOfflineCount?: number;
 }
 
 const ROLE_COLORS: Record<string, { avatar: string; label: string; dot: string }> = {
@@ -118,6 +122,7 @@ export function AppHeader({
   isCloudSyncing, onPushToCloud, dataSource, isLoading, onLoadSheets,
   onOpenBroadcast, onOpenAuditLog, onOpenUserManagement, onOpenSettings, onOpenHelp,
   onToggleMobileDrawer, onOpenOfflineDrawer, onOpenPINCheckin,
+  isOffline = false, pendingOfflineCount = 0,
 }: AppHeaderProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
@@ -179,6 +184,29 @@ export function AppHeader({
         </div>
 
         <div className="flex items-center gap-1 sm:gap-1.5 ml-auto shrink-0 flex-nowrap justify-end">
+          {/* Persistent Sync Status Indicator (Step 7.2) */}
+          <SyncIndicator
+            isOnline={!isOffline}
+            isSyncing={isCloudSyncing}
+            pendingCount={pendingOfflineCount || 0}
+            onClick={onOpenOfflineDrawer}
+          />
+
+          {/* Quick Global Search Button (⌘K) */}
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            title="Global Search & Commands (⌘K)"
+            aria-label="Search"
+          >
+            <Search className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Search</span>
+            <kbd className="text-[9px] font-mono px-1 py-0.2 bg-white dark:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded text-slate-400 font-semibold shadow-2xs">
+              ⌘K
+            </kbd>
+          </button>
+
           <div className="hidden sm:block"><PWAInstallButton /></div>
           {appUser && (
             <>

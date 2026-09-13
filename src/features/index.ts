@@ -40,3 +40,4 @@ export * as examinations from './examinations';
 export * as payments from './payments';
 export * as schedule from './schedule';
 export * as aiEvaluation from './ai-evaluation';
+export * as search from './search';

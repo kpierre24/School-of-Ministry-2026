@@ -3,6 +3,7 @@ import { HelpCircle, Clock, CheckCircle2, ArrowRight, Award, AlertCircle } from 
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
+import { AddToCalendarButton } from '../../../components/AddToCalendarButton';
 import { CustomAssignment } from '../../../types';
 
 export interface StudentQuizzesProps {
@@ -76,7 +77,19 @@ export const StudentQuizzes: React.FC<StudentQuizzesProps> = ({
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-[var(--color-border)]/60 dark:border-slate-800">
+                <div className="pt-2 border-t border-[var(--color-border)]/60 dark:border-slate-800 flex items-center gap-2">
+                  <AddToCalendarButton
+                    event={{
+                      id: quiz.id,
+                      title: `Quiz: ${quiz.title}`,
+                      description: quiz.description || 'Module Quiz Examination for HTEIM School of Ministry',
+                      location: 'HTEIM Student Portal Online',
+                      date: quiz.dueDate ? (quiz.dueDate.includes('2026') ? quiz.dueDate : '2026-09-20') : '2026-09-20',
+                      startTime: '19:00',
+                      courseCode: quiz.moduleTrack || 'SOM'
+                    }}
+                    className="shrink-0"
+                  />
                   <Button
                     variant="primary"
                     size="sm"

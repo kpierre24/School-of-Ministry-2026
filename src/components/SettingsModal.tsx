@@ -32,9 +32,13 @@ import {
   ShieldAlert,
   DollarSign,
   AlertCircle,
-  UploadCloud
+  UploadCloud,
+  Fingerprint
 } from 'lucide-react';
 import { migrateLocalStorageProfilePicturesToSupabase } from '../lib/supabaseClient';
+import { NotificationPreferencesModal } from './NotificationPreferencesModal';
+import { registerBiometricCredential, isBiometricAvailable, getEnrolledBiometricProfiles } from '../lib/biometricAuth';
+import { triggerHapticFeedback } from '../lib/capacitorBridge';
 
 export type ThemeMode = 'light' | 'dark' | 'system' | 'high-contrast';
 
@@ -96,6 +100,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isMigratingPhotos, setIsMigratingPhotos] = useState(false);
   const [photoMigrationStatus, setPhotoMigrationStatus] = useState<string | null>(null);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isEnrollingBiometrics, setIsEnrollingBiometrics] = useState(false);
+  const [biometricEnrollStatus, setBiometricEnrollStatus] = useState<string | null>(null);
+
+  const handleEnrollBiometrics = async () => {
+    triggerHapticFeedback('medium');
+    setIsEnrollingBiometrics(true);
+    setBiometricEnrollStatus(null);
+    try {
+      const activeEmail = localStorage.getItem('hteim_last_auth_user') 
+        ? JSON.parse(localStorage.getItem('hteim_last_auth_user') || '{}').email 
+        : 'user@hteim.edu';
+      const activeName = localStorage.getItem('hteim_last_auth_user') 
+        ? JSON.parse(localStorage.getItem('hteim_last_auth_user') || '{}').name 
+        : 'HTEIM User';
+
+      const res = await registerBiometricCredential('current_user', activeEmail, activeName);
+      if (res.success) {
+        triggerHapticFeedback('success');
+        setBiometricEnrollStatus('Fingerprint / Face ID successfully linked to this device!');
+      } else {
+        triggerHapticFeedback('error');
+        setBiometricEnrollStatus(res.error || 'Biometric enrollment failed.');
+      }
+    } catch (e: any) {
+      triggerHapticFeedback('error');
+      setBiometricEnrollStatus(e.message || 'Enrollment error');
+    } finally {
+      setIsEnrollingBiometrics(false);
+    }
+  };
 
   const [instAddressError, setInstAddressError] = useState<string | null>(null);
   const [instPhoneError, setInstPhoneError] = useState<string | null>(null);
@@ -425,6 +460,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-[10px] text-amber-200">Accessibility compliant mode</p>
                     </div>
                   </button>
+                </div>
+              </div>
+
+              {/* Mobile, Push Notifications & Biometrics (Phase 9) */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <h3 className="font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 text-[11px]">
+                  <Smartphone className="w-4 h-4 text-sky-500" />
+                  Mobile & Push Notifications
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Push Notifications Configuration */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Bell className="w-4 h-4 text-amber-500" />
+                        <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">Push Notifications</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                        Receive instant alerts for assignment deadlines, released grades, and 30-min class countdowns.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsNotificationModalOpen(true)}
+                      className="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                    >
+                      <Sliders className="w-3.5 h-3.5" />
+                      Configure Alerts
+                    </button>
+                  </div>
+
+                  {/* Biometric Security Enrollment */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Fingerprint className="w-4 h-4 text-emerald-500" />
+                        <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">Biometric Login</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                        Register this device's Face ID or Fingerprint scanner for passwordless one-tap sign in.
+                      </p>
+                    </div>
+
+                    {biometricEnrollStatus ? (
+                      <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                        {biometricEnrollStatus}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleEnrollBiometrics}
+                        disabled={isEnrollingBiometrics}
+                        className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors disabled:opacity-60"
+                      >
+                        <Fingerprint className="w-3.5 h-3.5" />
+                        {isEnrollingBiometrics ? 'Enrolling...' : 'Link Fingerprint / Face ID'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1061,23 +1157,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Mobile App & APK Download Hub Card */}
+              {/* Mobile App Download Hub Card */}
               {onOpenMobileDownloadCenter && (
-                <div className="p-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-50 border border-amber-300/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="p-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-50 dark:from-amber-950/30 dark:to-slate-900 border border-amber-300/80 dark:border-amber-800/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-xs">
                       <Smartphone className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">
-                        Android APK & Mobile PWA Download Center
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm">
+                        Install HTEIM App
                       </h4>
-                      <p className="text-[11px] text-slate-600">
-                        Download native Android APK installer (v2.4.0) or pair smartphone camera with QR code.
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                        Install on Android, iPhone/iPad, or Computer for offline study and fast access.
                       </p>
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       onClose();
                       onOpenMobileDownloadCenter();
@@ -1085,7 +1182,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Open APK Download Center</span>
+                    <span>Install App</span>
                   </button>
                 </div>
               )}
@@ -1129,6 +1226,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
       </div>
+
+      {/* Push Notification Preferences Modal */}
+      <NotificationPreferencesModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+      />
     </div>
   );
 };

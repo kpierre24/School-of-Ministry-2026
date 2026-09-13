@@ -16,6 +16,7 @@ import { AppHeader } from '../components/AppHeader';
 import { PortalFooter, MobileBottomNav, MobileMoreMenuDrawer, BackToTopButton } from '../components/layout';
 import { FloatingQuizBanner } from '../features/assignments';
 import { OfflineSyncDrawer } from '../components/OfflineSyncDrawer';
+import { PWAUpdateNotification } from '../components/PWAUpdateNotification';
 import { getDesktopNavigation } from './navigation';
 
 export interface ApplicationShellProps {
@@ -171,27 +172,42 @@ export function ApplicationShell({
       }));
   }, [appUser?.role, (appUser as any)?.permissions]);
 
+  const [pendingOfflineCount, setPendingOfflineCount] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const updateCount = () => {
+      try {
+        const raw = localStorage.getItem('hteim_offline_queue');
+        const q = raw ? JSON.parse(raw) : [];
+        setPendingOfflineCount(q.filter((i: any) => i.status === 'pending').length);
+      } catch {
+        setPendingOfflineCount(0);
+      }
+    };
+    updateCount();
+    window.addEventListener('storage', updateCount);
+    return () => window.removeEventListener('storage', updateCount);
+  }, [isOffline]);
+
   return (
     <>
       <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
       <div className="flex flex-col min-h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 select-text">
-        {/* Offline Banner */}
+        {/* Compact Offline Status Pill (Step 7.1) */}
         {isOffline && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between shadow-xs animate-fade-slide-up flex-shrink-0" role="status" aria-live="polite">
-            <div className="flex items-center gap-2">
-              <WifiOff className="w-4 h-4 text-amber-600" />
-              <span className="font-medium">Working offline — changes are saved locally and will sync when connection restores.</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowOfflineDrawer(true)}
-                className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
-              >
-                Open Sync Queue
-              </button>
-              <span className="px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-semibold">PWA Ready</span>
-            </div>
+          <div className="flex justify-center mb-3">
+            <button
+              type="button"
+              onClick={() => (onOpenOfflineDrawer ? onOpenOfflineDrawer() : setShowOfflineDrawer(true))}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 shadow-xs hover:bg-amber-200 dark:hover:bg-amber-900 transition-all cursor-pointer animate-fade-slide-up"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>
+                Offline {pendingOfflineCount > 0 ? `· ${pendingOfflineCount} change${pendingOfflineCount === 1 ? '' : 's'} waiting` : ''}
+              </span>
+            </button>
           </div>
         )}
 
@@ -285,26 +301,26 @@ create policy "Allow public update" on app_states for update using (true) with c
 
         {/* PWA Install Banner */}
         {pwaInstallable && (
-          <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between gap-3 shadow-xs animate-fade-slide-up flex-shrink-0">
+          <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs px-4 py-2.5 rounded-xl mb-3 flex items-center justify-between gap-3 shadow-xs animate-fade-slide-up flex-shrink-0">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <Smartphone className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span className="truncate font-medium">Install HTEIM as a standalone app for quick access.</span>
+              <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate font-medium">Install HTEIM as a standalone app for quick access and offline study.</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {onTriggerPwaInstall && (
                 <button
                   onClick={onTriggerPwaInstall}
-                  className="md-btn-filled text-xs px-3 py-1.5"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--color-primary)] text-white hover:opacity-90 dark:bg-sky-600 cursor-pointer"
                 >
-                  Install
+                  Install App
                 </button>
               )}
               {onOpenMobileDownload && (
                 <button
                   onClick={onOpenMobileDownload}
-                  className="md-btn-tonal text-xs px-3 py-1.5"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
                 >
-                  APK
+                  Instructions
                 </button>
               )}
             </div>
@@ -333,7 +349,7 @@ create policy "Allow public update" on app_states for update using (true) with c
           onOpenCommandPalette={onOpenCommandPalette}
           onOpenRoleSwitch={onOpenRoleSwitch}
           isCloudSyncing={isCloudSyncing}
-          onPushToCloud={onPushToCloud || (async () => {})}
+          onPushToCloud={onPushToCloud}
           dataSource={dataSource}
           isLoading={isLoading}
           onLoadSheets={onLoadSheets}
@@ -342,9 +358,11 @@ create policy "Allow public update" on app_states for update using (true) with c
           onOpenUserManagement={onOpenUserManagement}
           onOpenSettings={onOpenSettings}
           onOpenHelp={onOpenHelp}
-          onToggleMobileDrawer={() => setShowMobileMoreMenu(prev => !prev)}
-          onOpenOfflineDrawer={onOpenOfflineDrawer}
+          onToggleMobileDrawer={() => setShowMobileMoreMenu(true)}
+          onOpenOfflineDrawer={onOpenOfflineDrawer ? onOpenOfflineDrawer : () => setShowOfflineDrawer(true)}
           onOpenPINCheckin={onOpenPINCheckin}
+          isOffline={isOffline}
+          pendingOfflineCount={pendingOfflineCount}
         />
 
         {/* Sacred Scripture Motto Ribbon */}
@@ -459,6 +477,9 @@ create policy "Allow public update" on app_states for update using (true) with c
           setShowMobileMoreMenu={setShowMobileMoreMenu}
           unreadMessagesCount={unreadMessagesCount}
         />
+
+        {/* PWA New Version Update Notification (Step 7.3) */}
+        <PWAUpdateNotification />
 
         {/* Floating Back-To-Top Button */}
         <BackToTopButton />

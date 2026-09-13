@@ -178,11 +178,11 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     {
       id: 'action-mobile',
       category: 'Actions & Views',
-      title: 'Mobile App / APK Download Center',
-      subtitle: 'Install Android APK & setup offline PWA application',
-      icon: <Smartphone className="w-4 h-4 text-amber-500" />,
-      badge: 'PWA',
-      badgeColor: 'bg-amber-100 text-amber-900 border-amber-200',
+      title: 'Install HTEIM App',
+      subtitle: 'Install on Android, iPhone/iPad, or Computer for offline study',
+      icon: <Smartphone className="w-4 h-4 text-emerald-500" />,
+      badge: 'App',
+      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
       action: () => { onOpenMobileDownload(); onClose(); }
     },
     {

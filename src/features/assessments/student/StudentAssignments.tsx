@@ -14,6 +14,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { MobileAssessmentCard } from '../shared/MobileAssessmentCard';
+import { AddToCalendarButton } from '../../../components/AddToCalendarButton';
 import { CustomAssignment, AssignmentSubmission } from '../../../types';
 
 export interface StudentAssignmentsProps {
@@ -91,7 +92,19 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
               </div>
             </div>
 
-            <div className="shrink-0 flex items-center">
+            <div className="shrink-0 flex items-center gap-2">
+              <AddToCalendarButton
+                event={{
+                  id: upcoming.id,
+                  title: `Assignment Due: ${upcoming.title}`,
+                  description: upcoming.description || `Coursework deadline for ${upcoming.moduleTrack}`,
+                  location: 'HTEIM Student Portal Online',
+                  date: upcoming.dueDate ? (upcoming.dueDate.includes('2026') ? upcoming.dueDate : `2026-09-18`) : '2026-09-18',
+                  startTime: '23:59',
+                  courseCode: upcoming.moduleTrack || 'SOM'
+                }}
+                className="hidden sm:inline-flex"
+              />
               <Button
                 variant="primary"
                 size="md"
@@ -216,13 +229,27 @@ export const StudentAssignments: React.FC<StudentAssignmentsProps> = ({
                     </td>
 
                     <td className="px-5 py-4 text-right">
-                      <Button
-                        size="sm"
-                        variant={status === 'pending' ? 'primary' : 'outline'}
-                        onClick={() => onOpenAssignment?.(item)}
-                      >
-                        {status === 'pending' ? 'Submit' : 'View'}
-                      </Button>
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <AddToCalendarButton
+                          event={{
+                            id: item.id,
+                            title: `Due: ${item.title}`,
+                            description: item.description || `Coursework deadline for ${item.moduleTrack}`,
+                            location: 'HTEIM Student Portal Online',
+                            date: item.dueDate ? (item.dueDate.includes('2026') ? item.dueDate : `2026-09-18`) : '2026-09-18',
+                            startTime: '23:59',
+                            courseCode: item.moduleTrack || 'SOM'
+                          }}
+                          className="hidden md:inline-flex"
+                        />
+                        <Button
+                          size="sm"
+                          variant={status === 'pending' ? 'primary' : 'outline'}
+                          onClick={() => onOpenAssignment?.(item)}
+                        >
+                          {status === 'pending' ? 'Submit' : 'View'}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
