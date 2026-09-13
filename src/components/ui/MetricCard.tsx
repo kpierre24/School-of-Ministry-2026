@@ -6,8 +6,10 @@ import { Skeleton } from './Skeleton';
 export interface MetricCardProps {
   label: string;
   value: string | number;
+  trend?: string | number;
   change?: string | number;
-  changeType?: 'increase' | 'decrease' | 'neutral';
+  changeType?: 'increase' | 'decrease' | 'neutral' | 'positive' | 'negative';
+  trendType?: 'increase' | 'decrease' | 'neutral' | 'positive' | 'negative';
   icon?: React.ReactNode;
   tone?: 'primary' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
   caption?: string;
@@ -20,8 +22,10 @@ export interface MetricCardProps {
 export const MetricCard: React.FC<MetricCardProps> = ({
   label,
   value,
+  trend,
   change,
-  changeType = 'neutral',
+  changeType,
+  trendType,
   icon,
   tone = 'primary',
   caption,
@@ -30,6 +34,27 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   onClick,
   className = '',
 }) => {
+  const displayTrend = trend !== undefined ? trend : change;
+  
+  // Calculate trend direction
+  const resolvedType = React.useMemo(() => {
+    const specified = trendType || changeType;
+    if (specified) {
+      if (specified === 'positive' || specified === 'increase') return 'increase';
+      if (specified === 'negative' || specified === 'decrease') return 'decrease';
+      return 'neutral';
+    }
+    if (displayTrend === undefined) return 'neutral';
+    const str = String(displayTrend).trim();
+    if (str.startsWith('+') || str.toLowerCase().includes('up')) return 'increase';
+    if (str.startsWith('-') || str.toLowerCase().includes('down')) return 'decrease';
+    const num = parseFloat(str);
+    if (!isNaN(num)) {
+      if (num > 0) return 'increase';
+      if (num < 0) return 'decrease';
+    }
+    return 'neutral';
+  }, [displayTrend, trendType, changeType]);
   const toneClasses = {
     primary:
       'bg-[var(--md-primary-container)] text-[var(--color-primary)] dark:bg-sky-950/60 dark:text-sky-300',
@@ -93,22 +118,22 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
 
-      {(change !== undefined || caption) && (
+      {(displayTrend !== undefined || caption) && (
         <div className="mt-3 flex items-center gap-2 pt-2 border-t border-[var(--color-border)]/60 text-xs dark:border-slate-800/60">
-          {change !== undefined && (
+          {displayTrend !== undefined && (
             <span
               className={`inline-flex items-center gap-0.5 font-bold ${
-                changeType === 'increase'
+                resolvedType === 'increase'
                   ? 'text-emerald-600 dark:text-emerald-400'
-                  : changeType === 'decrease'
+                  : resolvedType === 'decrease'
                   ? 'text-red-600 dark:text-red-400'
                   : 'text-[var(--color-text-muted)] dark:text-slate-400'
               }`}
             >
-              {changeType === 'increase' && <TrendingUp className="h-3.5 w-3.5" />}
-              {changeType === 'decrease' && <TrendingDown className="h-3.5 w-3.5" />}
-              {changeType === 'neutral' && <Minus className="h-3.5 w-3.5" />}
-              <span>{change}</span>
+              {resolvedType === 'increase' && <TrendingUp className="h-3.5 w-3.5" />}
+              {resolvedType === 'decrease' && <TrendingDown className="h-3.5 w-3.5" />}
+              {resolvedType === 'neutral' && <Minus className="h-3.5 w-3.5" />}
+              <span>{displayTrend}</span>
             </span>
           )}
 
