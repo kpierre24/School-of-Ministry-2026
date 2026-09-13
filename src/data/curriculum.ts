@@ -18,9 +18,10 @@ export interface ClassDayItem {
 }
 
 /**
- * The 14 official curriculum class sessions for the 2026 academic calendar.
+ * The 15 official curriculum class sessions & quiz lessons for the 2026 academic calendar.
  */
 export const CURRICULUM_CLASS_DAYS: ClassDayItem[] = [
+  { id: "School of the Pastors Pt3", name: "School of the Pastors Pt 3 (15/09/2026)", date: "2026-09-15" },
   { id: "School of the Pastors Pt2", name: "School of the Pastors Pt 2 (08/09/2026)", date: "2026-09-08" },
   { id: "School of the Pastors pt 1", name: "School of the Pastors Pt 1 (01/09/2026)", date: "2026-09-01" },
   { id: "Apostolic Pt 3", name: "Apostolic Pt 3 (25/08/2026)", date: "2026-08-25" },

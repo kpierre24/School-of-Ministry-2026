@@ -9,6 +9,7 @@
 import { logger } from '../../lib/logger';
 import { SyncedAppState } from '../../lib/firebaseSync';
 import { getAuthoritativeFirebaseIdToken } from '../firebaseAdapter';
+import { getAuthHeaders } from '../../lib/rbacClient';
 
 const API_BASE = '/api';
 
@@ -24,6 +25,20 @@ async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promis
     }
   } catch {
     // Non-blocking
+  }
+
+  // Fallback to local session authenticated user headers if idToken not present
+  if (!authHeaders['Authorization']) {
+    try {
+      const savedUserStr = typeof localStorage !== 'undefined' ? localStorage.getItem('hteim_current_user') : null;
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        const headers = getAuthHeaders(savedUser);
+        Object.assign(authHeaders, headers);
+      }
+    } catch {
+      // Non-blocking
+    }
   }
 
   const response = await fetch(url, {
@@ -363,6 +378,15 @@ export const portalApi = {
       method: 'POST',
       body: JSON.stringify(submission),
     });
+  },
+
+  async getGrades(params?: { studentId?: string; studentName?: string; assignmentId?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.studentId) searchParams.set('studentId', params.studentId);
+    if (params?.studentName) searchParams.set('studentName', params.studentName);
+    if (params?.assignmentId) searchParams.set('assignmentId', params.assignmentId);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return fetchJson<{ grades: any[]; rubricScores: any; count: number }>(`/grades${query}`);
   },
 
   async gradeSubmission(gradeData: {

@@ -74,25 +74,44 @@ describe('Cohort Permissions — Multi-Cohort Access Control', () => {
   });
 
   describe('AppHeader Cohort Switcher Permissions', () => {
+    const defaultHeaderProps: any = {
+      onGoHome: vi.fn(),
+      onOpenLogin: vi.fn(),
+      onLogout: vi.fn(),
+      onNavigate: vi.fn(),
+      unreadMessagesCount: 0,
+      filteredNotifications: [],
+      onMarkNotifAsRead: vi.fn(),
+      onMarkAllNotifsAsRead: vi.fn(),
+      onClearNotifs: vi.fn(),
+      onSelectNotif: vi.fn(),
+      onTriggerNotifScan: vi.fn(),
+      onAddTestNotif: vi.fn(),
+      onOpenIntro: vi.fn(),
+      onOpenPresentation: vi.fn(),
+      onOpenCommandPalette: vi.fn(),
+      onOpenRoleSwitch: vi.fn(),
+      isCloudSyncing: false,
+      onPushToCloud: vi.fn(),
+      dataSource: 'local',
+      isLoading: false,
+      onLoadSheets: vi.fn(),
+      onOpenBroadcast: vi.fn(),
+      onOpenAuditLog: vi.fn(),
+      onOpenUserManagement: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onOpenHelp: vi.fn(),
+      onToggleMobileDrawer: vi.fn(),
+    };
+
     it('renders a clickable button for admin users to manage cohorts', () => {
       const onOpenCohortModal = vi.fn();
       render(
         <AppHeader
+          {...defaultHeaderProps}
           activeCohort={mockCohorts[0]}
           onOpenCohortModal={onOpenCohortModal}
-          onGoHome={vi.fn()}
-          appUser={{ email: 'admin@som.hteim.org', role: 'admin', name: 'Super Admin' }}
-          onOpenLogin={vi.fn()}
-          onLogout={vi.fn()}
-          onNavigate={vi.fn()}
-          unreadMessagesCount={0}
-          filteredNotifications={[]}
-          onMarkNotifAsRead={vi.fn()}
-          onMarkAllNotifsAsRead={vi.fn()}
-          onClearNotifs={vi.fn()}
-          onSelectNotif={vi.fn()}
-          onTriggerNotifScan={vi.fn()}
-          onAddTestNotif={vi.fn()}
+          appUser={{ id: 'u-admin-test', email: 'admin@som.hteim.org', role: 'admin', name: 'Super Admin' }}
         />
       );
 
@@ -106,21 +125,10 @@ describe('Cohort Permissions — Multi-Cohort Access Control', () => {
       const onOpenCohortModal = vi.fn();
       render(
         <AppHeader
+          {...defaultHeaderProps}
           activeCohort={mockCohorts[0]}
           onOpenCohortModal={onOpenCohortModal}
-          onGoHome={vi.fn()}
-          appUser={{ email: 'teacher@som.hteim.org', role: 'teacher', name: 'Instructor' }}
-          onOpenLogin={vi.fn()}
-          onLogout={vi.fn()}
-          onNavigate={vi.fn()}
-          unreadMessagesCount={0}
-          filteredNotifications={[]}
-          onMarkNotifAsRead={vi.fn()}
-          onMarkAllNotifsAsRead={vi.fn()}
-          onClearNotifs={vi.fn()}
-          onSelectNotif={vi.fn()}
-          onTriggerNotifScan={vi.fn()}
-          onAddTestNotif={vi.fn()}
+          appUser={{ id: 'u-teacher-test', email: 'teacher@som.hteim.org', role: 'teacher', name: 'Instructor' }}
         />
       );
 

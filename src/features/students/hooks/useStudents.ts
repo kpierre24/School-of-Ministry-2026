@@ -1,19 +1,31 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { StudentSummary } from '../../../types';
 import { StudentFilterOptions, StudentStats } from '../types';
 import { filterStudents, computeStudentStats } from '../services/studentsService';
 
 export interface UseStudentsProps {
   initialStudents?: StudentSummary[];
+  students?: StudentSummary[];
   initialLevelId?: string;
 }
 
 export function useStudents({
   initialStudents = [],
+  students: externalStudents,
   initialLevelId = 'all',
 }: UseStudentsProps = {}) {
-  const [students, setStudents] = useState<StudentSummary[]>(initialStudents);
+  const initialSource = externalStudents && externalStudents.length > 0 ? externalStudents : initialStudents;
+  const [students, setStudents] = useState<StudentSummary[]>(initialSource);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  // Sync state whenever external students or initialStudents change
+  useEffect(() => {
+    if (externalStudents !== undefined) {
+      setStudents(externalStudents);
+    } else if (initialStudents && initialStudents.length > 0) {
+      setStudents(initialStudents);
+    }
+  }, [externalStudents, initialStudents]);
 
   const [filters, setFilters] = useState<StudentFilterOptions>({
     searchQuery: '',

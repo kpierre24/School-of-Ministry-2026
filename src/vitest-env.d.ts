@@ -23,9 +23,13 @@ declare module '@testing-library/react' {
     findByText(text: string | RegExp, options?: unknown): Promise<HTMLElement>;
     findByLabelText(text: string | RegExp, options?: unknown): Promise<HTMLElement>;
     getByText(text: string | RegExp, options?: unknown): HTMLElement;
+    getAllByText(text: string | RegExp, options?: unknown): HTMLElement[];
     getByLabelText(text: string | RegExp, options?: unknown): HTMLElement;
+    getByPlaceholderText(text: string | RegExp, options?: unknown): HTMLElement;
+    getByTitle(text: string | RegExp, options?: unknown): HTMLElement;
     queryByText(text: string | RegExp, options?: unknown): HTMLElement | null;
     queryByLabelText(text: string | RegExp, options?: unknown): HTMLElement | null;
+    queryByTitle(text: string | RegExp, options?: unknown): HTMLElement | null;
   };
   export function renderHook<T>(hook: () => T, options?: unknown): {
     result: { current: T };
@@ -34,11 +38,20 @@ declare module '@testing-library/react' {
   };
   export const screen: {
     getByText(text: string | RegExp, options?: unknown): HTMLElement;
+    getAllByText(text: string | RegExp, options?: unknown): HTMLElement[];
     getByLabelText(text: string | RegExp, options?: unknown): HTMLElement;
+    getByPlaceholderText(text: string | RegExp, options?: unknown): HTMLElement;
+    getByTitle(text: string | RegExp, options?: unknown): HTMLElement;
     queryByText(text: string | RegExp, options?: unknown): HTMLElement | null;
     queryByLabelText(text: string | RegExp, options?: unknown): HTMLElement | null;
+    queryByTitle(text: string | RegExp, options?: unknown): HTMLElement | null;
     findByText(text: string | RegExp, options?: unknown): Promise<HTMLElement>;
     findByLabelText(text: string | RegExp, options?: unknown): Promise<HTMLElement>;
+  };
+  export const fireEvent: {
+    click(element: HTMLElement | Element): void;
+    change(element: HTMLElement | Element, options?: any): void;
+    [key: string]: any;
   };
   export function act(fn: () => void | Promise<void>): Promise<void>;
 }

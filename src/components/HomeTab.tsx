@@ -1212,123 +1212,54 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </section>
       ) : null}
 
-      {/* 3. 6 CORE CURRICULUM BENTO GRID (Comprehensive Overview) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#023264] text-white flex items-center justify-center shadow-xs">
-              <GraduationCap className="w-4 h-4 text-[#dfc18b]" />
+      {/* 3. SLEEK CURRICULUM OVERVIEW BANNER (Slim, Un-cluttered Format for Homepage Visitors) */}
+      <section className="bg-gradient-to-r from-slate-900 via-[#022044] to-[#023264] text-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-800 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#b38f53]/30 border border-[#dfc18b]/40 text-[#dfc18b] flex items-center justify-center shrink-0">
+              <GraduationCap className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                6-Module Core Curriculum Framework
+              <h2 className="text-xs sm:text-sm font-black text-white tracking-wide">
+                6-Module Core Curriculum Roadmap
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Rigorous theological foundation, five-fold governance, and practical ministry training
+              <p className="text-[11px] text-slate-300">
+                Foundational theology, five-fold governance, ethics, & practical ministry
               </p>
             </div>
           </div>
 
           <button
             onClick={() => onNavigate('courses')}
-            className="text-xs font-bold text-[#025798] dark:text-[#7dd3fc] hover:underline flex items-center gap-1"
+            className="self-start sm:self-auto px-4 py-2 bg-[#dfc18b] hover:bg-[#c9a96e] text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
           >
-            <span>Full Syllabus & Handouts</span>
+            <span>Explore Full Syllabus</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Compact Horizontal Module Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 pt-0.5">
           {[
-            {
-              modNum: '01',
-              code: 'SOM-MOD-1',
-              title: 'Introduction & Foundations',
-              instructor: 'Gillian Selkridge',
-              badgeColor: 'bg-[#b38f53]/15 text-[#8c6a32] dark:bg-[#b38f53]/30 dark:text-[#dfc18b] border-[#b38f53]/40',
-              accent: 'border-[#b38f53]/30',
-              description: 'Kingdom citizenship, covenant alignment, scripture recitation, and classroom integrity.'
-            },
-            {
-              modNum: '02',
-              code: 'SOM-MOD-2',
-              title: 'Evangelism & Soul Winning',
-              instructor: 'Samuel Selkridge',
-              badgeColor: 'bg-[#01883c]/15 text-[#01883c] dark:bg-[#01883c]/30 dark:text-[#a7f3d0] border-[#01883c]/40',
-              accent: 'border-[#01883c]/30',
-              description: 'The Matthew 28:19-20 mandate, personal witnessing, follow-up, and discipleship.'
-            },
-            {
-              modNum: '03',
-              code: 'SOM-MOD-3',
-              title: 'Ministerial Ethics & Character',
-              instructor: 'Gale Grant',
-              badgeColor: 'bg-[#023264]/15 text-[#023264] dark:bg-[#023264]/40 dark:text-[#bae6fd] border-[#025798]/40',
-              accent: 'border-[#025798]/30',
-              description: 'High standards of integrity, financial transparency, counseling ethics, and servant leadership.'
-            },
-            {
-              modNum: '04',
-              code: 'SOM-MOD-4',
-              title: 'Apostolic Ministry & Order',
-              instructor: 'Christy Ruben',
-              badgeColor: 'bg-[#025798]/15 text-[#025798] dark:bg-[#025798]/40 dark:text-[#7dd3fc] border-[#0277b8]/40',
-              accent: 'border-[#0277b8]/30',
-              description: 'Ephesians 2:20 foundation, apostolic signs, five-fold governance, and kingdom expansion.'
-            },
-            {
-              modNum: '05',
-              code: 'SOM-MOD-5',
-              title: 'Prophetic Ministry & Warfare',
-              instructor: 'Garod Andrews',
-              badgeColor: 'bg-[#b38f53]/20 text-[#8c6a32] dark:bg-[#b38f53]/40 dark:text-[#dfc18b] border-[#b38f53]/50',
-              accent: 'border-[#b38f53]/40',
-              description: 'Spiritual discernment, hearing the voice of God, testing prophecy, and prophetic protocol.'
-            },
-            {
-              modNum: '06',
-              code: 'SOM-MOD-6',
-              title: 'Pastors & Teachers Academy',
-              instructor: 'Samuel Selkridge',
-              badgeColor: 'bg-[#0277b8]/15 text-[#0277b8] dark:bg-[#0277b8]/40 dark:text-[#bae6fd] border-[#0277b8]/40',
-              accent: 'border-[#0277b8]/30',
-              description: 'Pastoral care, preaching hermeneutics, flock governance, and spiritual mentorship.'
-            }
-          ].map((item) => (
-            <div
-              key={item.code}
+            { num: '01', title: 'Foundations' },
+            { num: '02', title: 'Evangelism' },
+            { num: '03', title: 'Ministerial Ethics' },
+            { num: '04', title: 'Apostolic Order' },
+            { num: '05', title: 'Prophetic Warfare' },
+            { num: '06', title: 'Pastors Academy' }
+          ].map((m) => (
+            <button
+              key={m.num}
               onClick={() => onNavigate('courses')}
-              className={`p-4 bg-white dark:bg-slate-900 border ${item.accent} rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-2 group active:scale-[0.99]`}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl text-left shrink-0 transition-all cursor-pointer flex items-center gap-2 group"
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase border ${item.badgeColor}`}>
-                    {item.code}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    Module {item.modNum}
-                  </span>
-                </div>
-
-                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-[#025798] dark:group-hover:text-[#7dd3fc] transition-colors">
-                  {item.title}
-                </h3>
-
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                  {item.description}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px]">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                  Lead: <strong className="text-slate-800 dark:text-slate-200">{item.instructor}</strong>
-                </span>
-                <span className="text-[#025798] dark:text-[#7dd3fc] font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                  <span>View</span>
-                  <ChevronRight className="w-3 h-3" />
-                </span>
-              </div>
-            </div>
+              <span className="text-[9px] font-mono font-black text-[#dfc18b] px-1.5 py-0.5 rounded bg-black/30">
+                {m.num}
+              </span>
+              <span className="text-xs font-bold text-slate-100 group-hover:text-white whitespace-nowrap">
+                {m.title}
+              </span>
+            </button>
           ))}
         </div>
       </section>

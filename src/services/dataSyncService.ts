@@ -18,6 +18,9 @@ import { SyncedAppState } from '../lib/firebaseSync';
 import { handleError } from '../lib/errorHandler';
 import { logger } from '../lib/logger';
 import { sanitizeProductionState } from '../data/guards';
+import { cacheService } from './api/cacheService';
+import { backgroundSyncWorker } from './backgroundSyncWorker';
+import { performanceMonitor } from './performanceMonitor';
 
 export interface DataSyncStatus {
   isOnline: boolean;
@@ -40,8 +43,19 @@ export function setLastKnownStateVersion(version: number | null) {
  * Loads the current workspace state from Express API / Supabase PostgreSQL as authoritative source.
  */
 export async function loadAuthoritativeState(userEmail: string | null | undefined): Promise<SyncedAppState | null> {
+  const emailKey = userEmail || 'default_public';
+  performanceMonitor.startTrace(`load_authoritative_state_${emailKey}`);
+
+  // 1. In-memory & storage caching layer strategy
+  const cachedState = cacheService.get<SyncedAppState>(`authoritative_state_${emailKey}`);
+  if (cachedState) {
+    logger.info(`[CacheService] Cache hit for authoritative_state_${emailKey}`);
+    performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+    return cachedState;
+  }
+
   try {
-    // 1. Primary path: Fetch dynamically composed state via Express API -> Supabase PostgreSQL domain tables
+    // 2. Primary path: Fetch dynamically composed state via Express API -> Supabase PostgreSQL domain tables
     const apiState = await portalApi.loadAuthoritativeState(userEmail || undefined);
     if (apiState) {
       if (typeof (apiState as any).version === 'number') {
@@ -52,27 +66,46 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
       } catch {
         // Safe ignore for storage quota
       }
+
+      // Cache the result for 5 minutes (300,000ms) to prevent duplicate heavy loads on rapid tab re-renders/focus
+      cacheService.set(`authoritative_state_${emailKey}`, apiState, 5 * 60 * 1000);
+
+      const duration = performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+      if (duration) {
+        performanceMonitor.recordDashboardRender(duration, 'StatePull');
+      }
+
       return apiState;
     }
 
-    // 2. Offline snapshot cache fallback if network unreachable
+    // 3. Offline snapshot cache fallback if network unreachable
     try {
       const cached = localStorage.getItem('hteim_offline_state_snapshot');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+        return parsed;
+      }
     } catch {
       // Return null if no offline snapshot
     }
 
+    performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
     return null;
   } catch (err: any) {
     handleError(err, 'loadAuthoritativeState - Relational composition load failure', 'database');
     // Read-only offline cache fallback
     try {
       const cached = localStorage.getItem('hteim_offline_state_snapshot');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
+        return parsed;
+      }
     } catch {
       // Return null if no offline snapshot
     }
+    performanceMonitor.endTrace(`load_authoritative_state_${emailKey}`);
     return null;
   }
 }
@@ -83,11 +116,13 @@ export async function loadAuthoritativeState(userEmail: string | null | undefine
  * (/api/students, /api/attendance, /api/grades, /api/assignments, /api/invoices, /api/payments).
  */
 export async function saveAuthoritativeState(
-  _userEmail: string | null | undefined,
+  userEmail: string | null | undefined,
   state: SyncedAppState,
-  _actionDescription?: string,
+  actionDescription?: string,
   _expectedVersion?: number | null
 ): Promise<boolean> {
+  const emailKey = userEmail || 'default_public';
+
   try {
     // Guard: Demo state must never be saved to production database
     if (state.dataSource === 'demo' || (state as any).isDemo === true) {
@@ -102,6 +137,18 @@ export async function saveAuthoritativeState(
       localStorage.setItem('hteim_offline_state_snapshot', JSON.stringify(cleanState));
     } catch {
       // Quota exceeded ignore
+    }
+
+    // Invalidate memory caches to force next load to pull fresh
+    cacheService.invalidate(`authoritative_state_${emailKey}`);
+
+    // If offline, enqueue sync worker task
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      backgroundSyncWorker.enqueueTask(
+        'GENERIC',
+        actionDescription || 'Save State Snapshot Offline',
+        { email: userEmail, stateSnapshot: cleanState }
+      );
     }
 
     return true;

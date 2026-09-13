@@ -1,6 +1,7 @@
-import React from 'react';
-import StudentNotesBibleTab from '../components/StudentNotesBibleTab';
+import React, { Suspense } from 'react';
+import { LazyNotesTab } from '../components/tabs';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
 export interface NotesPageProps {
   currentStudentName?: string;
@@ -11,14 +12,16 @@ export interface NotesPageProps {
 
 export const NotesPage: React.FC<NotesPageProps> = (props) => {
   return (
-    <ErrorBoundary label="Student Notes & AMP Bible Tab">
-      <StudentNotesBibleTab
-        currentStudentName={props.currentStudentName || 'Student'}
-        userRole={props.userRole}
-        availableClassDays={props.availableClassDays || []}
-        onNavigateTab={props.onNavigateTab}
-      />
-    </ErrorBoundary>
+    <Suspense fallback={<DashboardSkeleton label="Loading Bible Study Notes & Multi-version Scriptures..." />}>
+      <ErrorBoundary label="Student Notes & AMP Bible Tab">
+        <LazyNotesTab
+          currentStudentName={props.currentStudentName || 'Student'}
+          userRole={props.userRole}
+          availableClassDays={props.availableClassDays || []}
+          onNavigateTab={props.onNavigateTab}
+        />
+      </ErrorBoundary>
+    </Suspense>
   );
 };
 

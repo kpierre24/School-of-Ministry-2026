@@ -8,6 +8,8 @@ import {
   GradeTransitionData,
   GradeOverrideData,
 } from '../types';
+import { portalApi } from '../../../services/api/portalApiClient';
+import { logger } from '../../../lib/logger';
 
 /**
  * Normalizes any lifecycle status string to canonical uppercase stage.
@@ -176,15 +178,10 @@ export function filterGrades(
 
 export async function fetchGradesApi(filters: GradeFilterOptions = {}): Promise<GradeRecord[]> {
   try {
-    const params = new URLSearchParams();
-    if (filters.studentId) params.append('studentId', filters.studentId);
-    if (filters.studentName) params.append('studentName', filters.studentName);
-
-    const res = await fetch(`/api/grades?${params.toString()}`);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch grades: ${res.statusText}`);
-    }
-    const data = await res.json();
+    const data = await portalApi.getGrades({
+      studentId: filters.studentId,
+      studentName: filters.studentName,
+    });
     return (data.grades || []).map((item: any) => ({
       id: item.id || item.submissionId || `grade_${Math.random()}`,
       submissionId: item.submissionId || item.id,
@@ -202,53 +199,38 @@ export async function fetchGradesApi(filters: GradeFilterOptions = {}): Promise<
       submittedAt: item.submittedAt,
       updatedAt: item.updatedAt,
     }));
-  } catch (err) {
-    console.warn('API grades fetch failed, using memory state:', err);
+  } catch (err: any) {
+    if (err?.status !== 401 && err?.status !== 403) {
+      logger.info('API grades not loaded, maintaining memory state:', err?.message || err);
+    }
     return [];
   }
 }
 
 export async function recordGradeApi(data: GradeInputData): Promise<any> {
-  const res = await fetch('/api/grades', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+  return portalApi.gradeSubmission({
+    submissionId: data.submissionId,
+    score: data.score,
+    feedback: data.feedback,
+    rubricScores: data.rubricScores,
+    overrideReason: data.overrideReason,
+    courseCode: data.courseCode,
   });
-
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || `Failed to record grade: HTTP ${res.status}`);
-  }
-
-  return res.json();
 }
 
 export async function transitionGradeLifecycleApi(data: GradeTransitionData): Promise<any> {
-  const res = await fetch('/api/grades/transition', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+  return portalApi.transitionGradeLifecycle({
+    submissionId: data.submissionId,
+    targetStatus: data.targetStatus,
+    reason: data.reason,
   });
-
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || `Failed to transition grade stage: HTTP ${res.status}`);
-  }
-
-  return res.json();
 }
 
 export async function overrideGradeApi(data: GradeOverrideData): Promise<any> {
-  const res = await fetch('/api/grades/override', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+  return portalApi.overrideLockedGrade({
+    submissionId: data.submissionId,
+    score: data.score,
+    feedback: data.feedback,
+    reason: data.reason,
   });
-
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || `Failed to perform administrative override: HTTP ${res.status}`);
-  }
-
-  return res.json();
 }

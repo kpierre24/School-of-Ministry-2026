@@ -17,6 +17,8 @@ import {
   WifiOff
 } from 'lucide-react';
 import { OfflineQueueItem } from '../types';
+import { cacheService } from '../services/api/cacheService';
+import { performanceMonitor } from '../services/performanceMonitor';
 
 interface OfflineSyncDrawerProps {
   isOpen: boolean;
@@ -34,6 +36,10 @@ export const OfflineSyncDrawer: React.FC<OfflineSyncDrawerProps> = ({
   const [queue, setQueue] = useState<OfflineQueueItem[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  
+  // Telemetry Metrics States
+  const [cacheStats, setCacheStats] = useState(cacheService.getStats());
+  const [perfSummary, setPerfSummary] = useState(performanceMonitor.getPerformanceSummary());
 
   const loadQueue = () => {
     try {
@@ -51,8 +57,18 @@ export const OfflineSyncDrawer: React.FC<OfflineSyncDrawerProps> = ({
   useEffect(() => {
     if (isOpen) {
       loadQueue();
+      // Update statistics live when drawer opens
+      setCacheStats(cacheService.getStats());
+      setPerfSummary(performanceMonitor.getPerformanceSummary());
     }
   }, [isOpen]);
+
+  const handleClearCache = () => {
+    cacheService.clear();
+    setCacheStats(cacheService.getStats());
+    setSyncFeedback('In-memory cache & storage snapshot successfully invalidated.');
+    setTimeout(() => setSyncFeedback(null), 3000);
+  };
 
   const handleSyncAll = async () => {
     if (!isOnline) {
@@ -134,7 +150,7 @@ export const OfflineSyncDrawer: React.FC<OfflineSyncDrawerProps> = ({
             </div>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white font-syne">
-                Offline Sync Drawer
+                Offline Sync & Diagnostics
               </h2>
               <div className="flex items-center gap-1.5 text-xs">
                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
@@ -189,6 +205,56 @@ export const OfflineSyncDrawer: React.FC<OfflineSyncDrawerProps> = ({
               <span>{syncFeedback}</span>
             </div>
           )}
+        </div>
+
+        {/* Diagnostic Tabs / Panel */}
+        <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/20 border-b border-slate-200 dark:border-slate-800 space-y-3">
+          <h3 className="text-xs font-extrabold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+            Live Telemetry & Diagnostics
+          </h3>
+          
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 block font-bold uppercase">Load Performance</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white font-mono">
+                  {perfSummary.dashboardAvgLoadMs}ms
+                </span>
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                  perfSummary.rating === 'EXCELLENT' 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-400'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-400'
+                }`}>
+                  {perfSummary.rating}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-850 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 block font-bold uppercase">Cache Hit Rate</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white font-mono">
+                  {cacheStats.hits + cacheStats.misses > 0 
+                    ? `${Math.round((cacheStats.hits / (cacheStats.hits + cacheStats.misses)) * 100)}%`
+                    : '100%'}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400">
+                  ({cacheStats.hits} hits / {cacheStats.keysCount} keys)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-500 dark:text-slate-400">Memory Cached Queries:</span>
+            <button 
+              onClick={handleClearCache}
+              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-extrabold flex items-center gap-1 cursor-pointer bg-slate-200/50 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 px-2.5 py-1 rounded-lg transition-all"
+            >
+              <Trash2 className="w-3 h-3 text-red-500" /> Invalidate Cache
+            </button>
+          </div>
         </div>
 
         {/* Queue Items List */}

@@ -742,24 +742,33 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         return;
       }
 
-      setEvaluationProgress(`AI Registering Google Drive Livestream "${gdriveTitle}"...`);
+      const parsedMedia = parseVideoMediaUrl(gdriveUrl.trim());
+      const platformLabel = parsedMedia.isYouTube ? 'YouTube Video' : parsedMedia.isDrive ? 'Google Drive Video' : parsedMedia.isVimeo ? 'Vimeo Video' : 'Online Video Stream';
 
-      const summaryText = gdriveSummary.trim() || 'Livestream video recording saved on Google Drive. Stream directly inside the app.';
+      setEvaluationProgress(`AI Registering ${platformLabel} "${gdriveTitle}"...`);
+
+      const defaultSummary = parsedMedia.isYouTube
+        ? 'YouTube sermon and theological lecture video stream. Streamable directly inside the portal media player.'
+        : parsedMedia.isDrive
+        ? 'Google Drive livestream video recording. Streamable directly inside the portal video player.'
+        : 'Online video resource for ministry and theological study.';
+
+      const summaryText = gdriveSummary.trim() || defaultSummary;
 
       const newRes: LibraryResource = {
-        id: `res_gdrive_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id: `res_video_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         title: gdriveTitle.trim(),
-        category: gdriveCategory || 'Livestream Recording',
+        category: gdriveCategory || (parsedMedia.isYouTube ? 'Lecture Audio' : 'Livestream Recording'),
         author: gdriveAuthor.trim() || 'HTEIM Faculty',
         courseCode: gdriveCourseCode.toUpperCase().trim() || 'SOM-101',
         format: 'VIDEO',
-        size: 'Google Drive HD',
+        size: platformLabel,
         downloadUrl: gdriveUrl.trim(),
         summary: summaryText,
-        fullContent: `Google Drive Livestream Video Recording.\nLink: ${gdriveUrl}\nTitle: ${gdriveTitle}`,
+        fullContent: `${platformLabel} Reference\nLink: ${gdriveUrl}\nTitle: ${gdriveTitle}\nPlatform: ${parsedMedia.type.toUpperCase()}`,
         keyTakeaways: [
-          'Watch live stream video directly inside the app video player.',
-          'Saved to Google Drive cloud storage.'
+          `Stream ${platformLabel} directly inside the app video player.`,
+          'Integrated with notes, scripture popovers, and classroom sermon player.'
         ],
         aiEvaluated: true,
         uploadedAt: new Date().toISOString().split('T')[0]
@@ -769,10 +778,10 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
       // Auto-sync to Classroom Media Player tracks as well
       const newMediaTrack: MediaResource = {
-        id: `media_gdrive_${Date.now()}`,
+        id: `media_video_${Date.now()}`,
         title: gdriveTitle.trim(),
         speaker: gdriveAuthor.trim() || 'HTEIM Faculty',
-        duration: 'Livestream',
+        duration: parsedMedia.isYouTube ? 'YouTube HD' : 'Livestream Video',
         type: 'video',
         url: gdriveUrl.trim(),
         description: summaryText,
@@ -987,7 +996,21 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               )}
 
               <button
-                onClick={() => setShowUploadModal(true)}
+                onClick={() => {
+                  setUploadMode('gdrive');
+                  setShowUploadModal(true);
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-red-600 to-indigo-600 hover:from-red-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                title="Add YouTube, Google Drive, Vimeo, or Zoom video links"
+              >
+                <VideoIcon className="w-4 h-4" /> Add Video Link (YouTube / Drive)
+              </button>
+
+              <button
+                onClick={() => {
+                  setUploadMode('file');
+                  setShowUploadModal(true);
+                }}
                 className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <Upload className="w-4 h-4" /> Upload Lesson Files
@@ -1757,11 +1780,11 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                 <button
                   type="button"
                   onClick={() => setUploadMode('gdrive')}
-                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap flex items-center gap-1 ${
+                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap flex items-center gap-1.5 ${
                     uploadMode === 'gdrive' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  <Globe className="w-3.5 h-3.5 text-blue-500" /> Google Drive Recording
+                  <VideoIcon className="w-3.5 h-3.5 text-rose-500" /> YouTube & Drive Video Link
                 </button>
               </div>
 
@@ -1792,47 +1815,129 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
 
               {uploadMode === 'gdrive' ? (
                 <div className="space-y-3">
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
-                    <p className="font-extrabold flex items-center gap-1">
-                      <Globe className="w-4 h-4 text-blue-600" /> Google Drive Livestream Video Player Integration
+                  <div className="p-3 bg-gradient-to-r from-rose-50 to-indigo-50 dark:from-rose-950/40 dark:to-indigo-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs space-y-1">
+                    <p className="font-extrabold flex items-center gap-1.5 text-slate-900 dark:text-white">
+                      <VideoIcon className="w-4 h-4 text-rose-600" /> Modular YouTube & Google Drive Video Integration
                     </p>
-                    <p className="text-[11px] text-blue-700">
-                      Paste any shareable Google Drive link (e.g. <code>https://drive.google.com/file/d/.../view</code>). The video will play directly inside the app with embedded video controls!
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Paste YouTube (<code>watch?v=...</code>, <code>youtu.be/...</code>, <code>shorts/</code>) or Google Drive share links (<code>drive.google.com/file/d/...</code>). Videos render in-app immediately!
                     </p>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                       <label className="block text-[10px] font-bold uppercase text-slate-500">
-                        Google Drive Video Share Link *
+                        Video Share Link (YouTube or Google Drive) *
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGdriveUrl('https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing');
-                          setGdriveTitle('Sunday Morning Livestream Worship & Sermon');
-                        }}
-                        className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
-                      >
-                        Insert Sample Drive Link
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGdriveUrl('https://www.youtube.com/watch?v=0-7I443BLoE');
+                            setGdriveTitle('Principles of Spiritual Leadership & Expository Preaching');
+                            setGdriveAuthor('Dr. Faculty Director');
+                            setGdriveCourseCode('SOM-101');
+                          }}
+                          className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <Play className="w-3 h-3 fill-current" /> Sample YouTube
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGdriveUrl('https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing');
+                            setGdriveTitle('Sunday Morning Livestream Worship & Sermon');
+                            setGdriveAuthor('HTEIM Faculty');
+                            setGdriveCourseCode('SOM-101');
+                          }}
+                          className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <Globe className="w-3 h-3" /> Sample Google Drive
+                        </button>
+                      </div>
                     </div>
                     <input
                       required
                       type="url"
-                      placeholder="https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing"
+                      placeholder="https://www.youtube.com/watch?v=... or https://drive.google.com/file/d/.../view"
                       value={gdriveUrl}
-                      onChange={(e) => setGdriveUrl(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-indigo-700 focus:outline-none"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setGdriveUrl(val);
+                        const p = parseVideoMediaUrl(val);
+                        if (!gdriveTitle) {
+                          if (p.isYouTube) setGdriveTitle(`YouTube Sermon Video (${p.fileId})`);
+                          else if (p.isDrive) setGdriveTitle('Google Drive Sermon Recording');
+                        }
+                      }}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-indigo-700 dark:text-indigo-300 focus:outline-none"
                     />
                   </div>
 
-                  {gdriveUrl && parseVideoMediaUrl(gdriveUrl).isDrive && (
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-[11px] font-bold flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                      <span>Valid Google Drive video URL detected! File ID: {parseVideoMediaUrl(gdriveUrl).fileId}</span>
-                    </div>
-                  )}
+                  {/* Realtime Detection Banner */}
+                  {gdriveUrl.trim() && (() => {
+                    const parsed = parseVideoMediaUrl(gdriveUrl);
+                    if (parsed.isYouTube) {
+                      return (
+                        <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-900 dark:text-rose-200 text-[11px] font-bold flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>YouTube Video Detected! Video ID: <code className="font-mono bg-rose-100 dark:bg-rose-900/60 px-1 py-0.5 rounded">{parsed.fileId}</code></span>
+                        </div>
+                      );
+                    }
+                    if (parsed.isDrive) {
+                      return (
+                        <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-900 dark:text-blue-200 text-[11px] font-bold flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>Google Drive Shared Video Detected! File ID: <code className="font-mono bg-blue-100 dark:bg-blue-900/60 px-1 py-0.5 rounded">{parsed.fileId}</code></span>
+                        </div>
+                      );
+                    }
+                    if (parsed.embedUrl) {
+                      return (
+                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-[11px] font-bold flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Direct Video Stream Detected ({parsed.type.toUpperCase()})</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Live In-Modal Video Player Preview */}
+                  {gdriveUrl.trim() && (() => {
+                    const parsed = parseVideoMediaUrl(gdriveUrl);
+                    if (!parsed.embedUrl && !gdriveUrl.startsWith('http')) return null;
+
+                    return (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-[10px] font-bold uppercase text-slate-500">
+                            Live In-Modal Video Preview
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Ready to Stream
+                          </span>
+                        </div>
+                        <div className="w-full h-48 sm:h-56 bg-black rounded-xl overflow-hidden border border-slate-700 shadow-inner flex items-center justify-center relative">
+                          {parsed.isYouTube || parsed.isVimeo || parsed.isLoom || parsed.isDrive ? (
+                            <iframe
+                              src={parsed.embedUrl}
+                              className="w-full h-full border-0 rounded-xl"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="Video Upload Preview"
+                            />
+                          ) : (
+                            <video controls src={gdriveUrl} className="w-full h-full object-contain bg-black">
+                              Your browser does not support video preview.
+                            </video>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Recording Title *</label>
@@ -2362,18 +2467,17 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               <div className="p-4 bg-black flex flex-col justify-center items-center overflow-hidden rounded-xl">
                 {parsed.isDrive ? (
                   <div className="w-full space-y-3">
-                    <video
-                      controls
-                      autoPlay
-                      src={parsed.proxyStreamUrl || `/api/drive-proxy/stream/${parsed.fileId}`}
-                      className="w-full h-80 sm:h-[420px] md:h-[500px] rounded-xl bg-slate-950 object-contain shadow-xl"
-                    >
-                      Your browser does not support the video tag.
-                    </video>
+                    <iframe
+                      src={parsed.embedUrl}
+                      title={playingVideoModalResource.title}
+                      className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-xl shadow-xl bg-slate-950"
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                    />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs px-1 gap-2 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
                       <span className="text-slate-300 font-medium flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-blue-400" />
-                        Google Drive Video Streamed via Server Proxy
+                        Google Drive Stream (File ID: <code className="font-mono text-amber-300">{parsed.fileId}</code>)
                       </span>
                       <a
                         href={playingVideoModalResource.downloadUrl || '#'}
@@ -2387,13 +2491,32 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
                     </div>
                   </div>
                 ) : (parsed.isYouTube || parsed.isVimeo || parsed.isLoom) && parsed.embedUrl ? (
-                  <iframe
-                    src={parsed.embedUrl}
-                    title={playingVideoModalResource.title}
-                    className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-xl shadow-xl bg-slate-950"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                  <div className="w-full space-y-3">
+                    <iframe
+                      src={parsed.embedUrl}
+                      title={playingVideoModalResource.title}
+                      className="w-full h-80 sm:h-[420px] md:h-[500px] border-0 rounded-xl shadow-xl bg-slate-950"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                    {parsed.isYouTube && (
+                      <div className="p-2.5 bg-rose-950/40 border border-rose-800/60 rounded-xl text-[11px] text-rose-200/90 leading-relaxed flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-rose-400 shrink-0" />
+                          <span>If YouTube displays <em>"This content is blocked"</em> in your browser, YouTube restricts embedded playback in nested frames.</span>
+                        </div>
+                        <a
+                          href={parsed.directWatchUrl || playingVideoModalResource.downloadUrl || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-sm"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Watch on YouTube
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <video
                     controls

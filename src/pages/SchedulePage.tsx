@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { LazyScheduleTab } from '../components/tabs';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
 export interface SchedulePageProps {
   classDays: any[];
@@ -18,7 +19,7 @@ export interface SchedulePageProps {
 
 export const SchedulePage: React.FC<SchedulePageProps> = (props) => {
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+    <Suspense fallback={<DashboardSkeleton label="Loading Calendar Events & Live Zoom Stream Schedules..." />}>
       <ErrorBoundary label="Schedule Tab">
         <LazyScheduleTab {...(props as any)} />
       </ErrorBoundary>

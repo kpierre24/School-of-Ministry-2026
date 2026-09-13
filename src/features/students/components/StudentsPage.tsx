@@ -14,19 +14,29 @@ import { StudentFormData } from '../types';
 
 export interface StudentsPageProps {
   initialStudents?: StudentSummary[];
+  students?: StudentSummary[];
   classDays?: ClassDay[];
   onSelectStudentForTranscript?: (student: StudentSummary) => void;
+  onSelectStudentForCertificate?: (student: StudentSummary) => void;
+  onSelectStudentForEmail?: (student: StudentSummary) => void;
+  onDeleteStudent?: (name: string) => void;
   onStudentsChange?: (updatedStudents: StudentSummary[]) => void;
   className?: string;
+  [key: string]: any;
 }
 
 export function StudentsPage({
-  initialStudents = [],
+  initialStudents,
+  students: incomingStudents,
   classDays = [],
   onSelectStudentForTranscript,
+  onSelectStudentForCertificate,
+  onSelectStudentForEmail,
+  onDeleteStudent,
   onStudentsChange,
   className = '',
 }: StudentsPageProps) {
+  const effectiveInitialStudents = incomingStudents ?? initialStudents ?? [];
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -42,7 +52,10 @@ export function StudentsPage({
     updateSearchQuery,
     setFilters,
     resetFilters,
-  } = useStudents({ initialStudents });
+  } = useStudents({ 
+    initialStudents: effectiveInitialStudents,
+    students: incomingStudents,
+  });
 
   const { saveStudent, deleteStudent } = useStudentMutations({
     students,

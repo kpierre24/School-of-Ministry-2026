@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { LazyLibraryTab } from '../components/tabs';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
 export interface LibraryPageProps {
   userRole?: string;
@@ -16,7 +17,7 @@ export interface LibraryPageProps {
 
 export const LibraryPage: React.FC<LibraryPageProps> = (props) => {
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+    <Suspense fallback={<DashboardSkeleton label="Loading Video Archives & Syllabus Resource Files..." />}>
       <ErrorBoundary label="Library Tab">
         <LazyLibraryTab {...(props as any)} />
       </ErrorBoundary>

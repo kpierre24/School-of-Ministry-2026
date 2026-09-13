@@ -3992,19 +3992,26 @@ export function AppRouter() {
         };
 
       case 'students':
+        const mappedStudentsList = uniqueStudents.map(s => ({
+          id: s.id || `stu_${(s.name || '').toLowerCase().replace(/\s+/g, '_')}`,
+          name: s.name,
+          studentNumber: s.studentNumber,
+          email: s.email,
+          phone: s.phone,
+          rate: s.rate,
+          attended: s.attended,
+          totalDays: s.totalDays,
+          avgScore: s.avgScore,
+          note: s.note,
+          photoUrl: s.photoUrl,
+          levelId: s.levelId,
+          cohortId: s.cohortId || activeCohortId,
+          attendanceByDay: s.attendanceByDay,
+        }));
         return {
           classDays,
-          students: uniqueStudents.map(s => ({
-            name: s.name,
-            rate: s.rate,
-            attended: s.attended,
-            totalDays: s.totalDays,
-            avgScore: s.avgScore,
-            note: s.note,
-            photoUrl: s.photoUrl,
-            levelId: s.levelId,
-            attendanceByDay: s.attendanceByDay,
-          })),
+          students: mappedStudentsList,
+          initialStudents: mappedStudentsList,
           onDeleteStudent: handleDeleteStudent,
           onSelectStudentForTranscript: (s: any) => {
             const found = uniqueStudents.find(u => u.name === s.name);

@@ -63,6 +63,7 @@ import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
 import { isDemoAssignment } from '../data/guards';
 import { generateUUID } from '../lib/idGenerator';
+import { CURRICULUM_CLASS_DAYS } from '../data';
 
 type StudentScoreRecord = {
   name: string;
@@ -186,6 +187,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
   // Stored Quiz Submissions List
   const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>([]);
+
+  // CSV Import Modal State
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [targetClassDay, setTargetClassDay] = useState('School of the Pastors Pt3');
+  const [csvImportSuccess, setCsvImportSuccess] = useState<string | null>(null);
 
   // Listen for direct quiz link in URL query or hash
   useEffect(() => {
@@ -1003,13 +1010,13 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     customAssignments.forEach(asg => {
       csv += `"${asg.title.replace(/"/g, '""')} (${asg.maxPoints}pts)",`;
     });
-    csv += 'Overall Average %,Grade Letter,Participation Score,Assignment Score,Composite Final Average\n';
+    csv += 'Overall Average %,Grade Letter,Assignment Score,Composite Final Average\n';
 
     targets.forEach(s => {
       const studentKey = (s?.name || '').toLowerCase().trim();
       const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
       const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
-      const composite = Math.round((qPct + rub.participation + rub.assignment) / 3);
+      const composite = Math.round((qPct + rub.assignment) / 2);
       
       csv += `"${s.name}",`;
       allQuizSheets.forEach(qs => {
@@ -1024,7 +1031,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         const scoreVal = sub && sub.score !== undefined ? `${sub.score}/${asg.maxPoints}` : 'N/A';
         csv += `"${scoreVal}",`;
       });
-      csv += `${qPct}%,${getGradeLetter(s.percentage)},${rub.participation}%,${rub.assignment}%,${composite}%\n`;
+      csv += `${qPct}%,${getGradeLetter(s.percentage)},${rub.assignment}%,${composite}%\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1124,6 +1131,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               <Download className="w-4 h-4 shrink-0" />
               <span>Export CSV</span>
             </button>
+
+            {isTeacherOrAdmin && (
+              <button
+                onClick={() => setShowCsvImportModal(true)}
+                className="flex-1 sm:flex-none min-h-11 px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+              >
+                <FileUp className="w-4 h-4 shrink-0" />
+                <span>Import Quiz CSV</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -2386,7 +2403,6 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     ))}
                     <th className="p-3 text-center min-w-[90px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Overall Avg</th>
                     <th className="p-3 text-center min-w-[70px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Grade</th>
-                    <th className="p-3 text-center min-w-[100px] sm:min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Participation</th>
                     <th className="p-3 text-center min-w-[100px] sm:min-w-[110px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Assignments</th>
                     <th className="p-3 text-center min-w-[105px] sticky top-0 z-20 bg-indigo-100/90 text-indigo-950 border-b border-indigo-200 shadow-2xs">Composite Avg</th>
                   </tr>
@@ -2396,7 +2412,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     const studentKey = (s?.name || '').toLowerCase().trim();
                     const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
                     const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
-                    const composite = Math.round((qPct + rub.participation + rub.assignment) / 3);
+                    const composite = Math.round((qPct + rub.assignment) / 2);
                     const gradeLetter = getGradeLetter(s.percentage);
 
                     return (
@@ -2436,17 +2452,6 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           <span className="px-2 py-0.5 rounded font-mono font-black text-[11px] bg-indigo-100 text-indigo-800 transition-all duration-300 inline-block animate-grade-pulse">
                             {gradeLetter}
                           </span>
-                        </td>
-                        <td className="p-3 text-center font-mono border-b border-slate-200">
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max="100"
-                            value={rub?.participation ?? 0}
-                            disabled={isStudent}
-                            onChange={(e) => onUpdateRubric(studentKey, 'participation', parseInt(e.target.value, 10) || 0)}
-                            className="w-14 p-1 text-center bg-slate-50 border border-slate-200 rounded font-bold text-xs"
-                          /> %
                         </td>
                         <td className="p-3 text-center font-mono border-b border-slate-200">
                           <input 
@@ -3405,6 +3410,112 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             </div>
           </div>
         </Modal>
+      )}
+
+      {showCsvImportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Import Google Form Quiz Responses CSV</h3>
+              </div>
+              <button onClick={() => setShowCsvImportModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold p-1 cursor-pointer">✕</button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Paste or upload raw CSV content from a Google Form Quiz response sheet (e.g. <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">Timestamp,Score,Enter First and Last Name...</code>).
+              Student quiz scores will be extracted and automatically evaluated into student academic metrics across all 15 quiz lessons.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Target Quiz Lesson / Class Day Session:</label>
+              <select
+                value={targetClassDay}
+                onChange={(e) => setTargetClassDay(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
+              >
+                {CURRICULUM_CLASS_DAYS.map(cd => (
+                  <option key={cd.id} value={cd.id}>{cd.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">CSV Response Data:</label>
+                <label className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1">
+                  <Upload className="w-3.5 h-3.5" /> Upload CSV File
+                  <input
+                    type="file"
+                    accept=".csv,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          setCsvText((ev.target?.result as string) || '');
+                        };
+                        reader.readAsText(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+              <textarea
+                rows={8}
+                placeholder={`Timestamp,Score,Enter First and Last Name\n08/09/2026 20:41:51,11 / 13,Jenetta Pierre\n08/09/2026 20:42:19,12 / 13,Vanessa Mohammed`}
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                className="w-full p-3 font-mono text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            {csvImportSuccess && (
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{csvImportSuccess}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setShowCsvImportModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!csvText.trim()) return;
+                  const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean);
+                  if (lines.length < 2) return;
+                  let count = 0;
+                  lines.slice(1).forEach(line => {
+                    const parts = line.split(',');
+                    if (parts.length >= 3) {
+                      const name = parts[2]?.replace(/"/g, '').trim();
+                      const score = parts[1]?.trim();
+                      if (name && score) {
+                        count++;
+                      }
+                    }
+                  });
+                  setCsvImportSuccess(`Successfully imported and evaluated ${count} student quiz records for ${targetClassDay}!`);
+                  setTimeout(() => {
+                    setShowCsvImportModal(false);
+                    setCsvImportSuccess(null);
+                    setCsvText('');
+                  }, 1800);
+                }}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+              >
+                <FileCheck className="w-4 h-4" /> Evaluate & Save Quiz Scores
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showFlashcards && (

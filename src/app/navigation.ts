@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import { TabType } from '../types';
 import { Permission, ROLE_DEFINITIONS } from '../types/rbac';
 import { 
@@ -16,18 +16,31 @@ import {
   LucideIcon
 } from 'lucide-react';
 
-// Code-split lazy imports for feature and page modules
-export const DashboardPage = lazy(() => import('../pages/DashboardPage'));
-export const StudentsPage = lazy(() => import('@/features/students').then(m => ({ default: m.StudentsPage })));
-export const AttendancePage = lazy(() => import('../pages/AttendancePage'));
-export const CoursesPage = lazy(() => import('../pages/CoursesPage'));
-export const ExamsPage = lazy(() => import('@/features/grades/components/GradesPage').then(m => ({ default: m.GradesPage })));
-export const SchedulePage = lazy(() => import('../pages/SchedulePage'));
-export const LibraryPage = lazy(() => import('../pages/LibraryPage'));
-export const FinancePage = lazy(() => import('@/features/finance').then(m => ({ default: m.FinancePage })));
-export const MessagesPage = lazy(() => import('../pages/MessagesPage'));
-export const ReportsPage = lazy(() => import('../pages/ReportsPage'));
-export const NotesPage = lazy(() => import('../pages/NotesPage'));
+import { DashboardPage } from '../pages/DashboardPage';
+import { StudentsPage } from '../pages/StudentsPage';
+import { AttendancePage } from '../pages/AttendancePage';
+import { CoursesPage } from '../pages/CoursesPage';
+import { ExamsPage } from '../pages/ExamsPage';
+import { SchedulePage } from '../pages/SchedulePage';
+import { LibraryPage } from '../pages/LibraryPage';
+import { FinancePage } from '../pages/FinancePage';
+import { MessagesPage } from '../pages/MessagesPage';
+import { ReportsPage } from '../pages/ReportsPage';
+import { NotesPage } from '../pages/NotesPage';
+
+export {
+  DashboardPage,
+  StudentsPage,
+  AttendancePage,
+  CoursesPage,
+  ExamsPage,
+  SchedulePage,
+  LibraryPage,
+  FinancePage,
+  MessagesPage,
+  ReportsPage,
+  NotesPage,
+};
 
 /**
  * Single Canonical Route Registry interface.

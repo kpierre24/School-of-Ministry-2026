@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { LazyHomeTab } from '../components/tabs';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
 export interface DashboardPageProps {
   onNavigate: (tab: any) => void;
@@ -38,7 +39,7 @@ export interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xs text-slate-400">Loading...</div>}>
+    <Suspense fallback={<DashboardSkeleton label="Loading Dashboard Overview..." />}>
       <ErrorBoundary label="Dashboard Tab">
         <LazyHomeTab {...(props as any)} />
       </ErrorBoundary>

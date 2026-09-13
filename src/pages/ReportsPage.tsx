@@ -1,6 +1,7 @@
-import React from 'react';
-import { ReportsTab } from '../components/ReportsTab';
+import React, { Suspense } from 'react';
+import { LazyReportsTab } from '../components/tabs';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
 export interface ReportsPageProps {
   students: any[];
@@ -15,18 +16,20 @@ export interface ReportsPageProps {
 
 export const ReportsPage: React.FC<ReportsPageProps> = (props) => {
   return (
-    <ErrorBoundary label="Reports Tab">
-      <ReportsTab
-        students={props.students}
-        attendanceRecords={props.attendanceRecords}
-        payments={props.payments}
-        courses={props.courses}
-        assignments={props.assignments}
-        submissions={props.submissions}
-        currentUserRole={props.currentUserRole}
-        onRefreshData={props.onRefreshData}
-      />
-    </ErrorBoundary>
+    <Suspense fallback={<DashboardSkeleton label="Loading Academic Summary Charts & Cohort Progress Reports..." />}>
+      <ErrorBoundary label="Reports Tab">
+        <LazyReportsTab
+          students={props.students}
+          attendanceRecords={props.attendanceRecords}
+          payments={props.payments}
+          courses={props.courses}
+          assignments={props.assignments}
+          submissions={props.submissions}
+          currentUserRole={props.currentUserRole}
+          onRefreshData={props.onRefreshData}
+        />
+      </ErrorBoundary>
+    </Suspense>
   );
 };
 
