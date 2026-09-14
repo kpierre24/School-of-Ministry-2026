@@ -46,6 +46,7 @@ import {
   TabType 
 } from '../../types';
 import { AppUser } from '../../lib/userAuth';
+import { RoleActionHero, ActionTask } from './RoleActionHero';
 
 interface FinanceDashboardViewProps {
   payments: PaymentRecord[];
@@ -148,10 +149,60 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
     }, 3000);
   };
 
+  // Immediate Next Action Tasks for Finance Officer
+  const financeName = appUser?.name || 'Bursar / Finance Officer';
+  const unpaidCount = metrics.unpaidList?.length || 0;
+  const financeTasks: ActionTask[] = useMemo(() => {
+    const list: ActionTask[] = [];
+
+    if (unpaidCount > 0) {
+      list.push({
+        id: 'fin-uncollected-balance',
+        title: `Collect Outstanding Tuition ($${metrics.outstandingBalance.toLocaleString()} USD)`,
+        subtitle: `${unpaidCount} students currently have pending tuition balances. Issue automatic payment reminders or log received receipts.`,
+        urgency: 'high',
+        badge: 'Outstanding Balance',
+        actionText: 'Review Unpaid Accounts',
+        targetTab: 'payments'
+      });
+    }
+
+    list.push({
+      id: 'fin-monthly-reconciliation',
+      title: 'Monthly Financial Audit & Bank Reconciliation',
+      subtitle: `Total collected to date: $${metrics.totalCollected.toLocaleString()} USD (${metrics.collectionRate}% collection rate). Audit current ledger balances.`,
+      urgency: 'medium',
+      badge: 'Bursar Audit',
+      actionText: 'Open Ledger Statements',
+      targetTab: 'payments'
+    });
+
+    list.push({
+      id: 'fin-reports-export',
+      title: 'Export Financial Ledger Statements for Board Review',
+      subtitle: 'Download complete tuition collection logs and payment receipts as CSV/PDF report.',
+      urgency: 'normal',
+      badge: 'Financial Reporting',
+      actionText: 'Export Financial Reports',
+      targetTab: 'reports'
+    });
+
+    return list;
+  }, [metrics]);
+
   return (
     <div className="space-y-6" id="finance-dashboard">
       
-      {/* ─── Top Banner ────────────────────────────────────────── */}
+      {/* ─── Immediate Next Action Hero Banner ─── */}
+      <RoleActionHero
+        roleTitle="Financial Operations Portal"
+        roleBadge="Bursar / Finance Dashboard"
+        userName={financeName}
+        tasks={financeTasks}
+        onNavigate={onNavigate}
+      />
+
+      {/* ─── Top Banner ─── */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#022044] via-[#023264] to-[#041a33] text-white p-5 sm:p-7 shadow-xl border border-[#025798]/40">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
         

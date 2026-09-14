@@ -45,6 +45,7 @@ import {
 } from '../../types';
 import { AppUser } from '../../lib/userAuth';
 import { EnrollmentInquiry } from '../EnrollmentInquiryModal';
+import { RoleActionHero, ActionTask } from './RoleActionHero';
 
 interface AdministratorDashboardViewProps {
   students: StudentSummary[];
@@ -224,10 +225,61 @@ export const AdministratorDashboardView: React.FC<AdministratorDashboardViewProp
     }, 3000);
   };
 
+  // Immediate Next Action Tasks for Administrator
+  const adminName = appUser?.name || 'School Administrator';
+  const adminTasks: ActionTask[] = useMemo(() => {
+    const list: ActionTask[] = [];
+
+    if (atRiskStudents.length > 0) {
+      list.push({
+        id: 'admin-at-risk-alert',
+        title: `Review At-Risk Students (${atRiskStudents.length} Flagged Below ${atRiskThreshold}%)`,
+        subtitle: `${criticalAtRisk.length} students critical (<= 50%). Send attendance alerts or issue counseling overrides.`,
+        urgency: 'high',
+        badge: 'At-Risk Warning System',
+        actionText: 'Manage At-Risk Roster',
+        targetTab: 'attendance'
+      });
+    }
+
+    if (financialMetrics.unpaidCount > 0) {
+      list.push({
+        id: 'admin-uncollected-tuition',
+        title: `Uncollected Tuition Balance ($${financialMetrics.outstandingBalance.toLocaleString()} USD)`,
+        subtitle: `${financialMetrics.unpaidCount} student payment records require invoice follow-up or payment posting.`,
+        urgency: 'medium',
+        badge: 'Financial Audit',
+        actionText: 'Audit Tuition Records',
+        targetTab: 'payments'
+      });
+    }
+
+    list.push({
+      id: 'admin-reports',
+      title: 'Generate Registrar Academic Transcripts & Reports',
+      subtitle: 'Compile cohort attendance averages, honors lists, and export official CSV/PDF records.',
+      urgency: 'normal',
+      badge: 'Academic Records',
+      actionText: 'Open Reports Center',
+      targetTab: 'reports'
+    });
+
+    return list;
+  }, [atRiskStudents.length, atRiskThreshold, criticalAtRisk.length, financialMetrics]);
+
   return (
     <div className="space-y-6" id="administrator-dashboard">
       
-      {/* ─── Top Banner & Command Summary ────────────────────────── */}
+      {/* ─── Immediate Next Action Hero Banner ─── */}
+      <RoleActionHero
+        roleTitle="Executive Administration Portal"
+        roleBadge="Administrator Command Center"
+        userName={adminName}
+        tasks={adminTasks}
+        onNavigate={onNavigate}
+      />
+
+      {/* ─── Top Banner & Command Summary ─── */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#022044] via-[#023264] to-[#041a33] text-white p-5 sm:p-7 shadow-xl border border-[#025798]/40">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-[#b38f53]/15 blur-3xl pointer-events-none" />
         

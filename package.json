@@ -19,9 +19,12 @@
     "test:watch": "vitest",
     "docker:build": "docker build -t hteim-school-of-ministry .",
     "docker:run": "docker run -d -p 3000:3000 --name hteim-school-of-ministry hteim-school-of-ministry",
-    "docker:compose": "docker compose up --build -d"
+    "docker:compose": "docker compose up --build -d",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@google/genai": "^2.4.0",

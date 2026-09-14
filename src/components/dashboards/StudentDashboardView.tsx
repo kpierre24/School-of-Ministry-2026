@@ -33,6 +33,7 @@ import {
 } from '../../types';
 import { AppUser } from '../../lib/userAuth';
 import { isDemoAssignment } from '../../data/guards';
+import { RoleActionHero, ActionTask } from './RoleActionHero';
 
 interface StudentDashboardViewProps {
   appUser: AppUser | null;
@@ -180,12 +181,75 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
     }
   ];
 
+  // 7. Role Action Tasks for "What do I need to do next?"
+  const studentTasks: ActionTask[] = useMemo(() => {
+    const list: ActionTask[] = [];
+
+    if (isAtRisk) {
+      list.push({
+        id: 'task-at-risk',
+        title: 'Attendance Warning: Action Needed',
+        subtitle: `Your current attendance rate is ${attendanceRate}%, which is below the required 75% threshold. Please review your class attendance records or contact your Dean.`,
+        urgency: 'high',
+        badge: 'Attendance Alert',
+        actionText: 'Review Attendance Log',
+        targetTab: 'attendance'
+      });
+    }
+
+    if (upcomingAssignments.length > 0) {
+      const nextAss = upcomingAssignments[0];
+      list.push({
+        id: 'task-ass-' + nextAss.id,
+        title: `Complete Assignment: ${nextAss.title}`,
+        subtitle: `Due: ${nextAss.dueDate}. Complete coursework submission or online quiz test to earn full academic credits (${nextAss.points} pts).`,
+        urgency: isAtRisk ? 'medium' : 'high',
+        badge: nextAss.type,
+        actionText: 'Open Assignment Workspace',
+        targetTab: 'exams'
+      });
+    }
+
+    if (outstandingBalance > 0) {
+      list.push({
+        id: 'task-tuition',
+        title: `Tuition Balance Pending ($${outstandingBalance} USD)`,
+        subtitle: `Remaining balance due for current semester. View receipt history or log tuition payment.`,
+        urgency: 'medium',
+        badge: 'Finance',
+        actionText: 'Pay Tuition Balance',
+        targetTab: 'payments'
+      });
+    }
+
+    // Default fallback task if everything is complete
+    list.push({
+      id: 'task-live-class',
+      title: 'Upcoming Ministry Lecture: Apostolic Governance',
+      subtitle: 'Join Apostle Gillian Selkridge live on Zoom for Module 4 Session 2. Download lesson handouts in the Digital Library.',
+      urgency: 'normal',
+      badge: 'Live Broadcast',
+      actionText: 'Launch Live Lecture',
+      targetTab: 'library'
+    });
+
+    return list;
+  }, [isAtRisk, attendanceRate, upcomingAssignments, outstandingBalance]);
+
   return (
     <div className="space-y-6" id="student-dashboard">
       
-      {/* ─── Top Banner ────────────────────────────────────────── */}
+      {/* ─── Immediate Next Action Hero Banner ─── */}
+      <RoleActionHero
+        roleTitle="Student Ministerial Portal"
+        roleBadge="Student Dashboard"
+        userName={studentName}
+        tasks={studentTasks}
+        onNavigate={onNavigate}
+      />
+
+      {/* ─── Top Banner ─── */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#022044] via-[#023264] to-[#041a33] text-white p-5 sm:p-7 shadow-xl border border-[#025798]/40">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-amber-400/15 blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">

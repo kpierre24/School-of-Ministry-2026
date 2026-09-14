@@ -124,6 +124,7 @@ import { NotificationCenter } from '../components/NotificationCenter';
 import { generateAutomatedNotifications, filterNotificationsForUser } from '../lib/notifications';
 import { CentralNotificationService } from '../services/notification/CentralNotificationService';
 import { LoginModal } from '../components/LoginModal';
+import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { UserManagementModal } from '../components/UserManagementModal';
 import { SettingsModal, ThemeMode } from '../components/SettingsModal';
 import { CohortManagementModal } from '../components/CohortManagementModal';
@@ -602,7 +603,38 @@ export function AppRouter() {
   });
 
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState<boolean>(false);
+  const [resetTargetEmail, setResetTargetEmail] = useState<string>('');
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
+
+  // Listen for password recovery email deep links and Supabase recovery events
+  useEffect(() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset=true')) {
+      setShowResetPasswordModal(true);
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user?.email) {
+          setResetTargetEmail(data.user.email);
+        }
+      }).catch(() => {});
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowResetPasswordModal(true);
+        if (session?.user?.email) {
+          setResetTargetEmail(session.user.email);
+        }
+      }
+    });
+
+    return () => {
+      if (authListener?.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, []);
   const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
   const [showUserManagementModal, setShowUserManagementModal] = useState<boolean>(false);
@@ -4788,6 +4820,32 @@ export function AppRouter() {
           onChangePassword={handleChangeUserPassword}
           onSyncCredentials={(syncedCreds) => {
             setUserCredentials(syncedCreds);
+          }}
+          onOpenResetModal={(email) => {
+            setResetTargetEmail(email);
+            setShowLoginModal(false);
+            setShowResetPasswordModal(true);
+          }}
+        />
+      )}
+
+      {/* Comprehensive Password Reset & Recovery Center Modal */}
+      {showResetPasswordModal && (
+        <ResetPasswordModal
+          isOpen={showResetPasswordModal}
+          onClose={() => setShowResetPasswordModal(false)}
+          targetUserEmail={resetTargetEmail}
+          userCredentials={userCredentials}
+          onBackToLogin={() => {
+            setShowResetPasswordModal(false);
+            setShowLoginModal(true);
+          }}
+          onResetComplete={(authenticatedUser) => {
+            setAppUser(authenticatedUser);
+            setShowResetPasswordModal(false);
+            setShowLoginModal(false);
+            setSyncedBannerMessage(`🔐 Password Updated! Welcome back, ${authenticatedUser.name}`);
+            setTimeout(() => setSyncedBannerMessage(''), 5000);
           }}
         />
       )}

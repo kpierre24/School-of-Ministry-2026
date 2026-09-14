@@ -221,7 +221,7 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Install App</span>
+                    <span>Install App (PWA Direct)</span>
                   </button>
 
                   <button
@@ -232,6 +232,32 @@ export const MobileDownloadCenterModal: React.FC<MobileDownloadCenterModalProps>
                     {copiedLink ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
                     <span>{copiedLink ? 'Link Copied!' : 'Copy Portal Link'}</span>
                   </button>
+                </div>
+
+                {/* Native Android Packaging (AAB / APK) Box */}
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4 text-sky-500" />
+                      Native Android Packaging (Capacitor AAB / APK)
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                      Capacitor v7 Ready
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    To build a native Android APK or Google Play Store bundle (AAB) for physical devices:
+                  </p>
+
+                  <div className="bg-slate-900 text-slate-100 p-3 rounded-xl font-mono text-[11px] space-y-1.5 overflow-x-auto border border-slate-800">
+                    <div className="text-emerald-400"># 1. Sync assets into native Android project</div>
+                    <div>npm run build && npx cap sync android</div>
+                    <div className="text-amber-400 pt-1"># 2. Open in Android Studio or compile APK with Gradle</div>
+                    <div>cd android && ./gradlew assembleDebug</div>
+                    <div className="text-sky-400 pt-1"># 3. APK location:</div>
+                    <div className="text-slate-400">android/app/build/outputs/apk/debug/app-debug.apk</div>
+                  </div>
                 </div>
               </div>
             </div>

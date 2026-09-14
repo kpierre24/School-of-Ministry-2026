@@ -334,3 +334,56 @@ export async function updatePasswordInSupabase(
     updatedCredentials
   };
 }
+
+/**
+ * Requests a password reset for an account email across Supabase Auth and portal credentials.
+ */
+export async function requestPasswordResetForEmail(
+  emailOrUsername: string,
+  userCredentialsList: UserCredential[] = []
+): Promise<{ success: boolean; message: string; userRole?: UserRole }> {
+  const cleanId = (emailOrUsername || '').trim().toLowerCase();
+  if (!cleanId) {
+    return { success: false, message: 'Please provide a valid account email address or username.' };
+  }
+
+  // Look for matching user in credentials registry
+  const match = userCredentialsList.find(c => 
+    c.email.toLowerCase() === cleanId || 
+    (c.username && c.username.toLowerCase() === cleanId)
+  );
+
+  let resetDispatched = false;
+
+  // If email format, trigger Supabase Auth reset
+  if (cleanId.includes('@')) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanId, {
+        redirectTo: `${window.location.origin}?reset=true`,
+      });
+      if (!error) {
+        resetDispatched = true;
+      }
+    } catch (e) {
+      logger.warn('Supabase resetPasswordForEmail warning:', e);
+    }
+  }
+
+  if (match) {
+    return {
+      success: true,
+      userRole: match.role,
+      message: resetDispatched 
+        ? `A password reset link has been sent to ${match.email}. Check your inbox to set your new password.`
+        : `Password recovery verification initiated for ${match.name} (${match.role.toUpperCase()}). Please follow the reset instructions or contact the HTEIM Registrar.`
+    };
+  }
+
+  // Fallback if not directly matched in local array
+  return {
+    success: true,
+    message: cleanId.includes('@') 
+      ? `If an account associated with ${cleanId} exists, a password reset email has been dispatched.`
+      : `Password recovery instructions have been prepared for user account "${cleanId}".`
+  };
+}

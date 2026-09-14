@@ -30,6 +30,7 @@ import {
   FacultyTeacher
 } from '../../types';
 import { AppUser } from '../../lib/userAuth';
+import { RoleActionHero, ActionTask } from './RoleActionHero';
 
 interface LecturerDashboardViewProps {
   appUser: AppUser | null;
@@ -200,10 +201,59 @@ export const LecturerDashboardView: React.FC<LecturerDashboardViewProps> = ({
     setGradedIds(prev => [...prev, subId]);
   };
 
+  // Immediate Next Action Tasks for Lecturer
+  const pendingSubmissionsCount = recentSubmissions.filter(s => s.status === 'pending' && !gradedIds.includes(s.id)).length;
+  const lecturerTasks: ActionTask[] = useMemo(() => {
+    const list: ActionTask[] = [];
+
+    if (pendingSubmissionsCount > 0) {
+      list.push({
+        id: 'lecturer-grade-pending',
+        title: `Grade Pending Submissions (${pendingSubmissionsCount} Submissions)`,
+        subtitle: `Students have submitted coursework for Module 1 & 2. Review submissions and record grades/feedback.`,
+        urgency: 'high',
+        badge: 'Grading Action',
+        actionText: 'Grade Submissions Now',
+        targetTab: 'exams'
+      });
+    }
+
+    list.push({
+      id: 'lecturer-attendance',
+      title: 'Record Live Session Class Attendance',
+      subtitle: `Verify student check-in logs for recent class session. Ensure students below 75% attendance are identified.`,
+      urgency: 'medium',
+      badge: 'Attendance Roster',
+      actionText: 'Open Attendance Register',
+      targetTab: 'attendance'
+    });
+
+    list.push({
+      id: 'lecturer-coursework',
+      title: 'Publish Next Module Quiz / Essay Prompt',
+      subtitle: 'Prepare coursework materials for upcoming Module 4: Apostolic Ministry & Five-Fold Order.',
+      urgency: 'normal',
+      badge: 'Course Creation',
+      actionText: 'Create Quiz / Assignment',
+      targetTab: 'exams'
+    });
+
+    return list;
+  }, [pendingSubmissionsCount]);
+
   return (
     <div className="space-y-6" id="lecturer-dashboard">
       
-      {/* ─── Top Banner ────────────────────────────────────────── */}
+      {/* ─── Immediate Next Action Hero Banner ─── */}
+      <RoleActionHero
+        roleTitle="Faculty Ministerial Portal"
+        roleBadge="Lecturer / Instructor Dashboard"
+        userName={lecturerName}
+        tasks={lecturerTasks}
+        onNavigate={onNavigate}
+      />
+
+      {/* ─── Top Banner ─── */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#022044] via-[#023264] to-[#041a33] text-white p-5 sm:p-7 shadow-xl border border-[#025798]/40">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-amber-400/15 blur-3xl pointer-events-none" />
         

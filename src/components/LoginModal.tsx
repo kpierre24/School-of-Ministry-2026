@@ -23,6 +23,7 @@ import { updatePasswordInSupabase } from '../lib/supabaseAuth';
 import { classifyError, handleError } from '../lib/errorHandler';
 import { authenticateWithBiometrics, isBiometricAvailable, getEnrolledBiometricProfiles } from '../lib/biometricAuth';
 import { triggerHapticFeedback } from '../lib/capacitorBridge';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 interface LoginModalProps {
   isOpen?: boolean;
@@ -33,6 +34,7 @@ interface LoginModalProps {
   onChangePassword?: (emailOrUsername: string | AppUser, newPassword: string) => void;
   currentUser?: AppUser | null;
   onSyncCredentials?: (creds: UserCredential[]) => void;
+  onOpenResetModal?: (email: string) => void;
 }
 
 // Welcoming Scripture Verse Database
@@ -77,7 +79,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   userCredentials = [],
   onChangePassword,
   currentUser = null,
-  onSyncCredentials
+  onSyncCredentials,
+  onOpenResetModal
 }) => {
   const [activeTab, setActiveTab] = useState<UserRole>('student');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -89,6 +92,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isBiometricBusy, setIsBiometricBusy] = useState(false);
   const [hasBiometrics, setHasBiometrics] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   React.useEffect(() => {
     isBiometricAvailable().then((avail) => {
@@ -512,7 +516,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div className="space-y-1">
               <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider flex justify-between">
                 <span>Password</span>
-                <span className="text-slate-400 font-mono text-[10px]">Default: password1</span>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold hover:underline cursor-pointer lowercase normal-case tracking-normal"
+                >
+                  Forgot password?
+                </button>
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -644,6 +654,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">Academic Portal</span>
         </div>
       </div>
+
+      {/* Forgot Password Component for All Users */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onBackToLogin={() => setShowForgotPassword(false)}
+        userCredentials={userCredentials}
+        onOpenResetModal={(email) => {
+          setShowForgotPassword(false);
+          if (onOpenResetModal) {
+            onOpenResetModal(email);
+          }
+        }}
+        onPasswordResetSuccess={(email) => {
+          setEmailInput(email);
+        }}
+      />
     </div>
   );
 };
