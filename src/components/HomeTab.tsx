@@ -127,6 +127,7 @@ interface HomeTabProps {
   onTakeQuiz?: (quiz: QuizAssignment) => void;
   facultyTeachers?: FacultyTeacher[];
   onSaveFacultyTeachers?: (newList: FacultyTeacher[]) => void;
+  onOpenSystemHealth?: () => void;
 }
 
 export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
@@ -213,7 +214,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   submissions = [],
   onTakeQuiz,
   facultyTeachers: facultyTeachersProp,
-  onSaveFacultyTeachers
+  onSaveFacultyTeachers,
+  onOpenSystemHealth
 }) => {
   const isStudent = appUser?.role === 'student';
   const isAdminOrTeacher = appUser?.role === 'admin' || appUser?.role === 'teacher';
@@ -515,6 +517,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           lastSyncedTime={lastSyncedTime}
           onPushToCloud={onPushToCloud}
           appUser={appUser}
+          onOpenSystemHealth={onOpenSystemHealth}
         />
       )}
 

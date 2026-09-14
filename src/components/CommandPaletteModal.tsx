@@ -152,16 +152,28 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   }
 
   if (appUser?.role === 'admin') {
-    allItems.push({
-      id: 'action-admin-tools',
-      category: 'Actions & Views',
-      title: 'Admin Audit Trail & Database Backup Suite',
-      subtitle: 'Inspect system logs, security audit history & JSON backups',
-      icon: <ShieldCheck className="w-4 h-4 text-amber-500" />,
-      badge: 'Security',
-      badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
-      action: () => { onOpenAdminTools(); onClose(); }
-    });
+    allItems.push(
+      {
+        id: 'action-system-health',
+        category: 'Actions & Views',
+        title: 'System Health & Readiness Center',
+        subtitle: 'Telemetry, subsystem readiness score, database persistence & security posture',
+        icon: <ShieldCheck className="w-4 h-4 text-emerald-500" />,
+        badge: 'Health',
+        badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+        action: () => { onOpenAdminTools(); onClose(); }
+      },
+      {
+        id: 'action-admin-tools',
+        category: 'Actions & Views',
+        title: 'Admin Audit Trail & Database Backup Suite',
+        subtitle: 'Inspect system logs, security audit history & JSON backups',
+        icon: <ShieldCheck className="w-4 h-4 text-amber-500" />,
+        badge: 'Security',
+        badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
+        action: () => { onOpenAdminTools(); onClose(); }
+      }
+    );
   }
 
   allItems.push(

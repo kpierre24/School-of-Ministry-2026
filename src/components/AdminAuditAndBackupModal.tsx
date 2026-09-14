@@ -28,8 +28,10 @@ import {
   ShieldAlert,
   Sliders,
   Check,
-  Lock
+  Lock,
+  Activity
 } from 'lucide-react';
+import { SystemHealthCenter } from './SystemHealthCenter';
 import { 
   getAuditLogs, 
   clearAuditLogs, 
@@ -63,7 +65,7 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
   userCredentials = [],
   onResetPassword
 }) => {
-  const [activeTab, setActiveTab] = useState<'audit' | 'backup' | 'operations' | 'credentials'>('audit');
+  const [activeTab, setActiveTab] = useState<'health' | 'audit' | 'backup' | 'operations' | 'credentials'>('health');
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -395,7 +397,19 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
 
         {/* Tab Switcher */}
         <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/80 p-2 border-b border-slate-200 dark:border-slate-700/80 px-5 flex-shrink-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setActiveTab('health')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                activeTab === 'health'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-slate-200 dark:border-slate-700'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-emerald-500" />
+              <span>System Health & Readiness</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('audit')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
@@ -456,6 +470,16 @@ export const AdminAuditAndBackupModal: React.FC<AdminAuditAndBackupModalProps> =
 
         {/* Modal Content Body */}
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-white dark:bg-slate-900">
+          
+          {/* TAB 0: SYSTEM HEALTH & READINESS */}
+          {activeTab === 'health' && (
+            <div className="animate-fadeIn">
+              <SystemHealthCenter 
+                onOpenAuditLogs={() => setActiveTab('audit')}
+                onOpenBackups={() => setActiveTab('backup')}
+              />
+            </div>
+          )}
           
           {/* TAB 1: AUDIT TRAIL & ACTIVITY LOGS */}
           {activeTab === 'audit' && (

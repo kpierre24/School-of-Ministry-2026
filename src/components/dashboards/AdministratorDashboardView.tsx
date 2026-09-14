@@ -33,7 +33,8 @@ import {
   Layers,
   Send,
   UserX,
-  ExternalLink
+  ExternalLink,
+  Activity
 } from 'lucide-react';
 import { 
   StudentSummary, 
@@ -60,6 +61,7 @@ interface AdministratorDashboardViewProps {
   lastSyncedTime?: string | null;
   onPushToCloud?: () => Promise<void>;
   appUser: AppUser | null;
+  onOpenSystemHealth?: () => void;
 }
 
 export const AdministratorDashboardView: React.FC<AdministratorDashboardViewProps> = ({
@@ -74,7 +76,8 @@ export const AdministratorDashboardView: React.FC<AdministratorDashboardViewProp
   isCloudSyncing = false,
   lastSyncedTime = null,
   onPushToCloud,
-  appUser
+  appUser,
+  onOpenSystemHealth
 }) => {
   // State for search and filters
   const [atRiskSearch, setAtRiskSearch] = useState('');
@@ -321,6 +324,18 @@ export const AdministratorDashboardView: React.FC<AdministratorDashboardViewProp
               <Users className="w-3.5 h-3.5 text-amber-300" />
               <span>Student Roster ({totalStudents})</span>
             </button>
+
+            {onOpenSystemHealth && (
+              <button
+                type="button"
+                onClick={onOpenSystemHealth}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs transition-all border border-emerald-400/30 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                title="Open System Health & Readiness Center"
+              >
+                <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                <span>System Health</span>
+              </button>
+            )}
 
             {onPushToCloud && (
               <button
