@@ -90,13 +90,12 @@ export async function isBiometricAvailable(): Promise<boolean> {
  * Checks if a specific user has enrolled biometric credentials on this device
  */
 export function isBiometricEnrolledForUser(emailOrUsername?: string | null): boolean {
-  if (typeof localStorage === 'undefined' || !emailOrUsername || typeof emailOrUsername !== 'string') return false;
+  if (!emailOrUsername || typeof emailOrUsername !== 'string') return false;
   try {
-    const raw = localStorage.getItem(BIOMETRIC_PREFERENCES_KEY);
-    if (!raw) return false;
-    const enrolledUsers: string[] = JSON.parse(raw);
     const clean = emailOrUsername.toLowerCase().trim();
-    return Array.isArray(enrolledUsers) && enrolledUsers.some((e) => typeof e === 'string' && e.toLowerCase().trim() === clean);
+    if (!clean) return false;
+    const profiles = getEnrolledBiometricProfiles();
+    return profiles.some((p) => p && typeof p.email === 'string' && p.email.toLowerCase().trim() === clean);
   } catch {
     return false;
   }
@@ -262,12 +261,18 @@ export async function authenticateWithBiometrics(
 
     const cleanInputEmail = (email || '').toLowerCase().trim();
 
+    // STRICT MATCHING: If email is provided, must match that user's enrolled profile on THIS device
     const targetProfile = cleanInputEmail
-      ? profiles.find((p) => (p?.email || '').toLowerCase().trim() === cleanInputEmail) || profiles[profiles.length - 1]
+      ? profiles.find((p) => (p?.email || '').toLowerCase().trim() === cleanInputEmail)
       : profiles[profiles.length - 1];
 
     if (!targetProfile || !targetProfile.email) {
-      return { success: false, error: `No biometric credentials found for ${email || 'this device'}.` };
+      return { 
+        success: false, 
+        error: cleanInputEmail 
+          ? `No biometric credentials found for ${cleanInputEmail} on this device.` 
+          : 'No biometric credentials found on this device.' 
+      };
     }
 
     const available = await isBiometricAvailable();
@@ -300,12 +305,24 @@ export async function authenticateWithBiometrics(
           },
         };
 
-        await navigator.credentials.get(getOptions);
+        const credential = await navigator.credentials.get(getOptions);
+        if (!credential) {
+          return { success: false, error: 'Biometric verification failed on device.' };
+        }
       } catch (authErr: any) {
         if (authErr.name === 'NotAllowedError') {
           return { success: false, error: 'Biometric verification cancelled or timed out.' };
         }
-        // If webauthn gets a non-fatal hardware/sandbox error, verify with saved enrollment profile
+        if (authErr.name === 'InvalidStateError' || authErr.name === 'NotFoundError') {
+          return { 
+            success: false, 
+            error: 'Biometric credential changed or invalidated on device. Please log in with your password to re-enroll.' 
+          };
+        }
+        return { 
+          success: false, 
+          error: authErr.message || 'Biometric hardware verification failed. Please authenticate with password.' 
+        };
       }
     }
 

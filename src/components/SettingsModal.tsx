@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { migrateLocalStorageProfilePicturesToSupabase } from '../lib/supabaseClient';
 import { NotificationPreferencesModal } from './NotificationPreferencesModal';
-import { registerBiometricCredential, isBiometricAvailable, getEnrolledBiometricProfiles } from '../lib/biometricAuth';
+import { registerBiometricCredential, isBiometricAvailable, getEnrolledBiometricProfiles, removeBiometricCredential, isBiometricEnrolledForUser } from '../lib/biometricAuth';
 import { triggerHapticFeedback } from '../lib/capacitorBridge';
 
 export type ThemeMode = 'light' | 'dark' | 'system' | 'high-contrast';
@@ -139,6 +139,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } finally {
       setIsEnrollingBiometrics(false);
     }
+  };
+
+  const handleUnlinkBiometrics = () => {
+    triggerHapticFeedback('medium');
+    let activeEmail = 'user@hteim.edu';
+    try {
+      const storedUser = localStorage.getItem('hteim_current_user') || localStorage.getItem('hteim_last_auth_user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed?.email) activeEmail = String(parsed.email).trim();
+      }
+    } catch {}
+
+    removeBiometricCredential(activeEmail);
+    setBiometricEnrollStatus('Biometrics unlinked for this user on this device.');
   };
 
   const [instAddressError, setInstAddressError] = useState<string | null>(null);
@@ -515,19 +530,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
 
                     {biometricEnrollStatus ? (
-                      <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                        {biometricEnrollStatus}
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                          {biometricEnrollStatus}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleUnlinkBiometrics}
+                          className="w-full py-1 px-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                        >
+                          Unlink Biometrics from Device
+                        </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleEnrollBiometrics}
-                        disabled={isEnrollingBiometrics}
-                        className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors disabled:opacity-60"
-                      >
-                        <Fingerprint className="w-3.5 h-3.5" />
-                        {isEnrollingBiometrics ? 'Enrolling...' : 'Link Fingerprint / Face ID'}
-                      </button>
+                      <div className="space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={handleEnrollBiometrics}
+                          disabled={isEnrollingBiometrics}
+                          className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors disabled:opacity-60"
+                        >
+                          <Fingerprint className="w-3.5 h-3.5" />
+                          {isEnrollingBiometrics ? 'Enrolling...' : 'Link Fingerprint / Face ID'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUnlinkBiometrics}
+                          className="w-full py-1 px-2 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-bold text-[10px] flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                        >
+                          Remove Existing Device Biometrics
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
