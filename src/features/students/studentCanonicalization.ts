@@ -342,19 +342,19 @@ export const parseScorePercentage = (scoreStr?: any): number | null => {
     const num = parseFloat(parts[0]);
     const den = parseFloat(parts[1]);
     if (!isNaN(num) && !isNaN(den) && den > 0) {
-      return (num / den) * 100;
+      return Math.round((num / den) * 100);
     }
   }
 
   if (str.includes('%')) {
     const num = parseFloat(str.replace('%', ''));
-    if (!isNaN(num)) return num;
+    if (!isNaN(num)) return Math.round(num);
   }
 
   const num = parseFloat(str);
   if (!isNaN(num)) {
-    if (num <= 10) return num * 10;
-    if (num <= 100) return num;
+    if (num <= 10) return Math.round(num * 10);
+    if (num <= 100) return Math.round(num);
   }
 
   return null;

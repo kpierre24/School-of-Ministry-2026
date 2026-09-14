@@ -275,3 +275,38 @@ export function clearFailedLoginAttempts(identifier: string): void {
     localStorage.setItem(FAILED_ATTEMPTS_KEY, JSON.stringify(records));
   } catch {}
 }
+
+/**
+ * Formats any grade, exam, or quiz score to the nearest whole number percentage.
+ * Converts values like 30.489999999976 or "30.489999999976%" to "30%".
+ * Handles null, undefined, strings, and numbers safely.
+ */
+export function formatGradePercentage(value: number | string | null | undefined, fallback: string = 'N/A'): string {
+  if (value === null || value === undefined || value === '') return fallback;
+  
+  if (typeof value === 'number') {
+    if (isNaN(value)) return fallback;
+    return `${Math.round(value)}%`;
+  }
+
+  const str = String(value).trim();
+  if (!str || str === '—' || str.toLowerCase() === 'n/a') return fallback;
+
+  // If format is like "28/35"
+  if (str.includes('/')) {
+    const parts = str.split('/');
+    const num = parseFloat(parts[0]);
+    const den = parseFloat(parts[1]);
+    if (!isNaN(num) && !isNaN(den) && den > 0) {
+      return `${Math.round((num / den) * 100)}%`;
+    }
+  }
+
+  // Strip '%' and parse
+  const cleanNum = parseFloat(str.replace('%', '').trim());
+  if (isNaN(cleanNum)) {
+    return str; // return original if non-numeric string like "A" or "Pass"
+  }
+
+  return `${Math.round(cleanNum)}%`;
+}

@@ -42,9 +42,10 @@ export const GradeDetails: React.FC<GradeDetailsProps> = ({
 
   const currentStage = normalizeGradeStage(grade.status);
   const nextStages = getNextLifecycleStages(currentStage);
-  const percentage =
+  const rawPercentage =
     grade.percentage ??
-    (grade.maxPoints > 0 ? Math.round((grade.score / grade.maxPoints) * 100) : 0);
+    (grade.maxPoints > 0 ? (grade.score / grade.maxPoints) * 100 : 0);
+  const percentage = Math.round(rawPercentage);
   const classification = calculateGradeCategory(percentage);
 
   const handleTriggerTransition = async (targetStage: CanonicalGradeStage) => {

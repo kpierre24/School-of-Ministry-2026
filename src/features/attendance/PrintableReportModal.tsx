@@ -250,12 +250,12 @@ export function PrintableReportModal({
           <div className="grid grid-cols-3 gap-4">
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Avg Attendance Rate</p>
-              <p className="text-2xl font-mono font-bold text-emerald-600 mt-1">{reportAvgRate.toFixed(1)}%</p>
+              <p className="text-2xl font-mono font-bold text-emerald-600 mt-1">{Math.round(reportAvgRate)}%</p>
             </div>
             {reportAvgScore !== null && (
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Avg Evaluation Score</p>
-                <p className="text-2xl font-mono font-bold text-amber-600 mt-1">{reportAvgScore.toFixed(1)}%</p>
+                <p className="text-2xl font-mono font-bold text-amber-600 mt-1">{Math.round(reportAvgScore)}%</p>
               </div>
             )}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">

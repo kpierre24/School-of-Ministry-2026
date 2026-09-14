@@ -319,7 +319,7 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
               <span className={`text-2xl sm:text-3xl font-black font-tabular ${
                 isHonorRoll ? 'text-amber-600 dark:text-amber-400' : isAtRisk ? 'text-rose-600' : 'text-slate-900 dark:text-white'
               }`}>
-                {attendanceRate.toFixed(1)}%
+                {Math.round(attendanceRate)}%
               </span>
               <span className={`text-xs font-bold ${isHonorRoll ? 'text-amber-600 dark:text-amber-400' : isAtRisk ? 'text-rose-600' : 'text-emerald-600'}`}>
                 {isHonorRoll ? 'Honor Distinction' : isAtRisk ? 'Below Standard' : 'Satisfactory'}
@@ -351,7 +351,7 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-tabular">
-                {avgGrade.toFixed(1)}%
+                {Math.round(avgGrade)}%
               </span>
               <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
                 Avg Score

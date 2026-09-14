@@ -164,8 +164,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
             const balance = pmt ? Math.max(0, pmt.totalTuition - pmt.amountPaid) : 0;
 
             const risks: string[] = [];
-            if (attRate < 75) risks.push(`Low Attendance (${attRate.toFixed(1)}%)`);
-            if (avgScore < 75) risks.push(`Low Grades (${avgScore.toFixed(1)}%)`);
+            if (attRate < 75) risks.push(`Low Attendance (${Math.round(attRate)}%)`);
+            if (avgScore < 75) risks.push(`Low Grades (${Math.round(avgScore)}%)`);
             if (balance > 0) risks.push(`Tuition Due ($${balance.toFixed(2)})`);
 
             if (risks.length === 0) return null;
@@ -178,8 +178,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
             return {
               name: st.name,
               level: levelObj ? levelObj.badge : st.levelId || 'Level 1',
-              attendanceRate: `${attRate.toFixed(1)}%`,
-              academicAvg: `${avgScore.toFixed(1)}%`,
+              attendanceRate: `${Math.round(attRate)}%`,
+              academicAvg: `${Math.round(avgScore)}%`,
               balance: `$${balance.toFixed(2)}`,
               riskFactors: risks.join('; '),
               riskLevel
@@ -248,7 +248,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
             level: levelObj ? levelObj.badge : st.levelId || 'Level 1',
             present: st.attended ?? 0,
             total: st.totalDays ?? 0,
-            rate: `${rate.toFixed(1)}%`,
+            rate: `${Math.round(rate)}%`,
             status
           };
         });
@@ -291,7 +291,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
           return {
             name: st.name,
             level: levelObj ? levelObj.badge : st.levelId || 'Level 1',
-            avgScore: `${score.toFixed(1)}%`,
+            avgScore: `${Math.round(score)}%`,
             grade,
             gradedCount: stSubmissions.length,
             honorRoll
@@ -302,7 +302,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
 
         const summaryMetrics: ReportSummaryMetric[] = [
           { label: 'Honor Roll Students (>=85%)', value: honorRollCount },
-          { label: 'Class Score Average', value: rows.length > 0 ? `${(rows.reduce((acc, r) => acc + parseFloat(r.avgScore), 0) / rows.length).toFixed(1)}%` : 'N/A' }
+          { label: 'Class Score Average', value: rows.length > 0 ? `${Math.round(rows.reduce((acc, r) => acc + parseFloat(r.avgScore), 0) / rows.length)}%` : 'N/A' }
         ];
 
         return { columns, rows, summaryMetrics, title: 'Academic Performance & Grade Distribution Report' };
@@ -388,7 +388,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
           const subForAsg = submissions.filter(s => s.assignmentId === asg.id);
           const pending = subForAsg.filter(s => s.status === 'Submitted' || s.status === 'Pending Review').length;
           const totalSt = students.length || 1;
-          const completionRate = `${((subForAsg.length / totalSt) * 100).toFixed(1)}%`;
+          const completionRate = `${Math.round((subForAsg.length / totalSt) * 100)}%`;
 
           return {
             title: asg.title,
@@ -428,8 +428,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
           return {
             name: st.name,
             level: levelObj ? levelObj.name : st.levelId || 'Level 1: Foundation',
-            attRate: `${att.toFixed(1)}%`,
-            gradeAvg: `${score.toFixed(1)}%`,
+            attRate: `${Math.round(att)}%`,
+            gradeAvg: `${Math.round(score)}%`,
             modules: '2 / 6 Modules',
             progressStatus: isGood ? 'On Track for Graduation' : 'Academic / Attendance Support Needed'
           };

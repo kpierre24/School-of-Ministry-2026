@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { StudentScoreRecord } from '../types';
 import { UserRole } from '../../../lib/userAuth';
+import { formatGradePercentage } from '../../../lib/securityHelper';
 
 interface ExamResultsProps {
   students: StudentScoreRecord[];
@@ -85,7 +86,7 @@ export const ExamResults: React.FC<ExamResultsProps> = ({
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Class Average Score</p>
-            <p className="text-xl font-bold text-slate-900 dark:text-white">{averageScore.toFixed(1)}%</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">{Math.round(averageScore)}%</p>
           </div>
         </div>
 
@@ -201,7 +202,7 @@ export const ExamResults: React.FC<ExamResultsProps> = ({
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`font-bold ${isHonor ? 'text-amber-600 dark:text-amber-400' : isSatisfactory ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                        {s.percentage !== null ? `${s.percentage.toFixed(1)}%` : s.scoreStr || 'N/A'}
+                        {s.percentage !== null ? `${Math.round(s.percentage)}%` : formatGradePercentage(s.scoreStr, 'N/A')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center font-medium">

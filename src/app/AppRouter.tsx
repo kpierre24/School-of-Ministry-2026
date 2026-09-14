@@ -152,6 +152,7 @@ import { BatchEmailModal } from '../features/attendance/BatchEmailModal';
 import { PrintableReportModal } from '../features/attendance/PrintableReportModal';
 import { GuideModal } from '../components/shared/GuideModal';
 import { MobileMoreMenuDrawer } from '../components/layout/MobileMoreMenuDrawer';
+import { formatGradePercentage } from '../lib/securityHelper';
 
 // Subtle Page-Fade transition variants for smooth tab navigation
 const pageFadeVariants = {
@@ -533,19 +534,19 @@ const parseScorePercentage = (scoreStr?: any): number | null => {
     const num = parseFloat(parts[0]);
     const den = parseFloat(parts[1]);
     if (!isNaN(num) && !isNaN(den) && den > 0) {
-      return (num / den) * 100;
+      return Math.round((num / den) * 100);
     }
   }
 
   if (str.includes('%')) {
     const num = parseFloat(str.replace('%', ''));
-    if (!isNaN(num)) return num;
+    if (!isNaN(num)) return Math.round(num);
   }
 
   const num = parseFloat(str);
   if (!isNaN(num)) {
-    if (num <= 10) return num * 10;
-    if (num <= 100) return num;
+    if (num <= 10) return Math.round(num * 10);
+    if (num <= 100) return Math.round(num);
   }
 
   return null;
@@ -4265,7 +4266,7 @@ export function AppRouter() {
             });
             return {
               name: s.name,
-              scoreStr: rawRec?.score || (s.avgScore !== null ? `${Math.round(s.avgScore)}%` : ''),
+              scoreStr: rawRec?.score ? formatGradePercentage(rawRec.score, rawRec.score) : (s.avgScore !== null ? `${Math.round(s.avgScore)}%` : ''),
               percentage: s.avgScore,
               attendedSessions: s.attended,
               totalSessions: s.totalDays,

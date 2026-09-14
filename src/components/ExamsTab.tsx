@@ -64,6 +64,7 @@ import { usePortalRouter } from '../lib/usePortalRouter';
 import { isDemoAssignment } from '../data/guards';
 import { generateUUID } from '../lib/idGenerator';
 import { CURRICULUM_CLASS_DAYS } from '../data';
+import { formatGradePercentage } from '../lib/securityHelper';
 
 type StudentScoreRecord = {
   name: string;
@@ -117,17 +118,17 @@ const parseScorePercentage = (scoreStr?: string): number | null => {
     const num = parseFloat(parts[0]);
     const den = parseFloat(parts[1]);
     if (!isNaN(num) && !isNaN(den) && den > 0) {
-      return (num / den) * 100;
+      return Math.round((num / den) * 100);
     }
   }
 
   if (str.includes('%')) {
     const num = parseFloat(str.replace('%', ''));
-    if (!isNaN(num)) return num;
+    if (!isNaN(num)) return Math.round(num);
   }
 
   const num = parseFloat(str);
-  if (!isNaN(num)) return num;
+  if (!isNaN(num)) return Math.round(num);
 
   return null;
 };
@@ -2423,7 +2424,8 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           </div>
                         </td>
                         {allQuizSheets.map((qs, qIdx) => {
-                          const score = s.attendanceByDay?.[qs]?.score || '—';
+                          const rawScore = s.attendanceByDay?.[qs]?.score;
+                          const score = rawScore ? formatGradePercentage(rawScore, rawScore) : '—';
                           const hasScore = score !== '—';
                           return (
                             <td key={`qs-cell-${qs}-${score}-${qIdx}`} className={`p-3 text-center font-mono font-bold text-slate-800 border-b border-slate-200 transition-all duration-300 ${hasScore ? 'animate-grade-pulse' : ''}`}>

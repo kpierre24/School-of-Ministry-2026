@@ -581,7 +581,7 @@ export const AdministratorDashboardView: React.FC<AdministratorDashboardViewProp
                               ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800' 
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
                           }`}>
-                            {student.rate.toFixed(1)}% Rate
+                            {Math.round(student.rate)}% Rate
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
