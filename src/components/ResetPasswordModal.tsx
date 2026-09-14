@@ -33,6 +33,9 @@ interface ResetPasswordModalProps {
   userCredentials?: UserCredential[];
   onResetComplete?: (user: AppUser, newPassword?: string) => void;
   onBackToLogin?: () => void;
+  /** When true, the user was redirected here via a Supabase password-recovery email link.
+   *  The account selector is hidden — the identity is already confirmed by the active session. */
+  isFromEmailLink?: boolean;
 }
 
 export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
@@ -41,7 +44,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   targetUserEmail,
   userCredentials = [],
   onResetComplete,
-  onBackToLogin
+  onBackToLogin,
+  isFromEmailLink = false,
 }) => {
   const [selectedEmail, setSelectedEmail] = useState<string>(targetUserEmail || '');
   const [searchFilter, setSearchFilter] = useState('');
@@ -358,13 +362,29 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center justify-between">
                   <span>Target User Account</span>
-                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
-                    {userCredentials.length} Registered Users
-                  </span>
+                  {!isFromEmailLink && (
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                      {userCredentials.length} Registered Users
+                    </span>
+                  )}
                 </label>
 
-                {/* If matching user found, show profile card */}
-                {matchedCred ? (
+                {/* If coming from an email recovery link, show read-only identity confirmed card */}
+                {isFromEmailLink ? (
+                  <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                        Identity Verified via Email Link
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                        {selectedEmail || targetUserEmail || 'Verified account'}
+                      </p>
+                    </div>
+                  </div>
+                ) : matchedCred ? (
                   <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-xs">

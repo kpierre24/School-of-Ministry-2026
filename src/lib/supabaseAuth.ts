@@ -341,49 +341,65 @@ export async function updatePasswordInSupabase(
 export async function requestPasswordResetForEmail(
   emailOrUsername: string,
   userCredentialsList: UserCredential[] = []
-): Promise<{ success: boolean; message: string; userRole?: UserRole }> {
+): Promise<{ success: boolean; message: string; userRole?: UserRole; email?: string }> {
   const cleanId = (emailOrUsername || '').trim().toLowerCase();
   if (!cleanId) {
     return { success: false, message: 'Please provide a valid account email address or username.' };
   }
 
-  // Look for matching user in credentials registry
+  // 1. Resolve to matching registered user (supports email or username alias like ABurke)
   const match = userCredentialsList.find(c => 
     c.email.toLowerCase() === cleanId || 
     (c.username && c.username.toLowerCase() === cleanId)
   );
 
-  let resetDispatched = false;
+  const targetEmail = match?.email || (cleanId.includes('@') ? cleanId : null);
 
-  // If email format, trigger Supabase Auth reset
-  if (cleanId.includes('@')) {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanId, {
-        redirectTo: `${window.location.origin}?reset=true`,
-      });
-      if (!error) {
-        resetDispatched = true;
-      }
-    } catch (e) {
-      logger.warn('Supabase resetPasswordForEmail warning:', e);
-    }
-  }
-
-  if (match) {
+  if (!targetEmail) {
     return {
-      success: true,
-      userRole: match.role,
-      message: resetDispatched 
-        ? `A password reset link has been sent to ${match.email}. Check your inbox to set your new password.`
-        : `Password recovery verification initiated for ${match.name} (${match.role.toUpperCase()}). Please follow the reset instructions or contact the HTEIM Registrar.`
+      success: false,
+      message: `Could not identify an email address for username "${emailOrUsername}". Please enter your full registered email address.`
     };
   }
 
-  // Fallback if not directly matched in local array
-  return {
-    success: true,
-    message: cleanId.includes('@') 
-      ? `If an account associated with ${cleanId} exists, a password reset email has been dispatched.`
-      : `Password recovery instructions have been prepared for user account "${cleanId}".`
-  };
+  // 2. Determine redirect URL compatible with Vercel, custom domains, and local dev.
+  //    IMPORTANT: This URL must be whitelisted in Supabase Dashboard →
+  //    Authentication → URL Configuration → Redirect URLs.
+  //    Add: https://your-vercel-app.vercel.app/** (and any custom domains)
+  //    Set VITE_APP_URL in Vercel env vars to your production URL.
+  const appBase =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_APP_URL) ||
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+  // Use /auth/callback so the path is easy to whitelist in Supabase (e.g. https://your-domain.com/**)
+  // Supabase appends its own tokens as a hash fragment; we add type=recovery as a query param
+  // so AppRouter can detect the recovery flow on load.
+  const redirectTo = `${appBase}/auth/callback?type=recovery`;
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      redirectTo
+    });
+
+    if (error) {
+      logger.error('Supabase resetPasswordForEmail error:', error);
+      // Supabase rate-limit or configuration error
+      return {
+        success: false,
+        message: error.message || 'Unable to dispatch recovery email. Please check your address or try again shortly.'
+      };
+    }
+
+    return {
+      success: true,
+      email: targetEmail,
+      userRole: match?.role,
+      message: `A password reset link has been dispatched to ${targetEmail}. Please check your inbox and spam folder, and click the link to set your new password.`
+    };
+  } catch (err: any) {
+    logger.error('Supabase resetPasswordForEmail exception:', err);
+    return {
+      success: false,
+      message: err?.message || 'Network error while requesting password reset. Please try again.'
+    };
+  }
 }

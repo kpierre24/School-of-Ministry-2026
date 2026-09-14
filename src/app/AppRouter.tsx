@@ -596,6 +596,11 @@ export function AppRouter() {
 
   const [showIntro, setShowIntro] = useState<boolean>(() => {
     try {
+      // Suppress intro splash screen when user arrives via a password-recovery email link
+      const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+      const search = typeof window !== 'undefined' ? window.location.search || '' : '';
+      const isRecoveryLink = hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset=true');
+      if (isRecoveryLink) return false;
       return !sessionStorage.getItem('hteim_intro_shown');
     } catch {
       return true;
@@ -605,23 +610,28 @@ export function AppRouter() {
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState<boolean>(false);
   const [resetTargetEmail, setResetTargetEmail] = useState<string>('');
+  // Tracks whether the reset modal was opened from a Supabase recovery email link.
+  // When true, the account selector in ResetPasswordModal is hidden (identity already confirmed).
+  const [isResetFromEmailLink, setIsResetFromEmailLink] = useState<boolean>(false);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
 
-  // Listen for password recovery email deep links and Supabase recovery events
+  // Listen for password recovery email deep links and Supabase PASSWORD_RECOVERY auth events.
+  // We intentionally do NOT call getUser() eagerly here — that caused a double-trigger race
+  // condition. The onAuthStateChange PASSWORD_RECOVERY event provides the session reliably.
   useEffect(() => {
+    // Handle initial page load when URL contains a recovery token (Supabase hash fragment)
     const hash = window.location.hash || '';
     const search = window.location.search || '';
     if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset=true')) {
+      // Show the reset modal immediately — the PASSWORD_RECOVERY event will fire and
+      // populate the email once the Supabase session is established.
+      setIsResetFromEmailLink(true);
       setShowResetPasswordModal(true);
-      supabase.auth.getUser().then(({ data }) => {
-        if (data?.user?.email) {
-          setResetTargetEmail(data.user.email);
-        }
-      }).catch(() => {});
     }
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        setIsResetFromEmailLink(true);
         setShowResetPasswordModal(true);
         if (session?.user?.email) {
           setResetTargetEmail(session.user.email);
@@ -4833,16 +4843,22 @@ export function AppRouter() {
       {showResetPasswordModal && (
         <ResetPasswordModal
           isOpen={showResetPasswordModal}
-          onClose={() => setShowResetPasswordModal(false)}
+          onClose={() => {
+            setShowResetPasswordModal(false);
+            setIsResetFromEmailLink(false);
+          }}
           targetUserEmail={resetTargetEmail}
           userCredentials={userCredentials}
+          isFromEmailLink={isResetFromEmailLink}
           onBackToLogin={() => {
             setShowResetPasswordModal(false);
+            setIsResetFromEmailLink(false);
             setShowLoginModal(true);
           }}
           onResetComplete={(authenticatedUser) => {
             setAppUser(authenticatedUser);
             setShowResetPasswordModal(false);
+            setIsResetFromEmailLink(false);
             setShowLoginModal(false);
             setSyncedBannerMessage(`🔐 Password Updated! Welcome back, ${authenticatedUser.name}`);
             setTimeout(() => setSyncedBannerMessage(''), 5000);

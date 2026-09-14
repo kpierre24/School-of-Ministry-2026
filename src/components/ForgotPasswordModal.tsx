@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LogoImage } from './LogoImage';
 import { 
   KeyRound, 
@@ -11,12 +11,13 @@ import {
   UserCheck, 
   ShieldCheck, 
   Lock, 
-  Sparkles,
   X,
-  HelpCircle
+  HelpCircle,
+  Timer,
+  MailCheck
 } from 'lucide-react';
 import { UserRole, UserCredential } from '../lib/userAuth';
-import { requestPasswordResetForEmail, updatePasswordInSupabase } from '../lib/supabaseAuth';
+import { requestPasswordResetForEmail } from '../lib/supabaseAuth';
 import { triggerHapticFeedback } from '../lib/capacitorBridge';
 
 interface ForgotPasswordModalProps {
@@ -24,7 +25,7 @@ interface ForgotPasswordModalProps {
   onClose: () => void;
   onBackToLogin: () => void;
   userCredentials?: UserCredential[];
-  onPasswordResetSuccess?: (email: string, newPassword?: string) => void;
+  onPasswordResetSuccess?: (email: string) => void;
   onOpenResetModal?: (email: string) => void;
 }
 
@@ -34,7 +35,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   onBackToLogin,
   userCredentials = [],
   onPasswordResetSuccess,
-  onOpenResetModal
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [identifier, setIdentifier] = useState('');
@@ -43,11 +43,29 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Direct Emergency Reset Mode for Demo/Offline Testing
-  const [showEmergencyReset, setShowEmergencyReset] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [emergencySuccess, setEmergencySuccess] = useState(false);
+  // 60-second cooldown to prevent email spam
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  const startCooldown = () => {
+    setCooldownSeconds(60);
+    cooldownRef.current = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          cooldownRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   if (!isOpen) return null;
 
@@ -55,20 +73,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setSelectedRole(role);
     setErrorMessage(null);
     setIsSuccess(false);
-    
-    // Auto-fill role placeholder demo email for quick testing
-    if (role === 'admin' || role === 'super_admin') {
-      setIdentifier('kpierre24@gmail.com');
-    } else if (role === 'teacher' || role === 'lecturer') {
-      const teacher = userCredentials.find(c => c.role === 'teacher' || c.role === 'lecturer');
-      setIdentifier(teacher?.email || 'gillian.selkridge@hteim.edu');
-    } else if (role === 'finance_officer') {
-      const fin = userCredentials.find(c => c.role === 'finance_officer');
-      setIdentifier(fin?.email || 'bursar@hteim.edu');
-    } else {
-      const student = userCredentials.find(c => c.role === 'student');
-      setIdentifier(student?.email || 'aburke@student.hteim.edu');
-    }
+    setIdentifier('');
   };
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -78,7 +83,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
     const cleanId = identifier.trim().toLowerCase();
     if (!cleanId) {
-      setErrorMessage('Please enter your account email or username.');
+      setErrorMessage('Please enter your registered account email or username.');
       return;
     }
 
@@ -91,6 +96,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         triggerHapticFeedback('success');
         setIsSuccess(true);
         setSuccessMessage(res.message);
+        startCooldown();
         if (onPasswordResetSuccess) {
           onPasswordResetSuccess(cleanId);
         }
@@ -105,48 +111,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     }
   };
 
-  const handleEmergencyPasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResend = async () => {
+    if (cooldownSeconds > 0 || isSubmitting) return;
+    setIsSuccess(false);
     setErrorMessage(null);
-
-    const cleanPass = newPassword.trim();
-    const confPass = confirmPassword.trim();
-
-    if (!cleanPass || cleanPass.length < 6) {
-      setErrorMessage('New password must be at least 6 characters long.');
-      return;
-    }
-
-    if (cleanPass !== confPass) {
-      setErrorMessage('Passwords do not match. Please re-type.');
-      return;
-    }
-
-    const cleanId = identifier.trim().toLowerCase();
-    const matchingCred = userCredentials.find(
-      c => c.email.toLowerCase() === cleanId || (c.username && c.username.toLowerCase() === cleanId)
-    );
-
-    setIsSubmitting(true);
-    try {
-      if (matchingCred) {
-        await updatePasswordInSupabase(
-          { id: matchingCred.id, email: matchingCred.email, name: matchingCred.name, role: matchingCred.role },
-          cleanPass,
-          userCredentials
-        );
-      }
-      setIsSubmitting(false);
-      triggerHapticFeedback('success');
-      setEmergencySuccess(true);
-      if (onPasswordResetSuccess) {
-        onPasswordResetSuccess(cleanId, cleanPass);
-      }
-    } catch (err: any) {
-      setIsSubmitting(false);
-      triggerHapticFeedback('error');
-      setErrorMessage(err.message || 'Failed to update account password.');
-    }
   };
 
   return (
@@ -187,7 +155,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         </div>
 
         {/* Role Selection Tabs */}
-        {!emergencySuccess && (
+        {!isSuccess && (
           <div className="grid grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1.5 border-b border-slate-200 dark:border-slate-700 gap-1">
             <button
               type="button"
@@ -252,31 +220,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             </div>
           )}
 
-          {emergencySuccess ? (
-            <div className="space-y-4 text-center py-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Password Reset Completed!
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Your new password for <span className="font-bold text-indigo-600">{identifier}</span> has been set successfully. You can now log in immediately.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={onBackToLogin}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Return to Sign In</span>
-              </button>
-            </div>
-          ) : isSuccess ? (
+          {isSuccess ? (
             <div className="space-y-4">
+              {/* Success confirmation */}
               <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -287,90 +233,47 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 </p>
               </div>
 
-              {/* Direct Instant Reset Toggle for Offline / Demo Access */}
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    Instant Password Reset Mode
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onOpenResetModal && identifier) {
-                        onOpenResetModal(identifier);
-                      } else {
-                        setShowEmergencyReset(!showEmergencyReset);
-                      }
-                    }}
-                    className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 underline cursor-pointer"
-                  >
-                    {showEmergencyReset ? 'Hide' : 'Set New Password Now'}
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                  Allows instant password creation for demo accounts or direct testing.
+              {/* Next steps guidance */}
+              <div className="space-y-2.5">
+                <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Next Steps
                 </p>
+                <div className="space-y-2">
+                  {[
+                    { icon: <MailCheck className="w-4 h-4 text-indigo-500 shrink-0" />, text: 'Check your inbox and spam/junk folder for an email from HTEIM.' },
+                    { icon: <KeyRound className="w-4 h-4 text-indigo-500 shrink-0" />, text: 'Click the "Reset Password" link in the email — it expires in 60 minutes.' },
+                    { icon: <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" />, text: 'Set a strong new password. You will be signed in immediately.' },
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-start gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl">
+                      {step.icon}
+                      <span className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{step.text}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {showEmergencyReset && (
-                <form onSubmit={handleEmergencyPasswordReset} className="space-y-3 pt-2">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300">
-                      New Confidential Password
-                    </label>
-                    <div className="relative">
-                      <KeyRound className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="At least 6 characters"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
-                        required
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300">
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Verify chosen password"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                    ) : (
-                      <span>Save New Password & Continue</span>
-                    )}
-                  </button>
-                </form>
-              )}
+              {/* Resend / contact info */}
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                <p className="font-bold mb-0.5">Didn't receive it?</p>
+                <p>Check your spam folder or contact your administrator at <span className="font-mono font-bold">info@hteim.edu</span>.</p>
+              </div>
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between gap-2">
+                {/* Resend with cooldown */}
                 <button
                   type="button"
-                  onClick={() => setIsSuccess(false)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-200 cursor-pointer"
+                  onClick={handleResend}
+                  disabled={cooldownSeconds > 0}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                  Try Another Email
+                  {cooldownSeconds > 0 ? (
+                    <>
+                      <Timer className="w-3.5 h-3.5" />
+                      <span>Resend in {cooldownSeconds}s</span>
+                    </>
+                  ) : (
+                    <span>Try Another Email</span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -399,12 +302,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder={
                       selectedRole === 'admin' || selectedRole === 'super_admin'
-                        ? 'kpierre24@gmail.com'
+                        ? 'admin@hteim.edu'
                         : selectedRole === 'teacher' || selectedRole === 'lecturer'
-                        ? 'gillian.selkridge@hteim.edu'
+                        ? 'faculty@hteim.edu'
                         : selectedRole === 'finance_officer'
                         ? 'bursar@hteim.edu'
-                        : 'aburke@student.hteim.edu'
+                        : 'student@hteim.edu'
                     }
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     required
@@ -419,7 +322,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   How Password Reset Works
                 </div>
                 <p>
-                  We will send a password reset link to your email address or initiate emergency identity verification if using portal credentials.
+                  A secure reset link will be emailed to your registered address. Click the link in the email to set your new password — no one else can see or use it.
                 </p>
               </div>
 
