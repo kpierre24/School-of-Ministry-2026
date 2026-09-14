@@ -1213,7 +1213,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Modal Footer */}
         <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2 flex-shrink-0 modal-material-footer">
           <div className="text-[10px] text-slate-500 font-medium">
-            <span>HTEIM Ministry ERP • 2026</span>
+            <span>HTEIM Ministry ERP • v1.0.0</span>
             <span className="mx-1.5 text-slate-300">•</span>
             <span>Created by <strong className="text-slate-800">Rockproxy Technologies</strong> (Director: Kendell Pierre)</span>
           </div>

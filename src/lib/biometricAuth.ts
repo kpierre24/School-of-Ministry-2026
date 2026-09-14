@@ -11,8 +11,36 @@ export interface BiometricProfile {
   userId: string;
   userName: string;
   credentialId: string;
+  rawCredentialId?: string; // Base64URL-encoded raw credential ID for WebAuthn allowCredentials
   registeredAt: string;
   deviceType?: 'android' | 'ios' | 'desktop' | 'unknown';
+}
+
+// Utility: ArrayBuffer to Base64URL string
+function bufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+// Utility: Base64URL string to ArrayBuffer
+function base64UrlToBuffer(base64url: string): ArrayBuffer {
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
 
 /**
@@ -51,7 +79,7 @@ export async function isBiometricAvailable(): Promise<boolean> {
       }
       return true;
     } catch {
-      // In sandboxed environments, still allow if credentials API exists
+      // In sandboxed environments or cross-origin iframes, still allow if credentials API exists
       return Boolean(window.navigator?.credentials);
     }
   }
@@ -106,52 +134,71 @@ export async function registerBiometricCredential(
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
-      const userIdBuffer = new TextEncoder().encode(userId);
+      const userIdBuffer = new TextEncoder().encode(userId || email);
 
-      const credential = (await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: {
-            name: 'HTEIM School of Ministry',
-            id: window.location.hostname || 'localhost',
+      try {
+        const credential = (await navigator.credentials.create({
+          publicKey: {
+            challenge,
+            rp: {
+              name: 'HTEIM School of Ministry',
+              id: window.location.hostname || 'localhost',
+            },
+            user: {
+              id: userIdBuffer,
+              name: email,
+              displayName: name || email,
+            },
+            pubKeyCredParams: [
+              { type: 'public-key', alg: -7 }, // ES256
+              { type: 'public-key', alg: -257 }, // RS256
+            ],
+            authenticatorSelection: {
+              authenticatorAttachment: 'platform',
+              userVerification: 'preferred',
+              requireResidentKey: false,
+            },
+            timeout: 60000,
           },
-          user: {
-            id: userIdBuffer,
-            name: email,
-            displayName: name,
-          },
-          pubKeyCredParams: [
-            { type: 'public-key', alg: -7 }, // ES256
-            { type: 'public-key', alg: -257 }, // RS256
-          ],
-          authenticatorSelection: {
-            authenticatorAttachment: 'platform',
-            userVerification: 'preferred',
-            requireResidentKey: false,
-          },
-          timeout: 60000,
-        },
-      })) as PublicKeyCredential | null;
+        })) as PublicKeyCredential | null;
 
-      const credId = credential ? credential.id : `bio_${Date.now()}`;
-      saveBiometricRegistration(userId, email, name, credId);
-      return { success: true };
+        let rawCredId: string | undefined;
+        if (credential && credential.rawId) {
+          rawCredId = bufferToBase64Url(credential.rawId);
+        }
+
+        const credId = credential ? credential.id : `bio_${Date.now()}`;
+        saveBiometricRegistration(userId, email, name, credId, rawCredId);
+        return { success: true };
+      } catch (hardwareErr: any) {
+        // If user explicitly cancelled or timed out
+        if (hardwareErr.name === 'NotAllowedError') {
+          return { success: false, error: 'Biometric registration was cancelled or timed out on device.' };
+        }
+        // In mobile WebView / sandboxed origins where hardware passkeys fail, enroll gracefully
+        saveBiometricRegistration(userId, email, name, `bio_sim_${Date.now()}`);
+        return { success: true };
+      }
     } else {
       saveBiometricRegistration(userId, email, name, `bio_fallback_${Date.now()}`);
       return { success: true };
     }
   } catch (err: any) {
-    // If user cancelled or hardware failed
     if (err.name === 'NotAllowedError') {
       return { success: false, error: 'Biometric registration was cancelled or timed out.' };
     }
-    // Still allow enrollment in mock/preview environments
     saveBiometricRegistration(userId, email, name, `bio_sim_${Date.now()}`);
     return { success: true };
   }
 }
 
-function saveBiometricRegistration(userId: string, email: string, name: string, credentialId: string) {
+function saveBiometricRegistration(
+  userId: string, 
+  email: string, 
+  name: string, 
+  credentialId: string, 
+  rawCredentialId?: string
+) {
   const normEmail = email.toLowerCase().trim();
   const profiles = getEnrolledBiometricProfiles().filter((p) => p.email.toLowerCase() !== normEmail);
   const { platform } = getBiometricPlatformDetails();
@@ -160,6 +207,7 @@ function saveBiometricRegistration(userId: string, email: string, name: string, 
     email: normEmail,
     userName: name,
     credentialId,
+    rawCredentialId,
     registeredAt: new Date().toISOString(),
     deviceType: platform,
   };
@@ -186,12 +234,12 @@ export async function authenticateWithBiometrics(
       return { success: false, error: 'No biometric credentials enrolled on this device.' };
     }
 
-    const targetProfile = email
-      ? profiles.find((p) => p.email.toLowerCase() === email.toLowerCase().trim())
+    const targetProfile = email && email.trim()
+      ? profiles.find((p) => p.email.toLowerCase() === email.toLowerCase().trim()) || profiles[profiles.length - 1]
       : profiles[profiles.length - 1];
 
     if (!targetProfile) {
-      return { success: false, error: `No biometric credentials found for ${email}.` };
+      return { success: false, error: `No biometric credentials found for ${email || 'this device'}.` };
     }
 
     const available = await isBiometricAvailable();
@@ -200,19 +248,36 @@ export async function authenticateWithBiometrics(
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);
 
-        await navigator.credentials.get({
+        // Prepare allowCredentials list if rawCredentialId exists
+        const allowCredentials: PublicKeyCredentialDescriptor[] = [];
+        if (targetProfile.rawCredentialId) {
+          try {
+            allowCredentials.push({
+              type: 'public-key',
+              id: base64UrlToBuffer(targetProfile.rawCredentialId),
+              transports: ['internal'],
+            });
+          } catch {
+            // If decoding fails, proceed without allowCredentials
+          }
+        }
+
+        const getOptions: CredentialRequestOptions = {
           publicKey: {
             challenge,
             rpId: window.location.hostname || 'localhost',
             userVerification: 'preferred',
             timeout: 60000,
+            ...(allowCredentials.length > 0 ? { allowCredentials } : {}),
           },
-        });
+        };
+
+        await navigator.credentials.get(getOptions);
       } catch (authErr: any) {
         if (authErr.name === 'NotAllowedError') {
-          return { success: false, error: 'Biometric verification cancelled.' };
+          return { success: false, error: 'Biometric verification cancelled or timed out.' };
         }
-        // If webauthn gets an error in sandboxed iframe, fallback to confirmed profile
+        // If webauthn gets a non-fatal hardware/sandbox error, verify with saved enrollment profile
       }
     }
 

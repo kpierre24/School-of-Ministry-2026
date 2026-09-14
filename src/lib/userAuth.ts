@@ -1,5 +1,5 @@
 import { UserRole, Permission, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from '../types/rbac';
-import { checkAccountLockout, recordFailedLoginAttempt, clearFailedLoginAttempts } from './securityHelper';
+import { checkAccountLockout, recordFailedLoginAttempt, clearFailedLoginAttempts, verifyPasswordHash } from './securityHelper';
 
 export type { UserRole };
 

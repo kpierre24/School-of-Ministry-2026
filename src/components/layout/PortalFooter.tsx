@@ -50,7 +50,7 @@ export function PortalFooter({ appUser, onOpenGuide, onOpenSettings }: PortalFoo
           </span>
         )}
         <span className="text-slate-300 dark:text-slate-700">•</span>
-        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">HTEIM © 2026</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">HTEIM © 2026 • v1.0.0</p>
       </div>
     </footer>
   );
