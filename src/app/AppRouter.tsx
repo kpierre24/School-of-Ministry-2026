@@ -4389,6 +4389,7 @@ export function AppRouter() {
       <AnimatePresence>
         {showIntro && (
           <IntroSplashScreen
+            appUser={appUser}
             onComplete={() => {
               setShowIntro(false);
               sessionStorage.setItem('hteim_intro_shown', 'true');
