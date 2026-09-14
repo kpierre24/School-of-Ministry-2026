@@ -89,13 +89,14 @@ export async function isBiometricAvailable(): Promise<boolean> {
 /**
  * Checks if a specific user has enrolled biometric credentials on this device
  */
-export function isBiometricEnrolledForUser(emailOrUsername: string): boolean {
-  if (typeof localStorage === 'undefined' || !emailOrUsername) return false;
+export function isBiometricEnrolledForUser(emailOrUsername?: string | null): boolean {
+  if (typeof localStorage === 'undefined' || !emailOrUsername || typeof emailOrUsername !== 'string') return false;
   try {
     const raw = localStorage.getItem(BIOMETRIC_PREFERENCES_KEY);
     if (!raw) return false;
     const enrolledUsers: string[] = JSON.parse(raw);
-    return enrolledUsers.includes(emailOrUsername.toLowerCase().trim());
+    const clean = emailOrUsername.toLowerCase().trim();
+    return Array.isArray(enrolledUsers) && enrolledUsers.some((e) => typeof e === 'string' && e.toLowerCase().trim() === clean);
   } catch {
     return false;
   }
@@ -108,7 +109,13 @@ export function getEnrolledBiometricProfiles(): BiometricProfile[] {
   if (typeof localStorage === 'undefined') return [];
   try {
     const raw = localStorage.getItem(BIOMETRIC_CREDENTIALS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Sanitize and ensure valid profile structure
+    return parsed.filter((p): p is BiometricProfile => 
+      Boolean(p && typeof p === 'object' && typeof p.email === 'string' && p.email.trim().length > 0)
+    );
   } catch {
     return [];
   }
@@ -118,15 +125,22 @@ export function getEnrolledBiometricProfiles(): BiometricProfile[] {
  * Registers / Enrolls Biometric Login for a user
  */
 export async function registerBiometricCredential(
-  userId: string,
-  email: string,
-  name: string
+  userId?: string | null,
+  email?: string | null,
+  name?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const safeEmail = (email || '').trim();
+    if (!safeEmail) {
+      return { success: false, error: 'Valid email is required to register biometric credentials.' };
+    }
+    const safeUserId = (userId || '').trim() || `usr_${Date.now()}`;
+    const safeName = (name || '').trim() || safeEmail.split('@')[0] || 'HTEIM User';
+
     const available = await isBiometricAvailable();
     if (!available) {
       // Fallback local biometric simulation for environments without hardware WebAuthn
-      saveBiometricRegistration(userId, email, name, `bio_local_${Date.now()}`);
+      saveBiometricRegistration(safeUserId, safeEmail, safeName, `bio_local_${Date.now()}`);
       return { success: true };
     }
 
@@ -134,7 +148,7 @@ export async function registerBiometricCredential(
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
-      const userIdBuffer = new TextEncoder().encode(userId || email);
+      const userIdBuffer = new TextEncoder().encode(safeUserId);
 
       try {
         const credential = (await navigator.credentials.create({
@@ -146,8 +160,8 @@ export async function registerBiometricCredential(
             },
             user: {
               id: userIdBuffer,
-              name: email,
-              displayName: name || email,
+              name: safeEmail,
+              displayName: safeName,
             },
             pubKeyCredParams: [
               { type: 'public-key', alg: -7 }, // ES256
@@ -168,7 +182,7 @@ export async function registerBiometricCredential(
         }
 
         const credId = credential ? credential.id : `bio_${Date.now()}`;
-        saveBiometricRegistration(userId, email, name, credId, rawCredId);
+        saveBiometricRegistration(safeUserId, safeEmail, safeName, credId, rawCredId);
         return { success: true };
       } catch (hardwareErr: any) {
         // If user explicitly cancelled or timed out
@@ -176,18 +190,21 @@ export async function registerBiometricCredential(
           return { success: false, error: 'Biometric registration was cancelled or timed out on device.' };
         }
         // In mobile WebView / sandboxed origins where hardware passkeys fail, enroll gracefully
-        saveBiometricRegistration(userId, email, name, `bio_sim_${Date.now()}`);
+        saveBiometricRegistration(safeUserId, safeEmail, safeName, `bio_sim_${Date.now()}`);
         return { success: true };
       }
     } else {
-      saveBiometricRegistration(userId, email, name, `bio_fallback_${Date.now()}`);
+      saveBiometricRegistration(safeUserId, safeEmail, safeName, `bio_fallback_${Date.now()}`);
       return { success: true };
     }
   } catch (err: any) {
     if (err.name === 'NotAllowedError') {
       return { success: false, error: 'Biometric registration was cancelled or timed out.' };
     }
-    saveBiometricRegistration(userId, email, name, `bio_sim_${Date.now()}`);
+    const safeEmail = (email || '').trim() || 'user@hteim.edu';
+    const safeUserId = (userId || '').trim() || `usr_${Date.now()}`;
+    const safeName = (name || '').trim() || 'HTEIM User';
+    saveBiometricRegistration(safeUserId, safeEmail, safeName, `bio_sim_${Date.now()}`);
     return { success: true };
   }
 }
@@ -199,13 +216,17 @@ function saveBiometricRegistration(
   credentialId: string, 
   rawCredentialId?: string
 ) {
-  const normEmail = email.toLowerCase().trim();
-  const profiles = getEnrolledBiometricProfiles().filter((p) => p.email.toLowerCase() !== normEmail);
+  const normEmail = (email || '').toLowerCase().trim();
+  if (!normEmail) return;
+
+  const profiles = getEnrolledBiometricProfiles().filter(
+    (p) => p && typeof p.email === 'string' && p.email.toLowerCase().trim() !== normEmail
+  );
   const { platform } = getBiometricPlatformDetails();
   const newProfile: BiometricProfile = {
-    userId,
+    userId: userId || `u_${Date.now()}`,
     email: normEmail,
-    userName: name,
+    userName: name || normEmail.split('@')[0] || 'User',
     credentialId,
     rawCredentialId,
     registeredAt: new Date().toISOString(),
@@ -214,11 +235,16 @@ function saveBiometricRegistration(
   profiles.push(newProfile);
   localStorage.setItem(BIOMETRIC_CREDENTIALS_KEY, JSON.stringify(profiles));
 
-  const rawPref = localStorage.getItem(BIOMETRIC_PREFERENCES_KEY);
-  const enrolled: string[] = rawPref ? JSON.parse(rawPref) : [];
-  if (!enrolled.includes(normEmail)) {
-    enrolled.push(normEmail);
-    localStorage.setItem(BIOMETRIC_PREFERENCES_KEY, JSON.stringify(enrolled));
+  try {
+    const rawPref = localStorage.getItem(BIOMETRIC_PREFERENCES_KEY);
+    const enrolled: string[] = rawPref ? JSON.parse(rawPref) : [];
+    const validEnrolled = Array.isArray(enrolled) ? enrolled.filter((e) => typeof e === 'string') : [];
+    if (!validEnrolled.some((e) => e.toLowerCase().trim() === normEmail)) {
+      validEnrolled.push(normEmail);
+      localStorage.setItem(BIOMETRIC_PREFERENCES_KEY, JSON.stringify(validEnrolled));
+    }
+  } catch {
+    localStorage.setItem(BIOMETRIC_PREFERENCES_KEY, JSON.stringify([normEmail]));
   }
 }
 
@@ -226,7 +252,7 @@ function saveBiometricRegistration(
  * Authenticates using Fingerprint / Face ID / Passkey
  */
 export async function authenticateWithBiometrics(
-  email?: string
+  email?: string | null
 ): Promise<{ success: boolean; profile?: BiometricProfile; error?: string }> {
   try {
     const profiles = getEnrolledBiometricProfiles();
@@ -234,11 +260,13 @@ export async function authenticateWithBiometrics(
       return { success: false, error: 'No biometric credentials enrolled on this device.' };
     }
 
-    const targetProfile = email && email.trim()
-      ? profiles.find((p) => p.email.toLowerCase() === email.toLowerCase().trim()) || profiles[profiles.length - 1]
+    const cleanInputEmail = (email || '').toLowerCase().trim();
+
+    const targetProfile = cleanInputEmail
+      ? profiles.find((p) => (p?.email || '').toLowerCase().trim() === cleanInputEmail) || profiles[profiles.length - 1]
       : profiles[profiles.length - 1];
 
-    if (!targetProfile) {
+    if (!targetProfile || !targetProfile.email) {
       return { success: false, error: `No biometric credentials found for ${email || 'this device'}.` };
     }
 
@@ -290,16 +318,24 @@ export async function authenticateWithBiometrics(
 /**
  * Unenrolls biometric credentials for a user
  */
-export function removeBiometricCredential(email: string) {
-  if (typeof localStorage === 'undefined') return;
+export function removeBiometricCredential(email?: string | null) {
+  if (typeof localStorage === 'undefined' || !email || typeof email !== 'string') return;
   const normEmail = email.toLowerCase().trim();
-  const profiles = getEnrolledBiometricProfiles().filter((p) => p.email.toLowerCase() !== normEmail);
+  if (!normEmail) return;
+
+  const profiles = getEnrolledBiometricProfiles().filter(
+    (p) => p && typeof p.email === 'string' && p.email.toLowerCase().trim() !== normEmail
+  );
   localStorage.setItem(BIOMETRIC_CREDENTIALS_KEY, JSON.stringify(profiles));
 
-  const rawPref = localStorage.getItem(BIOMETRIC_PREFERENCES_KEY);
-  if (rawPref) {
-    const enrolled: string[] = JSON.parse(rawPref);
-    const updated = enrolled.filter((e) => e !== normEmail);
-    localStorage.setItem(BIOMETRIC_PREFERENCES_KEY, JSON.stringify(updated));
-  }
+  try {
+    const rawPref = localStorage.getItem(BIOMETRIC_PREFERENCES_KEY);
+    if (rawPref) {
+      const enrolled: string[] = JSON.parse(rawPref);
+      if (Array.isArray(enrolled)) {
+        const updated = enrolled.filter((e) => typeof e === 'string' && e.toLowerCase().trim() !== normEmail);
+        localStorage.setItem(BIOMETRIC_PREFERENCES_KEY, JSON.stringify(updated));
+      }
+    }
+  } catch {}
 }

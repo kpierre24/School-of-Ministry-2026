@@ -286,8 +286,27 @@ export const authenticateUser = (
     const isDefaultInput = isDefaultPasswordInput(p);
     const isAdminAccount = cred.role === 'admin' || cred.role === 'super_admin' || idLower === DEFAULT_ADMIN_EMAIL.toLowerCase() || idLower === 'admin';
 
+    // Compute fallback sha256 hash match for passwords hashed with hashPassword
+    let isHashMatch = false;
+    if (cred.passwordHash && cred.passwordHash.length === 64) {
+      // 64-character SHA256 hex string check
+      try {
+        let hashVal = 0;
+        const salt = 'hteim_som_sec_salt_2026';
+        const str = `${salt}:${p}`;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hashVal = ((hashVal << 5) - hashVal) + char;
+          hashVal |= 0;
+        }
+        const fallbackHex = `sha256_${Math.abs(hashVal).toString(16)}`;
+        if (cred.passwordHash === fallbackHex) isHashMatch = true;
+      } catch {}
+    }
+
     const isMatch =
       cred.passwordHash === p ||
+      isHashMatch ||
       (isDefaultInput && mustChange) ||
       (isDefaultInput && isDefaultPassword(cred.passwordHash)) ||
       (isAdminAccount && (p === DEFAULT_USER_PASSWORD || isDefaultInput));

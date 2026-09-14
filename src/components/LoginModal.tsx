@@ -119,21 +119,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     try {
       const bioRes = await authenticateWithBiometrics(emailInput || undefined);
       if (bioRes.success && bioRes.profile) {
-        // Find matching credential
-        const targetEmail = bioRes.profile.email.toLowerCase();
-        const cred = userCredentials.find(
-          (c) => c.email.toLowerCase() === targetEmail || (c.username && c.username.toLowerCase() === targetEmail)
-        );
+        // Find matching credential safely
+        const targetEmail = (bioRes.profile.email || '').toLowerCase().trim();
+        const cred = userCredentials.find((c) => {
+          if (!c) return false;
+          const cEmail = (c.email || '').toLowerCase().trim();
+          const cUser = (c.username || '').toLowerCase().trim();
+          return (targetEmail && cEmail === targetEmail) || (targetEmail && cUser === targetEmail);
+        });
 
         if (cred) {
           const authUser: AppUser = {
-            id: cred.id,
-            email: cred.email,
-            name: cred.name,
-            role: cred.role,
+            id: cred.id || bioRes.profile.userId || `user_${Date.now()}`,
+            email: cred.email || bioRes.profile.email || 'user@hteim.edu',
+            name: cred.name || bioRes.profile.userName || 'HTEIM Member',
+            role: cred.role || activeTab,
             username: cred.username,
             studentName: cred.studentName,
-            status: cred.status,
+            status: cred.status || 'active',
           };
           triggerHapticFeedback('success');
           onLoginSuccess(authUser);
@@ -142,7 +145,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           // Fallback to active tab profile or profile name
           const fallbackUser: AppUser = {
             id: bioRes.profile.userId || `user_${Date.now()}`,
-            email: bioRes.profile.email,
+            email: bioRes.profile.email || 'user@hteim.edu',
             name: bioRes.profile.userName || 'HTEIM Member',
             role: activeTab,
             status: 'active',
@@ -248,12 +251,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           setChangeError(null);
         } else {
           // Check if device supports biometrics and user hasn't enrolled or skipped this session
-          const userEmail = result.user.email.toLowerCase();
+          const userEmail = (result.user.email || '').toLowerCase().trim();
           const isEnrolled = isBiometricEnrolledForUser(userEmail);
           let isSkipped = false;
-          try {
-            isSkipped = sessionStorage.getItem(`hteim_bio_prompt_skipped_${userEmail}`) === 'true';
-          } catch {}
+          if (userEmail) {
+            try {
+              isSkipped = sessionStorage.getItem(`hteim_bio_prompt_skipped_${userEmail}`) === 'true';
+            } catch {}
+          }
 
           if (hasBiometrics && !isEnrolled && !isSkipped) {
             // Keep modal open to show biometric enrollment prompt

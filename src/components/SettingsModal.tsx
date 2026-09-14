@@ -109,14 +109,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsEnrollingBiometrics(true);
     setBiometricEnrollStatus(null);
     try {
-      const activeEmail = localStorage.getItem('hteim_last_auth_user') 
-        ? JSON.parse(localStorage.getItem('hteim_last_auth_user') || '{}').email 
-        : 'user@hteim.edu';
-      const activeName = localStorage.getItem('hteim_last_auth_user') 
-        ? JSON.parse(localStorage.getItem('hteim_last_auth_user') || '{}').name 
-        : 'HTEIM User';
+      let activeEmail = 'user@hteim.edu';
+      let activeName = 'HTEIM User';
+      let activeId = 'current_user';
 
-      const res = await registerBiometricCredential('current_user', activeEmail, activeName);
+      try {
+        const storedUser = localStorage.getItem('hteim_current_user') || localStorage.getItem('hteim_last_auth_user');
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.email) activeEmail = String(parsed.email).trim();
+            if (parsed.name || parsed.studentName) activeName = String(parsed.name || parsed.studentName).trim();
+            if (parsed.id) activeId = String(parsed.id).trim();
+          }
+        }
+      } catch {}
+
+      const res = await registerBiometricCredential(activeId, activeEmail, activeName);
       if (res.success) {
         triggerHapticFeedback('success');
         setBiometricEnrollStatus('Fingerprint / Face ID successfully linked to this device!');
