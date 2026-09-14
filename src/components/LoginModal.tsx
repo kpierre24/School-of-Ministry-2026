@@ -21,9 +21,16 @@ import { AppUser, UserRole, UserCredential } from '../lib/userAuth';
 import { loginWithSupabaseAuth as authenticateWithSupabase } from '../services/authService';
 import { updatePasswordInSupabase } from '../lib/supabaseAuth';
 import { classifyError, handleError } from '../lib/errorHandler';
-import { authenticateWithBiometrics, isBiometricAvailable, getEnrolledBiometricProfiles } from '../lib/biometricAuth';
+import { 
+  authenticateWithBiometrics, 
+  isBiometricAvailable, 
+  getEnrolledBiometricProfiles, 
+  isBiometricEnrolledForUser,
+  getBiometricPlatformDetails 
+} from '../lib/biometricAuth';
 import { triggerHapticFeedback } from '../lib/capacitorBridge';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { BiometricEnrollPromptModal } from './BiometricEnrollPromptModal';
 
 interface LoginModalProps {
   isOpen?: boolean;
@@ -92,11 +99,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isBiometricBusy, setIsBiometricBusy] = useState(false);
   const [hasBiometrics, setHasBiometrics] = useState(false);
+  const [enrolledCount, setEnrolledCount] = useState(0);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [promptBiometricUser, setPromptBiometricUser] = useState<AppUser | null>(null);
 
   React.useEffect(() => {
     isBiometricAvailable().then((avail) => {
-      setHasBiometrics(avail || getEnrolledBiometricProfiles().length > 0);
+      const profiles = getEnrolledBiometricProfiles();
+      setEnrolledCount(profiles.length);
+      setHasBiometrics(avail || profiles.length > 0);
     });
   }, []);
 
@@ -236,8 +247,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           setConfirmPassword('');
           setChangeError(null);
         } else {
-          onLoginSuccess(result.user);
-          if (onClose) onClose();
+          // Check if device supports biometrics and user hasn't enrolled or skipped this session
+          const userEmail = result.user.email.toLowerCase();
+          const isEnrolled = isBiometricEnrolledForUser(userEmail);
+          let isSkipped = false;
+          try {
+            isSkipped = sessionStorage.getItem(`hteim_bio_prompt_skipped_${userEmail}`) === 'true';
+          } catch {}
+
+          if (hasBiometrics && !isEnrolled && !isSkipped) {
+            // Keep modal open to show biometric enrollment prompt
+            setPromptBiometricUser(result.user);
+          } else {
+            onLoginSuccess(result.user);
+            if (onClose) onClose();
+          }
         }
       } else {
         const classified = classifyError(new Error(result.error || 'Invalid credentials'), 'authentication');
@@ -575,25 +599,37 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
             {/* Biometric One-Tap Login Button (Phase 9) */}
             {hasBiometrics && (
-              <button
-                type="button"
-                onClick={handleBiometricLogin}
-                disabled={isBiometricBusy}
-                className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                aria-label="Sign in with Face ID or Fingerprint"
-              >
-                {isBiometricBusy ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
-                    <span>Scanning Biometrics...</span>
-                  </>
-                ) : (
-                  <>
-                    <Fingerprint className="w-4 h-4 text-amber-500" />
-                    <span>Sign in with Fingerprint / Face ID</span>
-                  </>
-                )}
-              </button>
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (enrolledCount === 0) {
+                      setErrorMessage(`No biometric profile enrolled on this device yet. Log in with your email & password once to enable ${getBiometricPlatformDetails().biometricLabel}.`);
+                    } else {
+                      await handleBiometricLogin();
+                    }
+                  }}
+                  disabled={isBiometricBusy}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  aria-label={`Sign in with ${getBiometricPlatformDetails().biometricLabel}`}
+                >
+                  {isBiometricBusy ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
+                      <span>Scanning Biometrics...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Fingerprint className="w-4 h-4 text-amber-500" />
+                      <span>
+                        {enrolledCount > 0 
+                          ? `Sign in with ${getBiometricPlatformDetails().biometricLabel}` 
+                          : `Enable ${getBiometricPlatformDetails().biometricLabel}`}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
 
             {/* Quick Demo Access Bar */}
@@ -671,6 +707,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           setEmailInput(email);
         }}
       />
+
+      {/* Post-Login Biometric Enrollment Prompt */}
+      {promptBiometricUser && (
+        <BiometricEnrollPromptModal
+          isOpen={!!promptBiometricUser}
+          user={promptBiometricUser}
+          onClose={() => {
+            const user = promptBiometricUser;
+            setPromptBiometricUser(null);
+            onLoginSuccess(user);
+            if (onClose) onClose();
+          }}
+          onEnrollmentSuccess={() => {
+            const user = promptBiometricUser;
+            setPromptBiometricUser(null);
+            onLoginSuccess(user);
+            if (onClose) onClose();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { UserRole, Permission, ROLE_DEFINITIONS, normalizeUserRole, roleHasPermission } from '../types/rbac';
+import { checkAccountLockout, recordFailedLoginAttempt, clearFailedLoginAttempts } from './securityHelper';
 
 export type { UserRole };
 
@@ -259,6 +260,15 @@ export const authenticateUser = (
     return { success: false, error: 'Please enter your password.' };
   }
 
+  // Account lockout check
+  const lockout = checkAccountLockout(idLower);
+  if (lockout.isLocked) {
+    return {
+      success: false,
+      error: `Account temporarily locked due to excessive failed attempts. Please retry in ${lockout.remainingSeconds}s.`
+    };
+  }
+
   // Find user by Email, Username, or Name using robust matching
   const cred = (credentials || []).filter(Boolean).find(c => isMatchingCredential(c, idLower));
 
@@ -283,6 +293,7 @@ export const authenticateUser = (
       (isAdminAccount && (p === DEFAULT_USER_PASSWORD || isDefaultInput));
 
     if (isMatch) {
+      clearFailedLoginAttempts(idLower);
       const user: AppUser = {
         id: cred.id,
         email: cred.email || (cred.role === 'student' 
@@ -303,7 +314,11 @@ export const authenticateUser = (
         mustChangePassword: isAdminAccount ? false : mustChange
       };
     } else {
-      return { success: false, error: 'Incorrect password.' };
+      const lockRes = recordFailedLoginAttempt(idLower);
+      const errMsg = lockRes.isLocked
+        ? `Account temporarily locked due to 5 consecutive failed attempts. Try again in ${lockRes.remainingSeconds}s.`
+        : `Incorrect password. ${lockRes.attemptsLeft} attempt${lockRes.attemptsLeft === 1 ? '' : 's'} remaining before temporary lockout.`;
+      return { success: false, error: errMsg };
     }
   }
 

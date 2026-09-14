@@ -17,6 +17,12 @@ import { loadFromSupabase, saveToSupabase } from './supabaseSync';
 import { logger } from './logger';
 import { handleError } from './errorHandler';
 import { isDemoUser } from '../data/guards';
+import { 
+  checkAccountLockout, 
+  recordFailedLoginAttempt, 
+  clearFailedLoginAttempts, 
+  verifyPasswordHash 
+} from './securityHelper';
 
 export interface AuthVerificationResult {
   success: boolean;
@@ -24,6 +30,7 @@ export interface AuthVerificationResult {
   error?: string;
   mustChangePassword?: boolean;
   cloudSynced?: boolean;
+  remainingLockoutSeconds?: number;
 }
 
 /**
@@ -43,6 +50,16 @@ export async function authenticateWithSupabase(
   }
   if (!cleanPassword) {
     return { success: false, error: 'Please enter your password.' };
+  }
+
+  // Check client-side brute-force lockout
+  const lockout = checkAccountLockout(cleanId);
+  if (lockout.isLocked) {
+    return {
+      success: false,
+      error: `Too many failed attempts. Account temporarily locked for security. Please try again in ${lockout.remainingSeconds} seconds.`,
+      remainingLockoutSeconds: lockout.remainingSeconds
+    };
   }
 
   // Guard: Demo accounts are simulation-only and cannot authenticate as real users
@@ -78,6 +95,7 @@ export async function authenticateWithSupabase(
 
       if (!authError && authData?.user) {
         supabaseAuthUser = authData.user;
+        clearFailedLoginAttempts(cleanId);
         logger.info('Supabase Auth verification successful for:', cleanId);
       }
     } catch (authErr) {
@@ -143,13 +161,15 @@ export async function authenticateWithSupabase(
     const isDefaultInput = isDefaultPasswordInput(cleanPassword);
     const isAdminAccount = cred.role === 'admin' || cred.role === 'super_admin' || cleanId === DEFAULT_ADMIN_EMAIL.toLowerCase() || cleanId === 'admin';
 
-    const isMatch =
+    const isPasswordValid =
       cred.passwordHash === cleanPassword ||
+      (await verifyPasswordHash(cleanPassword, cred.passwordHash)) ||
       (isDefaultInput && mustChange) ||
       (isDefaultInput && isDefaultPassword(cred.passwordHash)) ||
       (isAdminAccount && (cleanPassword === DEFAULT_USER_PASSWORD || isDefaultInput));
 
-    if (isMatch) {
+    if (isPasswordValid) {
+      clearFailedLoginAttempts(cleanId);
       const user: AppUser = {
         id: cred.id,
         email: cred.email || (cred.role === 'student'
@@ -171,9 +191,15 @@ export async function authenticateWithSupabase(
         cloudSynced: true
       };
     } else {
+      const lockStatus = recordFailedLoginAttempt(cleanId);
+      const errorMsg = lockStatus.isLocked
+        ? `Account temporarily locked due to 5 consecutive failed attempts. Try again in ${lockStatus.remainingSeconds}s.`
+        : `Incorrect password. ${lockStatus.attemptsLeft} attempt${lockStatus.attemptsLeft === 1 ? '' : 's'} remaining before temporary lockout.`;
+
       return {
         success: false,
-        error: 'Incorrect password.'
+        error: errorMsg,
+        remainingLockoutSeconds: lockStatus.remainingSeconds
       };
     }
   }

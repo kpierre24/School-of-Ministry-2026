@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sanitizeFileName, sanitizeHtml, sanitizeInput, validateEmail, checkPasswordStrength } from '../lib/securityHelper';
+import { 
+  sanitizeFileName, 
+  sanitizeHtml, 
+  sanitizeInput, 
+  validateEmail, 
+  checkPasswordStrength, 
+  hashPassword, 
+  verifyPasswordHash,
+  recordFailedLoginAttempt,
+  checkAccountLockout,
+  clearFailedLoginAttempts 
+} from '../lib/securityHelper';
 import { getStudentPaymentDetails } from '../lib/paymentUtils';
 import { generateStudentUsername, authenticateUser, ensureUserCredentials, resetUserPassword, UserCredential, UserRole } from '../lib/userAuth';
 
@@ -184,6 +195,54 @@ describe('userAuth', () => {
       const updated = resetUserPassword(credentials, 'aburke@student.hteim.edu');
       expect(updated[0].passwordHash).toBe('password1');
       expect(updated[0].mustChangePassword).toBe(true);
+    });
+  });
+
+  describe('hashPassword & verifyPasswordHash', () => {
+    it('should hash a password and verify it accurately', async () => {
+      const plain = 'KingdomWorker2026!';
+      const hash = await hashPassword(plain);
+      expect(hash).toBeTruthy();
+      expect(hash).not.toBe(plain);
+
+      const isValid = await verifyPasswordHash(plain, hash);
+      expect(isValid).toBe(true);
+
+      const isInvalid = await verifyPasswordHash('WrongPass123', hash);
+      expect(isInvalid).toBe(false);
+    });
+
+    it('should verify backward-compatible plaintext passwords', async () => {
+      const isValid = await verifyPasswordHash('password1', 'password1');
+      expect(isValid).toBe(true);
+    });
+  });
+
+  describe('recordFailedLoginAttempt & checkAccountLockout', () => {
+    const testUser = 'lockout-test@hteim.edu';
+
+    beforeEach(() => {
+      clearFailedLoginAttempts(testUser);
+    });
+
+    it('should lock out after 5 consecutive failed attempts', () => {
+      for (let i = 0; i < 4; i++) {
+        const attempt = recordFailedLoginAttempt(testUser);
+        expect(attempt.isLocked).toBe(false);
+        expect(attempt.attemptsLeft).toBe(4 - i);
+      }
+
+      const fifthAttempt = recordFailedLoginAttempt(testUser);
+      expect(fifthAttempt.isLocked).toBe(true);
+      expect(fifthAttempt.remainingSeconds).toBeGreaterThan(0);
+
+      const status = checkAccountLockout(testUser);
+      expect(status.isLocked).toBe(true);
+
+      // Clear attempts on successful sign in
+      clearFailedLoginAttempts(testUser);
+      const afterClear = checkAccountLockout(testUser);
+      expect(afterClear.isLocked).toBe(false);
     });
   });
 });

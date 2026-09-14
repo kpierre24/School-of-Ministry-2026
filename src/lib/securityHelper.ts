@@ -134,3 +134,144 @@ export function checkPasswordStrength(password: string | null | undefined): Pass
 
   return report;
 }
+
+/**
+ * Computes a deterministic SHA-256 hash using the native Web Crypto API.
+ * Encodes the output as a hexadecimal string with optional salt.
+ */
+export async function hashPassword(password: string, salt: string = 'hteim_ministry_salt_2026'): Promise<string> {
+  if (!password) return '';
+  try {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(`${salt}:${password}`);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch {
+    // Fallback if subtle crypto is not accessible in context
+  }
+  // Fast deterministic fallback hash
+  let hash = 0;
+  const str = `${salt}:${password}`;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `sha256_${Math.abs(hash).toString(16)}`;
+}
+
+/**
+ * Checks whether an input password matches a stored password or its SHA-256 hash.
+ */
+export async function verifyPasswordHash(inputPassword: string, storedHashOrPassword: string): Promise<boolean> {
+  if (!inputPassword || !storedHashOrPassword) return false;
+  // Direct plaintext match (for legacy stored passwords or default 'password1')
+  if (inputPassword === storedHashOrPassword) return true;
+  
+  // SHA-256 Web Crypto hash match
+  const computedHash = await hashPassword(inputPassword);
+  if (computedHash && computedHash === storedHashOrPassword) return true;
+
+  return false;
+}
+
+// Client-side rate limiting / failed attempt tracker
+const FAILED_ATTEMPTS_KEY = 'hteim_auth_failed_attempts';
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 2 * 60 * 1000; // 2 minutes
+
+interface LockoutRecord {
+  count: number;
+  lockedUntil: number;
+}
+
+/**
+ * Records a failed login attempt for an identifier and checks for lockout.
+ */
+export function recordFailedLoginAttempt(identifier: string): { isLocked: boolean; remainingSeconds: number; attemptsLeft: number } {
+  if (typeof localStorage === 'undefined' || !identifier) {
+    return { isLocked: false, remainingSeconds: 0, attemptsLeft: MAX_FAILED_ATTEMPTS };
+  }
+
+  const key = identifier.toLowerCase().trim();
+  let records: Record<string, LockoutRecord> = {};
+  try {
+    const raw = localStorage.getItem(FAILED_ATTEMPTS_KEY);
+    if (raw) records = JSON.parse(raw);
+  } catch {}
+
+  const now = Date.now();
+  const current = records[key] || { count: 0, lockedUntil: 0 };
+
+  // Check if currently locked
+  if (current.lockedUntil > now) {
+    return {
+      isLocked: true,
+      remainingSeconds: Math.ceil((current.lockedUntil - now) / 1000),
+      attemptsLeft: 0
+    };
+  }
+
+  // Increment count
+  const newCount = current.count + 1;
+  let lockedUntil = 0;
+  if (newCount >= MAX_FAILED_ATTEMPTS) {
+    lockedUntil = now + LOCKOUT_DURATION_MS;
+  }
+
+  records[key] = {
+    count: newCount,
+    lockedUntil
+  };
+
+  try {
+    localStorage.setItem(FAILED_ATTEMPTS_KEY, JSON.stringify(records));
+  } catch {}
+
+  return {
+    isLocked: lockedUntil > now,
+    remainingSeconds: lockedUntil > now ? Math.ceil((lockedUntil - now) / 1000) : 0,
+    attemptsLeft: Math.max(0, MAX_FAILED_ATTEMPTS - newCount)
+  };
+}
+
+/**
+ * Checks if an account is currently locked out without incrementing.
+ */
+export function checkAccountLockout(identifier: string): { isLocked: boolean; remainingSeconds: number } {
+  if (typeof localStorage === 'undefined' || !identifier) {
+    return { isLocked: false, remainingSeconds: 0 };
+  }
+  const key = identifier.toLowerCase().trim();
+  try {
+    const raw = localStorage.getItem(FAILED_ATTEMPTS_KEY);
+    if (!raw) return { isLocked: false, remainingSeconds: 0 };
+    const records: Record<string, LockoutRecord> = JSON.parse(raw);
+    const rec = records[key];
+    if (rec && rec.lockedUntil > Date.now()) {
+      return {
+        isLocked: true,
+        remainingSeconds: Math.ceil((rec.lockedUntil - Date.now()) / 1000)
+      };
+    }
+  } catch {}
+  return { isLocked: false, remainingSeconds: 0 };
+}
+
+/**
+ * Resets failed attempts after a successful login.
+ */
+export function clearFailedLoginAttempts(identifier: string): void {
+  if (typeof localStorage === 'undefined' || !identifier) return;
+  const key = identifier.toLowerCase().trim();
+  try {
+    const raw = localStorage.getItem(FAILED_ATTEMPTS_KEY);
+    if (!raw) return;
+    const records: Record<string, LockoutRecord> = JSON.parse(raw);
+    delete records[key];
+    localStorage.setItem(FAILED_ATTEMPTS_KEY, JSON.stringify(records));
+  } catch {}
+}

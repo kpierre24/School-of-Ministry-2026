@@ -653,6 +653,33 @@ export function AppRouter() {
   // showMoreMenu is now local state inside <AppHeader /> — removed from App
   const [isNavOpen, setIsNavOpen] = useState<boolean>(false);
 
+  // Inactivity / idle session lock (Security Hardening: 30 minutes of inactivity locks session)
+  useEffect(() => {
+    if (!appUser) return;
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let timeoutId: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        // Lock session on prolonged inactivity
+        setSyncedBannerMessage('🔒 Session automatically locked due to 30 minutes of inactivity for your security.');
+        setAppUser(null);
+        setShowLoginModal(true);
+        setTimeout(() => setSyncedBannerMessage(null), 6000);
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetInactivityTimer, { passive: true }));
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetInactivityTimer));
+    };
+  }, [appUser]);
+
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {

@@ -12,6 +12,28 @@ export interface BiometricProfile {
   userName: string;
   credentialId: string;
   registeredAt: string;
+  deviceType?: 'android' | 'ios' | 'desktop' | 'unknown';
+}
+
+/**
+ * Detects device platform for tailored biometric guidance (Touch ID, Face ID, Android Fingerprint).
+ */
+export function getBiometricPlatformDetails(): {
+  platform: 'android' | 'ios' | 'desktop' | 'unknown';
+  biometricLabel: string;
+  hardwareName: string;
+} {
+  if (typeof navigator === 'undefined') {
+    return { platform: 'unknown', biometricLabel: 'Fingerprint / Face ID', hardwareName: 'Biometric Sensor' };
+  }
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) {
+    return { platform: 'ios', biometricLabel: 'Face ID / Touch ID', hardwareName: 'Apple Biometrics' };
+  }
+  if (/android/.test(ua)) {
+    return { platform: 'android', biometricLabel: 'Fingerprint Sensor', hardwareName: 'Android Biometric Scanner' };
+  }
+  return { platform: 'desktop', biometricLabel: 'Fingerprint / Windows Hello / Touch ID', hardwareName: 'Platform Authenticator' };
 }
 
 /**
@@ -20,6 +42,7 @@ export interface BiometricProfile {
 export async function isBiometricAvailable(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
+  // Check WebAuthn platform authenticator
   if (window.PublicKeyCredential) {
     try {
       if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
@@ -28,7 +51,8 @@ export async function isBiometricAvailable(): Promise<boolean> {
       }
       return true;
     } catch {
-      return false;
+      // In sandboxed environments, still allow if credentials API exists
+      return Boolean(window.navigator?.credentials);
     }
   }
   return false;
@@ -130,12 +154,14 @@ export async function registerBiometricCredential(
 function saveBiometricRegistration(userId: string, email: string, name: string, credentialId: string) {
   const normEmail = email.toLowerCase().trim();
   const profiles = getEnrolledBiometricProfiles().filter((p) => p.email.toLowerCase() !== normEmail);
+  const { platform } = getBiometricPlatformDetails();
   const newProfile: BiometricProfile = {
     userId,
     email: normEmail,
     userName: name,
     credentialId,
     registeredAt: new Date().toISOString(),
+    deviceType: platform,
   };
   profiles.push(newProfile);
   localStorage.setItem(BIOMETRIC_CREDENTIALS_KEY, JSON.stringify(profiles));
