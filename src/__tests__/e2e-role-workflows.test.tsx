@@ -9,6 +9,8 @@ import {
   WhatShouldIDoNextHero 
 } from '../features/dashboard';
 import { createApp } from '../server/app';
+import { TabType } from '../types';
+
 
 const MOCK_USERS: Record<string, any> = {
   'admin-123': {
