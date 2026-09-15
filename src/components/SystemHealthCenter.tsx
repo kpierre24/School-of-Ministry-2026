@@ -29,6 +29,7 @@ import {
   FileText,
   AlertOctagon,
   CreditCard,
+  BadgeCheck,
   Gauge
 } from 'lucide-react';
 import { logger } from '../lib/logger';
