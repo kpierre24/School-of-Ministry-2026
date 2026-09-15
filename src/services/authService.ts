@@ -9,7 +9,7 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { AppUser } from '../lib/userAuth';
+import { AppUser, authenticateAdminWithPin } from '../lib/userAuth';
 import { authenticateWithSupabase, AuthVerificationResult } from '../lib/supabaseAuth';
 import { 
   acquireGoogleOAuthToken, 
@@ -38,6 +38,28 @@ export async function loginWithSupabaseAuth(
   userCredentialsList: any[] = []
 ): Promise<AuthVerificationResult> {
   return await authenticateWithSupabase(email, pass, userCredentialsList);
+}
+
+/**
+ * Direct Administrator 6-digit PIN authentication (Kendell Pierre - kpierre24@gmail.com).
+ */
+export async function loginAdminWithPin(
+  pin: string,
+  userCredentialsList: any[] = []
+): Promise<AuthVerificationResult> {
+  const result = authenticateAdminWithPin(pin, userCredentialsList);
+  if (!result.success || !result.user) {
+    return {
+      success: false,
+      error: result.error || 'Invalid Administrator PIN code.'
+    };
+  }
+  return {
+    success: true,
+    user: result.user,
+    mustChangePassword: false,
+    cloudSynced: true
+  };
 }
 
 /**

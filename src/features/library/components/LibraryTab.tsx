@@ -139,7 +139,132 @@ const extractCleanTextFromDataUrl = async (dataUrl: string): Promise<string> => 
   }
 };
 
-export const INITIAL_RESOURCES: LibraryResource[] = [];
+export const INITIAL_RESOURCES: LibraryResource[] = [
+  {
+    id: 'res_som_mod4_video',
+    title: 'Livestream Video: Apostolic Governance & Five-Fold Ministry Alignment',
+    category: 'Livestream Recording',
+    author: 'Apostle Dr. Kendell Pierre',
+    courseCode: 'SOM-MOD-4',
+    moduleTrack: 'SOM-MOD-4',
+    format: 'VIDEO',
+    size: '1.2 GB (HD Video)',
+    downloadUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+    summary: 'Official HTEIM livestream video recording covering foundational apostolic architecture, Ephesians 4:11 five-fold alignment, and spiritual governance.',
+    keyTakeaways: [
+      'Apostolic foundation based on Ephesians 2:20 & 4:11',
+      'Synergy between Apostle, Prophet, Evangelist, Pastor, and Teacher',
+      'Governmental authority and building spiritual fathers'
+    ],
+    fullContent: 'HTEIM School of Ministry Module 4: Apostolic Governance & Five-Fold Alignment\nInstructor: Apostle Dr. Kendell Pierre\n\n1. Apostolic Foundations\n2. Five-Fold Ministry Mechanics\n3. Spiritual Authority and Order\n4. Commissioning and Global Impact.',
+    aiEvaluated: true,
+    isRequiredReading: true,
+    uploadedAt: '2026-08-25'
+  },
+  {
+    id: 'res_som_mod5_video',
+    title: 'Livestream Video: Prophetic Ministry, Spiritual Discernment & Warfare',
+    category: 'Livestream Recording',
+    author: 'Apostolic Faculty Team',
+    courseCode: 'SOM-MOD-5',
+    moduleTrack: 'SOM-MOD-5',
+    format: 'VIDEO',
+    size: '950 MB (HD Video)',
+    downloadUrl: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
+    summary: 'Classroom video recording on cultivating spiritual discernment, testing prophecy according to scripture, and prophetic assembly protocols.',
+    keyTakeaways: [
+      'Distinction between gift of prophecy and prophetic office',
+      'Testing prophecy by scripture and spiritual fruit (1 Cor 14)',
+      'Prophetic protocol in ministry assemblies'
+    ],
+    fullContent: 'HTEIM School of Ministry Module 5: Prophetic Ministry & Spiritual Discernment\n\n1. The Operation of Prophecy\n2. Judging and Discerning Spiritual Manifestations\n3. Warfare and Prophetic Intercession\n4. Order in the Sanctuary.',
+    aiEvaluated: true,
+    isRequiredReading: true,
+    uploadedAt: '2026-08-18'
+  },
+  {
+    id: 'res_som_mod1_video',
+    title: 'Livestream Video: Biblical Hermeneutics & Exegesis Methodologies',
+    category: 'Livestream Recording',
+    author: 'Pastor John Selkridge',
+    courseCode: 'SOM-MOD-1',
+    moduleTrack: 'SOM-MOD-1',
+    format: 'VIDEO',
+    size: '880 MB (HD Video)',
+    downloadUrl: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
+    summary: 'Comprehensive video stream on historical-grammatical exegesis, hermeneutical principles, and Christocentric interpretation.',
+    keyTakeaways: [
+      'Historical, cultural, and grammatical context analysis',
+      'Avoiding eisegesis and allegorical distortions',
+      'Extracting timeless spiritual principles'
+    ],
+    fullContent: 'HTEIM School of Ministry Module 1: Biblical Hermeneutics\nInstructor: Pastor John Selkridge\n\n1. The Authority of Scripture\n2. Exegetical Principles\n3. Genre Analysis\n4. Homiletical Synthesis.',
+    aiEvaluated: true,
+    isRequiredReading: true,
+    uploadedAt: '2026-05-05'
+  },
+  {
+    id: 'res_som_mod2_video',
+    title: 'Livestream Video: Evangelism, The Great Commission & Soul Winning',
+    category: 'Livestream Recording',
+    author: 'Minister Christy Ruben',
+    courseCode: 'SOM-MOD-2',
+    moduleTrack: 'SOM-MOD-2',
+    format: 'VIDEO',
+    size: '760 MB (HD Video)',
+    downloadUrl: 'https://www.youtube.com/watch?v=21X5lGlDOfg',
+    summary: 'Practical evangelism strategies, personal soul-winning witnessing, overcoming objections, and discipleship retention.',
+    keyTakeaways: [
+      'The Matthew 28 mandate for modern ministry',
+      'Personal witnessing without fear or compromise',
+      'Discipleship integration pathways'
+    ],
+    fullContent: 'HTEIM School of Ministry Module 2: Evangelism & Soul Winning\nInstructor: Minister Christy Ruben\n\n1. The Great Commission Mandate\n2. Gospel Presentation Protocols\n3. Street Ministry and City Outreach\n4. Follow-Up and Discipleship Tracking.',
+    aiEvaluated: true,
+    isRequiredReading: true,
+    uploadedAt: '2026-05-19'
+  },
+  {
+    id: 'res_som_mod3_textbook',
+    title: 'Ministerial Character, Ethics & Financial Integrity',
+    category: 'Textbook',
+    author: 'Rev. Gillian Selkridge',
+    courseCode: 'SOM-MOD-3',
+    moduleTrack: 'SOM-MOD-3',
+    format: 'PDF',
+    size: '2.4 MB',
+    summary: 'Foundational manual on ministerial ethics, pastoral confidentiality, financial transparency, and servant leadership.',
+    keyTakeaways: [
+      'High ethical standards in ministry leadership',
+      'Accountability and financial transparency',
+      'Pastoral counseling ethics and confidentiality'
+    ],
+    fullContent: 'HTEIM School of Ministry Module 3: Ministerial Character, Ethics & Financial Integrity\n\nChapter 1: The Character of the Leader\nChapter 2: Financial Stewardship & Accountability\nChapter 3: Pastoral Counseling Ethics\nChapter 4: Handling Church Conflict & Servant Leadership.',
+    aiEvaluated: true,
+    isRequiredReading: true,
+    uploadedAt: '2026-06-16'
+  },
+  {
+    id: 'res_som_mod6_studyguide',
+    title: 'School of the Pastors: Shepherding & Expository Preaching',
+    category: 'Study Guide',
+    author: 'Pastor John Selkridge',
+    courseCode: 'SOM-MOD-6',
+    moduleTrack: 'SOM-MOD-6',
+    format: 'PDF',
+    size: '1.8 MB',
+    summary: 'Comprehensive study guide covering pastoral theology, care of souls, sermon manuscript development, and expository delivery.',
+    keyTakeaways: [
+      'Biblical shepherd leadership models',
+      'Expository sermon structure and application',
+      'Ministerial endurance and self-care'
+    ],
+    fullContent: 'HTEIM School of Ministry Module 6: School of the Pastors\n\nSection 1: The Pastoral Calling and Heart\nSection 2: Shepherding the Flock and Pastoral Care\nSection 3: Expository Preaching and Biblical Teaching\nSection 4: Ministry Longevity and Sustainable Service.',
+    aiEvaluated: true,
+    isRequiredReading: true,
+    uploadedAt: '2026-09-01'
+  }
+];
 
 export const LibraryTab: React.FC<LibraryTabProps> = ({ 
   userRole = 'admin',

@@ -712,11 +712,11 @@ export function AppRouter() {
       };
     } else if (cleanRole === 'admin') {
       newUser = {
-        id: 'u-admin',
+        id: 'u-admin-kpierre',
         username: 'admin',
-        name: customName || 'Administrator Sarah',
+        name: customName || 'Kendell Pierre',
         role: 'admin',
-        email: 'admin@hteim.edu'
+        email: 'kpierre24@gmail.com'
       };
     } else if (cleanRole === 'registrar') {
       newUser = {
@@ -1067,20 +1067,20 @@ export function AppRouter() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return parsed.filter((r: any) => !['r_gdrive_livestream_1', 'r1', 'r2', 'r3', 'r4'].includes(r.id));
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
-    return [];
+    return INITIAL_RESOURCES;
   });
   const [classroomMedia, setClassroomMedia] = useState<MediaResource[]>(() => {
     const saved = localStorage.getItem('hteim_classroom_media');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return parsed.filter((m: any) => !['m_preset_gdrive_1', 'm_preset_1', 'm_preset_2', 'm_preset_3'].includes(m.id));
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
-    return [];
+    return DEFAULT_PRESET_MEDIA;
   });
   const [payments, setPayments] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('hteim_student_payments');
@@ -1088,7 +1088,7 @@ export function AppRouter() {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize names using MANUAL_ALIASES (specifically Shellon Massiah / Shellon Liddell -> Shellon Liddel)
+          // Normalize names using MANUAL_ALIASES (specifically Shellon Massiah / Shellon Liddell -> Shellon Liddel, Regina Joseph-Gonzales, etc.)
           const normalized = parsed.map((p: any) => {
             if (!p || !p.studentName) return p;
             const pLower = p.studentName.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
@@ -1099,13 +1099,23 @@ export function AppRouter() {
             return p;
           });
           // De-duplicate if multiple records exist for the same student (e.g. Shellon Liddel)
-          const seen = new Set<string>();
+          const seenNames = new Set<string>();
+          const seenIds = new Set<string>();
           const deduped: PaymentRecord[] = [];
           normalized.forEach((p: any) => {
-            const key = (p?.studentName || '').toLowerCase().trim();
-            if (key) {
-              if (seen.has(key)) {
-                const existing = deduped.find(d => (d?.studentName || '').toLowerCase().trim() === key);
+            if (!p) return;
+            const rawName = (p?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[rawName];
+            const nameKey = (alias || p?.studentName || '').toLowerCase().trim();
+            const idKey = p?.id;
+
+            if (nameKey) {
+              if (seenNames.has(nameKey)) {
+                const existing = deduped.find(d => {
+                  const dRaw = (d?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+                  const dAlias = MANUAL_ALIASES[dRaw];
+                  return (dAlias || d?.studentName || '').toLowerCase().trim() === nameKey;
+                });
                 if (existing) {
                   existing.amountPaid = (Number(existing.amountPaid) || 0) + (Number(p.amountPaid) || 0);
                   if (existing.amountPaid >= (existing.totalTuition || 1200)) existing.status = 'Paid In Full';
@@ -1113,14 +1123,37 @@ export function AppRouter() {
                 }
                 return;
               }
-              seen.add(key);
+              seenNames.add(nameKey);
             }
+            if (idKey) seenIds.add(idKey);
             deduped.push(p);
           });
           // Merge INITIAL_PAYMENTS to guarantee every enrolled student is present
-          const existingNames = new Set(deduped.map((p: any) => (p?.studentName || '').toLowerCase().trim()));
-          const missing = INITIAL_PAYMENTS.filter(p => !existingNames.has((p.studentName || '').toLowerCase().trim()));
-          return [...deduped, ...missing];
+          const existingNames = new Set(deduped.map((p: any) => {
+            const raw = (p?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[raw];
+            return (alias || p?.studentName || '').toLowerCase().trim();
+          }));
+          const existingIds = new Set(deduped.map((p: any) => p?.id).filter(Boolean));
+
+          const missing = INITIAL_PAYMENTS.filter(p => {
+            if (existingIds.has(p.id)) return false;
+            const pRaw = (p.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[pRaw];
+            const canon = (alias || p.studentName || '').toLowerCase().trim();
+            return !existingNames.has(canon);
+          });
+
+          // Final safety pass to strictly ensure all IDs are unique in the returned array
+          const finalSeenIds = new Set<string>();
+          const result: PaymentRecord[] = [];
+          [...deduped, ...missing].forEach((rec) => {
+            if (!rec || !rec.id) return;
+            if (finalSeenIds.has(rec.id)) return;
+            finalSeenIds.add(rec.id);
+            result.push(rec);
+          });
+          return result;
         }
       } catch (e) {}
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DollarSign,
   CreditCard,
@@ -69,6 +69,10 @@ export const StudentFinancialProfileView: React.FC<StudentFinancialProfileViewPr
   const [isAdjustmentOpen, setIsAdjustmentOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Receipt | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+
+  useEffect(() => {
+    setProfile(calculateStudentFinancialProfile(studentName));
+  }, [studentName]);
 
   const refreshProfile = () => {
     const updated = calculateStudentFinancialProfile(studentName);

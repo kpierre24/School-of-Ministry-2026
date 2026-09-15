@@ -44,7 +44,104 @@ interface ClassroomMediaPlayerProps {
   onOpenNotes?: (lectureTitle?: string) => void;
 }
 
-export const DEFAULT_PRESET_MEDIA: MediaResource[] = [];
+export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
+  {
+    id: 'media_som_mod4',
+    title: 'Livestream Video: Apostolic Governance & Five-Fold Ministry Alignment',
+    speaker: 'Apostle Dr. Kendell Pierre',
+    duration: '1:18:40',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+    description: 'Official HTEIM livestream recording covering the foundational apostolic mandate, Ephesians 4:11 five-fold synergy, church governance, and spiritual fathering.',
+    dateAdded: '2026-08-25',
+    chapters: [
+      { time: 0, title: 'Opening & Apostolic Mandate' },
+      { time: 900, title: 'Ephesians 4:11 Alignment' },
+      { time: 2400, title: 'Governmental Order' },
+      { time: 3900, title: 'Q&A & Impartation' }
+    ]
+  },
+  {
+    id: 'media_som_mod5',
+    title: 'Livestream Video: Prophetic Ministry, Spiritual Discernment & Warfare',
+    speaker: 'Apostolic Faculty Team',
+    duration: '59:10',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
+    description: 'Classroom video recording on the gift vs office of prophecy, testing prophetic words according to 1 Cor 14, spiritual discernment, and assembly protocols.',
+    dateAdded: '2026-08-18',
+    chapters: [
+      { time: 0, title: 'Introduction to Prophetic Gifts' },
+      { time: 720, title: 'Judging & Testing Prophecy' },
+      { time: 1800, title: 'Spiritual Discernment' },
+      { time: 2800, title: 'Prophetic Protocol' }
+    ]
+  },
+  {
+    id: 'media_som_mod1',
+    title: 'Livestream Video: Biblical Hermeneutics & Exegesis Methodologies',
+    speaker: 'Pastor John Selkridge',
+    duration: '54:30',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
+    description: 'Foundational lecture on sound biblical interpretation, historical-grammatical context, avoiding eisegesis, and homiletical exegesis.',
+    dateAdded: '2026-05-05',
+    chapters: [
+      { time: 0, title: 'Hermeneutics Overview' },
+      { time: 600, title: 'Historical-Grammatical Context' },
+      { time: 1500, title: 'Christocentric Principle' },
+      { time: 2600, title: 'Expository Practice' }
+    ]
+  },
+  {
+    id: 'media_som_mod2',
+    title: 'Livestream Video: Evangelism, The Great Commission & Soul Winning',
+    speaker: 'Minister Christy Ruben',
+    duration: '48:15',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=21X5lGlDOfg',
+    description: 'Practical soul-winning strategies, personal witnessing, overcoming objections, the Matthew 28 mandate, and follow-up discipleship.',
+    dateAdded: '2026-05-19',
+    chapters: [
+      { time: 0, title: 'The Great Commission' },
+      { time: 540, title: 'Personal Witnessing' },
+      { time: 1400, title: 'Handling Objections' },
+      { time: 2200, title: 'Discipleship Pathways' }
+    ]
+  },
+  {
+    id: 'media_som_mod3',
+    title: 'Livestream Video: Ministerial Ethics, Financial Integrity & Pastoral Care',
+    speaker: 'Rev. Gillian Selkridge',
+    duration: '1:02:00',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    description: 'High ethical standards for ministers, financial transparency, pastoral counseling confidentiality, handling church conflict, and servant leadership.',
+    dateAdded: '2026-06-16',
+    chapters: [
+      { time: 0, title: 'The Character of the Leader' },
+      { time: 800, title: 'Financial Stewardship' },
+      { time: 1900, title: 'Counseling Confidentiality' },
+      { time: 2900, title: 'Servant Leadership' }
+    ]
+  },
+  {
+    id: 'media_som_mod6',
+    title: 'Livestream Video: School of the Pastors & Expository Preaching',
+    speaker: 'Pastor John Selkridge',
+    duration: '1:12:00',
+    type: 'video',
+    url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+    description: 'Pastoral theology, caring for the sheepfold, sermon manuscript development, expository delivery, and ministry longevity.',
+    dateAdded: '2026-09-01',
+    chapters: [
+      { time: 0, title: 'Pastoral Heart & Calling' },
+      { time: 950, title: 'Shepherding the Flock' },
+      { time: 2200, title: 'Expository Preaching' },
+      { time: 3400, title: 'Ministry Longevity' }
+    ]
+  }
+];
 
 export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
   mediaResources,

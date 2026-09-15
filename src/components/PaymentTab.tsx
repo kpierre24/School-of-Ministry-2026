@@ -65,6 +65,7 @@ import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
 import { isDemoPayment } from '../data/guards';
+import { MANUAL_ALIASES } from '../features/students/studentCanonicalization';
 
 interface PaymentTabProps {
   availableStudents: { name: string; email?: string }[];
@@ -418,7 +419,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-29",
-    "studentName": "Regina Joseph- Gonzales",
+    "studentName": "Regina Joseph-Gonzales",
     "studentId": "HTEIM-2026-2159",
     "email": "profesoragonzales91@gmail.com",
     "moduleTrack": "Active Ministry Module",
@@ -928,6 +929,33 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             parsed.push(mergedShellon);
           }
         }
+
+        // General deduplication pass by canonical name and ID
+        const seenNames = new Set<string>();
+        const seenIds = new Set<string>();
+        const cleaned: PaymentRecord[] = [];
+
+        parsed.forEach((p: any) => {
+          if (!p || !p.id) return;
+          const rawName = (p?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+          const alias = MANUAL_ALIASES[rawName];
+          const nameKey = (alias || p?.studentName || '').toLowerCase().trim();
+          
+          if (seenIds.has(p.id)) {
+            modified = true;
+            return;
+          }
+          if (nameKey && seenNames.has(nameKey)) {
+            modified = true;
+            return;
+          }
+
+          if (nameKey) seenNames.add(nameKey);
+          seenIds.add(p.id);
+          cleaned.push(p);
+        });
+
+        parsed = cleaned;
 
         if (modified) {
           localStorage.setItem('hteim_student_payments', JSON.stringify(parsed));
@@ -1845,17 +1873,27 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
 
   // Find current student payment record
   const studentPayment = useMemo(() => {
-    if (!currentStudentName) return null;
-    const nameLower = (currentStudentName || '').toLowerCase().trim();
-    return payments.find(p => {
+    if (!payments || payments.length === 0) return null;
+    if (!currentStudentName) return payments[0] || null;
+    const nameLower = (currentStudentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+    const canonicalName = (MANUAL_ALIASES[nameLower] || currentStudentName).toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+    
+    // Exact or alias match
+    const match = payments.find(p => {
       if (!p || !p.studentName) return false;
-      const pName = (p?.studentName || '').toLowerCase().trim();
-      if (pName === nameLower) return true;
+      const pName = (p.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+      if (pName === nameLower || pName === canonicalName) return true;
+      const pCanonical = (MANUAL_ALIASES[pName] || p.studentName).toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+      if (pCanonical === canonicalName || pCanonical === nameLower) return true;
       const n1 = nameLower.replace(/[^a-z]/g, '');
       const n2 = pName.replace(/[^a-z]/g, '');
-      if (n1 === '' || n2 === '') return false;
-      return n1.includes(n2) || n2.includes(n1) || (n1.substring(0, 6) === n2.substring(0, 6) && n1.length > 3);
+      if (n1 && n2 && (n1.includes(n2) || n2.includes(n1) || (n1.substring(0, 5) === n2.substring(0, 5) && n1.length > 3))) {
+        return true;
+      }
+      return false;
     });
+
+    return match || payments[0] || null;
   }, [payments, currentStudentName]);
 
   // If student role, return the student-specific payment view
@@ -1868,7 +1906,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           </div>
           <h2 className="text-xl font-extrabold text-slate-900">Tuition Record Not Found</h2>
           <p className="text-sm text-slate-600 leading-relaxed">
-            We couldn't locate a student tuition ledger matching your account name (<strong className="text-slate-800">{currentStudentName}</strong>).
+            We couldn't locate a student tuition ledger matching your account name (<strong className="text-slate-800">{currentStudentName || 'Student'}</strong>).
           </p>
           <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-semibold text-indigo-900">
             Please contact the HTEIM administration team to link your profile with the financial system.

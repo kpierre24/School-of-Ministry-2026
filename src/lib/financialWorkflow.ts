@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { INITIAL_PAYMENTS } from '../components/PaymentTab';
 import { isDemoPayment } from '../data/guards';
+import { MANUAL_ALIASES } from '../features/students/studentCanonicalization';
 import { portalApiClient } from '../services/api/portalApiClient';
 import { generateUUID, getNextSequenceNumber } from './idGenerator';
 
@@ -630,24 +631,31 @@ export function reconcilePayment(params: {
  * Computes complete Student Financial Profile
  */
 export function calculateStudentFinancialProfile(studentName: string) {
-  const norm = (studentName || '').toLowerCase().trim();
+  const norm = (studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+  const canonical = (MANUAL_ALIASES[norm] || studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
   const allInvoices = getInvoices();
   const allTransactions = getTransactions();
   const allReceipts = getReceipts();
   const allAdjustments = getAdjustments();
 
-  const studentInvoices = allInvoices.filter(
-    i => (i.studentName || '').toLowerCase().trim() === norm
-  );
-  const studentTransactions = allTransactions.filter(
-    t => (t.studentName || '').toLowerCase().trim() === norm
-  );
-  const studentReceipts = allReceipts.filter(
-    r => (r.studentName || '').toLowerCase().trim() === norm
-  );
-  const studentAdjustments = allAdjustments.filter(
-    a => (a.studentName || '').toLowerCase().trim() === norm
-  );
+  const isNameMatch = (targetName?: string) => {
+    if (!targetName) return false;
+    const tNorm = targetName.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+    if (tNorm === norm || tNorm === canonical) return true;
+    const tCanonical = (MANUAL_ALIASES[tNorm] || targetName).toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+    if (tCanonical === canonical || tCanonical === norm) return true;
+    const n1 = norm.replace(/[^a-z]/g, '');
+    const n2 = tNorm.replace(/[^a-z]/g, '');
+    if (n1 && n2 && (n1.includes(n2) || n2.includes(n1) || (n1.slice(0, 5) === n2.slice(0, 5) && n1.length >= 4))) {
+      return true;
+    }
+    return false;
+  };
+
+  const studentInvoices = allInvoices.filter(i => isNameMatch(i.studentName));
+  const studentTransactions = allTransactions.filter(t => isNameMatch(t.studentName));
+  const studentReceipts = allReceipts.filter(r => isNameMatch(r.studentName));
+  const studentAdjustments = allAdjustments.filter(a => isNameMatch(a.studentName));
 
   const totalTuition = studentInvoices.reduce((acc, i) => acc + (i.totalTuition || 0), 0);
   const discounts = studentInvoices.reduce((acc, i) => acc + (i.discounts || 0), 0);

@@ -20,26 +20,19 @@ export const FinancePage: React.FC<FinancePageProps> = (props) => {
   const role = props.userRole || props.appUser?.role;
   const isStudent = role === 'student';
 
-  if (!isStudent) {
-    return (
-      <ErrorBoundary label="Finance Page">
-        <InstitutionalFinancePage />
-      </ErrorBoundary>
-    );
-  }
-
   return (
-    <Suspense fallback={<DashboardSkeleton label="Loading Student Payment Statements & Installment Invoices..." />}>
+    <Suspense fallback={<DashboardSkeleton label="Loading Student Payment Statements & Tuition Invoices..." />}>
       <ErrorBoundary label="Payments Tab">
         <LazyPaymentTab
           availableStudents={props.availableStudents || []}
-          isAdmin={false}
+          isAdmin={!isStudent}
           userRole={role}
           currentStudentName={props.currentStudentName || props.appUser?.studentName || props.appUser?.name}
           payments={props.payments || []}
           setPayments={props.setPayments || (() => {})}
           onDeleteStudent={props.onDeleteStudent || (() => {})}
           onRestoreStudent={props.onRestoreStudent || (() => {})}
+          {...props}
         />
       </ErrorBoundary>
     </Suspense>

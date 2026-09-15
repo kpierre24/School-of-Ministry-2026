@@ -47,7 +47,7 @@ export function RoleManagementModal({
 
   const demoAccounts: Record<UserRole, { name: string; email: string; studentId?: string }> = {
     super_admin: { name: 'Apostle Kendell Pierre', email: 'kpierre24@gmail.com' },
-    admin: { name: 'Sister Sarah Administrator', email: 'admin@hteim.edu' },
+    admin: { name: 'Kendell Pierre', email: 'kpierre24@gmail.com' },
     registrar: { name: 'Dr. Evelyn Registrar', email: 'registrar@hteim.edu' },
     lecturer: { name: 'Rev. Dr. Matthew Faculty', email: 'lecturer@hteim.edu' },
     student: { name: 'Afeshia Burke', email: 'aburke@student.hteim.edu', studentId: 'HTEIM-2026-0001' },
