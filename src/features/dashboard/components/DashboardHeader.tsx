@@ -67,36 +67,36 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       />
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={roleConfig.badgeVariant} size="sm" icon={<RoleIcon className="h-3.5 w-3.5" />}>
               {roleConfig.label}
             </Badge>
 
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] dark:text-slate-400">
+            <span className="text-xs font-medium text-[var(--color-text-muted)] dark:text-slate-400">
               •
             </span>
 
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] dark:text-slate-400">
+            <span className="text-xs font-medium text-[var(--color-text-muted)] dark:text-slate-400">
               {cohortName}
             </span>
 
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] dark:text-slate-400">
+            <span className="text-xs font-medium text-[var(--color-text-muted)] dark:text-slate-400">
               •
             </span>
 
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-text-muted)] dark:text-slate-400">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-text-muted)] dark:text-slate-400">
               <Calendar className="h-3.5 w-3.5" />
               {todayFormatted}
             </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--color-text)] dark:text-slate-100 font-sans">
-            {greeting}, <span className="text-[var(--color-primary)] dark:text-sky-400">{userName}</span>
+            {greeting}, <span className="text-[var(--color-primary)] dark:text-sky-400">{userName}</span> 👋
           </h1>
 
           <p className="max-w-2xl text-xs sm:text-sm text-[var(--color-text-muted)] dark:text-slate-400">
-            Welcome to your academic portal. Here is your overview for today.
+            Here's what you need to know today.
           </p>
         </div>
 
