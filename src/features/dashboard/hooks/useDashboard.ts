@@ -49,33 +49,45 @@ export interface StudentDashboardData {
 export interface TeacherDashboardData {
   greetingName: string;
   todaySchedule: {
+    hasSession?: boolean;
     className: string;
     cohortName: string;
     time: string;
+    room?: string;
     studentsExpected: number;
     studentsCheckedIn: number;
+    enrolledCount?: number;
   };
   toReview: {
     assignmentsCount: number;
     quizzesCount: number;
-    moderationRequestsCount: number;
+    moderationRequestsCount?: number;
+    atRiskCount?: number;
   };
   atRiskCount: number;
+  recentSubmissions?: any[];
 }
 
 export interface AdminDashboardData {
   totalStudents: number;
   attendanceRate: number;
+  /** Alias used by AdminDashboard hero subtitle */
+  overallAttendance?: number;
   outstandingTuitionFormatted: string;
   pendingGradesCount: number;
+  tuitionCollectionRate?: number;
+  cloudSyncStatus?: 'synced' | 'pending' | 'syncing' | 'error';
   attentionItems: Array<{
     id: string;
     title: string;
+    description?: string;
     type: 'warning' | 'danger' | 'info' | 'success';
+    priority?: 'urgent' | 'high' | 'medium' | 'low';
     actionLabel?: string;
     actionTab?: TabType;
   }>;
   isDatabaseSynced: boolean;
+  recentActivities?: any[];
 }
 
 export function useDashboard({
@@ -210,18 +222,23 @@ export function useDashboard({
     return {
       greetingName,
       todaySchedule: {
+        hasSession: true,
         className: 'School of Ministry — Pastoral Leadership',
         cohortName: 'Class of 2026',
         time: 'Saturday • 5:00 PM',
+        room: 'Main Sanctuary',
         studentsExpected: totalCount,
         studentsCheckedIn: checkedInCount,
+        enrolledCount: totalCount,
       },
       toReview: {
         assignmentsCount: Math.max(1, assignments.length || 5),
         quizzesCount: 2,
         moderationRequestsCount: 1,
+        atRiskCount: atRiskStudents.length,
       },
       atRiskCount: atRiskStudents.length,
+      recentSubmissions: [],
     };
   }, [appUser, students, assignments, atRiskStudents]);
 
@@ -279,10 +296,13 @@ export function useDashboard({
     return {
       totalStudents,
       attendanceRate,
+      overallAttendance: attendanceRate,
       outstandingTuitionFormatted,
       pendingGradesCount,
+      cloudSyncStatus: isCloudSyncing ? ('syncing' as const) : ('synced' as const),
       attentionItems,
       isDatabaseSynced: !isCloudSyncing,
+      recentActivities: [],
     };
   }, [students, metrics, payments, isCloudSyncing]);
 

@@ -92,7 +92,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         badgeVariant: topIssue.priority === 'urgent' ? 'danger' : 'warning',
         questionPrompt: 'WHAT SHOULD I DO NEXT?',
         title: topIssue.title,
-        subtitle: topIssue.description,
+        subtitle: topIssue.description || 'Requires administrative attention.',
         actionLabel: topIssue.actionLabel || 'Triage Issue',
         actionTab: topIssue.actionTab || 'students',
         secondaryActions: [
@@ -103,7 +103,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
 
     // 2. Cloud sync pending
-    if (data.cloudSyncStatus === 'pending' || data.cloudSyncStatus === 'syncing') {
+    if (!data.isDatabaseSynced) {
       return {
         id: 'hero-sync-cloud',
         badgeText: 'Cloud Sync Pending',
@@ -126,7 +126,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       badgeVariant: 'success',
       questionPrompt: 'WHAT SHOULD I DO NEXT?',
       title: 'Review Registry Metrics & Cohort Performance',
-      subtitle: `${data.totalStudents} enrolled students • ${data.overallAttendance}% overall attendance rate across modules.`,
+      subtitle: `${data.totalStudents} enrolled students • ${data.attendanceRate}% overall attendance rate across modules.`,
       actionLabel: 'Manage Students',
       actionTab: 'students',
       secondaryActions: [

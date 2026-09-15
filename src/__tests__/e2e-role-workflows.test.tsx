@@ -197,17 +197,21 @@ describe('E2E Role Workflows: Student, Teacher, Admin & WhatsApp Security', () =
       const handleNavigate = vi.fn();
       const teacherData = {
         greetingName: 'Pastor John',
+        atRiskCount: 2,
         todaySchedule: {
           hasSession: true,
           className: 'Pastoral Leadership SOM-104',
           time: '7:00 PM - 9:00 PM',
           room: 'Sanctuary',
           cohortName: 'Class of 2026',
+          studentsExpected: 28,
+          studentsCheckedIn: 18,
           enrolledCount: 28,
         },
         toReview: {
           assignmentsCount: 6, // 6 pending reviews
           quizzesCount: 1,
+          moderationRequestsCount: 0,
           atRiskCount: 2,
         },
         recentSubmissions: [],
@@ -233,17 +237,21 @@ describe('E2E Role Workflows: Student, Teacher, Admin & WhatsApp Security', () =
       const handleNavigate = vi.fn();
       const teacherData = {
         greetingName: 'Apostle Dr. Kendell',
+        atRiskCount: 0,
         todaySchedule: {
           hasSession: true,
           className: 'Apostolic Ministry & Governance',
           time: '6:30 PM - 8:30 PM',
           room: 'Auditorium',
           cohortName: 'Class of 2026',
+          studentsExpected: 30,
+          studentsCheckedIn: 20,
           enrolledCount: 30,
         },
         toReview: {
           assignmentsCount: 0,
           quizzesCount: 0,
+          moderationRequestsCount: 0,
           atRiskCount: 0,
         },
         recentSubmissions: [],
@@ -275,16 +283,21 @@ describe('E2E Role Workflows: Student, Teacher, Admin & WhatsApp Security', () =
       const handleNavigate = vi.fn();
       const adminData = {
         totalStudents: 32,
+        attendanceRate: 88,
         overallAttendance: 88,
+        outstandingTuitionFormatted: 'TT$ 4,250',
+        pendingGradesCount: 7,
         tuitionCollectionRate: 78,
         cloudSyncStatus: 'synced' as const,
+        isDatabaseSynced: true,
         attentionItems: [
           {
             id: 'att-1',
             title: 'Past Due Balance: 3 Students Overdue',
+            type: 'warning' as const,
             description: 'Send automated reminder for second semester tuition installment.',
             actionLabel: 'Review Accounts',
-            actionTab: 'payments' as const,
+            actionTab: 'payments' as TabType,
             priority: 'urgent' as const,
           },
         ],
