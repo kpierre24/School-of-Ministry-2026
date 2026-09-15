@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Search, Filter, CalendarCheck, RotateCcw } from 'lucide-react';
+import { Search, Filter, CalendarCheck, RotateCcw, Zap } from 'lucide-react';
 import { AttendanceSummary } from './AttendanceSummary';
 import { AttendanceSession } from './AttendanceSession';
 import { AttendanceTable } from './AttendanceTable';
 import { AttendanceForm } from './AttendanceForm';
+import { SpeedCheckInModal } from '../../../components/SpeedCheckInModal';
 import { useAttendance } from '../hooks/useAttendance';
 import { useAttendanceMutations } from '../hooks/useAttendanceMutations';
 import { StudentSummary, ClassDay } from '../../../types';
@@ -33,6 +34,7 @@ export function AttendancePage({
   className = '',
 }: AttendancePageProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSpeedCheckInOpen, setIsSpeedCheckInOpen] = useState(false);
 
   const {
     students,
@@ -90,6 +92,15 @@ export function AttendancePage({
             Track student check-ins, class day sessions, excused absences, and 75% threshold compliance.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsSpeedCheckInOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 self-start sm:self-auto"
+        >
+          <Zap className="h-4 w-4 fill-current animate-pulse" />
+          <span>Speed Check-In</span>
+        </button>
       </div>
 
       {/* KPI Stats Summary */}
@@ -158,6 +169,20 @@ export function AttendancePage({
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleCreateSessionSubmit}
+      />
+
+      {/* Rapid-Fire Speed Check-In Modal */}
+      <SpeedCheckInModal
+        isOpen={isSpeedCheckInOpen}
+        onClose={() => setIsSpeedCheckInOpen(false)}
+        students={filteredStudents.length > 0 ? filteredStudents : students}
+        classDays={classDays}
+        activeDayId={selectedClassDayId}
+        onChangeActiveDayId={setSelectedClassDayId}
+        excusedAbsences={excusedAbsences}
+        onToggleAttendance={(studentName, classDayId, status) => {
+          markAttendance(studentName, classDayId, status as any);
+        }}
       />
     </div>
   );

@@ -1511,8 +1511,8 @@ export function AppRouter() {
       actor: senderName,
       role: senderRole,
       actionCategory: 'System Settings',
-      actionTitle: 'New Message Sent',
-      details: `Sent message '${msgData.subject}' to ${msgData.recipientName}`
+      actionTitle: msgData.isGroupMessage ? 'Group Broadcast Sent' : 'New Message Sent',
+      details: `Sent ${msgData.isGroupMessage ? 'group broadcast' : 'message'} '${msgData.subject}' to ${msgData.recipientName}${msgData.channelsSent?.includes('whatsapp') ? ' (including WhatsApp)' : ''}`
     });
   };
 
@@ -1568,6 +1568,12 @@ export function AppRouter() {
         const isFromStudent = (m.senderName || '').toLowerCase().includes(userName) || m.senderEmail === appUser?.email;
         if (isFromStudent) {
           return m.status === 'in_progress' || m.status === 'open';
+        }
+        if (
+          (m.recipientType === 'all_students' || m.recipientType === 'group' || m.recipientType === 'whatsapp_group' || m.isGroupMessage) &&
+          !m.isReadByRecipient
+        ) {
+          return true;
         }
         return false;
       }
@@ -3373,7 +3379,7 @@ export function AppRouter() {
     return `HTEIM-2026-${hashStr}`;
   };
 
-  const handleToggleStudentAttendance = (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused' | 'unmarked') => {
+  const handleToggleStudentAttendance = (studentName: string, classDayId: string, newStatus: 'present' | 'absent' | 'excused' | 'late' | 'unmarked') => {
     if (!studentName || !classDayId) return;
     const studentKey = (studentName || '').toLowerCase().trim();
     const day = classDays.find(d => d.id === classDayId || d.name === classDayId);
@@ -3418,6 +3424,8 @@ export function AppRouter() {
     const strictStatus: AttendanceStatus =
       newStatus === 'present'
         ? AttendanceStatus.PRESENT
+        : newStatus === 'late'
+        ? AttendanceStatus.LATE
         : newStatus === 'excused'
         ? AttendanceStatus.EXCUSED
         : AttendanceStatus.ABSENT;
@@ -3433,7 +3441,7 @@ export function AppRouter() {
           updated.splice(existingIdx, 1);
         }
       } else {
-        const isPresent = strictStatus === AttendanceStatus.PRESENT;
+        const isPresent = strictStatus === AttendanceStatus.PRESENT || strictStatus === AttendanceStatus.LATE;
         const recordData: AttendanceRecord = {
           studentId: resolvedStudentId,
           sessionId: classDayId,
@@ -3442,7 +3450,7 @@ export function AppRouter() {
           classDay: classDayId,
           status: strictStatus,
           present: isPresent,
-          score: existingIdx >= 0 ? updated[existingIdx].score : '',
+          score: newStatus === 'late' ? 'late' : (existingIdx >= 0 ? updated[existingIdx].score : ''),
           timestamp: nowIso,
           capturedAt: existingIdx >= 0 ? (updated[existingIdx].capturedAt || nowIso) : nowIso,
           manualOverride: true,

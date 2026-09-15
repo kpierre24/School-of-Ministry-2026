@@ -642,6 +642,14 @@ export type MessageReply = {
   createdAt: string;
 };
 
+export type WhatsAppGroupConfig = {
+  groupName: string;
+  groupInviteUrl: string;
+  description?: string;
+  activeCohort?: string;
+  lastBroadcastAt?: string;
+};
+
 export type AppMessage = {
   id: string;
   subject: string;
@@ -651,8 +659,8 @@ export type AppMessage = {
   senderRole: UserRole | 'student' | 'teacher' | 'admin';
   senderEmail?: string;
   senderStudentId?: string;
-  recipientType: 'admin' | 'teacher' | 'student' | 'all_staff';
-  recipientName?: string; // e.g. "All Administration & Faculty", "Headmaster / Dean", "Apostolic Ministry Faculty" or specific student name
+  recipientType: 'admin' | 'teacher' | 'student' | 'all_staff' | 'all_students' | 'group' | 'whatsapp_group';
+  recipientName?: string; // e.g. "All Administration & Faculty", "All Enrolled Students", "HTEIM WhatsApp Community Group", etc.
   recipientEmail?: string;
   courseCode?: string;
   content: string;
@@ -663,6 +671,10 @@ export type AppMessage = {
   isReadBySender: boolean;
   status: 'open' | 'in_progress' | 'resolved' | 'archived';
   replies: MessageReply[];
+  isGroupMessage?: boolean;
+  groupType?: 'all_students' | 'cohort' | 'whatsapp_group' | 'pending_tuition';
+  whatsappGroupUrl?: string;
+  channelsSent?: ('portal' | 'whatsapp' | 'email' | 'sms')[];
 };
 
 export type PaymentPlanType = 'full' | 'monthly' | 'scholarship' | 'custom' | 'Monthly Installments' | 'Pay In Full' | 'Financial Aid / Scholarship';

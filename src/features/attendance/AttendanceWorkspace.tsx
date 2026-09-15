@@ -32,11 +32,13 @@ import {
   MessageCircle,
   CheckCheck,
   Download,
+  Zap,
 } from 'lucide-react';
 
 import { StudentAttendancePortal } from '../../components/StudentAttendancePortal';
 import { SwipeableAttendanceCard } from '../../components/SwipeableAttendanceCard';
 import { ManageClassDaysModal } from '../../components/ManageClassDaysModal';
+import { SpeedCheckInModal } from '../../components/SpeedCheckInModal';
 import { EmptyState } from '../../components/UXPrimitives';
 import { logActivity } from '../../lib/auditLogger';
 import { getStudentPaymentDetails } from '../../lib/paymentUtils';
@@ -214,6 +216,8 @@ export function AttendanceTab({
   setRecords,
   setExcusedAbsences,
 }: AttendanceTabProps) {
+  const [showSpeedCheckIn, setShowSpeedCheckIn] = React.useState(false);
+
   // Batch mark all displayed / selected students present for a specific class day
   const handleMarkAllPresentForDay = (dayId: string) => {
     const targetStudents = selectedStudentNames.length > 0
@@ -393,6 +397,14 @@ export function AttendanceTab({
                 {/* Add Class Day & Manage Class Days Action Buttons */}
                 {(appUser?.role as string) !== 'student' && (
                   <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setShowSpeedCheckIn(true)}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                      title="Rapid-fire single-tap live roll call"
+                    >
+                      <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
+                      <span>Speed Check-In</span>
+                    </button>
                     <button
                       onClick={() => handleAddClassDay()}
                       className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black flex items-center gap-1 transition-all shadow-xs cursor-pointer active:opacity-80 shrink-0"
@@ -1141,6 +1153,22 @@ export function AttendanceTab({
           />
         </div>
       )}
+
+      {/* Speed Check-In Rapid-Fire Roll Call Modal */}
+      <SpeedCheckInModal
+        isOpen={showSpeedCheckIn}
+        onClose={() => setShowSpeedCheckIn(false)}
+        students={filteredAndSortedStudents.length > 0 ? filteredAndSortedStudents : uniqueStudents}
+        classDays={effectiveClassDays.length > 0 ? effectiveClassDays : classDays}
+        activeDayId={liveCheckinDayId || (effectiveClassDays.length > 0 ? effectiveClassDays[effectiveClassDays.length - 1].id : '')}
+        onChangeActiveDayId={setLiveCheckinDayId}
+        excusedAbsences={excusedAbsences}
+        studentPhotos={studentPhotos}
+        studentNotes={studentNotes}
+        onToggleAttendance={handleToggleStudentAttendance}
+        atRiskThreshold={atRiskThreshold}
+        satisfactoryThreshold={satisfactoryThreshold}
+      />
 
     </Fragment>
   );

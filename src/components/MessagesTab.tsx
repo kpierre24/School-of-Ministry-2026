@@ -12,6 +12,7 @@ import {
   FileText, 
   X, 
   User, 
+  Users,
   Shield, 
   GraduationCap, 
   ChevronRight, 
@@ -27,11 +28,18 @@ import {
   RefreshCw,
   HelpCircle,
   Briefcase,
-  Database
+  Database,
+  ExternalLink,
+  Copy,
+  CheckCheck,
+  Settings,
+  Bell,
+  Radio,
+  Share2
 } from 'lucide-react';
 import { EmptyState } from './UXPrimitives';
 import { Modal } from './Modal';
-import { AppMessage, MessageCategory, MessagePriority, MessageReply, MessageAttachment } from '../types';
+import { AppMessage, MessageCategory, MessagePriority, MessageReply, MessageAttachment, WhatsAppGroupConfig } from '../types';
 import { AppUser } from '../lib/userAuth';
 import { sanitizeInput } from '../lib/securityHelper';
 
@@ -71,7 +79,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
     }
     return null;
   });
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'open' | 'in_progress' | 'resolved' | 'archived' | 'sent_by_me'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'group' | 'whatsapp' | 'open' | 'in_progress' | 'resolved' | 'archived' | 'sent_by_me'>('all');
   const [selectedCategory, setSelectedCategory] = useState<MessageCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -84,6 +92,32 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   const [content, setContent] = useState('');
   const [newAttachments, setNewAttachments] = useState<MessageAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Group & WhatsApp Messaging Controls (for Teachers / Admins)
+  const [composeMode, setComposeMode] = useState<'direct' | 'group'>('direct');
+  const [groupTarget, setGroupTarget] = useState<'all_students' | 'whatsapp_group' | 'cohort' | 'pending_tuition'>('all_students');
+  const [channelPortal, setChannelPortal] = useState(true);
+  const [channelWhatsApp, setChannelWhatsApp] = useState(false);
+  const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+
+  // WhatsApp Group Configuration
+  const [whatsAppConfig, setWhatsAppConfig] = useState<WhatsAppGroupConfig>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_whatsapp_group_config');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {
+      groupName: 'HTEIM School of Ministry - Class Fellowship & Announcements',
+      groupInviteUrl: 'https://chat.whatsapp.com/invite/HTEIMClassGroup2026',
+      description: 'Official WhatsApp group for live Tuesday lecture links, ministry announcements, and prayer requests.'
+    };
+  });
+  const [showWhatsAppConfigModal, setShowWhatsAppConfigModal] = useState(false);
+  const [editGroupName, setEditGroupName] = useState(whatsAppConfig.groupName);
+  const [editGroupUrl, setEditGroupUrl] = useState(whatsAppConfig.groupInviteUrl);
+  const [editGroupDesc, setEditGroupDesc] = useState(whatsAppConfig.description || '');
   
   // Reply State
   const [replyText, setReplyText] = useState('');
@@ -95,13 +129,76 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   const currentUserName = appUser?.studentName || appUser?.name || 'Student';
   const currentUserEmail = appUser?.email || `${(currentUserName || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`;
 
+  // WhatsApp formatted broadcast text generator
+  const generateWhatsAppBroadcastText = (subj: string, body: string, sender: string, role: string) => {
+    return [
+      `*📢 HTEIM SCHOOL OF MINISTRY ANNOUNCEMENT*`,
+      `*Subject:* ${subj.trim() || 'Ministry Update'}`,
+      `*Date:* ${new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}`,
+      ``,
+      `${body.trim() || 'No additional details provided.'}`,
+      ``,
+      `────────────────────────`,
+      `🏛️ *HTEIM Student Portal:* ${typeof window !== 'undefined' ? window.location.origin : 'https://hteim.edu'}`,
+      `💬 *Broadcasted by:* ${sender} (${role.toUpperCase()})`
+    ].join('\n');
+  };
+
+  const handleOpenWhatsApp = (text?: string) => {
+    const formatted = text || generateWhatsAppBroadcastText(subject || 'Class Update', content || '', currentUserName, currentUserRole);
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(formatted)}`;
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleOpenWhatsAppGroup = () => {
+    if (typeof window !== 'undefined') {
+      window.open(whatsAppConfig.groupInviteUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleCopyWhatsAppText = (text?: string) => {
+    const formatted = text || generateWhatsAppBroadcastText(subject || 'Class Update', content || '', currentUserName, currentUserRole);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(formatted);
+      setCopiedWhatsApp(true);
+      setTimeout(() => setCopiedWhatsApp(false), 2000);
+    }
+  };
+
+  const handleSaveWhatsAppConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated: WhatsAppGroupConfig = {
+      groupName: editGroupName.trim() || whatsAppConfig.groupName,
+      groupInviteUrl: editGroupUrl.trim() || whatsAppConfig.groupInviteUrl,
+      description: editGroupDesc.trim() || whatsAppConfig.description
+    };
+    setWhatsAppConfig(updated);
+    try {
+      localStorage.setItem('hteim_whatsapp_group_config', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    setShowWhatsAppConfigModal(false);
+  };
+
   // Filtered Messages
   const filteredMessages = useMemo(() => {
     return messages.filter(msg => {
       // Role filter visibility
       if (currentUserRole === 'student') {
         const isSender = (msg.senderName || '').toLowerCase() === (currentUserName || '').toLowerCase() || msg.senderEmail === currentUserEmail;
-        const isRecipient = (msg.recipientName || '').toLowerCase().includes((currentUserName || '').toLowerCase()) || msg.recipientType === 'all_staff';
+        const isRecipient = (msg.recipientName || '').toLowerCase().includes((currentUserName || '').toLowerCase()) ||
+          msg.recipientType === 'all_staff' ||
+          msg.recipientType === 'all_students' ||
+          msg.recipientType === 'group' ||
+          msg.recipientType === 'whatsapp_group' ||
+          Boolean(msg.isGroupMessage) ||
+          (msg.recipientName || '').toLowerCase().includes('all student') ||
+          (msg.recipientName || '').toLowerCase().includes('all enrolled') ||
+          (msg.recipientName || '').toLowerCase().includes('cohort') ||
+          (msg.recipientName || '').toLowerCase().includes('whatsapp');
         if (!isSender && !isRecipient) return false;
       }
 
@@ -119,6 +216,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
       if (activeFilter === 'in_progress' && msg.status !== 'in_progress') return false;
       if (activeFilter === 'resolved' && msg.status !== 'resolved') return false;
       if (activeFilter === 'sent_by_me' && (msg.senderName || '').toLowerCase() !== (currentUserName || '').toLowerCase()) return false;
+      
+      // Group & WhatsApp filter tabs
+      if (activeFilter === 'group' && !msg.isGroupMessage && msg.recipientType !== 'all_students' && msg.recipientType !== 'group' && msg.recipientType !== 'whatsapp_group') return false;
+      if (activeFilter === 'whatsapp' && msg.recipientType !== 'whatsapp_group' && !msg.channelsSent?.includes('whatsapp') && msg.groupType !== 'whatsapp_group') return false;
 
       // Category
       if (selectedCategory !== 'all' && msg.category !== selectedCategory) return false;
@@ -186,6 +287,43 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
     e.preventDefault();
     if (!subject.trim() || !content.trim()) return;
 
+    let computedRecipientType: AppMessage['recipientType'] = 'admin';
+    let computedRecipientName = recipientName;
+    let isGroup = false;
+
+    if (composeMode === 'group' && currentUserRole !== 'student') {
+      isGroup = true;
+      if (groupTarget === 'all_students') {
+        computedRecipientType = 'all_students';
+        computedRecipientName = 'All Enrolled Students';
+      } else if (groupTarget === 'whatsapp_group') {
+        computedRecipientType = 'whatsapp_group';
+        computedRecipientName = whatsAppConfig.groupName || 'HTEIM WhatsApp Community Group';
+      } else if (groupTarget === 'cohort') {
+        computedRecipientType = 'group';
+        computedRecipientName = 'Active Ministry Module Cohort';
+      } else if (groupTarget === 'pending_tuition') {
+        computedRecipientType = 'group';
+        computedRecipientName = 'Pending Tuition Students';
+      }
+    } else {
+      if (recipientName === 'All Enrolled Students') {
+        computedRecipientType = 'all_students';
+        isGroup = true;
+      } else if (recipientName.includes('Student')) {
+        computedRecipientType = 'student';
+      } else if (recipientName.includes('Faculty') || recipientName.includes('Teacher')) {
+        computedRecipientType = 'teacher';
+      } else {
+        computedRecipientType = 'admin';
+      }
+    }
+
+    const selectedChannels: ('portal' | 'whatsapp')[] = [];
+    if (channelPortal) selectedChannels.push('portal');
+    if (channelWhatsApp || groupTarget === 'whatsapp_group') selectedChannels.push('whatsapp');
+    if (selectedChannels.length === 0) selectedChannels.push('portal');
+
     onSendMessage({
       subject: sanitizeInput(subject),
       category,
@@ -194,15 +332,32 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
       senderRole: currentUserRole === 'admin' ? 'admin' : (currentUserRole === 'teacher' ? 'teacher' : 'student'),
       senderEmail: currentUserEmail,
       senderStudentId: appUser?.studentId,
-      recipientType: recipientName.includes('Student') ? 'student' : (recipientName.includes('Faculty') || recipientName.includes('Teacher') ? 'teacher' : 'admin'),
-      recipientName,
+      recipientType: computedRecipientType,
+      recipientName: computedRecipientName,
       content: sanitizeInput(content),
-      attachments: []
+      attachments: [],
+      isGroupMessage: isGroup,
+      groupType: isGroup ? groupTarget : undefined,
+      whatsappGroupUrl: whatsAppConfig.groupInviteUrl,
+      channelsSent: selectedChannels
     });
+
+    if (channelWhatsApp || groupTarget === 'whatsapp_group') {
+      const formatted = generateWhatsAppBroadcastText(subject, content, currentUserName, currentUserRole);
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(formatted)}`;
+      try {
+        if (typeof window !== 'undefined') {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      } catch (err) {
+        console.warn('Could not launch WhatsApp window:', err);
+      }
+    }
 
     setShowNewMsgModal(false);
     setSubject('');
     setContent('');
+    setChannelWhatsApp(false);
   };
 
   const handleSendReply = (e: React.FormEvent) => {
@@ -211,6 +366,41 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
 
     onReplyMessage(activeMessage.id, sanitizeInput(replyText), []);
     setReplyText('');
+  };
+
+  // Quick Preset Templates for Teachers & Admins
+  const applyGroupTemplate = (templateType: 'zoom' | 'exam' | 'schedule' | 'tuition' | 'devotional') => {
+    if (templateType === 'zoom') {
+      setCategory('general');
+      setPriority('important');
+      setSubject('Tuesday Live Zoom Class Link & Credentials');
+      setContent('Greetings Students of Ministry,\n\nOur live lecture session is scheduled for Tuesday at 7:00 PM EST.\n\n📍 Zoom Meeting ID: 842 9102 3841\n🔑 Passcode: HTEIM2026\n\nPlease ensure your AMP Bible and lecture notebooks are prepared prior to class.\n\nIn Christ,\n' + currentUserName);
+      setChannelWhatsApp(true);
+    } else if (templateType === 'exam') {
+      setCategory('exam');
+      setPriority('urgent');
+      setSubject('Upcoming Ministry Evaluation & Assessment Guidelines');
+      setContent('Grace and peace everyone,\n\nPlease take note that the Module Evaluation is now open. All students are expected to complete their submissions through the Exams tab by Sunday 11:59 PM.\n\nBe blessed in your study and preparation.\n' + currentUserName);
+      setChannelWhatsApp(true);
+    } else if (templateType === 'schedule') {
+      setCategory('general');
+      setPriority('normal');
+      setSubject('Class Schedule & Chapel Fellowship Update');
+      setContent('Dear Ministry Class,\n\nPlease review this week\'s revised schedule of classes and prayer fellowship. Lecture audio and accompanying syllabus slides are available in the Library tab.\n\nBlessings,\n' + currentUserName);
+      setChannelWhatsApp(true);
+    } else if (templateType === 'tuition') {
+      setCategory('tuition');
+      setPriority('important');
+      setSubject('Tuition Balance Clearance Notice');
+      setContent('Dear Students,\n\nThis is a friendly reminder from the Financial Office regarding tuition installment settlements. Please review your balance statement in the Payments tab and verify all receipts.\n\nRespectfully,\nHTEIM Bursar');
+      setChannelWhatsApp(false);
+    } else if (templateType === 'devotional') {
+      setCategory('general');
+      setPriority('normal');
+      setSubject('Weekly Ministry Scripture & Exhortation');
+      setContent('“Trust in the LORD with all your heart and lean not on your own understanding; in all your ways acknowledge Him, and He will make your paths straight.” — Proverbs 3:5-6\n\nMay this scripture uplift you in your academic and spiritual walk this week!\n\nIn Christ,\n' + currentUserName);
+      setChannelWhatsApp(true);
+    }
   };
 
   // Quick Preset Templates for Students
@@ -243,25 +433,117 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-[#025798]" />
-              Direct Communication Center
+              Direct & Group Communication Center
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-xs font-semibold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+              <Share2 className="w-3 h-3 text-emerald-600" />
+              WhatsApp Group Connected
             </span>
           </div>
           <h2 className="text-base sm:text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            Messages & Academic Support
+            Messages, Group Broadcasts & WhatsApp
           </h2>
           <p className="hidden sm:block text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            Send direct inquiries to Course Instructors, Academic Deans, or the Bursar's Office. Receive official updates, assignment feedback, and support.
+            {currentUserRole !== 'student'
+              ? 'Send 1-on-1 direct messages to students and faculty, or broadcast class announcements across the Student Portal and official WhatsApp Group.'
+              : 'Send direct inquiries to Course Instructors, Academic Deans, or the Bursar\'s Office. View official class broadcasts and join WhatsApp discussions.'}
           </p>
         </div>
 
-        <div className="w-full md:w-auto shrink-0">
+        <div className="w-full md:w-auto shrink-0 flex flex-col sm:flex-row items-center gap-2">
+          {currentUserRole !== 'student' && (
+            <button
+              onClick={() => {
+                setComposeMode('group');
+                setGroupTarget('all_students');
+                setChannelWhatsApp(false);
+                setShowNewMsgModal(true);
+              }}
+              className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+            >
+              <Users className="w-4 h-4" />
+              <span>Send Group Message</span>
+            </button>
+          )}
+
           <button
-            onClick={() => setShowNewMsgModal(true)}
-            className="w-full md:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98] border border-[#b38f53]/30"
+            onClick={() => {
+              setComposeMode('direct');
+              setRecipientName(prefilledRecipient);
+              setShowNewMsgModal(true);
+            }}
+            className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98] border border-[#b38f53]/30"
           >
             <MessageSquarePlus className="w-4 h-4 text-[#dfc18b]" />
-            <span>Compose New Message</span>
+            <span>Compose Direct Message</span>
           </button>
+        </div>
+      </div>
+
+      {/* Official Class WhatsApp Group Hub Card */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-slate-100/50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 rounded-xl p-3.5 sm:p-4 border border-emerald-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <MessageSquare className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                {whatsAppConfig.groupName}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Community Hub
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
+              {currentUserRole !== 'student' 
+                ? 'Teachers and admins can broadcast official lecture links, Tuesday Zoom credentials, and urgent notices directly to all enrolled students via WhatsApp.'
+                : 'Connect with fellow ministry students and professors. Receive instant school alerts, Tuesday Zoom links, and prayer fellowship updates on WhatsApp.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
+          <button
+            onClick={handleOpenWhatsAppGroup}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
+            title="Open or join WhatsApp group in a new tab"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>{currentUserRole === 'student' ? 'Join Class WhatsApp Group' : 'Open WhatsApp Group'}</span>
+          </button>
+
+          {currentUserRole !== 'student' && (
+            <>
+              <button
+                onClick={() => {
+                  setComposeMode('group');
+                  setGroupTarget('whatsapp_group');
+                  setChannelWhatsApp(true);
+                  setShowNewMsgModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold text-xs flex items-center gap-1.5 border border-slate-700 shadow-xs transition-all cursor-pointer active:scale-95"
+                title="Broadcast directly to WhatsApp Group"
+              >
+                <Send className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Broadcast to WhatsApp</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditGroupName(whatsAppConfig.groupName);
+                  setEditGroupUrl(whatsAppConfig.groupInviteUrl);
+                  setEditGroupDesc(whatsAppConfig.description || '');
+                  setShowWhatsAppConfigModal(true);
+                }}
+                className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                title="Configure WhatsApp Group Name & Link"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -288,22 +570,26 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2 sm:gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-[#0277b8]/10 dark:bg-[#0277b8]/30 text-[#0277b8] dark:text-[#7dd3fc] shrink-0">
-            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 shrink-0">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Open</p>
-            <p className="text-sm sm:text-xl font-black text-[#0277b8] dark:text-[#7dd3fc] leading-tight">{stats.open}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Group Broadcasts</p>
+            <p className="text-sm sm:text-xl font-black text-indigo-700 dark:text-indigo-300 leading-tight">
+              {messages.filter(m => m.isGroupMessage || m.recipientType === 'all_students' || m.recipientType === 'whatsapp_group').length}
+            </p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2 sm:gap-2.5">
-          <div className="p-2 sm:p-2.5 rounded-xl bg-[#01883c]/10 dark:bg-[#01883c]/30 text-[#01883c] dark:text-[#4ade80] shrink-0">
-            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shrink-0">
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">Resolved</p>
-            <p className="text-sm sm:text-xl font-black text-[#01883c] dark:text-[#4ade80] leading-tight">{stats.resolved}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">WhatsApp msgs</p>
+            <p className="text-sm sm:text-xl font-black text-emerald-700 dark:text-emerald-300 leading-tight">
+              {messages.filter(m => m.recipientType === 'whatsapp_group' || m.channelsSent?.includes('whatsapp')).length}
+            </p>
           </div>
         </div>
       </div>
@@ -319,7 +605,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search messages, subject, or sender..."
+                placeholder="Search messages, group broadcasts, or recipients..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#025798]/50"
@@ -356,6 +642,30 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 }`}
               >
                 Unread
+              </button>
+
+              <button
+                onClick={() => setActiveFilter('group')}
+                className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                  activeFilter === 'group'
+                    ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Users className="w-3 h-3" />
+                <span>Group ({messages.filter(m => m.isGroupMessage || m.recipientType === 'all_students' || m.recipientType === 'whatsapp_group').length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveFilter('whatsapp')}
+                className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                  activeFilter === 'whatsapp'
+                    ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <MessageSquare className="w-3 h-3 text-emerald-400" />
+                <span>WhatsApp ({messages.filter(m => m.recipientType === 'whatsapp_group' || m.channelsSent?.includes('whatsapp')).length})</span>
               </button>
 
               <button
@@ -449,6 +759,8 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 const isUnread = !msg.isReadByRecipient;
                 const replyCount = msg.replies.length;
                 const latestReply = msg.replies[msg.replies.length - 1];
+                const isGroup = msg.isGroupMessage || msg.recipientType === 'all_students' || msg.recipientType === 'group' || msg.recipientType === 'whatsapp_group';
+                const hasWhatsApp = msg.recipientType === 'whatsapp_group' || msg.channelsSent?.includes('whatsapp') || msg.groupType === 'whatsapp_group';
 
                 return (
                   <div
@@ -461,7 +773,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                     } ${isUnread ? 'bg-[#b38f53]/10 dark:bg-[#b38f53]/20 font-medium' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-1.5 overflow-hidden">
+                      <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                           msg.status === 'open' ? 'bg-[#0277b8]' :
                           msg.status === 'in_progress' ? 'bg-[#b38f53]' :
@@ -477,6 +789,20 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                         }`}>
                           {msg.senderRole}
                         </span>
+
+                        {isGroup && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 flex items-center gap-1 border border-indigo-200 dark:border-indigo-800">
+                            <Users className="w-2.5 h-2.5 text-indigo-600" />
+                            Group
+                          </span>
+                        )}
+
+                        {hasWhatsApp && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1 border border-emerald-300 dark:border-emerald-800">
+                            <Share2 className="w-2.5 h-2.5 text-emerald-600" />
+                            WhatsApp
+                          </span>
+                        )}
                       </div>
 
                       <span className="text-[10px] text-slate-400 whitespace-nowrap">
@@ -484,7 +810,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                       </span>
                     </div>
 
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-1 mb-1">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-1 mb-1 flex items-center gap-1.5">
                       {msg.subject}
                     </h4>
 
@@ -493,7 +819,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                     </p>
 
                     <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/50 text-[10px]">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold capitalize">
                           {msg.category}
                         </span>
@@ -503,6 +829,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                             Urgent
                           </span>
                         )}
+                        <span className="text-slate-400 text-[10px] truncate max-w-[120px]">
+                          → {msg.recipientName}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-2 text-slate-400">
@@ -553,6 +882,18 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                       {activeMessage.category}
                     </span>
 
+                    {activeMessage.isGroupMessage && (
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 text-[10px] font-extrabold uppercase flex items-center gap-1 border border-indigo-300 dark:border-indigo-800">
+                        <Users className="w-3 h-3 text-indigo-600" /> Group Broadcast
+                      </span>
+                    )}
+
+                    {(activeMessage.recipientType === 'whatsapp_group' || activeMessage.channelsSent?.includes('whatsapp')) && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-extrabold uppercase flex items-center gap-1 border border-emerald-300 dark:border-emerald-800">
+                        <Share2 className="w-3 h-3 text-emerald-600" /> WhatsApp Synced
+                      </span>
+                    )}
+
                     {activeMessage.priority === 'urgent' && (
                       <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 text-[10px] font-black uppercase flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-rose-600" /> Urgent
@@ -571,8 +912,26 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   </p>
                 </div>
 
-                {/* Status Toggle & Archive Actions */}
+                {/* Status Toggle & WhatsApp Action Buttons */}
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto justify-start sm:justify-end pt-1 sm:pt-0">
+                  <button
+                    onClick={() => handleOpenWhatsApp(generateWhatsAppBroadcastText(activeMessage.subject, activeMessage.content, activeMessage.senderName, activeMessage.senderRole))}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer min-h-[38px]"
+                    title="Forward/Share this message to WhatsApp"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCopyWhatsAppText(generateWhatsAppBroadcastText(activeMessage.subject, activeMessage.content, activeMessage.senderName, activeMessage.senderRole))}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer min-h-[38px]"
+                    title="Copy formatted text for WhatsApp"
+                  >
+                    {copiedWhatsApp ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedWhatsApp ? 'Copied!' : 'Copy'}</span>
+                  </button>
+
                   <select
                     value={activeMessage?.status ?? 'unread'}
                     onChange={(e) => onUpdateStatus(activeMessage.id, e.target.value as AppMessage['status'])}
@@ -836,53 +1195,183 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
         <Modal
           isOpen={showNewMsgModal}
           onClose={() => setShowNewMsgModal(false)}
-          title="Compose Direct Message"
-          subtitle="Send a typed message to faculty, staff, or fellow students"
-          icon={<MessageSquarePlus className="w-5 h-5 text-[#023264] dark:text-[#7dd3fc] shrink-0" />}
+          title={composeMode === 'group' ? "Broadcast Group Message" : "Compose Direct Message"}
+          subtitle={composeMode === 'group' ? "Send a class-wide announcement or broadcast to the WhatsApp Group" : "Send a typed message to faculty, staff, or fellow students"}
+          icon={composeMode === 'group' ? <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" /> : <MessageSquarePlus className="w-5 h-5 text-[#023264] dark:text-[#7dd3fc] shrink-0" />}
           size="xl"
         >
+          {/* Mode Switcher for Teachers & Admins */}
+          {currentUserRole !== 'student' && (
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setComposeMode('direct')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  composeMode === 'direct'
+                    ? 'bg-white dark:bg-slate-700 text-[#023264] dark:text-[#7dd3fc] shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Direct 1-on-1 Message</span>
+              </button>
 
-            {/* Student Presets */}
-            {currentUserRole === 'student' && (
-              <div className="space-y-1.5 p-3 rounded-xl bg-[#023264]/10 dark:bg-[#023264]/30 border border-[#025798]/30">
-                <p className="text-[11px] font-black text-[#023264] dark:text-[#bae6fd] uppercase flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-[#b38f53]" /> Quick Message Templates:
-                </p>
-                <div className="flex flex-wrap gap-2 text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => applyStudentTemplate('absence')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#025798] dark:text-[#7dd3fc] hover:bg-[#025798]/10 border border-[#025798]/30 shadow-2xs transition-all cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setComposeMode('group')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  composeMode === 'group'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Group & WhatsApp Broadcast</span>
+              </button>
+            </div>
+          )}
+
+          {/* Group Broadcast Quick Presets (Teacher/Admin) */}
+          {composeMode === 'group' && currentUserRole !== 'student' && (
+            <div className="space-y-1.5 p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30 mb-4">
+              <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 uppercase flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Quick Group Templates:
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => applyGroupTemplate('zoom')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-300 dark:border-emerald-800 shadow-2xs transition-all cursor-pointer"
+                >
+                  Tuesday Zoom Link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyGroupTemplate('exam')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 border border-rose-300 dark:border-rose-800 shadow-2xs transition-all cursor-pointer"
+                >
+                  Module Exam & Assessment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyGroupTemplate('schedule')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-300 dark:border-indigo-800 shadow-2xs transition-all cursor-pointer"
+                >
+                  Schedule Update
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyGroupTemplate('devotional')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 border border-amber-300 dark:border-amber-800 shadow-2xs transition-all cursor-pointer"
+                >
+                  Weekly Devotional
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyGroupTemplate('tuition')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#025798] dark:text-[#7dd3fc] hover:bg-blue-100 border border-blue-300 dark:border-blue-800 shadow-2xs transition-all cursor-pointer"
+                >
+                  Tuition Notice
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Student Presets */}
+          {composeMode === 'direct' && currentUserRole === 'student' && (
+            <div className="space-y-1.5 p-3 rounded-xl bg-[#023264]/10 dark:bg-[#023264]/30 border border-[#025798]/30 mb-4">
+              <p className="text-[11px] font-black text-[#023264] dark:text-[#bae6fd] uppercase flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-[#b38f53]" /> Quick Message Templates:
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => applyStudentTemplate('absence')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#025798] dark:text-[#7dd3fc] hover:bg-[#025798]/10 border border-[#025798]/30 shadow-2xs transition-all cursor-pointer"
+                >
+                  Class Absence Notice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyStudentTemplate('tuition')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#01883c] dark:text-[#4ade80] hover:bg-[#01883c]/10 border border-[#01883c]/30 shadow-2xs transition-all cursor-pointer"
+                >
+                  Tuition Balance Query
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyStudentTemplate('extension')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#b38f53] dark:text-[#dfc18b] hover:bg-[#b38f53]/10 border border-[#b38f53]/30 shadow-2xs transition-all cursor-pointer"
+                >
+                  Assignment Extension
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyStudentTemplate('peer')}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#0277b8] dark:text-[#7dd3fc] hover:bg-[#0277b8]/10 border border-[#0277b8]/30 shadow-2xs transition-all cursor-pointer"
+                >
+                  Classmate Study Question
+                </button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSendNewMessage} className="space-y-4">
+            {/* Recipient / Target */}
+            {composeMode === 'group' ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Group Broadcast Target:
+                  </label>
+                  <select
+                    value={groupTarget}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setGroupTarget(val);
+                      if (val === 'whatsapp_group') {
+                        setChannelWhatsApp(true);
+                      }
+                    }}
+                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-emerald-500/50"
                   >
-                    Class Absence Notice
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyStudentTemplate('tuition')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#01883c] dark:text-[#4ade80] hover:bg-[#01883c]/10 border border-[#01883c]/30 shadow-2xs transition-all cursor-pointer"
-                  >
-                    Tuition Balance Query
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyStudentTemplate('extension')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#b38f53] dark:text-[#dfc18b] hover:bg-[#b38f53]/10 border border-[#b38f53]/30 shadow-2xs transition-all cursor-pointer"
-                  >
-                    Assignment Extension
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyStudentTemplate('peer')}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[#0277b8] dark:text-[#7dd3fc] hover:bg-[#0277b8]/10 border border-[#0277b8]/30 shadow-2xs transition-all cursor-pointer"
-                  >
-                    Classmate Study Question
-                  </button>
+                    <option value="all_students">All Enrolled Students (Full Class Broadcast)</option>
+                    <option value="whatsapp_group">{whatsAppConfig.groupName} (Official WhatsApp Community)</option>
+                    <option value="cohort">Active Ministry Module Cohort</option>
+                    <option value="pending_tuition">Students with Outstanding Tuition Installments</option>
+                  </select>
+                </div>
+
+                {/* Delivery Channels */}
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Broadcast Channels:</span>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={channelPortal}
+                        onChange={(e) => setChannelPortal(e.target.checked)}
+                        className="w-4 h-4 rounded text-[#023264] focus:ring-[#025798]"
+                      />
+                      <span>HTEIM Student Portal Messages Inbox</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={channelWhatsApp}
+                        onChange={(e) => setChannelWhatsApp(e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>WhatsApp Broadcast (Opens with formatted group message)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
-            )}
-
-            <form onSubmit={handleSendNewMessage} className="space-y-4">
-              {/* Recipient */}
+            ) : (
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Send To (Recipient):
@@ -915,106 +1404,203 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                   )}
                 </select>
               </div>
+            )}
 
-              {/* Category & Priority */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Category:
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as MessageCategory)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold"
-                  >
-                    <option value="general">General Inquiry</option>
-                    <option value="assignment">Assignment & Coursework</option>
-                    <option value="attendance">Attendance & Absence</option>
-                    <option value="tuition">Tuition & Financial</option>
-                    <option value="exam">Exam & Grades</option>
-                    <option value="technical">Technical Support</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Priority Level:
-                  </label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as MessagePriority)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Subject */}
+            {/* Category & Priority */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Subject Header:
+                  Category:
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Question regarding module study notes"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#025798]/50"
-                />
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as MessageCategory)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold"
+                >
+                  <option value="general">General Inquiry / Class Announcement</option>
+                  <option value="assignment">Assignment & Coursework</option>
+                  <option value="attendance">Attendance & Absence</option>
+                  <option value="tuition">Tuition & Financial</option>
+                  <option value="exam">Exam & Grades</option>
+                  <option value="technical">Technical Support</option>
+                </select>
               </div>
 
-              {/* Message Content */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Message Details (Typed Text Only):
+                  Priority Level:
                 </label>
-                <textarea
-                  rows={4}
-                  required
-                  placeholder="Write your message here..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#025798]/50 resize-none"
-                />
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as MessagePriority)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="important">Important</option>
+                  <option value="urgent">Urgent</option>
+                </select>
               </div>
+            </div>
 
-              {/* Policy Notice: No File Attachments in Messaging */}
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                  <Shield className="w-4 h-4 text-[#025798]" />
-                  <span>Typed Text Communication Policy</span>
+            {/* Subject */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Subject Header:
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Tuesday Live Zoom Class Link & Lecture Details"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#025798]/50"
+              />
+            </div>
+
+            {/* Message Content */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Message Content:
+              </label>
+              <textarea
+                rows={4}
+                required
+                placeholder="Type the message or announcement to be sent..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-[#025798]/50 resize-none"
+              />
+            </div>
+
+            {/* WhatsApp Live Preview when WhatsApp Channel is toggled */}
+            {(channelWhatsApp || groupTarget === 'whatsapp_group') && (
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                    <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                    WhatsApp Formatted Broadcast Preview
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopyWhatsAppText()}
+                    className="text-[11px] font-bold px-2 py-1 rounded bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1 cursor-pointer hover:bg-emerald-100"
+                  >
+                    {copiedWhatsApp ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedWhatsApp ? 'Copied' : 'Copy Text'}</span>
+                  </button>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                  Messaging is restricted to typed text to ensure academic records remain organized. File attachments and coursework submissions must be uploaded through the <strong>Exams</strong> tab.
-                </p>
-              </div>
 
-              {/* Submit Buttons */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowNewMsgModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={!subject.trim() || !content.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-[#023264] hover:bg-[#025798] text-white font-bold text-xs sm:text-sm shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 border border-[#b38f53]/30"
-                >
-                  <Send className="w-4 h-4 text-[#dfc18b]" />
-                  <span>Send Message</span>
-                </button>
+                <pre className="text-[11px] font-mono bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 whitespace-pre-wrap text-slate-700 dark:text-slate-300 max-h-36 overflow-y-auto">
+                  {generateWhatsAppBroadcastText(subject || 'Class Update', content || 'Type your message details...', currentUserName, currentUserRole)}
+                </pre>
               </div>
-            </form>
-          </Modal>
-        )}
+            )}
+
+            {/* Submit Buttons */}
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowNewMsgModal(false)}
+                className="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={!subject.trim() || !content.trim()}
+                className={`px-5 py-2.5 rounded-xl text-white font-bold text-xs sm:text-sm shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 ${
+                  composeMode === 'group' || channelWhatsApp
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-[#023264] hover:bg-[#025798] border border-[#b38f53]/30'
+                }`}
+              >
+                {composeMode === 'group' ? <Users className="w-4 h-4" /> : <Send className="w-4 h-4 text-[#dfc18b]" />}
+                <span>
+                  {composeMode === 'group' 
+                    ? (channelWhatsApp ? 'Broadcast to Portal & WhatsApp' : 'Broadcast to Group')
+                    : 'Send Direct Message'}
+                </span>
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* WHATSAPP GROUP CONFIGURATION MODAL (Teachers/Admins) */}
+      {showWhatsAppConfigModal && (
+        <Modal
+          isOpen={showWhatsAppConfigModal}
+          onClose={() => setShowWhatsAppConfigModal(false)}
+          title="Configure WhatsApp Community Group"
+          subtitle="Set official class WhatsApp group name and invite URL"
+          icon={<Settings className="w-5 h-5 text-emerald-600 shrink-0" />}
+          size="md"
+        >
+          <form onSubmit={handleSaveWhatsAppConfig} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                WhatsApp Group Name:
+              </label>
+              <input
+                type="text"
+                required
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+                placeholder="e.g. HTEIM School of Ministry 2026"
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                WhatsApp Group Invite Link:
+              </label>
+              <input
+                type="url"
+                required
+                value={editGroupUrl}
+                onChange={(e) => setEditGroupUrl(e.target.value)}
+                placeholder="https://chat.whatsapp.com/..."
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                This link will be used for students to join the official class WhatsApp fellowship.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Group Description / Purpose:
+              </label>
+              <textarea
+                rows={2}
+                value={editGroupDesc}
+                onChange={(e) => setEditGroupDesc(e.target.value)}
+                placeholder="Official WhatsApp group for announcements, lecture links, and prayer requests."
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500/50 resize-none"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWhatsAppConfigModal(false)}
+                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+              >
+                Save WhatsApp Settings
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };
