@@ -658,6 +658,25 @@ export const portalApi = {
       body: JSON.stringify({ eventType, targetStudentName }),
     });
   },
+
+  // 13. WhatsApp Community & Broadcast Configuration
+  async getWhatsAppConfig() {
+    return fetchJson<{ success: boolean; config: any }>('/whatsapp/config');
+  },
+
+  async updateWhatsAppConfig(config: { groupName: string; groupInviteUrl: string; description?: string }) {
+    return fetchJson<{ success: boolean; config: any; message?: string }>('/whatsapp/config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  },
+
+  async getWhatsAppBroadcastPreview(subject: string, message: string, target = 'all_students') {
+    return fetchJson<{ success: boolean; formattedText: string; whatsappWebUrl: string }>('/whatsapp/broadcast-preview', {
+      method: 'POST',
+      body: JSON.stringify({ subject, message, target }),
+    });
+  },
 };
 
 export const portalApiClient = portalApi;

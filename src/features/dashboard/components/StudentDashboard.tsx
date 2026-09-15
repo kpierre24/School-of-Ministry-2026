@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   Calendar, 
   BookOpen, 
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { TabType } from '../../../types';
 import { DashboardHeader } from './DashboardHeader';
+import { WhatShouldIDoNextHero, ActionHeroItem } from './WhatShouldIDoNextHero';
 import { UpcomingCard } from './UpcomingCard';
 import { ProgressCard } from './ProgressCard';
 import { QuickActions } from './QuickActions';
@@ -68,6 +69,62 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     },
   ];
 
+  const primaryHeroAction = useMemo<ActionHeroItem>(() => {
+    // 1. Check at-risk attendance trigger (< 75%)
+    if (data.attendanceRate < 75) {
+      return {
+        id: 'hero-attendance',
+        badgeText: 'Action Required',
+        badgeVariant: 'danger',
+        questionPrompt: 'WHAT SHOULD I DO NEXT?',
+        title: 'Review Attendance Record & Contact Tutor',
+        subtitle: `Your attendance is currently ${data.attendanceRate}%, which is below the 75% institutional requirement. Verify your attendance entries or speak with your tutor.`,
+        actionLabel: 'View Attendance',
+        actionTab: 'attendance',
+        secondaryActions: [
+          { label: 'View Schedule', tab: 'schedule' },
+          { label: 'Message Faculty', tab: 'messages' },
+        ],
+      };
+    }
+
+    // 2. Next urgent item from whatsNext
+    const highestPriority = data.whatsNext[0];
+    if (highestPriority) {
+      return {
+        id: highestPriority.id,
+        badgeText: highestPriority.priority === 'high' ? 'High Priority' : 'Next Up',
+        badgeVariant: highestPriority.priority === 'high' ? 'warning' : 'info',
+        questionPrompt: 'WHAT SHOULD I DO NEXT?',
+        title: highestPriority.title,
+        subtitle: highestPriority.description,
+        timeContext: highestPriority.dueDate,
+        actionLabel: highestPriority.actionLabel,
+        actionTab: highestPriority.actionTab,
+        secondaryActions: [
+          { label: 'Class Schedule', tab: 'schedule' },
+          { label: 'Library Handouts', tab: 'library' },
+        ],
+      };
+    }
+
+    // 3. Fallback to next upcoming class
+    return {
+      id: 'hero-next-class',
+      badgeText: 'Upcoming Session',
+      badgeVariant: 'primary',
+      questionPrompt: 'WHAT SHOULD I DO NEXT?',
+      title: `Prepare for ${data.nextClass.title}`,
+      subtitle: `${data.nextClass.dayTime} • ${data.nextClass.location} • Instructor: ${data.nextClass.instructor}`,
+      actionLabel: 'View Class Details',
+      actionTab: 'schedule',
+      secondaryActions: [
+        { label: 'Assignments', tab: 'exams' },
+        { label: 'Course Library', tab: 'library' },
+      ],
+    };
+  }, [data]);
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* 1. Header with personalized greeting */}
@@ -78,7 +135,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         cohortName="Class of 2026"
       />
 
-      {/* 2. Top Row: NEXT CLASS & YOUR PROGRESS */}
+      {/* 2. Immediate "What Should I Do Next?" Action Hero */}
+      <WhatShouldIDoNextHero
+        item={primaryHeroAction}
+        role="student"
+        onNavigate={onNavigate}
+      />
+
+      {/* 3. NEXT CLASS & YOUR PROGRESS */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <UpcomingCard
           title="NEXT CLASS"

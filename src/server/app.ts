@@ -16,6 +16,7 @@ import { auditLogsRouter } from "./routes/auditLogs";
 import { stateRouter } from "./routes/state";
 import { meRouter } from "./routes/me";
 import { notificationsRouter } from "./routes/notifications";
+import { whatsappRouter } from "./routes/whatsapp";
 import {
   securityHeaders,
   sanitizeBody,
@@ -87,6 +88,7 @@ export function createApp(): Express {
   app.use("/api/state", requireAuth, stateRateLimiter, stateRouter);
   app.use("/api/me", requireAuth, meRouter);
   app.use("/api/notifications", requireAuth, notificationsRouter);
+  app.use("/api/whatsapp", requireAuth, whatsappRouter);
   app.use("/api/github", requireAuth, githubRateLimiter, githubRouter);
   app.use("/api/ai", requireAuth, aiRateLimiter, aiRouter);
   app.use("/api/drive-proxy", requireAuth, driveProxyRateLimiter, driveProxyRouter);

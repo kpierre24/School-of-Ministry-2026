@@ -648,6 +648,8 @@ export type WhatsAppGroupConfig = {
   description?: string;
   activeCohort?: string;
   lastBroadcastAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 };
 
 export type AppMessage = {

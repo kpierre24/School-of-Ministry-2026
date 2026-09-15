@@ -181,7 +181,7 @@ describe('Phase 2 Role-Specific Dashboards & WhatsNextCard', () => {
     expect(screen.getByText('TT$ 4,250')).toBeDefined();
     expect(screen.getByText('7')).toBeDefined();
     expect(screen.getByText('ATTENTION REQUIRED')).toBeDefined();
-    expect(screen.getByText('3 payment issues')).toBeDefined();
+    expect(screen.getAllByText('3 payment issues').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('2 attendance conflicts')).toBeDefined();
     expect(screen.getByText('5 submissions')).toBeDefined();
     expect(screen.getByText('Database synchronized')).toBeDefined();

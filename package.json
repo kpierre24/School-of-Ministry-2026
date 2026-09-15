@@ -21,7 +21,10 @@
     "docker:run": "docker run -d -p 3000:3000 --name hteim-school-of-ministry hteim-school-of-ministry",
     "docker:compose": "docker compose up --build -d",
     "cap:sync": "npm run build && npx cap sync android",
-    "cap:open": "npx cap open android"
+    "cap:open": "npx cap open android",
+    "cap:bundle:release": "node scripts/build-android-aab.cjs",
+    "android:bundle": "node scripts/build-android-aab.cjs",
+    "cap:build:apk": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

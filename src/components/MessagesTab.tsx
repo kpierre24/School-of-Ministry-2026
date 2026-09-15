@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   MessageSquare, 
   MessageSquarePlus, 
@@ -42,6 +42,7 @@ import { Modal } from './Modal';
 import { AppMessage, MessageCategory, MessagePriority, MessageReply, MessageAttachment, WhatsAppGroupConfig } from '../types';
 import { AppUser } from '../lib/userAuth';
 import { sanitizeInput } from '../lib/securityHelper';
+import { portalApi } from '../services/api/portalApiClient';
 
 export const INITIAL_MESSAGES: AppMessage[] = [];
 
@@ -128,6 +129,28 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
   const currentUserRole = appUser?.role || 'student';
   const currentUserName = appUser?.studentName || appUser?.name || 'Student';
   const currentUserEmail = appUser?.email || `${(currentUserName || '').toLowerCase().replace(/\s+/g, '.')}@hteim.edu`;
+  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'super_admin';
+
+  // Load authoritative WhatsApp config from server API
+  useEffect(() => {
+    let isMounted = true;
+    portalApi.getWhatsAppConfig()
+      .then(res => {
+        if (isMounted && res?.success && res.config) {
+          setWhatsAppConfig(res.config);
+          setEditGroupName(res.config.groupName || '');
+          setEditGroupUrl(res.config.groupInviteUrl || '');
+          setEditGroupDesc(res.config.description || '');
+          try {
+            localStorage.setItem('hteim_whatsapp_group_config', JSON.stringify(res.config));
+          } catch {}
+        }
+      })
+      .catch(err => {
+        console.warn('Could not fetch remote WhatsApp config, using cached local config:', err);
+      });
+    return () => { isMounted = false; };
+  }, []);
 
   // WhatsApp formatted broadcast text generator
   const generateWhatsAppBroadcastText = (subj: string, body: string, sender: string, role: string) => {
@@ -167,8 +190,12 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
     }
   };
 
-  const handleSaveWhatsAppConfig = (e: React.FormEvent) => {
+  const handleSaveWhatsAppConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert('Unauthorized: Only administrators can update the official WhatsApp group configuration.');
+      return;
+    }
     const updated: WhatsAppGroupConfig = {
       groupName: editGroupName.trim() || whatsAppConfig.groupName,
       groupInviteUrl: editGroupUrl.trim() || whatsAppConfig.groupInviteUrl,
@@ -177,8 +204,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
     setWhatsAppConfig(updated);
     try {
       localStorage.setItem('hteim_whatsapp_group_config', JSON.stringify(updated));
-    } catch {
-      // ignore
+      await portalApi.updateWhatsAppConfig(updated);
+    } catch (err: any) {
+      console.warn('Failed to persist WhatsApp config to server API:', err);
     }
     setShowWhatsAppConfigModal(false);
   };
@@ -530,18 +558,20 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({
                 <span>Broadcast to WhatsApp</span>
               </button>
 
-              <button
-                onClick={() => {
-                  setEditGroupName(whatsAppConfig.groupName);
-                  setEditGroupUrl(whatsAppConfig.groupInviteUrl);
-                  setEditGroupDesc(whatsAppConfig.description || '');
-                  setShowWhatsAppConfigModal(true);
-                }}
-                className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
-                title="Configure WhatsApp Group Name & Link"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setEditGroupName(whatsAppConfig.groupName);
+                    setEditGroupUrl(whatsAppConfig.groupInviteUrl);
+                    setEditGroupDesc(whatsAppConfig.description || '');
+                    setShowWhatsAppConfigModal(true);
+                  }}
+                  className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                  title="Configure WhatsApp Group Name & Link"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
             </>
           )}
         </div>

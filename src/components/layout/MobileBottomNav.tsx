@@ -67,7 +67,7 @@ export function MobileBottomNav({
             <div className="relative">
               <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-[#025798] dark:text-[#7dd3fc]' : 'text-slate-400 dark:text-slate-500'}`} />
             </div>
-            <span className={`text-[10px] tracking-tight truncate max-w-full ${
+            <span className={`text-[9px] sm:text-[10px] tracking-tight truncate max-w-full ${
               isActive ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
             }`}>
               {label}
@@ -97,7 +97,7 @@ export function MobileBottomNav({
             </span>
           )}
         </div>
-        <span className={`text-[10px] tracking-tight ${
+        <span className={`text-[9px] sm:text-[10px] tracking-tight ${
           showMobileMoreMenu ? 'text-[#023264] dark:text-white font-bold' : 'text-slate-500 dark:text-slate-400 font-medium'
         }`}>
           {appUser ? 'More' : 'Menu'}

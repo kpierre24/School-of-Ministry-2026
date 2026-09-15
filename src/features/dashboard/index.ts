@@ -11,6 +11,9 @@ export type { TeacherDashboardProps } from './components/TeacherDashboard';
 export { AdminDashboard } from './components/AdminDashboard';
 export type { AdminDashboardProps } from './components/AdminDashboard';
 
+export { WhatShouldIDoNextHero } from './components/WhatShouldIDoNextHero';
+export type { WhatShouldIDoNextHeroProps, ActionHeroItem } from './components/WhatShouldIDoNextHero';
+
 // Subcomponents
 export { DashboardHeader } from './components/DashboardHeader';
 export type { DashboardHeaderProps } from './components/DashboardHeader';

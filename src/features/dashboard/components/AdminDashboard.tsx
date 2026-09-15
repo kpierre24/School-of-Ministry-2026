@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   Users, 
   Calendar, 
@@ -6,12 +6,13 @@ import {
   FileText, 
   Database, 
   BarChart2, 
-  RefreshCw,
-  ShieldCheck,
-  CreditCard
+  RefreshCw, 
+  ShieldCheck, 
+  CreditCard 
 } from 'lucide-react';
 import { TabType } from '../../../types';
 import { DashboardHeader } from './DashboardHeader';
+import { WhatShouldIDoNextHero, ActionHeroItem } from './WhatShouldIDoNextHero';
 import { QuickActions } from './QuickActions';
 import { AttentionCard } from './AttentionCard';
 import { ActivityFeed } from './ActivityFeed';
@@ -81,6 +82,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onAction: item.actionTab ? () => onNavigate?.(item.actionTab!) : undefined,
   }));
 
+  const primaryHeroAction = useMemo<ActionHeroItem>(() => {
+    // 1. Attention needed items
+    if (data.attentionItems.length > 0) {
+      const topIssue = data.attentionItems[0];
+      return {
+        id: topIssue.id,
+        badgeText: `${data.attentionItems.length} Issues Requiring Action`,
+        badgeVariant: topIssue.priority === 'urgent' ? 'danger' : 'warning',
+        questionPrompt: 'WHAT SHOULD I DO NEXT?',
+        title: topIssue.title,
+        subtitle: topIssue.description,
+        actionLabel: topIssue.actionLabel || 'Triage Issue',
+        actionTab: topIssue.actionTab || 'students',
+        secondaryActions: [
+          { label: 'Student Roster', tab: 'students' },
+          { label: 'Tuition Balances', tab: 'payments' },
+        ],
+      };
+    }
+
+    // 2. Cloud sync pending
+    if (data.cloudSyncStatus === 'pending' || data.cloudSyncStatus === 'syncing') {
+      return {
+        id: 'hero-sync-cloud',
+        badgeText: 'Cloud Sync Pending',
+        badgeVariant: 'info',
+        questionPrompt: 'WHAT SHOULD I DO NEXT?',
+        title: 'Synchronize Academic Records with Cloud Database',
+        subtitle: 'Sync recent attendance records, student profiles, and course data with remote database backup.',
+        actionLabel: 'Sync Now',
+        actionTab: 'attendance',
+        secondaryActions: [
+          { label: 'Reports', tab: 'reports' },
+          { label: 'Students', tab: 'students' },
+        ],
+      };
+    }
+
+    return {
+      id: 'hero-registry-healthy',
+      badgeText: 'All Systems Operational',
+      badgeVariant: 'success',
+      questionPrompt: 'WHAT SHOULD I DO NEXT?',
+      title: 'Review Registry Metrics & Cohort Performance',
+      subtitle: `${data.totalStudents} enrolled students • ${data.overallAttendance}% overall attendance rate across modules.`,
+      actionLabel: 'Manage Students',
+      actionTab: 'students',
+      secondaryActions: [
+        { label: 'Finance & Payments', tab: 'payments' },
+        { label: 'Audit Logs', tab: 'reports' },
+      ],
+    };
+  }, [data]);
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* 1. Dashboard Header */}
@@ -91,7 +146,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         cohortName="School of Ministry Registry"
       />
 
-      {/* 2. SYSTEM OVERVIEW Grid */}
+      {/* 2. Immediate "What Should I Do Next?" Action Hero */}
+      <WhatShouldIDoNextHero
+        item={primaryHeroAction}
+        role="admin"
+        onNavigate={onNavigate}
+      />
+
+      {/* 3. SYSTEM OVERVIEW Grid */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] dark:text-slate-400">
           SYSTEM OVERVIEW
