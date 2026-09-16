@@ -1,5 +1,4 @@
 node_modules
-dist
 .git
 .gitignore
 .env
@@ -15,3 +14,4 @@ Thumbs.db
 coverage
 scratch
 dev-dist
+!dist

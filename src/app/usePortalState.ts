@@ -1,0 +1,1609 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { User } from 'firebase/auth';
+import { 
+  TabType, 
+  AppNotification, 
+  CustomAssignment, 
+  AssignmentSubmission, 
+  Course, 
+  ScheduleItem, 
+  LibraryResource, 
+  MediaResource, 
+  PaymentRecord, 
+  ClassDay, 
+  StudentSummary, 
+  AppMessage, 
+  MessageReply, 
+  MessageAttachment, 
+  AttendanceRecord, 
+  Cohort, 
+  DEFAULT_COHORTS, 
+  UserRole,
+  getDefaultLevelForStudent
+} from '../types';
+import { AppUser, generateStudentUsername, UserCredential, DEFAULT_USER_PASSWORD, isMatchingCredential, mergeUserCredentials } from '../lib/userAuth';
+import { INITIAL_COURSES, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS, INITIAL_SCHEDULE, INITIAL_RESOURCES, INITIAL_PAYMENTS, INITIAL_MESSAGES } from '../data/initialPortalData';
+import { DEFAULT_FACULTY_TEACHERS } from '../components/HomeTab';
+import { DEFAULT_PRESET_MEDIA } from '../components/ClassroomMediaPlayer';
+import { CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS, isObsoleteLegacyClassDay } from '../data';
+import { DEFAULT_QUIZ_TEMPLATES } from '../data/quizTemplates';
+import { MANUAL_ALIASES, EXCLUDED_STUDENTS, isExcludedStudent, getCanonicalNamesMap } from '../features/students/studentCanonicalization';
+import { loadAuthoritativeState as loadFromSupabase, saveAuthoritativeState as saveToSupabase } from '../services/dataSyncService';
+import { supabase, ensureSupabaseStorageUrl, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase, syncStudentPhotosToSupabase } from '../lib/supabaseClient';
+import { updatePasswordInSupabase } from '../lib/supabaseAuth';
+import { subscribeToOAuthState as initAuth, loginWithGoogleOAuth as googleSignIn, logoutUserSession as logout, logoutUserSession as supabaseLogout } from '../services/authService';
+import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from '../lib/sheets';
+import { CentralNotificationService } from '../services/notification/CentralNotificationService';
+import { generateAutomatedNotifications } from '../lib/notifications';
+import { getStudentPaymentDetails, StudentPaymentSummary } from '../lib/paymentUtils';
+import { logActivity } from '../lib/auditLogger';
+import { trackUxEvent } from '../lib/uxTelemetry';
+import { usePWAInstall } from '../lib/pwa';
+import { getTabFromLocation } from './navigation';
+import { exportElementToPDF } from '../lib/pdfUtils';
+import { ThemeMode } from '../components/SettingsModal';
+
+export type MergeConflict = {
+  studentName: string;
+  classDay: string;
+  localStatus: 'present' | 'absent';
+  sheetsStatus: 'present' | 'absent';
+  sheetsScore: string;
+  sheetsTimestamp: string;
+};
+
+export type RecentSheet = {
+  id: string;
+  url: string;
+  title: string;
+  lastLoaded: string;
+};
+
+export function usePortalState() {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const lastFetchTimeRef = useRef<number>(0);
+
+  // App User & Role State
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
+
+  // Dynamic User Credentials State
+  const [userCredentials, setUserCredentials] = useState<UserCredential[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_user_credentials');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn("Failed loading user credentials from local storage:", e);
+    }
+    return [];
+  });
+
+  // Clear legacy auth session remnants
+  useEffect(() => {
+    try {
+      localStorage.removeItem('hteim_app_user');
+      sessionStorage.removeItem('hteim_app_user');
+      sessionStorage.removeItem('hteim_user_credentials');
+    } catch (e) {}
+  }, []);
+
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    try {
+      const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+      const search = typeof window !== 'undefined' ? window.location.search || '' : '';
+      const isRecoveryLink = hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset=true');
+      if (isRecoveryLink) return false;
+      return !sessionStorage.getItem('hteim_intro_shown');
+    } catch {
+      return true;
+    }
+  });
+
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState<boolean>(false);
+  const [resetTargetEmail, setResetTargetEmail] = useState<string>('');
+  const [isResetFromEmailLink, setIsResetFromEmailLink] = useState<boolean>(false);
+  const [pendingSyncData, setPendingSyncData] = useState<any>(null);
+  const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
+  const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
+  const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
+  const [showUserManagementModal, setShowUserManagementModal] = useState<boolean>(false);
+  const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
+  const [isNavOpen, setIsNavOpen] = useState<boolean>(false);
+
+  // Listen for recovery email link
+  useEffect(() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset=true')) {
+      setIsResetFromEmailLink(true);
+      setShowResetPasswordModal(true);
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetFromEmailLink(true);
+        setShowResetPasswordModal(true);
+        if (session?.user?.email) {
+          setResetTargetEmail(session.user.email);
+        }
+      }
+    });
+
+    return () => {
+      if (authListener?.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  // Inactivity lock (30 min)
+  useEffect(() => {
+    if (!appUser) return;
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+    let timeoutId: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setSyncedBannerMessage('🔒 Session automatically locked due to 30 minutes of inactivity for your security.');
+        setAppUser(null);
+        setShowLoginModal(true);
+        setTimeout(() => setSyncedBannerMessage(null), 6000);
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetInactivityTimer, { passive: true }));
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetInactivityTimer));
+    };
+  }, [appUser]);
+
+  const [showOutstandingPaymentBanner, setShowOutstandingPaymentBanner] = useState<boolean>(false);
+  const [studentPaymentSummary, setStudentPaymentSummary] = useState<StudentPaymentSummary | null>(null);
+
+  useEffect(() => {
+    if (appUser) {
+      if (appUser.role === 'student') {
+        const sName = appUser.studentName || appUser.name;
+        const summary = getStudentPaymentDetails(sName);
+        setStudentPaymentSummary(summary);
+        if (summary.hasOutstanding) {
+          setShowOutstandingPaymentBanner(true);
+        } else {
+          setShowOutstandingPaymentBanner(false);
+        }
+      } else {
+        setShowOutstandingPaymentBanner(false);
+        setStudentPaymentSummary(null);
+      }
+    } else {
+      setShowOutstandingPaymentBanner(false);
+      setStudentPaymentSummary(null);
+    }
+  }, [appUser]);
+
+  const handleAppLoginSuccess = (user: AppUser) => {
+    setAppUser(user);
+    setShowLoginModal(false);
+    if (user.role === 'student') {
+      if (activeErpTab === 'students') {
+        setActiveErpTab('attendance');
+      }
+      const sName = user.studentName || user.name;
+      const summary = getStudentPaymentDetails(sName);
+      setStudentPaymentSummary(summary);
+      if (summary.hasOutstanding) {
+        setShowOutstandingPaymentBanner(true);
+      }
+    }
+  };
+
+  const handleAppLogout = async () => {
+    const prevUser = appUser;
+    try {
+      await supabaseLogout();
+    } catch (e) {
+      console.warn("Supabase sign out notice:", e);
+    }
+    try {
+      await logout();
+    } catch (e) {}
+    setAppUser(null);
+    setActiveErpTab('home');
+    setShowLoginModal(false);
+    if (prevUser) {
+      logActivity({
+        actor: prevUser.name || 'User',
+        role: prevUser.role || 'student',
+        actionCategory: 'System Settings',
+        actionTitle: 'User Logged Out',
+        details: `Signed out of portal: ${prevUser.name}`
+      });
+    }
+    setSyncedBannerMessage('🔒 Logged out of HTEIM Portal.');
+    setTimeout(() => setSyncedBannerMessage(null), 3500);
+  };
+
+  const [sheetUrl, setSheetUrl] = useState(() => {
+    const saved = localStorage.getItem('sheetUrl');
+    if (!saved || saved.includes('gid=283667804')) {
+      return 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=614888378#gid=614888378';
+    }
+    return saved;
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }>>([]);
+
+  useEffect(() => {
+    (window as any).triggerPortalToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
+      const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setToasts(prev => [...prev, { id, type, title, message }]);
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 5500);
+    };
+    return () => {
+      delete (window as any).triggerPortalToast;
+    };
+  }, []);
+
+  const showToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setToasts(prev => [...prev, { id, type, title, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5500);
+  };
+
+  // Synchronized States
+  const [courses, setCourses] = useState<Course[]>(() => {
+    const saved = localStorage.getItem('hteim_courses');
+    return saved ? JSON.parse(saved) : INITIAL_COURSES;
+  });
+
+  const [schedules, setSchedules] = useState<ScheduleItem[]>(() => {
+    const saved = localStorage.getItem('hteim_scheduled_classes');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((s: any) => !String(s.id).startsWith('sch_p'));
+      } catch {}
+    }
+    return [];
+  });
+
+  const [libraryResources, setLibraryResources] = useState<LibraryResource[]>(() => {
+    const saved = localStorage.getItem('hteim_library_resources');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return INITIAL_RESOURCES;
+  });
+
+  const [classroomMedia, setClassroomMedia] = useState<MediaResource[]>(() => {
+    const saved = localStorage.getItem('hteim_classroom_media');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return DEFAULT_PRESET_MEDIA;
+  });
+
+  const [payments, setPayments] = useState<PaymentRecord[]>(() => {
+    const saved = localStorage.getItem('hteim_student_payments');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const normalized = parsed.map((p: any) => {
+            if (!p || !p.studentName) return p;
+            const pLower = p.studentName.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[pLower];
+            if (alias && alias !== p.studentName) {
+              return { ...p, studentName: alias };
+            }
+            return p;
+          });
+          const seenNames = new Set<string>();
+          const seenIds = new Set<string>();
+          const deduped: PaymentRecord[] = [];
+          normalized.forEach((p: any) => {
+            if (!p) return;
+            const rawName = (p?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[rawName];
+            const nameKey = (alias || p?.studentName || '').toLowerCase().trim();
+            const idKey = p?.id;
+
+            if (nameKey) {
+              if (seenNames.has(nameKey)) {
+                const existing = deduped.find(d => {
+                  const dRaw = (d?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+                  const dAlias = MANUAL_ALIASES[dRaw];
+                  return (dAlias || d?.studentName || '').toLowerCase().trim() === nameKey;
+                });
+                if (existing) {
+                  existing.amountPaid = (Number(existing.amountPaid) || 0) + (Number(p.amountPaid) || 0);
+                  if (existing.amountPaid >= (existing.totalTuition || 1200)) existing.status = 'Paid In Full';
+                  else if (existing.amountPaid > 0) existing.status = 'Partial';
+                }
+                return;
+              }
+              seenNames.add(nameKey);
+            }
+            if (idKey) seenIds.add(idKey);
+            deduped.push(p);
+          });
+          const existingNames = new Set(deduped.map((p: any) => {
+            const raw = (p?.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[raw];
+            return (alias || p?.studentName || '').toLowerCase().trim();
+          }));
+          const existingIds = new Set(deduped.map((p: any) => p?.id).filter(Boolean));
+
+          const missing = INITIAL_PAYMENTS.filter(p => {
+            if (existingIds.has(p.id)) return false;
+            const pRaw = (p.studentName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+            const alias = MANUAL_ALIASES[pRaw];
+            const canon = (alias || p.studentName || '').toLowerCase().trim();
+            return !existingNames.has(canon);
+          });
+
+          const finalSeenIds = new Set<string>();
+          const result: PaymentRecord[] = [];
+          [...deduped, ...missing].forEach((rec) => {
+            if (!rec || !rec.id) return;
+            if (finalSeenIds.has(rec.id)) return;
+            finalSeenIds.add(rec.id);
+            result.push(rec);
+          });
+          return result;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_PAYMENTS;
+  });
+
+  const [facultyTeachers, setFacultyTeachers] = useState<any[]>(() => {
+    const saved = localStorage.getItem('hteim_faculty_teachers_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return DEFAULT_FACULTY_TEACHERS;
+  });
+
+  const [zoomExceptionNote, setZoomExceptionNote] = useState<string>(() => {
+    return localStorage.getItem('hteim_zoom_exception_note') || '';
+  });
+
+  const [hasZoomException, setHasZoomException] = useState<boolean>(() => {
+    return localStorage.getItem('hteim_has_zoom_exception') === 'true';
+  });
+
+  const defaultPermanentClassDays: ClassDay[] = useMemo(() => CURRICULUM_CLASS_DAYS, []);
+
+  const [classDays, setClassDays] = useState<ClassDay[]>(() => {
+    const saved = localStorage.getItem('classDays');
+    if (saved) {
+      try {
+        const parsed: ClassDay[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter(d => d && d.id && !isObsoleteLegacyClassDay(d.id) && !isObsoleteLegacyClassDay(d.name));
+          if (cleaned.length >= 14) return cleaned;
+        }
+      } catch (e) {}
+    }
+    return CURRICULUM_CLASS_DAYS;
+  });
+
+  const [records, setRecords] = useState<AttendanceRecord[]>(() => {
+    const saved = localStorage.getItem('attendanceRecords');
+    const savedDeleted = localStorage.getItem('deletedStudentNames');
+    let deletedList: string[] = [];
+    if (savedDeleted) {
+      try { deletedList = JSON.parse(savedDeleted); } catch {}
+    }
+    if (saved) {
+      try {
+        const loaded: AttendanceRecord[] = JSON.parse(saved);
+        if (Array.isArray(loaded) && loaded.length >= 50) {
+          const cleaned = loaded.filter(r => {
+            if (!r || !r.name) return false;
+            if (r.classDay && isObsoleteLegacyClassDay(r.classDay)) return false;
+            const nameLower = (r?.name || '').toLowerCase().trim();
+            if (isExcludedStudent(r.name)) return false;
+            if (deletedList.some(d => (d || '').toLowerCase().trim() === nameLower)) return false;
+            return true;
+          });
+          if (cleaned.length >= 50) return cleaned;
+        }
+      } catch (e) {}
+    }
+    return RAW_CURRICULUM_RECORDS.filter(r => !isExcludedStudent(r.name) && !isObsoleteLegacyClassDay(r.classDay));
+  });
+
+  useEffect(() => {
+    let currentClassDays = classDays;
+    let currentRecords = records;
+
+    if (currentClassDays.some(d => isObsoleteLegacyClassDay(d.id) || isObsoleteLegacyClassDay(d.name))) {
+      currentClassDays = currentClassDays.filter(d => !isObsoleteLegacyClassDay(d.id) && !isObsoleteLegacyClassDay(d.name));
+      setClassDays(currentClassDays);
+      localStorage.setItem('classDays', JSON.stringify(currentClassDays));
+    }
+
+    if (currentRecords.some(r => isObsoleteLegacyClassDay(r.classDay))) {
+      currentRecords = currentRecords.filter(r => !isObsoleteLegacyClassDay(r.classDay));
+      setRecords(currentRecords);
+      localStorage.setItem('attendanceRecords', JSON.stringify(currentRecords));
+    }
+  }, []);
+
+  const [deletedClassDayIds, setDeletedClassDayIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('deletedClassDayIds');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('deletedClassDayIds', JSON.stringify(deletedClassDayIds));
+  }, [deletedClassDayIds]);
+
+  const [dataSource, setDataSource] = useState<'demo' | 'sheets' | null>(() => {
+    return (localStorage.getItem('dataSource') as any) || null;
+  });
+
+  const [sheetMergePolicy, setSheetMergePolicy] = useState<'sheets' | 'manual' | 'prompt'>(() => {
+    return (localStorage.getItem('hteim_sheet_merge_policy') as any) || 'manual';
+  });
+
+  const [pendingConflicts, setPendingConflicts] = useState<MergeConflict[]>([]);
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'at_risk' | 'moderate' | 'perfect' | 'fifty_percent' | 'unpaid' | 'honor_roll'>('all');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'last_name_asc' | 'last_name_desc' | 'rate_desc' | 'rate_asc' | 'score_desc' | 'score_asc'>('name_asc');
+  
+  const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
+  
+  const [deletedStudentNames, setDeletedStudentNames] = useState<string[]>(() => {
+    const saved = localStorage.getItem('deletedStudentNames');
+    let list: string[] = [];
+    if (saved) {
+      try { list = JSON.parse(saved); } catch {}
+    }
+    return list.filter(name => {
+      const lower = (name || '').toLowerCase().trim();
+      return !lower.includes('colette') && !lower.includes('blackburn');
+    });
+  });
+
+  const [studentNotes, setStudentNotes] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('studentNotes');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [excusedAbsences, setExcusedAbsences] = useState<Record<string, Record<string, boolean>>>(() => {
+    const saved = localStorage.getItem('excusedAbsences');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [studentPhotos, setStudentPhotos] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('hteim_student_photos');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [studentLevels, setStudentLevels] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('hteim_student_levels');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [selectedReportLevel, setSelectedReportLevel] = useState<string>('all');
+  const [selectedReportAttendanceFilter, setSelectedReportAttendanceFilter] = useState<'all' | 'fifty_percent' | 'at_risk' | 'satisfactory'>('all');
+
+  // Modals visibility state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showCohortModal, setShowCohortModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showMobileDownloadModal, setShowMobileDownloadModal] = useState(false);
+  const [showClassDaysModal, setShowClassDaysModal] = useState(false);
+
+  // Cohort state
+  const [cohorts, setCohorts] = useState<Cohort[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_cohorts');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_COHORTS;
+  });
+
+  const [activeCohortId, setActiveCohortId] = useState<string>(() => {
+    return localStorage.getItem('hteim_active_cohort_id') || 'cohort_2026';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_cohorts', JSON.stringify(cohorts));
+  }, [cohorts]);
+
+  useEffect(() => {
+    localStorage.setItem('hteim_active_cohort_id', activeCohortId);
+  }, [activeCohortId]);
+
+  const activeCohort = useMemo(() => {
+    const currentPrimary = cohorts.find(c => c.isCurrent) || cohorts[0] || DEFAULT_COHORTS[0];
+    if (appUser?.role !== 'admin') {
+      const selected = cohorts.find(c => c.id === activeCohortId);
+      if (selected && !selected.isCurrent) {
+        return currentPrimary;
+      }
+    }
+    return cohorts.find(c => c.id === activeCohortId) || currentPrimary;
+  }, [cohorts, activeCohortId, appUser?.role]);
+
+  const pwaHook = usePWAInstall();
+
+  // Theme Mode
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem('hteim_theme_mode');
+    return (saved as ThemeMode) || 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_theme_mode', themeMode);
+    document.documentElement.classList.remove('dark', 'high-contrast');
+    if (themeMode === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (themeMode === 'high-contrast') {
+      document.documentElement.classList.add('high-contrast');
+    } else if (themeMode === 'system') {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      }
+    }
+  }, [themeMode]);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    return CentralNotificationService.getNotifications() as AppNotification[];
+  });
+
+  // Custom Assignments & Submissions
+  const [customAssignments, setCustomAssignments] = useState<CustomAssignment[]>(() => {
+    let list: CustomAssignment[] = [];
+    const saved = localStorage.getItem('hteim_custom_assignments');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        list = parsed.filter((a: any) => !['ASG-Q100', 'ASG-100', 'ASG-101', 'ASG-102', 'ASG-103'].includes(a.id));
+      } catch (e) { console.error(e); }
+    }
+
+    const defaultAsgs: CustomAssignment[] = DEFAULT_QUIZ_TEMPLATES.map(tmpl => ({
+      id: tmpl.id,
+      title: tmpl.title,
+      courseCode: tmpl.courseCode,
+      moduleTrack: tmpl.moduleTrack,
+      description: tmpl.description || 'Interactive Google Forms style class day quiz.',
+      dueDate: tmpl.dueDate || '2026-09-30',
+      maxPoints: tmpl.totalPoints || 100,
+      createdAt: tmpl.createdAt,
+      type: 'quiz',
+      quizData: tmpl
+    }));
+
+    const existingIds = new Set(list.map(a => a.id));
+    const missingDefaults = defaultAsgs.filter(a => !existingIds.has(a.id));
+    return [...list, ...missingDefaults];
+  });
+
+  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(() => {
+    const saved = localStorage.getItem('hteim_assignment_submissions');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((s: any) => !['SUB-101-ABurke', 'SUB-101-CDavis', 'SUB-102-EEvans'].includes(s.id));
+      } catch (e) { console.error(e); }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_custom_assignments', JSON.stringify(customAssignments));
+  }, [customAssignments]);
+
+  useEffect(() => {
+    localStorage.setItem('hteim_assignment_submissions', JSON.stringify(submissions));
+  }, [submissions]);
+
+  // Messages State
+  const [messages, setMessages] = useState<AppMessage[]>(() => {
+    const saved = localStorage.getItem('hteim_app_messages');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.filter((m: any) => !['msg_welcome_101', 'msg_tuition_inquiry_1', 'msg_zoom_class_1'].includes(m.id));
+      } catch (e) { console.error(e); }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_app_messages', JSON.stringify(messages));
+  }, [messages]);
+
+  const handleSendMessage = (msgData: Omit<AppMessage, 'id' | 'createdAt' | 'updatedAt' | 'replies' | 'isReadByRecipient' | 'isReadBySender' | 'status'>) => {
+    const senderName = msgData.senderName || appUser?.studentName || appUser?.name || 'Student';
+    const senderRole = msgData.senderRole || appUser?.role || 'student';
+    const newMessage: AppMessage = {
+      ...msgData,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      senderName,
+      senderRole,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'open',
+      isReadBySender: true,
+      isReadByRecipient: false,
+      replies: [],
+      attachments: msgData.attachments || []
+    };
+
+    setMessages(prev => [newMessage, ...prev]);
+
+    logActivity({
+      actor: senderName,
+      role: senderRole,
+      actionCategory: 'System Settings',
+      actionTitle: msgData.isGroupMessage ? 'Group Broadcast Sent' : 'New Message Sent',
+      details: `Sent ${msgData.isGroupMessage ? 'group broadcast' : 'message'} '${msgData.subject}' to ${msgData.recipientName}`
+    });
+  };
+
+  const handleReplyMessage = (messageId: string, replyText: string, attachments?: MessageAttachment[]) => {
+    const replierName = appUser?.name || 'User';
+    const replierRole = appUser?.role || 'student';
+
+    const newReply: MessageReply = {
+      id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      senderName: replierName,
+      senderRole: replierRole === 'admin' ? 'admin' : replierRole === 'teacher' ? 'teacher' : 'student',
+      senderEmail: appUser?.email,
+      message: replyText,
+      createdAt: new Date().toISOString(),
+      attachments
+    };
+
+    setMessages(prev => prev.map(m => {
+      if (m.id === messageId) {
+        return {
+          ...m,
+          replies: [...m.replies, newReply],
+          updatedAt: new Date().toISOString(),
+          status: 'in_progress',
+          isReadByRecipient: false
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handleUpdateMessageStatus = (messageId: string, status: AppMessage['status']) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, status, updatedAt: new Date().toISOString() } : m));
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+  };
+
+  const unreadMessagesCount = useMemo(() => {
+    const userRole = appUser?.role || 'student';
+    const userName = (appUser?.studentName || appUser?.name || '').toLowerCase();
+
+    return messages.filter(m => {
+      if (m.status === 'archived') return false;
+      if (userRole === 'admin') {
+        return (m.recipientType === 'admin' || m.recipientType === 'all_staff') && !m.isReadByRecipient;
+      } else if (userRole === 'teacher') {
+        return (m.recipientType === 'teacher' || m.recipientType === 'all_staff') && !m.isReadByRecipient;
+      } else {
+        const isFromStudent = (m.senderName || '').toLowerCase().includes(userName) || m.senderEmail === appUser?.email;
+        if (isFromStudent) {
+          return m.status === 'in_progress' || m.status === 'open';
+        }
+        if (
+          (m.recipientType === 'all_students' || m.recipientType === 'group' || m.recipientType === 'whatsapp_group' || m.isGroupMessage) &&
+          !m.isReadByRecipient
+        ) {
+          return true;
+        }
+        return false;
+      }
+    }).length;
+  }, [messages, appUser]);
+
+  useEffect(() => {
+    setNotifications(CentralNotificationService.getNotifications() as AppNotification[]);
+    const unsubscribe = CentralNotificationService.subscribe(() => {
+      setNotifications(CentralNotificationService.getNotifications() as AppNotification[]);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleRunNotificationScan = () => {
+    const updated = generateAutomatedNotifications(
+      customAssignments,
+      submissions,
+      CentralNotificationService.getNotifications() as AppNotification[],
+      appUser?.role,
+      appUser?.studentName || appUser?.name
+    );
+    CentralNotificationService.setNotifications(updated as any);
+  };
+
+  useEffect(() => {
+    handleRunNotificationScan();
+  }, [appUser, customAssignments, submissions]);
+
+  const handleMarkNotifAsRead = (id: string) => {
+    CentralNotificationService.markAsRead(id);
+  };
+
+  const handleMarkAllNotifsAsRead = () => {
+    CentralNotificationService.markAllAsRead(appUser?.role, appUser?.studentName || appUser?.name);
+  };
+
+  const handleClearNotifs = () => {
+    CentralNotificationService.clearAll();
+  };
+
+  const handleAddTestNotif = (notif: AppNotification) => {
+    const current = CentralNotificationService.getNotifications();
+    CentralNotificationService.setNotifications([notif as any, ...current]);
+  };
+
+  const handleSelectNotif = (notif: AppNotification) => {
+    if (notif.actionTab) {
+      setActiveErpTab(notif.actionTab);
+    }
+  };
+
+  const [showBatchBroadcastModal, setShowBatchBroadcastModal] = useState(false);
+  const [showPresentationModal, setShowPresentationModal] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [syncedBannerMessage, setSyncedBannerMessage] = useState<string | null>(null);
+  const [showOfflineDrawer, setShowOfflineDrawer] = useState(false);
+  const [showPINCheckinModal, setShowPINCheckinModal] = useState(false);
+
+  const [activeErpTab, setActiveErpTab] = useState<TabType>(getTabFromLocation);
+
+  const handleNavigate = (tab: TabType) => {
+    if (!appUser && tab !== 'home') {
+      setShowLoginModal(true);
+      return;
+    }
+    setActiveErpTab(tab);
+    setIsNavOpen(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.pushState({ tab }, '', url);
+    }
+    trackUxEvent('navigation_changed', { tab, role: appUser?.role || 'guest' });
+  };
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      trackUxEvent('online_restored');
+      setSyncedBannerMessage('🟢 Internet Reconnected! Mobile PWA auto-synced local attendance & student records.');
+      setTimeout(() => setSyncedBannerMessage(null), 6000);
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      trackUxEvent('offline_detected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleExportBackup = () => {
+    if (appUser?.role === 'student') return;
+    const data = {
+      exportDate: new Date().toISOString(),
+      atRiskThreshold,
+      satisfactoryThreshold,
+      autoSyncInterval,
+      syncOnTabFocus,
+      notifications,
+      rubricScores,
+      studentNotes,
+      excusedAbsences,
+      assignments: JSON.parse(localStorage.getItem('hteim_custom_assignments') || '[]'),
+      submissions: JSON.parse(localStorage.getItem('hteim_assignment_submissions') || '[]')
+    };
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `HTEIM_Portal_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = (jsonContent: string): boolean => {
+    if (appUser?.role === 'student') return false;
+    try {
+      const parsed = JSON.parse(jsonContent);
+      if (parsed.atRiskThreshold !== undefined) setAtRiskThreshold(parsed.atRiskThreshold);
+      if (parsed.satisfactoryThreshold !== undefined) setSatisfactoryThreshold(parsed.satisfactoryThreshold);
+      if (parsed.autoSyncInterval !== undefined) setAutoSyncInterval(parsed.autoSyncInterval);
+      if (parsed.syncOnTabFocus !== undefined) setSyncOnTabFocus(parsed.syncOnTabFocus);
+      if (parsed.notifications) CentralNotificationService.setNotifications(parsed.notifications);
+      if (parsed.rubricScores) setRubricScores(parsed.rubricScores);
+      if (parsed.studentNotes) setStudentNotes(parsed.studentNotes);
+      if (parsed.excusedAbsences) setExcusedAbsences(parsed.excusedAbsences);
+      if (parsed.assignments) {
+        localStorage.setItem('hteim_custom_assignments', JSON.stringify(parsed.assignments));
+        setCustomAssignments(parsed.assignments);
+      }
+      if (parsed.submissions) {
+        localStorage.setItem('hteim_assignment_submissions', JSON.stringify(parsed.submissions));
+        setSubmissions(parsed.submissions);
+      }
+      return true;
+    } catch (e) {
+      console.error('Import failed', e);
+      return false;
+    }
+  };
+
+  const handleResetAllData = () => {
+    if (appUser?.role === 'student') return;
+    localStorage.removeItem('hteim_custom_assignments');
+    localStorage.removeItem('hteim_assignment_submissions');
+    localStorage.removeItem('hteim_app_notifications');
+    localStorage.removeItem('studentNotes');
+    localStorage.removeItem('excusedAbsences');
+    CentralNotificationService.clearAll();
+    setStudentNotes({});
+    setExcusedAbsences({});
+    setAtRiskThreshold(70);
+    setSatisfactoryThreshold(80);
+    window.location.reload();
+  };
+
+  const [viewMode, setViewMode] = useState<'matrix' | 'cards'>('matrix');
+  const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>('rapid');
+  const [densityMode, setDensityMode] = useState<'comfortable' | 'dense'>(() => {
+    const saved = localStorage.getItem('densityMode');
+    return (saved as 'comfortable' | 'dense') || 'comfortable';
+  });
+
+  const [showTrendChart, setShowTrendChart] = useState<boolean>(true);
+  const [showEmailDraftModal, setShowEmailDraftModal] = useState<boolean>(false);
+  const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
+  const [certificateData, setCertificateData] = useState<{
+    studentName: string;
+    awardTitle: string;
+    criteria: string;
+    rate: number;
+    avgScore: number | null;
+  } | null>(null);
+
+  const [selectedModule, setSelectedModule] = useState<'all' | 'm1' | 'm2' | 'm3'>('all');
+  const [selectedStudentNames, setSelectedStudentNames] = useState<string[]>([]);
+  const [showBatchEmailModal, setShowBatchEmailModal] = useState<boolean>(false);
+  const [showStudentTranscriptModal, setShowStudentTranscriptModal] = useState<boolean>(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
+
+  const [showLiveCheckinModal, setShowLiveCheckinModal] = useState<boolean>(false);
+  const [liveCheckinDayId, setLiveCheckinDayId] = useState<string>('');
+
+  const [rubricScores, setRubricScores] = useState<Record<string, { participation: number; scripture: number; assignment: number }>>(() => {
+    const saved = localStorage.getItem('rubricScores');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('rubricScores', JSON.stringify(rubricScores));
+  }, [rubricScores]);
+
+  useEffect(() => {
+    localStorage.setItem('densityMode', densityMode);
+  }, [densityMode]);
+
+  const [showFloatingQuizBanner, setShowFloatingQuizBanner] = useState<boolean>(true);
+
+  const activeQuizzesList = useMemo(() => {
+    return customAssignments.filter(a => (a.type === 'quiz' || a.quizData) && a.quizData?.isPublished !== false);
+  }, [customAssignments]);
+
+  const [atRiskThreshold, setAtRiskThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem('atRiskThreshold');
+    return saved ? parseInt(saved, 10) : 50;
+  });
+
+  const [satisfactoryThreshold, setSatisfactoryThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem('satisfactoryThreshold');
+    return saved ? parseInt(saved, 10) : 80;
+  });
+
+  const [recentSheets, setRecentSheets] = useState<RecentSheet[]>(() => {
+    const saved = localStorage.getItem('recentSheets');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [autoSyncInterval, setAutoSyncInterval] = useState<number>(() => {
+    const saved = localStorage.getItem('autoSyncInterval');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [syncOnTabFocus, setSyncOnTabFocus] = useState<boolean>(() => {
+    const saved = localStorage.getItem('syncOnTabFocus');
+    return saved ? JSON.parse(saved) : true;
+  });
+
+  const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+  const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState<boolean>(false);
+
+  // Cloud pull on startup
+  useEffect(() => {
+    let active = true;
+    const initialPull = async () => {
+      setIsCloudSyncing(true);
+      setCloudSyncError(null);
+      setSupabaseTableMissing(false);
+      const activeEmail = appUser?.email || user?.email;
+      try {
+        const cloudState = await loadFromSupabase(activeEmail);
+        if (cloudState && active) {
+          if (cloudState.records !== undefined) setRecords(cloudState.records);
+          if (cloudState.classDays !== undefined) setClassDays(cloudState.classDays);
+          if (cloudState.studentNotes !== undefined) setStudentNotes(cloudState.studentNotes);
+          if (cloudState.excusedAbsences !== undefined) setExcusedAbsences(cloudState.excusedAbsences);
+          if (cloudState.rubricScores !== undefined) setRubricScores(cloudState.rubricScores);
+          if (cloudState.deletedStudentNames !== undefined) {
+            setDeletedStudentNames(cloudState.deletedStudentNames.filter((name: string) => {
+              const lower = (name || '').toLowerCase().trim();
+              return !lower.includes('colette') && !lower.includes('blackburn');
+            }));
+          }
+          if (cloudState.studentPhotos !== undefined) setStudentPhotos(cloudState.studentPhotos);
+          if (cloudState.studentLevels !== undefined) setStudentLevels(cloudState.studentLevels);
+
+          if (cloudState.customAssignments !== undefined) {
+            setCustomAssignments(prev => {
+              const cloudIds = new Set(cloudState.customAssignments.map((a: any) => a.id));
+              const localOnly = prev.filter(a => !cloudIds.has(a.id));
+              return [...cloudState.customAssignments, ...localOnly];
+            });
+          }
+          if (cloudState.submissions !== undefined) {
+            setSubmissions(prev => {
+              const cloudIds = new Set(cloudState.submissions.map((s: any) => s.id));
+              const localOnly = prev.filter(s => !cloudIds.has(s.id));
+              return [...cloudState.submissions, ...localOnly];
+            });
+          }
+          if (cloudState.libraryResources !== undefined) {
+            setLibraryResources(prev => {
+              const cloudIds = new Set(cloudState.libraryResources.map((r: any) => r.id));
+              const localOnly = prev.filter(r => !cloudIds.has(r.id));
+              const merged = [...cloudState.libraryResources, ...localOnly];
+              
+              syncLibraryFromSupabaseBucket(merged).then(({ updatedResources, addedCount }) => {
+                if (addedCount > 0) {
+                  setLibraryResources(updatedResources);
+                }
+              }).catch(() => {});
+
+              return merged;
+            });
+          } else {
+            syncLibraryFromSupabaseBucket(libraryResources).then(({ updatedResources, addedCount }) => {
+              if (addedCount > 0) {
+                setLibraryResources(updatedResources);
+              }
+            }).catch(() => {});
+          }
+          if (cloudState.classroomMedia !== undefined) {
+            setClassroomMedia(prev => {
+              const cloudIds = new Set(cloudState.classroomMedia.map((m: any) => m.id));
+              const localOnly = prev.filter(m => !cloudIds.has(m.id));
+              return [...cloudState.classroomMedia, ...localOnly];
+            });
+          }
+
+          if (cloudState.notifications !== undefined) CentralNotificationService.setNotifications(cloudState.notifications);
+          if (cloudState.sheetUrl !== undefined) setSheetUrl(cloudState.sheetUrl);
+          if (cloudState.courses !== undefined) setCourses(cloudState.courses);
+          if (cloudState.schedules !== undefined) setSchedules(cloudState.schedules);
+          if (cloudState.payments !== undefined) setPayments(cloudState.payments);
+          if (cloudState.messages !== undefined) setMessages(cloudState.messages);
+          if (cloudState.zoomExceptionNote !== undefined) setZoomExceptionNote(cloudState.zoomExceptionNote);
+          if (cloudState.hasZoomException !== undefined) setHasZoomException(cloudState.hasZoomException);
+          if (cloudState.userCredentials !== undefined && Array.isArray(cloudState.userCredentials) && cloudState.userCredentials.length > 0) {
+            setUserCredentials(prev => {
+              const merged = mergeUserCredentials(prev, cloudState.userCredentials);
+              try {
+                localStorage.setItem('hteim_user_credentials', JSON.stringify(merged));
+              } catch (e) {}
+              return merged;
+            });
+          }
+          if (Array.isArray(cloudState.facultyTeachers) && cloudState.facultyTeachers.length > 0) {
+            setFacultyTeachers(cloudState.facultyTeachers);
+            try {
+              localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(cloudState.facultyTeachers));
+            } catch (e) {}
+          }
+          
+          if (cloudState.updatedAt) {
+            const timeStr = new Date(cloudState.updatedAt).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              second: '2-digit' 
+            });
+            setLastSyncedTime(timeStr);
+          }
+          setSyncedBannerMessage("⚡ Supabase Sync: Successfully pulled latest school database from Supabase.");
+          setTimeout(() => setSyncedBannerMessage(null), 4500);
+        } else if (cloudState === null && active) {
+          let facultyList: any[] = [];
+          try {
+            facultyList = JSON.parse(localStorage.getItem('hteim_faculty_teachers_v1') || '[]');
+          } catch (e) {}
+
+          const stateToSave = {
+            records,
+            classDays,
+            studentNotes,
+            excusedAbsences,
+            rubricScores,
+            deletedStudentNames,
+            studentPhotos,
+            studentLevels,
+            customAssignments,
+            submissions,
+            notifications,
+            sheetUrl,
+            courses,
+            schedules,
+            libraryResources,
+            classroomMedia,
+            facultyTeachers: facultyList,
+            payments,
+            messages,
+            zoomExceptionNote,
+            hasZoomException,
+            userCredentials
+          };
+          const success = await saveToSupabase(activeEmail, stateToSave);
+          if (success) {
+            const timeStr = new Date().toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              second: '2-digit' 
+            });
+            setLastSyncedTime(timeStr);
+            setSyncedBannerMessage("⚡ Supabase Cloud Connected: Successfully uploaded existing database.");
+            setTimeout(() => setSyncedBannerMessage(null), 5000);
+          }
+        }
+      } catch (err: any) {
+        console.error("Cloud pull error:", err);
+        if (err.message === 'TABLE_NOT_FOUND') {
+          setSupabaseTableMissing(true);
+          setCloudSyncError("Supabase setup required: 'app_states' table not found.");
+        } else {
+          setCloudSyncError("Could not retrieve cloud sync data.");
+        }
+      } finally {
+        if (active) setIsCloudSyncing(false);
+      }
+    };
+
+    initialPull();
+    return () => {
+      active = false;
+    };
+  }, [user, appUser]);
+
+  const handlePushToCloud = async () => {
+    setIsCloudSyncing(true);
+    setCloudSyncError(null);
+    setSupabaseTableMissing(false);
+    const activeEmail = appUser?.email || user?.email;
+    try {
+      let syncedStudentPhotos = studentPhotos;
+      let syncedFaculty = facultyTeachers;
+
+      try {
+        syncedStudentPhotos = await syncStudentPhotosToSupabase(studentPhotos);
+        setStudentPhotos(syncedStudentPhotos);
+        try {
+          localStorage.setItem('hteim_student_photos', JSON.stringify(syncedStudentPhotos));
+        } catch (e) {}
+      } catch (err) {}
+
+      try {
+        syncedFaculty = await syncFacultyImagesToSupabase(facultyTeachers);
+        setFacultyTeachers(syncedFaculty);
+        try {
+          localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(syncedFaculty));
+        } catch (e) {}
+      } catch (err) {}
+
+      const stateToSave = {
+        records,
+        classDays,
+        studentNotes,
+        excusedAbsences,
+        rubricScores,
+        deletedStudentNames,
+        studentPhotos: syncedStudentPhotos,
+        studentLevels,
+        customAssignments,
+        submissions,
+        notifications,
+        sheetUrl,
+        courses,
+        schedules,
+        libraryResources,
+        classroomMedia,
+        facultyTeachers: syncedFaculty,
+        payments,
+        messages,
+        zoomExceptionNote,
+        hasZoomException,
+        userCredentials
+      };
+      const success = await saveToSupabase(activeEmail, stateToSave);
+      if (success) {
+        setLastSyncedTime(new Date().toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        }));
+        setSyncedBannerMessage("⚡ Cloud Backup Saved: Your workspace is fully synchronized in Supabase.");
+        setTimeout(() => setSyncedBannerMessage(null), 4000);
+      } else {
+        setCloudSyncError("Cloud save failed.");
+      }
+    } catch (err: any) {
+      console.error("Cloud push error:", err);
+      if (err.message === 'TABLE_NOT_FOUND') {
+        setSupabaseTableMissing(true);
+        setCloudSyncError("Supabase setup required: 'app_states' table not found.");
+      } else {
+        setCloudSyncError("Failed to save backup to Supabase.");
+      }
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleExportPDF = async (elementId: string, defaultFileName: string) => {
+    setIsGeneratingPDF(true);
+    try {
+      await exportElementToPDF(elementId, defaultFileName, (msg) => {
+        setSyncedBannerMessage(msg);
+        setTimeout(() => setSyncedBannerMessage(null), 4000);
+      });
+    } catch (err) {
+      console.error('PDF Generation error:', err);
+      window.print();
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Helper values for students & effective class days
+  const effectiveClassDays = useMemo(() => {
+    return classDays.filter(d => !deletedClassDayIds.includes(d.id));
+  }, [classDays, deletedClassDayIds]);
+
+  const uniqueStudents = useMemo(() => {
+    const rawNames = MASTER_ENROLLED_STUDENTS;
+    const canonicalMap = getCanonicalNamesMap(rawNames);
+    const namesSet = new Set<string>();
+
+    records.forEach(r => {
+      if (r && r.name && !isExcludedStudent(r.name)) {
+        const lower = (r.name || '').toLowerCase().trim();
+        const canon = MANUAL_ALIASES[lower] || canonicalMap.get(r.name.trim()) || r.name;
+        if (!isExcludedStudent(canon)) {
+          namesSet.add(canon);
+        }
+      }
+    });
+
+    MASTER_ENROLLED_STUDENTS.forEach(n => {
+      if (n && !isExcludedStudent(n)) {
+        const lower = (n || '').toLowerCase().trim();
+        const canon = MANUAL_ALIASES[lower] || canonicalMap.get(n.trim()) || n;
+        if (!isExcludedStudent(canon)) {
+          namesSet.add(canon);
+        }
+      }
+    });
+
+    const studentList: StudentSummary[] = Array.from(namesSet)
+      .filter(name => !deletedStudentNames.some(d => (d || '').toLowerCase().trim() === (name || '').toLowerCase().trim()))
+      .map(name => {
+        const studentRecords = records.filter(r => {
+          const rLower = (r.name || '').toLowerCase().trim();
+          const rCanon = MANUAL_ALIASES[rLower] || canonicalMap.get((r.name || '').trim()) || r.name;
+          return (rCanon || '').toLowerCase().trim() === (name || '').toLowerCase().trim();
+        });
+
+        let attended = 0;
+        let total = 0;
+        const attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }> = {};
+
+        effectiveClassDays.forEach(day => {
+          const rec = studentRecords.find(r => r.classDay === day.id);
+          if (rec) {
+            const isPresent = (rec.status || '').toLowerCase() === 'present';
+            attendanceByDay[day.id] = { present: isPresent, score: rec.score };
+            if (isPresent) attended++;
+          } else {
+            attendanceByDay[day.id] = { present: false };
+          }
+          total++;
+        });
+
+        const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+        const levelId = studentLevels[name] || getDefaultLevelForStudent(name);
+
+        return {
+          id: `std-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          name,
+          attended,
+          totalDays: total,
+          rate,
+          attendanceByDay,
+          avgScore: rate, // default score representation
+          levelId,
+        };
+      });
+
+    return studentList;
+  }, [records, effectiveClassDays, deletedStudentNames]);
+
+  return {
+    user,
+    setUser,
+    token,
+    setToken,
+    isLoggingIn,
+    appUser,
+    setAppUser,
+    userCredentials,
+    setUserCredentials,
+    showIntro,
+    setShowIntro,
+    showLoginModal,
+    setShowLoginModal,
+    showResetPasswordModal,
+    setShowResetPasswordModal,
+    resetTargetEmail,
+    setResetTargetEmail,
+    isResetFromEmailLink,
+    showRoleMenu,
+    setShowRoleMenu,
+    showToolsMenu,
+    setShowToolsMenu,
+    showAdminAuditModal,
+    setShowAdminAuditModal,
+    showUserManagementModal,
+    setShowUserManagementModal,
+    showCommandPalette,
+    setShowCommandPalette,
+    showMobileMoreMenu,
+    setShowMobileMoreMenu,
+    isNavOpen,
+    setIsNavOpen,
+    handleAppLoginSuccess,
+    handleAppLogout,
+    showOutstandingPaymentBanner,
+    setShowOutstandingPaymentBanner,
+    setPendingSyncData,
+    studentPaymentSummary,
+    sheetUrl,
+    setSheetUrl,
+    isLoading,
+    setIsLoading,
+    error,
+    setError,
+    toasts,
+    showToast,
+    courses,
+    setCourses,
+    schedules,
+    setSchedules,
+    libraryResources,
+    setLibraryResources,
+    classroomMedia,
+    setClassroomMedia,
+    payments,
+    setPayments,
+    facultyTeachers,
+    setFacultyTeachers,
+    zoomExceptionNote,
+    setZoomExceptionNote,
+    hasZoomException,
+    setHasZoomException,
+    classDays,
+    setClassDays,
+    records,
+    setRecords,
+    deletedClassDayIds,
+    setDeletedClassDayIds,
+    dataSource,
+    setDataSource,
+    sheetMergePolicy,
+    setSheetMergePolicy,
+    pendingConflicts,
+    setPendingConflicts,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    selectedStudent,
+    setSelectedStudent,
+    deletedStudentNames,
+    setDeletedStudentNames,
+    studentNotes,
+    setStudentNotes,
+    excusedAbsences,
+    setExcusedAbsences,
+    studentPhotos,
+    setStudentPhotos,
+    studentLevels,
+    setStudentLevels,
+    selectedReportLevel,
+    setSelectedReportLevel,
+    selectedReportAttendanceFilter,
+    setSelectedReportAttendanceFilter,
+    showReportModal,
+    setShowReportModal,
+    showSettingsModal,
+    setShowSettingsModal,
+    showCohortModal,
+    setShowCohortModal,
+    showGuideModal,
+    setShowGuideModal,
+    showMobileDownloadModal,
+    setShowMobileDownloadModal,
+    showClassDaysModal,
+    setShowClassDaysModal,
+    cohorts,
+    setCohorts,
+    activeCohortId,
+    setActiveCohortId,
+    activeCohort,
+    pwaHook,
+    themeMode,
+    setThemeMode,
+    notifications,
+    setNotifications,
+    customAssignments,
+    setCustomAssignments,
+    submissions,
+    setSubmissions,
+    messages,
+    setMessages,
+    handleSendMessage,
+    handleReplyMessage,
+    handleUpdateMessageStatus,
+    handleDeleteMessage,
+    unreadMessagesCount,
+    handleRunNotificationScan,
+    handleMarkNotifAsRead,
+    handleMarkAllNotifsAsRead,
+    handleClearNotifs,
+    handleAddTestNotif,
+    handleSelectNotif,
+    showBatchBroadcastModal,
+    setShowBatchBroadcastModal,
+    showPresentationModal,
+    setShowPresentationModal,
+    isOffline,
+    syncedBannerMessage,
+    setSyncedBannerMessage,
+    showOfflineDrawer,
+    setShowOfflineDrawer,
+    showPINCheckinModal,
+    setShowPINCheckinModal,
+    activeErpTab,
+    setActiveErpTab,
+    handleNavigate,
+    handleExportBackup,
+    handleImportBackup,
+    handleResetAllData,
+    viewMode,
+    setViewMode,
+    densityMode,
+    setDensityMode,
+    showTrendChart,
+    setShowTrendChart,
+    showEmailDraftModal,
+    setShowEmailDraftModal,
+    showCertificateModal,
+    setShowCertificateModal,
+    certificateData,
+    setCertificateData,
+    selectedModule,
+    setSelectedModule,
+    selectedStudentNames,
+    setSelectedStudentNames,
+    showBatchEmailModal,
+    setShowBatchEmailModal,
+    showStudentTranscriptModal,
+    setShowStudentTranscriptModal,
+    isGeneratingPDF,
+    handleExportPDF,
+    showLiveCheckinModal,
+    setShowLiveCheckinModal,
+    liveCheckinDayId,
+    setLiveCheckinDayId,
+    rubricScores,
+    setRubricScores,
+    showFloatingQuizBanner,
+    setShowFloatingQuizBanner,
+    activeQuizzesList,
+    atRiskThreshold,
+    setAtRiskThreshold,
+    satisfactoryThreshold,
+    setSatisfactoryThreshold,
+    recentSheets,
+    setRecentSheets,
+    autoSyncInterval,
+    setAutoSyncInterval,
+    syncOnTabFocus,
+    setSyncOnTabFocus,
+    lastSyncedTime,
+    isCloudSyncing,
+    cloudSyncError,
+    supabaseTableMissing,
+    showDiagnosticModal,
+    setShowDiagnosticModal,
+    handlePushToCloud,
+    effectiveClassDays,
+    uniqueStudents,
+    setIsResetFromEmailLink,
+    handleSaveCohort: (cohort: Cohort) => {
+      setCohorts(prev => {
+        const idx = prev.findIndex(c => c.id === cohort.id);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = cohort;
+          return copy;
+        }
+        return [...prev, cohort];
+      });
+    },
+    handleDeleteCohort: (cohortId: string) => {
+      setCohorts(prev => prev.filter(c => c.id !== cohortId));
+    },
+    handleArchiveToggleCohort: (cohortId: string) => {
+      setCohorts(prev => prev.map(c => c.id === cohortId ? { ...c, isArchived: !c.isArchived } : c));
+    },
+    handleAssignStudentCohort: (studentName: string, cohortId: string) => {
+      showToast('success', 'Cohort Assigned', `${studentName} assigned to cohort ${cohortId}`);
+    },
+    handleChangeUserPassword: async (emailOrUsername: string | AppUser, newPass: string) => {
+      const targetEmail = typeof emailOrUsername === 'string' ? emailOrUsername : emailOrUsername.email;
+      setUserCredentials(prev => prev.map(c => c.email.toLowerCase() === targetEmail.toLowerCase() ? { ...c, passwordHash: newPass } : c));
+      showToast('success', 'Password Updated', `Password updated for ${targetEmail}`);
+    },
+    handleSendBatchBroadcast: (broadcast: any) => {
+      showToast('success', 'Broadcast Sent', `Broadcast "${broadcast.title}" dispatched to ${broadcast.recipientCount} recipients.`);
+      setShowBatchBroadcastModal(false);
+    },
+    handleToggleStudentAttendance: (name: string, classDayId: string, status: string) => {
+      setRecords(prev => {
+        const idx = prev.findIndex(r => r.name === name && r.classDay === classDayId);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], status };
+          return copy;
+        }
+        return [...prev, { name, classDay: classDayId, status, score: 'P' }];
+      });
+    },
+    handleToggleExcusedAbsence: (name: string, classDayId: string) => {
+      setExcusedAbsences(prev => {
+        const studentMap = prev[name] || {};
+        return {
+          ...prev,
+          [name]: {
+            ...studentMap,
+            [classDayId]: !studentMap[classDayId]
+          }
+        };
+      });
+    },
+    handleSaveStudentNote: (name: string, noteText: string) => {
+      setStudentNotes(prev => ({ ...prev, [name]: noteText }));
+      showToast('success', 'Note Saved', `Academic note saved for ${name}`);
+    },
+    handleDeleteStudent: (name: string) => {
+      setDeletedStudentNames(prev => [...prev, name]);
+      showToast('info', 'Student Deleted', `${name} removed from active view.`);
+    },
+    handleClearStudentAttendanceRecords: (name: string) => {
+      setRecords(prev => prev.filter(r => r.name !== name));
+      showToast('info', 'Records Cleared', `Attendance records cleared for ${name}.`);
+    },
+    handleResolveConflicts: (resolutions: Record<string, 'local' | 'sheets'>) => {
+      showToast('success', 'Merge Conflicts Resolved', 'Incoming Google Sheets data synchronized.');
+      setPendingConflicts([]);
+    },
+    handleAddClassDay: (title: string) => {
+      const newDay: ClassDay = { id: `day_${Date.now()}`, name: title };
+      setClassDays(prev => [...prev, newDay]);
+    },
+    handleEditClassDayTitle: (id: string, newTitle: string) => {
+      setClassDays(prev => prev.map(d => d.id === id ? { ...d, name: newTitle } : d));
+    },
+    handleDeleteClassDay: (id: string) => {
+      setDeletedClassDayIds(prev => [...prev, id]);
+    },
+    handleClearClassDayRecords: (id: string) => {
+      setRecords(prev => prev.filter(r => r.classDay !== id));
+    },
+    classDayStats: (() => {
+      const stats: Record<string, { count: number; percentage: number }> = {};
+      classDays.forEach(day => {
+        const dayRecs = records.filter(r => r.classDay === day.id && r.status === 'present');
+        const totalStds = uniqueStudents.length || 1;
+        stats[day.id] = { count: dayRecs.length, percentage: Math.round((dayRecs.length / totalStds) * 100) };
+      });
+      return stats;
+    })(),
+    getStudentIdForName: (name: string) => {
+      return `std-${name.toLowerCase().replace(/\s+/g, '-')}`;
+    },
+    getStudentBadges: (student: any) => {
+      const badges = [];
+      if (student.rate >= 85) badges.push({ label: 'Honor Roll', color: 'emerald' });
+      if (student.rate < 75) badges.push({ label: 'At-Risk', color: 'rose' });
+      return badges;
+    },
+  };
+}
