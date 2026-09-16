@@ -67,7 +67,7 @@ export interface Term {
 export interface MasterCourse {
   id: string;
   code: string; // e.g. "SOM-101", "SOM-MOD-1"
-  title: string; // e.g. "Biblical Hermeneutics & Exegesis"
+  title: string; // e.g. "Introduction", "School of Evangelism"
   coreModuleNumber: 1 | 2 | 3 | 4 | 5 | 6 | 'Elective';
   credits: number; // e.g. 5.0
   department: 'Biblical Studies' | 'Practical Ministry' | 'Leadership & Governance' | 'Theology & Ethics' | 'General';
@@ -82,9 +82,87 @@ export interface MasterCourse {
     scriptureReferences?: string[];
   }[];
   isActive: boolean;
+  teachers?: string[]; // Array of teacher names (supports multiple teachers)
+  instructors?: string[]; // Alias for compatibility
   createdAt?: string;
   updatedAt?: string;
 }
+
+/**
+ * AUTHORIZED FACULTY TEACHERS FOR SCHOOL OF MINISTRY MODULES
+ */
+export interface AuthorizedFacultyTeacher {
+  id: string;
+  name: string;
+  role: 'Apostle' | 'Pastor' | 'Prophet' | 'Teacher' | 'Evangelist';
+  title: string;
+  email: string;
+  avatarUrl: string;
+  bio: string;
+  specialization: string;
+}
+
+export const AUTHORIZED_TEACHERS: AuthorizedFacultyTeacher[] = [
+  {
+    id: 't_gillian',
+    name: 'Apostle Gillian Selkridge',
+    role: 'Apostle',
+    title: 'Apostle & Academic Overseer',
+    email: 'apostle.gillian@hteim.edu',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    bio: 'Presiding Apostle with apostolic oversight across ministerial networks, spiritual governance, and five-fold leadership training.',
+    specialization: 'School of the Apostles, Apostolic Governance, Spiritual Authority'
+  },
+  {
+    id: 't_samuel',
+    name: 'Pastor Samuel Selkridge',
+    role: 'Pastor',
+    title: 'Dean of Ministry & Senior Pastor',
+    email: 'pastor.samuel@hteim.edu',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    bio: 'Dean of the School of Ministry with over 25 years of pastoral counseling, hermeneutical instruction, and ministry development.',
+    specialization: 'Introduction, School of the Pastor and Holy Spirit, Exegesis'
+  },
+  {
+    id: 't_gale',
+    name: 'Pastor Gale Grant',
+    role: 'Pastor',
+    title: 'Pastoral Faculty & Ethics Director',
+    email: 'pastor.gale@hteim.edu',
+    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    bio: 'Dedicated teacher and pastoral counselor specializing in ministerial integrity, counseling ethics, and spiritual formation.',
+    specialization: 'Ministerial Ethics, Pastoral Counseling, Integrity & Character'
+  },
+  {
+    id: 't_christy',
+    name: 'Pastor Christy Arthur',
+    role: 'Pastor',
+    title: 'Director of Evangelism & Pastoral Leadership',
+    email: 'pastor.christy@hteim.edu',
+    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    bio: 'Evangelistic pioneer and pastoral mentor leading global outreach initiatives, soul-winning campaigns, and convert follow-up.',
+    specialization: 'School of Evangelism, The Great Commission, Soul Winning'
+  },
+  {
+    id: 't_garod',
+    name: 'Prophet Garod Andrews',
+    role: 'Prophet',
+    title: 'Prophetic Faculty & Spiritual Discernment Mentor',
+    email: 'prophet.garod@hteim.edu',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    bio: 'Prophetic presbyter and conference speaker teaching scriptural prophetic protocols, spiritual warfare, and hearing the voice of God.',
+    specialization: 'School of the Prophets, Prophetic Protocol, Spiritual Discernment'
+  }
+];
+
+export const getFacultyTeacherByName = (name: string): AuthorizedFacultyTeacher | undefined => {
+  const normalized = name.toLowerCase().trim();
+  return AUTHORIZED_TEACHERS.find(t => 
+    t.name.toLowerCase().trim() === normalized ||
+    normalized.includes(t.name.toLowerCase().trim()) ||
+    t.name.toLowerCase().includes(normalized)
+  );
+};
 
 /**
  * 4. COURSE OFFERING (SCHEDULED DELIVERY INSTANCE)
@@ -205,6 +283,7 @@ export interface CourseOffering {
   
   // The 6 Operational Facets of Course Offering:
   lecturer: CourseOfferingLecturer;
+  teachers?: string[]; // Multiple assigned teachers for this offering
   enrolledStudents: OfferingStudentEnrollment[];
   attendance: OfferingAttendanceSession[];
   assignments: OfferingAssignment[];

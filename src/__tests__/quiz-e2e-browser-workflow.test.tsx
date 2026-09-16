@@ -40,9 +40,14 @@ describe('Real Browser E2E Quiz Hardening Workflow', () => {
     }
 
     // STEP 3: Student Submits & Auto-grade triggers
-    const submitBtn = screen.getByText(/Submit Quiz|Submit Assessment|Finish Quiz/i);
+    const submitBtn = screen.getByText(/Submit Quiz Answers/i);
     expect(submitBtn).toBeDefined();
     fireEvent.click(submitBtn);
+
+    // Confirm dialog
+    const confirmBtn = screen.getByText(/Yes, Submit Now/i);
+    expect(confirmBtn).toBeDefined();
+    fireEvent.click(confirmBtn);
 
     expect(handleSubmitQuiz).toHaveBeenCalled();
 
@@ -106,16 +111,17 @@ describe('Real Browser E2E Quiz Hardening Workflow', () => {
 
     // STEP 6: Teacher Overrides Grade & Adds Feedback
     const teacherNotes = 'Outstanding theological reasoning and exegesis, Abigail!';
+    
+    // Select the feedback and override inputs accurately
+    const textInput = screen.getByPlaceholderText(/Provide encouragement or essay grading notes/i);
+    fireEvent.change(textInput, { target: { value: teacherNotes } });
+    
+    // Select the number input using querySelector
     const numberInput = container.querySelector('input[type="number"]');
-    const textInput = container.querySelector('input[placeholder*="feedback"]');
-
     if (numberInput) {
       fireEvent.change(numberInput, { target: { value: '100' } });
     }
-    if (textInput) {
-      fireEvent.change(textInput, { target: { value: teacherNotes } });
-    }
-
+    
     const saveEvaluationBtn = screen.getByText('Save Evaluation');
     fireEvent.click(saveEvaluationBtn);
 

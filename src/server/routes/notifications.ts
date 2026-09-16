@@ -26,7 +26,7 @@ let memoryNotifications: CentralNotification[] = [
     eventType: 'new_assignment',
     type: 'new_assignment',
     title: 'New Exegesis Paper Assigned: SOM-101',
-    message: 'Pastor John Selkridge has posted a new Hermeneutical Exegesis assignment due next Tuesday.',
+    message: 'Pastor Samuel Selkridge has posted a new Hermeneutical Exegesis assignment due next Tuesday.',
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     read: false,
     priority: 'normal',
@@ -91,7 +91,7 @@ let memoryNotifications: CentralNotification[] = [
     read: false,
     priority: 'urgent',
     targetRole: 'student',
-    studentName: 'Minister Christy Ruben',
+    studentName: 'Pastor Christy Arthur',
     actionTab: 'attendance',
     channelDelivery: {
       in_app: { delivered: true, deliveredAt: new Date().toISOString() },
@@ -241,8 +241,8 @@ let memoryNotifications: CentralNotification[] = [
     category: 'attendance',
     eventType: 'attendance_issue',
     type: 'attendance_issue',
-    title: 'At-Risk Attendance Flagged: Minister Christy Ruben',
-    message: 'Minister Christy Ruben attendance rate dropped to 66.7% in SOM-102 (At-Risk trigger < 75%).',
+    title: 'At-Risk Attendance Flagged: Pastor Christy Arthur',
+    message: 'Pastor Christy Arthur attendance rate dropped to 66.7% in SOM-102 (At-Risk trigger < 75%).',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10).toISOString(),
     read: false,
     priority: 'urgent',
@@ -602,13 +602,13 @@ notificationsRouter.post('/test-dispatch', (req: Request, res: Response) => {
     new_enrollment: 'New Student Application: Pastor David Warner (Level 1)',
     payment_received: 'Tuition Payment Verified: $250.00 from Abigail Selkridge',
     outstanding_balance: 'Past Due Balance Flagged: 3 Students Overdue ($750.00 Total)',
-    attendance_issue: 'Critical Attendance Flag: Minister Christy Ruben (66.7%)',
+    attendance_issue: 'Critical Attendance Flag: Pastor Christy Arthur (66.7%)',
     assignment_submitted: 'New Student Submission: SOM-101 Hermeneutics Paper',
     lecturer_pending_grades: 'Faculty Alert: SOM-104 Quiz Evaluations Pending Beyond 5 Days'
   };
 
   const sampleMessages: Record<string, string> = {
-    new_assignment: 'A new 1,500-word exegesis paper has been posted by Pastor John Selkridge. Due on the upcoming lecture date.',
+    new_assignment: 'A new 1,500-word exegesis paper has been posted by Pastor Samuel Selkridge. Due on the upcoming lecture date.',
     assignment_deadline: 'Your assignment is due tomorrow at 11:59 PM EST. Submit your document in the assignments portal to avoid late deductions.',
     grade_published: 'Your submitted assignment has been evaluated and reviewed by the academic faculty. Excellent work!',
     attendance_warning: 'Your recorded attendance has fallen to 66.7%, which is below the mandatory 75% institutional requirement.',

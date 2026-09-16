@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Calendar, UserCheck, BookOpen, Clock, MapPin, Sparkles } from 'lucide-react';
-import { MasterCourse, AcademicYear, Term, CourseOffering } from '../../types/academicEngine';
+import { X, Calendar, UserCheck, BookOpen, Clock, MapPin, Sparkles, Users } from 'lucide-react';
+import { MasterCourse, AcademicYear, Term, CourseOffering, AUTHORIZED_TEACHERS, getFacultyTeacherByName } from '../../types/academicEngine';
 
 interface ScheduleOfferingModalProps {
   masterCourses: MasterCourse[];
@@ -31,15 +31,26 @@ export const ScheduleOfferingModal: React.FC<ScheduleOfferingModalProps> = ({
   const [zoomLink, setZoomLink] = useState('https://zoom.us/j/hteim-live');
   const [capacity, setCapacity] = useState(40);
 
-  // Lecturer state
-  const [lecturerName, setLecturerName] = useState('Pastor John Selkridge');
-  const [lecturerTitle, setLecturerTitle] = useState('Senior Faculty of Hermeneutics');
-  const [lecturerEmail, setLecturerEmail] = useState('pastor.john@hteim.edu');
+  // Lecturer state defaults to Apostle Gillian Selkridge
+  const [lecturerName, setLecturerName] = useState(AUTHORIZED_TEACHERS[0].name);
+  const [lecturerTitle, setLecturerTitle] = useState(AUTHORIZED_TEACHERS[0].title);
+  const [lecturerEmail, setLecturerEmail] = useState(AUTHORIZED_TEACHERS[0].email);
   const [lecturerOfficeHours, setLecturerOfficeHours] = useState('Tuesdays 4:00 PM - 6:00 PM EST');
+  const [selectedTeacherId, setSelectedTeacherId] = useState(AUTHORIZED_TEACHERS[0].id);
 
   const selectedCourse = masterCourses.find(c => c.id === selectedCourseId);
   const selectedTerm = terms.find(t => t.id === selectedTermId);
   const selectedYear = academicYears.find(y => y.id === selectedTerm?.academicYearId);
+
+  const handleTeacherSelect = (teacherId: string) => {
+    setSelectedTeacherId(teacherId);
+    const teacher = AUTHORIZED_TEACHERS.find(t => t.id === teacherId);
+    if (teacher) {
+      setLecturerName(teacher.name);
+      setLecturerTitle(teacher.title);
+      setLecturerEmail(teacher.email);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,6 +217,39 @@ export const ScheduleOfferingModal: React.FC<ScheduleOfferingModalProps> = ({
               3. Appointed Faculty Lecturer
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                Choose from Authorized Faculty Teachers:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                {AUTHORIZED_TEACHERS.map(teacher => {
+                  const isSelected = lecturerName.toLowerCase().trim() === teacher.name.toLowerCase().trim();
+                  return (
+                    <button
+                      type="button"
+                      key={teacher.id}
+                      onClick={() => handleTeacherSelect(teacher.id)}
+                      className={`p-2 rounded-xl text-left border flex items-center gap-2.5 transition-all text-xs ${
+                        isSelected 
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold shadow-xs' 
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={teacher.avatarUrl}
+                        alt={teacher.name}
+                        className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-slate-600"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-bold">{teacher.name}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{teacher.role}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
@@ -214,7 +258,7 @@ export const ScheduleOfferingModal: React.FC<ScheduleOfferingModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Pastor John Selkridge"
+                  placeholder="e.g. Apostle Gillian Selkridge"
                   value={lecturerName}
                   onChange={(e) => setLecturerName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"

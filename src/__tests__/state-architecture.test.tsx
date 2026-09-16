@@ -109,7 +109,7 @@ describe('Phase 17 — Three-Level State Architecture', () => {
         result.current.login({
           id: 'user-admin',
           email: 'admin@hteim.org',
-          name: 'Pastor John',
+          name: 'Pastor Samuel',
           role: 'admin',
         });
       });

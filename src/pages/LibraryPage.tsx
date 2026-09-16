@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyLibraryTab } from '../components/tabs';
+import { LibraryTab } from '../features/library/components/LibraryTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -19,7 +19,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Video Archives & Syllabus Resource Files..." />}>
       <ErrorBoundary label="Library Tab">
-        <LazyLibraryTab {...(props as any)} />
+        <LibraryTab {...(props as any)} />
       </ErrorBoundary>
     </Suspense>
   );

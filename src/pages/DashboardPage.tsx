@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyHomeTab } from '../components/tabs';
+import { HomeTab } from '../components/HomeTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -41,7 +41,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Dashboard Overview..." />}>
       <ErrorBoundary label="Dashboard Tab">
-        <LazyHomeTab {...(props as any)} />
+        <HomeTab {...(props as any)} />
       </ErrorBoundary>
     </Suspense>
   );

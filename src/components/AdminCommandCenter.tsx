@@ -63,7 +63,8 @@ import {
   Area, 
   PieChart, 
   Pie, 
-  Legend 
+  Legend,
+  ReferenceLine
 } from 'recharts';
 import { 
   StudentSummary, 
@@ -152,11 +153,36 @@ const INITIAL_INQUIRIES_SEED: EnrollmentInquiry[] = [
 const AttendanceCustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const isBelow = data.rate < 75;
+    const isCritical = data.rate <= 50;
+
     return (
-      <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-        <p className="font-extrabold text-emerald-400">{data.name}</p>
-        <p>Attendance Rate: <strong>{data.rate}%</strong></p>
-        <p>Attended: <strong>{data.attended} / {data.total} Students</strong></p>
+      <div className="bg-slate-950/95 text-white p-3.5 rounded-xl text-xs space-y-2 shadow-2xl border border-slate-700/80 backdrop-blur-md min-w-[220px]">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <span className="font-extrabold text-white text-xs truncate max-w-[150px]">{data.cleanName || data.name}</span>
+          <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0">{data.shortDate}</span>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <span className="text-slate-400">Attendance Rate</span>
+          <span className={`font-black text-sm font-mono ${isCritical ? 'text-rose-400' : isBelow ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {data.rate}%
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-300">
+          <span>Headcount</span>
+          <span className="font-mono">
+            <strong className="text-emerald-400">{data.attended}</strong> present <span className="text-slate-500">/</span> <strong className="text-slate-400">{data.total}</strong> total
+          </span>
+        </div>
+
+        <div className="pt-1 flex items-center justify-between text-[10px]">
+          <span className="text-slate-500">Target Standard</span>
+          <span className={`px-1.5 py-0.5 rounded font-bold ${isBelow ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60' : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'}`}>
+            {isBelow ? '⚠️ Below 75% Target' : '✓ Target Met (≥75%)'}
+          </span>
+        </div>
       </div>
     );
   }
@@ -239,6 +265,7 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
   const [enrollmentSearch, setEnrollmentSearch] = useState('');
   const [enrollmentFilter, setEnrollmentFilter] = useState<'all' | 'new' | 'contacted' | 'approved'>('all');
   const [attendanceSearch, setAttendanceSearch] = useState('');
+  const [attendanceTrendFilter, setAttendanceTrendFilter] = useState<'chronological' | 'latest' | 'recent_6'>('chronological');
   const [selectedAlertStudent, setSelectedAlertStudent] = useState<string | null>(null);
   const [alertSuccessToast, setAlertSuccessToast] = useState<string | null>(null);
 
@@ -298,20 +325,67 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
     });
   }, [students, docChecklist]);
 
-  // Level Breakdown
-  const enrollmentByLevel = useMemo(() => {
-    const counts: Record<string, number> = { 'level_1': 0, 'level_2': 0, 'level_3': 0, 'level_4': 0 };
+  // 1. STUDENT STANDING & ASSESSMENT AGGREGATIONS
+  const studentStandingAssessment = useMemo(() => {
+    let excellentCount = 0;
+    let goodStandingCount = 0;
+    let needsAssessmentCount = 0;
+    let criticalCount = 0;
+
     students.forEach(s => {
-      const lvl = s.levelId || 'level_1';
-      counts[lvl] = (counts[lvl] || 0) + 1;
+      const attRate = s.rate ?? 0;
+      const score = s.avgScore;
+
+      // Status determination aligned with HTEIM School of Ministry standards:
+      // Critical (<= 50% attendance)
+      if (attRate <= 50 || (score !== null && score < 50)) {
+        criticalCount++;
+      }
+      // Needs Assessment / At-Risk (< 75% attendance or score < 75%)
+      else if (attRate < atRiskThreshold || (score !== null && score < 75)) {
+        needsAssessmentCount++;
+      }
+      // Excellent Standing (>= 85% attendance AND >= 85% score if graded)
+      else if (attRate >= 85 && (score === null || score >= 85)) {
+        excellentCount++;
+      }
+      // Good Standing / Satisfactory (75% - 84% attendance)
+      else {
+        goodStandingCount++;
+      }
     });
+
     return [
-      { name: 'Level 1: Foundation', count: counts['level_1'] || 0, color: '#10B981' },
-      { name: 'Level 2: Diploma', count: counts['level_2'] || 0, color: '#6366F1' },
-      { name: 'Level 3: Degree', count: counts['level_3'] || 0, color: '#F59E0B' },
-      { name: 'Level 4: Executive', count: counts['level_4'] || 0, color: '#8B5CF6' },
+      { 
+        name: 'Excellent Standing', 
+        tag: 'Honor Roll (≥85%)',
+        count: excellentCount, 
+        color: '#10B981', // Emerald
+        bgClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+      },
+      { 
+        name: 'Good Standing', 
+        tag: 'Satisfactory (75–84%)',
+        count: goodStandingCount, 
+        color: '#6366F1', // Indigo
+        bgClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+      },
+      { 
+        name: 'Needs Assessment', 
+        tag: 'At-Risk (50–74%)',
+        count: needsAssessmentCount, 
+        color: '#F59E0B', // Amber
+        bgClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+      },
+      { 
+        name: 'Critical Intervention', 
+        tag: 'Critical (≤50%)',
+        count: criticalCount, 
+        color: '#EF4444', // Red
+        bgClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+      },
     ];
-  }, [students]);
+  }, [students, atRiskThreshold]);
 
   // 2. ACADEMIC AGGREGATIONS
   const activeCoursesCount = coursesCount || 6;
@@ -390,7 +464,9 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
   }, [students, classDays]);
 
   const attendanceTrendData = useMemo(() => {
-    return classDays.map((day) => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const formatted = classDays.map((day, idx) => {
       let attendedCount = 0;
       students.forEach(s => {
         if (s.attendanceByDay[day.id]?.present) {
@@ -398,14 +474,70 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
         }
       });
       const rate = students.length > 0 ? Math.round((attendedCount / students.length) * 100) : 0;
+
+      // Extract date string
+      let rawDate = day.date || '';
+      let dayNum = '';
+      let monthNum = '';
+      let yearNum = '2026';
+      
+      if (rawDate) {
+        const parts = rawDate.split('-');
+        if (parts.length === 3) {
+          yearNum = parts[0];
+          monthNum = parts[1];
+          dayNum = parts[2];
+        }
+      } else {
+        const match = day.name.match(/\((\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\)/);
+        if (match) {
+          dayNum = match[1].padStart(2, '0');
+          monthNum = match[2].padStart(2, '0');
+          if (match[3]) yearNum = match[3].length === 2 ? `20${match[3]}` : match[3];
+          rawDate = `${yearNum}-${monthNum}-${dayNum}`;
+        }
+      }
+
+      const monthIndex = parseInt(monthNum, 10) - 1;
+      const shortMonth = monthIndex >= 0 && monthIndex < 12 ? monthNames[monthIndex] : '';
+      const shortDate = shortMonth && dayNum ? `${shortMonth} ${parseInt(dayNum, 10)}` : `S${idx + 1}`;
+
+      let cleanName = day.name.replace(/\s*\(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?\)\s*$/, '').trim();
+      cleanName = cleanName.replace(/^School of the Pastors\s*/i, 'Pastors ');
+
       return {
+        id: day.id,
         name: day.name,
+        cleanName,
+        rawDate: rawDate || `2026-01-${String(idx + 1).padStart(2, '0')}`,
+        shortDate,
         rate,
         attended: attendedCount,
-        total: students.length
+        absent: Math.max(0, students.length - attendedCount),
+        total: students.length,
+        isBelowTarget: rate < atRiskThreshold
       };
     });
-  }, [classDays, students]);
+
+    if (attendanceTrendFilter === 'chronological') {
+      return [...formatted].sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+    } else if (attendanceTrendFilter === 'latest') {
+      return [...formatted].sort((a, b) => b.rawDate.localeCompare(a.rawDate));
+    } else {
+      const chrono = [...formatted].sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+      return chrono.slice(-6);
+    }
+  }, [classDays, students, atRiskThreshold, attendanceTrendFilter]);
+
+  const trendStats = useMemo(() => {
+    if (attendanceTrendData.length === 0) return { avg: 0, peak: 0, lowest: 0, latest: 0 };
+    const rates = attendanceTrendData.map(d => d.rate);
+    const avg = Math.round(rates.reduce((a, b) => a + b, 0) / rates.length);
+    const peak = Math.max(...rates);
+    const lowest = Math.min(...rates);
+    const latest = attendanceTrendData[attendanceTrendData.length - 1]?.rate || 0;
+    return { avg, peak, lowest, latest };
+  }, [attendanceTrendData]);
 
   // 4. FINANCE AGGREGATIONS
   const totalExpectedTuition = useMemo(() => {
@@ -682,44 +814,123 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Attendance Chart */}
             <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Class Session Attendance Trends</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Recorded attendance rates across all logged school days.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Recorded attendance rates across logged school sessions in sequence.</p>
                 </div>
-                <button
-                  onClick={() => onNavigate('attendance')}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-indigo-500" /> View Matrix
-                </button>
+                
+                <div className="flex items-center gap-2">
+                  {/* View filter tabs */}
+                  <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+                    <button
+                      onClick={() => setAttendanceTrendFilter('chronological')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                        attendanceTrendFilter === 'chronological'
+                          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      All ({classDays.length})
+                    </button>
+                    <button
+                      onClick={() => setAttendanceTrendFilter('recent_6')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                        attendanceTrendFilter === 'recent_6'
+                          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Recent 6
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate('attendance')}
+                    className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-indigo-500" /> View Matrix
+                  </button>
+                </div>
               </div>
 
-              <div className="h-64 w-full">
+              {/* Quick Summary Pill Badges */}
+              <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Average: <strong className="font-mono">{trendStats.avg}%</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                  <span>Peak: <strong className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{trendStats.peak}%</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                  <span>Lowest: <strong className="font-mono text-amber-600 dark:text-amber-400 font-bold">{trendStats.lowest}%</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300 text-[11px] font-semibold sm:ml-auto">
+                  <span className="w-2 h-0.5 bg-amber-500"></span>
+                  <span>75% Minimum Target</span>
+                </div>
+              </div>
+
+              <div className="h-64 w-full pt-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={attendanceTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={attendanceTrendData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="attendanceGlow" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fontWeight: 700 }} unit="%" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
+                    <XAxis 
+                      dataKey="shortDate" 
+                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748B' }} 
+                      axisLine={{ stroke: '#94A3B8', opacity: 0.3 }}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      domain={[0, 100]} 
+                      ticks={[0, 25, 50, 75, 100]}
+                      tick={{ fontSize: 11, fontWeight: 700, fill: '#64748B' }} 
+                      unit="%" 
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip content={<AttendanceCustomTooltip />} />
-                    <Area type="monotone" dataKey="rate" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#attendanceGlow)" />
+                    <ReferenceLine 
+                      y={atRiskThreshold || 75} 
+                      stroke="#F59E0B" 
+                      strokeDasharray="4 4" 
+                      strokeWidth={1.5}
+                      label={{ 
+                        value: '75% Target', 
+                        position: 'insideTopRight', 
+                        fill: '#D97706', 
+                        fontSize: 10, 
+                        fontWeight: 700 
+                      }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="rate" 
+                      stroke="#10B981" 
+                      strokeWidth={2.5} 
+                      fillOpacity={1} 
+                      fill="url(#attendanceGlow)" 
+                      dot={{ r: 3.5, fill: '#10B981', strokeWidth: 1.5, stroke: '#FFFFFF' }}
+                      activeDot={{ r: 6, fill: '#059669', strokeWidth: 2, stroke: '#FFFFFF' }}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Enrollment Distribution */}
+            {/* Student Standing Assessment */}
             <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Academic Cohorts</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Distribution across 4 core levels.</p>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Student Standing Assessment</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Distribution across 4 performance & attendance standings.</p>
                 </div>
                 <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded">
                   {students.length} Total
@@ -727,11 +938,16 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
               </div>
 
               <div className="space-y-3 pt-2">
-                {enrollmentByLevel.map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                      <span>{item.name}</span>
-                      <span className="font-mono">{item.count} Students</span>
+                {studentStandingAssessment.map((item, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{item.name}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${item.bgClass}`}>
+                          {item.tag}
+                        </span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{item.count} Students</span>
                     </div>
                     <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div 
@@ -748,10 +964,10 @@ export const AdminCommandCenter: React.FC<AdminCommandCenterProps> = ({
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
-                  onClick={() => setActiveTab('enrollment')}
+                  onClick={() => setActiveTab('attendance')}
                   className="w-full py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <span>Manage Enrollment Applications</span>
+                  <span>Review At-Risk & Student Standings</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>

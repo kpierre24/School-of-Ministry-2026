@@ -80,7 +80,7 @@ vi.mock('../server/services/firebaseAuth', () => ({
       return { uid: 'admin-123', email: 'admin@hteim.edu', name: 'Dr. Kendell Pierre', role: 'admin' };
     }
     if (token === 'teacher-token') {
-      return { uid: 'teacher-456', email: 'pastor.john@hteim.edu', name: 'Pastor John Selkridge', role: 'teacher' };
+      return { uid: 'teacher-456', email: 'pastor.samuel@hteim.edu', name: 'Pastor Samuel Selkridge', role: 'teacher' };
     }
     if (token === 'student-token') {
       return { uid: 'student-789', email: 'abigail@hteim.edu', name: 'Abigail Selkridge', role: 'student' };
@@ -99,7 +99,7 @@ describe('E2E Role Workflows: Student, Teacher, Admin & WhatsApp Security', () =
     it('answers "What should I do next?" with urgent attendance warning when rate < 75%', () => {
       const handleNavigate = vi.fn();
       const studentData = {
-        studentName: 'Minister Christy Ruben',
+        studentName: 'Pastor Christy Arthur',
         attendanceRate: 66, // Below 75% threshold
         assignmentRate: 85,
         averageScore: 82,
@@ -161,7 +161,7 @@ describe('E2E Role Workflows: Student, Teacher, Admin & WhatsApp Security', () =
           title: 'Biblical Hermeneutics & Exegesis',
           dayTime: 'Tuesday • 7:00 PM',
           location: 'Main Sanctuary',
-          instructor: 'Pastor John Selkridge',
+          instructor: 'Pastor Samuel Selkridge',
           dateStr: 'Tonight',
         },
         whatsNext: [],
@@ -198,7 +198,7 @@ describe('E2E Role Workflows: Student, Teacher, Admin & WhatsApp Security', () =
     it('answers "What should I do next?" with pending assignment evaluations', () => {
       const handleNavigate = vi.fn();
       const teacherData = {
-        greetingName: 'Pastor John',
+        greetingName: 'Pastor Samuel',
         atRiskCount: 2,
         todaySchedule: {
           hasSession: true,

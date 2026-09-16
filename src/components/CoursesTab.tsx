@@ -82,7 +82,7 @@ export const INITIAL_COURSES: Course[] = [
     id: 'm1',
     code: 'SOM-MOD-1',
     title: 'Module 1: Biblical Hermeneutics & Exegesis',
-    instructor: 'Pastor John Selkridge',
+    instructor: 'Pastor Samuel Selkridge',
     credits: 5,
     description: 'Sound biblical interpretation, exegesis methodologies, historical-grammatical context, and delivering scriptural truth without doctrinal distortion.',
     scheduleDays: 'Tuesdays & Thursdays (7:00 PM - 9:00 PM EST)',
@@ -94,7 +94,7 @@ export const INITIAL_COURSES: Course[] = [
     id: 'm2',
     code: 'SOM-MOD-2',
     title: 'Module 2: Evangelism & The Great Commission',
-    instructor: 'Minister Christy Ruben',
+    instructor: 'Pastor Christy Arthur',
     credits: 5,
     description: 'Practical soul-winning strategies, personal witnessing, the Matthew 28 mandate, street ministry, and follow-up discipleship.',
     scheduleDays: 'Mondays (7:00 PM - 9:00 PM EST) & Outreach',
@@ -106,7 +106,7 @@ export const INITIAL_COURSES: Course[] = [
     id: 'm3',
     code: 'SOM-MOD-3',
     title: 'Module 3: Ministerial Ethics & Pastoral Integrity',
-    instructor: 'Rev. Gillian Selkridge',
+    instructor: 'Apostle Gillian Selkridge',
     credits: 5,
     description: 'High standards of character, financial integrity, church accountability, conflict resolution, confidentiality, and biblical servant leadership.',
     scheduleDays: 'Wednesdays (7:00 PM - 9:00 PM EST)',
@@ -118,7 +118,7 @@ export const INITIAL_COURSES: Course[] = [
     id: 'm4',
     code: 'SOM-MOD-4',
     title: 'Module 4: Apostolic Governance & Five-Fold Ministry',
-    instructor: 'Apostle Dr. Kendell Pierre',
+    instructor: 'Apostle Gillian Selkridge',
     credits: 5,
     description: 'Understanding the apostolic mandate, five-fold governance, spiritual authority according to Ephesians 4:11, and distinguishing true vs false apostolic marks.',
     scheduleDays: 'Fridays (7:00 PM - 9:30 PM EST)',
@@ -130,7 +130,7 @@ export const INITIAL_COURSES: Course[] = [
     id: 'm5',
     code: 'SOM-MOD-5',
     title: 'Module 5: Prophetic Ministry & Spiritual Discernment',
-    instructor: 'Apostolic Faculty Team',
+    instructor: 'Prophet Garod Andrews',
     credits: 5,
     description: 'The operation and biblical testing of prophecy, cultivating spiritual sensitivity, dream interpretation, and prophetic order according to 1 Cor 14.',
     scheduleDays: 'Class Session 9 & 10',
@@ -142,7 +142,7 @@ export const INITIAL_COURSES: Course[] = [
     id: 'm6',
     code: 'SOM-MOD-6',
     title: 'Module 6: School of the Pastors and Teachers',
-    instructor: 'Rev. Dr. Samuel Selkridge',
+    instructor: 'Pastor Samuel Selkridge',
     credits: 5,
     description: 'Shepherding the flock, pastoral counseling, expository sermon preparation, sound biblical teaching, and nurturing believers unto maturity.',
     scheduleDays: 'Saturdays (9:00 AM - 1:00 PM EST)',
@@ -169,17 +169,52 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
 
   const [terms, setTerms] = useState<Term[]>(() => {
     const saved = localStorage.getItem('hteim_academic_terms');
-    return saved ? JSON.parse(saved) : DEFAULT_TERMS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.some(t => t.name.includes('April') || t.name.includes('Semester 1'))) {
+          return parsed;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+    return DEFAULT_TERMS;
   });
 
   const [masterCourses, setMasterCourses] = useState<MasterCourse[]>(() => {
     const saved = localStorage.getItem('hteim_master_courses');
-    return saved ? JSON.parse(saved) : DEFAULT_MASTER_COURSES;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 6 && parsed.some(c => c.title === 'Introduction' || c.title === 'School of Evangelism')) {
+          return parsed;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+    return DEFAULT_MASTER_COURSES;
   });
 
   const [courseOfferings, setCourseOfferings] = useState<CourseOffering[]>(() => {
     const saved = localStorage.getItem('hteim_course_offerings');
-    return saved ? JSON.parse(saved) : DEFAULT_COURSE_OFFERINGS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const somOnly = parsed.filter((o: CourseOffering) => 
+            o.courseCode === 'SOM-CORE' || 
+            o.courseTitle.toLowerCase().includes('school of ministry') ||
+            o.courseId === 'crs_school_of_ministry'
+          );
+          if (somOnly.length > 0) return somOnly;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+    return DEFAULT_COURSE_OFFERINGS;
   });
 
   // Active Filter: Academic Year and Term
@@ -208,8 +243,19 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
       if (!isMounted || !structure) return;
       if (structure.academicYears?.length) setAcademicYears(structure.academicYears);
       if (structure.terms?.length) setTerms(structure.terms);
-      if (structure.masterCourses?.length) setMasterCourses(structure.masterCourses);
-      if (structure.courseOfferings?.length) setCourseOfferings(structure.courseOfferings);
+      if (structure.masterCourses?.length && structure.masterCourses.length >= 6) {
+        setMasterCourses(structure.masterCourses);
+      }
+      if (structure.courseOfferings?.length) {
+        const somOnly = structure.courseOfferings.filter((o: CourseOffering) => 
+          o.courseCode === 'SOM-CORE' || 
+          o.courseTitle.toLowerCase().includes('school of ministry') ||
+          o.courseId === 'crs_school_of_ministry'
+        );
+        if (somOnly.length > 0) {
+          setCourseOfferings(somOnly);
+        }
+      }
       if (structure.activeTermId) setSelectedTermId(structure.activeTermId);
     }).catch(err => {
       console.warn('Using local academic structure fallback:', err);
@@ -226,9 +272,17 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
     return academicYears.find(ay => ay.id === activeTerm?.academicYearId) || academicYears[0];
   }, [academicYears, activeTerm]);
 
-  // Filter offerings by term and search
+  // Filter offerings: Under Course Offerings, only show the one course "School of Ministry"
   const filteredOfferings = useMemo(() => {
     return courseOfferings.filter(offering => {
+      // Must be School of Ministry course
+      const isSchoolOfMinistry = 
+        offering.courseCode === 'SOM-CORE' || 
+        offering.courseTitle.toLowerCase().includes('school of ministry') ||
+        offering.courseId === 'crs_school_of_ministry';
+      
+      if (!isSchoolOfMinistry) return false;
+
       const matchesTerm = selectedTermId === 'all' || offering.termId === selectedTermId;
       const matchesSearch = 
         offering.courseTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -247,6 +301,16 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
     // Sync to Express API
     portalApi.saveCourseOffering(updatedOffering).catch(err => {
       console.warn('Failed to sync course offering to API:', err);
+    });
+  };
+
+  // Handle updating a master course (e.g. editing appointed module teachers)
+  const handleUpdateMasterCourse = (updatedCourse: MasterCourse) => {
+    setMasterCourses(prev => prev.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+
+    // Sync to Express API
+    portalApi.saveCourse(updatedCourse).catch(err => {
+      console.warn('Failed to sync master course update to API:', err);
     });
   };
 
@@ -536,6 +600,7 @@ export const CoursesTab: React.FC<CoursesTabProps> = ({
             setPreselectedCourseForSchedule(course);
             setShowScheduleModal(true);
           }}
+          onUpdateMasterCourse={handleUpdateMasterCourse}
           userRole={userRole}
         />
       )}

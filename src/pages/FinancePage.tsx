@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { FinancePage as InstitutionalFinancePage } from '../features/finance/components/FinancePage';
-import { LazyPaymentTab } from '../components/tabs';
+import { PaymentTab } from '../components/PaymentTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -23,7 +23,7 @@ export const FinancePage: React.FC<FinancePageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Student Payment Statements & Tuition Invoices..." />}>
       <ErrorBoundary label="Payments Tab">
-        <LazyPaymentTab
+        <PaymentTab
           availableStudents={props.availableStudents || []}
           isAdmin={!isStudent}
           userRole={role}

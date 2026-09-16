@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyMessagesTab } from '../components/tabs';
+import { MessagesTab } from '../components/MessagesTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -17,7 +17,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Cohort Bulletins & Discussion Boards..." />}>
       <ErrorBoundary label="Messages Tab">
-        <LazyMessagesTab {...props} />
+        <MessagesTab {...props} />
       </ErrorBoundary>
     </Suspense>
   );

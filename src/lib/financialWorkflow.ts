@@ -825,7 +825,7 @@ export function bootstrapFromPaymentRecords(records: PaymentRecord[]): {
         recordedBy: 'Finance Bursar',
         reconciliationStatus: 'Reconciled',
         reconciledAt: paymentDate,
-        reconciledBy: 'Pastor John Selkridge (Bursar)',
+        reconciledBy: 'Pastor Samuel Selkridge (Bursar)',
         createdAt: `${paymentDate}T12:00:00Z`
       };
       transactions.push(transaction);

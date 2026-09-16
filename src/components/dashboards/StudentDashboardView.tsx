@@ -110,7 +110,7 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
     {
       code: 'SOM-MOD-4',
       title: 'Apostolic Ministry & Five-Fold Order',
-      instructor: 'Pastor Christy Ruben',
+      instructor: 'Pastor Christy Arthur',
       status: 'in_progress',
       score: 'Active',
       sessions: 3

@@ -486,10 +486,11 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
         ];
 
         const facultyList = [
-          { name: 'Dr. Samuel Selkridge', role: 'President & Senior Faculty', courses: 'MIN-101, PTH-301' },
-          { name: 'Rev. Gillian Selkridge', role: 'Vice President & Faculty', courses: 'BIB-201, NTH-202' },
-          { name: 'Apostle Christy Ruben', role: 'Apostolic Faculty Dean', courses: 'HOM-302' },
-          { name: 'Evg. Garod Andrews', role: 'Missions Director', courses: 'MISS-401' }
+          { name: 'Apostle Gillian Selkridge', role: 'Chancellor & Senior Presbyter', courses: 'School of the Apostles' },
+          { name: 'Pastor Samuel Selkridge', role: 'Dean of Ministry & Senior Pastor', courses: 'Introduction, School of the Pastor' },
+          { name: 'Pastor Gale Grant', role: 'Director of Ministerial Ethics', courses: 'Ministerial Ethics' },
+          { name: 'Pastor Christy Arthur', role: 'Director of Pastoral Care', courses: 'School of the Pastor and Holy Spirit' },
+          { name: 'Prophet Garod Andrews', role: 'Head of Prophetic Studies & Evangelism', courses: 'School of the Prophets, School of Evangelism' }
         ];
 
         const rows = facultyList.map(f => ({

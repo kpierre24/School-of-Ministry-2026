@@ -63,7 +63,7 @@ import { Modal } from './Modal';
 import { usePortalRouter } from '../lib/usePortalRouter';
 import { isDemoAssignment } from '../data/guards';
 import { generateUUID } from '../lib/idGenerator';
-import { CURRICULUM_CLASS_DAYS } from '../data';
+import { CURRICULUM_CLASS_DAYS, isObsoleteLegacyClassDay } from '../data';
 import { formatGradePercentage } from '../lib/securityHelper';
 
 type StudentScoreRecord = {
@@ -208,8 +208,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   // CSV Import Modal State
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [csvText, setCsvText] = useState('');
-  const [targetClassDay, setTargetClassDay] = useState('School of the Pastors Pt3');
+  const [targetClassDay, setTargetClassDay] = useState('School of the Pastors Lesson 16');
   const [csvImportSuccess, setCsvImportSuccess] = useState<string | null>(null);
+
+  const sanitizedQuizSheets = useMemo(() => {
+    return (allQuizSheets || []).filter(qs => !isObsoleteLegacyClassDay(qs));
+  }, [allQuizSheets]);
 
   // Listen for direct quiz link in URL query or hash
   useEffect(() => {
@@ -1021,7 +1025,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     const targets = isStudent && studentRecord ? [studentRecord] : students;
     
     csv += 'Student Name,';
-    allQuizSheets.forEach(qs => {
+    sanitizedQuizSheets.forEach(qs => {
       csv += `"${qs} Score",`;
     });
     customAssignments.forEach(asg => {
@@ -1036,7 +1040,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       const composite = Math.round((qPct + rub.assignment) / 2);
       
       csv += `"${s.name}",`;
-      allQuizSheets.forEach(qs => {
+      sanitizedQuizSheets.forEach(qs => {
         csv += `"${s.attendanceByDay?.[qs]?.score || 'N/A'}",`;
       });
       customAssignments.forEach(asg => {
@@ -1191,7 +1195,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             <span>
               <span className="hidden sm:inline">Quiz Score Matrix</span>
               <span className="sm:hidden">Matrix</span>
-              <span> ({allQuizSheets.length})</span>
+              <span> ({sanitizedQuizSheets.length})</span>
             </span>
           </button>
 
@@ -2378,13 +2382,25 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                 <h3 className="text-xs font-extrabold uppercase tracking-wider">Exam, Quiz & Written Assignment Score Matrix</h3>
               </div>
-              <div className="flex items-center justify-between sm:justify-end gap-2 text-[10px] sm:text-[11px] text-slate-400">
+              <div className="flex items-center justify-between sm:justify-end gap-2.5 text-[10px] sm:text-[11px] text-slate-400">
                 <span className="sm:hidden text-amber-300 font-bold bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700/80 flex items-center gap-1">
                   <span>← Swipe horizontally →</span>
                 </span>
                 <span className="font-mono text-slate-300">
-                  {allQuizSheets.length} Quizzes & {customAssignments.length} Assignments
+                  {sanitizedQuizSheets.length} Quizzes & {customAssignments.length} Assignments
                 </span>
+                {onLoadSheets && sheetUrl && (
+                  <button
+                    type="button"
+                    onClick={() => onLoadSheets(undefined, sheetUrl)}
+                    disabled={isLoadingSheets}
+                    className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-md border border-slate-700 text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+                    title="Refresh quiz data from Google Sheet"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingSheets ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingSheets ? 'Syncing...' : 'Refresh Quizzes'}</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2410,7 +2426,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         )}
                       </button>
                     </th>
-                    {allQuizSheets.map((qs, qIdx) => (
+                    {sanitizedQuizSheets.map((qs, qIdx) => (
                       <th key={`qs-head-${qs}-${qIdx}`} className="p-3 text-center min-w-[120px] sm:min-w-[130px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs" title={qs}>{qs}</th>
                     ))}
                     {customAssignments.map((asg, aIdx) => (
@@ -2439,7 +2455,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                             {s.name}
                           </div>
                         </td>
-                        {allQuizSheets.map((qs, qIdx) => {
+                        {sanitizedQuizSheets.map((qs, qIdx) => {
                           const rawScore = s.attendanceByDay?.[qs]?.score;
                           const score = rawScore ? formatGradePercentage(rawScore, rawScore) : '—';
                           const hasScore = score !== '—';

@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyStudentsTab } from '../components/tabs';
+import { StudentsTab } from '../components/StudentsTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -11,7 +11,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Student Roster & Academic Profiles..." />}>
       <ErrorBoundary label="Students Directory">
-        <LazyStudentsTab {...(props as any)} />
+        <StudentsTab {...(props as any)} />
       </ErrorBoundary>
     </Suspense>
   );

@@ -30,10 +30,10 @@ import christyRubenAsset from '../assets/images/christy_ruben_1786642955859.jpg'
 import garodAndrewsAsset from '../assets/images/garod_andrews_1786642969381.jpg';
 
 export const PRESET_FACULTY_IMAGES = [
-  { name: 'Apostle Gillian Selkridge', title: 'Senior Apostle & Director', url: gillianSelkridgeAsset },
+  { name: 'Apostle Gillian Selkridge', title: 'Apostle & Director', url: gillianSelkridgeAsset },
   { name: 'Pastor Samuel Selkridge', title: 'Senior Pastor & Dean', url: samuelSelkridgeAsset },
   { name: 'Pastor Gale Grant', title: 'Curriculum Chair', url: galeGrantAsset },
-  { name: 'Pastor Christy Ruben', title: 'Lead Instructor', url: christyRubenAsset },
+  { name: 'Pastor Christy Arthur', title: 'Lead Instructor', url: christyRubenAsset },
   { name: 'Prophet Garod Andrews', title: 'Prophetic Dept Head', url: garodAndrewsAsset }
 ];
 
@@ -618,7 +618,7 @@ export const FacultyManagerModal: React.FC<FacultyManagerModalProps> = ({
                         type="text"
                         value={formData.title ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="e.g. Senior Apostle & School Director"
+                        placeholder="e.g. Apostle & School Director"
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium text-xs outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>

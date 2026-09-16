@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyScheduleTab } from '../components/tabs';
+import { ScheduleTab } from '../components/ScheduleTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -21,7 +21,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Calendar Events & Live Zoom Stream Schedules..." />}>
       <ErrorBoundary label="Schedule Tab">
-        <LazyScheduleTab {...(props as any)} />
+        <ScheduleTab {...(props as any)} />
       </ErrorBoundary>
     </Suspense>
   );

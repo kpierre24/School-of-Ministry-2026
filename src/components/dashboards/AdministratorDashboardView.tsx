@@ -109,7 +109,7 @@ export const AdministratorDashboardView: React.FC<AdministratorDashboardViewProp
     { code: 'SOM-MOD-1', title: 'Foundations & Kingdom Alignment', instructor: 'Apostle Gillian Selkridge', active: true, progress: 100 },
     { code: 'SOM-MOD-2', title: 'Evangelism & Discipleship', instructor: 'Pastor Samuel Selkridge', active: true, progress: 100 },
     { code: 'SOM-MOD-3', title: 'Ministerial Ethics & Integrity', instructor: 'Pastor Gale Grant', active: true, progress: 85 },
-    { code: 'SOM-MOD-4', title: 'Apostolic Ministry & Five-Fold Order', instructor: 'Pastor Christy Ruben', active: true, progress: 70 },
+    { code: 'SOM-MOD-4', title: 'Apostolic Ministry & Five-Fold Order', instructor: 'Pastor Christy Arthur', active: true, progress: 70 },
     { code: 'SOM-MOD-5', title: 'Prophetic Discernment & Warfare', instructor: 'Prophet Garod Andrews', active: true, progress: 50 },
     { code: 'SOM-MOD-6', title: 'School of Pastors & Teachers', instructor: 'Pastor Samuel Selkridge', active: true, progress: 40 },
   ];

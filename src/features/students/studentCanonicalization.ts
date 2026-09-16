@@ -13,26 +13,26 @@ export const isExcludedStudent = (name?: string) => {
 };
 
 export const MANUAL_ALIASES: Record<string, string> = {
-  // Shellon Liddel (synced with Shellon Massiah)
-  'shellon liddel': 'Shellon Liddel',
-  'shellon liddell': 'Shellon Liddel',
-  'shellon  liddel': 'Shellon Liddel',
-  'shellon  liddell': 'Shellon Liddel',
-  'shellon liddel-selby': 'Shellon Liddel',
-  'shellon liddell-selby': 'Shellon Liddel',
-  'shellon liddel selby': 'Shellon Liddel',
-  'shellon liddell selby': 'Shellon Liddel',
-  's liddel': 'Shellon Liddel',
-  's. liddel': 'Shellon Liddel',
-  's liddell': 'Shellon Liddel',
-  's. liddell': 'Shellon Liddel',
-  'uvanie@yahoo.com': 'Shellon Liddel',
-  'shellon massiah': 'Shellon Liddel',
-  'shellon  massiah': 'Shellon Liddel',
-  'shellon messiah': 'Shellon Liddel',
-  's massiah': 'Shellon Liddel',
-  's. massiah': 'Shellon Liddel',
-  'massiahshellon@gmail.com': 'Shellon Liddel',
+  // Shellon Liddell (synced with Shellon Massiah)
+  'shellon liddel': 'Shellon Liddell',
+  'shellon liddell': 'Shellon Liddell',
+  'shellon  liddel': 'Shellon Liddell',
+  'shellon  liddell': 'Shellon Liddell',
+  'shellon liddel-selby': 'Shellon Liddell',
+  'shellon liddell-selby': 'Shellon Liddell',
+  'shellon liddel selby': 'Shellon Liddell',
+  'shellon liddell selby': 'Shellon Liddell',
+  's liddel': 'Shellon Liddell',
+  's. liddel': 'Shellon Liddell',
+  's liddell': 'Shellon Liddell',
+  's. liddell': 'Shellon Liddell',
+  'uvanie@yahoo.com': 'Shellon Liddell',
+  'shellon massiah': 'Shellon Liddell',
+  'shellon  massiah': 'Shellon Liddell',
+  'shellon messiah': 'Shellon Liddell',
+  's massiah': 'Shellon Liddell',
+  's. massiah': 'Shellon Liddell',
+  'massiahshellon@gmail.com': 'Shellon Liddell',
 
   // Niomi Loverne Joseph Marksman
   'niomi': 'Niomi Loverne Joseph Marksman',
@@ -89,14 +89,14 @@ export const MANUAL_ALIASES: Record<string, string> = {
   'mishael daniel06@gmail.com': 'Mishael Daniel',
   'mishael daniel06@gmeil.com': 'Mishael Daniel',
 
-  // Colette Blackburne Joseph
-  'colette blackburn joseph': 'Colette Blackburne Joseph',
-  'colette blackburne joseph': 'Colette Blackburne Joseph',
-  'colette blackburne joseph ': 'Colette Blackburne Joseph',
-  'colette blackburn': 'Colette Blackburne Joseph',
-  'colette blackburne': 'Colette Blackburne Joseph',
-  'colette blackburne-joseph': 'Colette Blackburne Joseph',
-  'colette blackburne -joseph': 'Colette Blackburne Joseph',
+  // Colette Blackburne-Joseph
+  'colette blackburn joseph': 'Colette Blackburne-Joseph',
+  'colette blackburne joseph': 'Colette Blackburne-Joseph',
+  'colette blackburne joseph ': 'Colette Blackburne-Joseph',
+  'colette blackburn': 'Colette Blackburne-Joseph',
+  'colette blackburne': 'Colette Blackburne-Joseph',
+  'colette blackburne-joseph': 'Colette Blackburne-Joseph',
+  'colette blackburne -joseph': 'Colette Blackburne-Joseph',
 
   // Ingrid Bonval-Butcher
   'ingrid': 'Ingrid Bonval-Butcher',
@@ -133,9 +133,9 @@ export const MANUAL_ALIASES: Record<string, string> = {
   'racian roy': 'Racine Roy',
   'racine roy': 'Racine Roy',
 
-  // Kemrolene Opadeyi
-  'kemrolene opadeyi': 'Kemrolene Opadeyi',
-  'kemrolene bowens-opadeyi': 'Kemrolene Opadeyi',
+  // Kemrolene Bowens-Opadeyi
+  'kemrolene opadeyi': 'Kemrolene Bowens-Opadeyi',
+  'kemrolene bowens-opadeyi': 'Kemrolene Bowens-Opadeyi',
 
   // Keyshana Gomes
   'keyshana gomes': 'Keyshana Gomes',
@@ -157,9 +157,9 @@ export const MANUAL_ALIASES: Record<string, string> = {
   'anne marie davis': 'Anne-Marie Davis',
   'anne-marie davis': 'Anne-Marie Davis',
 
-  // Susan Spark
-  'susan spark': 'Susan Spark',
-  'susan sparks': 'Susan Spark',
+  // Susan Sparks
+  'susan spark': 'Susan Sparks',
+  'susan sparks': 'Susan Sparks',
 
   // Wendy Woodruffe
   'wendy woodruffe': 'Wendy Woodruffe',

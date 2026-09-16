@@ -63,7 +63,7 @@ A shepherd does not drive the sheep from behind with harshness; a true under-she
     classDayName: 'Apostolic Pt 1 (11/08/2026)',
     classDate: '2026-08-11',
     moduleCode: 'SOM-MOD-4',
-    instructor: 'Apostle Selkridge',
+    instructor: 'Apostle Gillian Selkridge',
     content: `### The Divine Order of the Fivefold
 Ephesians 4:11 reveals the governmental structure established by Christ for the maturation of the Church. The fivefold ministry gifts are not hierarchy badges for human pride, but functional servant mantles for equipping the saints.
 

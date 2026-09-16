@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyCoursesTab } from '../components/tabs';
+import { CoursesTab } from '../components/CoursesTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -11,7 +11,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Curriculum Modules..." />}>
       <ErrorBoundary label="Courses & Syllabus Module">
-        <LazyCoursesTab {...(props as any)} />
+        <CoursesTab {...(props as any)} />
       </ErrorBoundary>
     </Suspense>
   );

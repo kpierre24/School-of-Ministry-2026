@@ -126,7 +126,7 @@ import {
 } from 'recharts';
 import { subscribeToOAuthState as initAuth, loginWithGoogleOAuth as googleSignIn, logoutUserSession as logout, logoutUserSession as supabaseLogout } from '../services/authService';
 import { fetchSpreadsheetMetadata, fetchMultipleRanges, extractSpreadsheetId, fetchPublicSpreadsheetData } from '../lib/sheets';
-import { getDemoAttendance, CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS } from '../data';
+import { CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS, isObsoleteLegacyClassDay } from '../data';
 import { TabType, AppNotification, CustomAssignment, AssignmentSubmission, ACADEMIC_LEVELS, getDefaultLevelForStudent, AcademicLevel, Course, ScheduleItem, LibraryResource, MediaResource, PaymentRecord, ClassDay, StudentSummary, AppMessage, MessageReply, MessageAttachment, AttendanceRecord, Cohort, DEFAULT_COHORTS, UserRole } from '../types';
 import { AppUser, generateStudentUsername, UserCredential, ensureUserCredentials, resetUserPassword, isMatchingCredential, mergeUserCredentials, DEFAULT_USER_PASSWORD } from '../lib/userAuth';
 import { updatePasswordInSupabase } from '../lib/supabaseAuth';
@@ -183,26 +183,26 @@ const isExcludedStudent = (name?: string) => {
 };
 
 const MANUAL_ALIASES: Record<string, string> = {
-  // Shellon Liddel (synced with Shellon Massiah)
-  'shellon liddel': 'Shellon Liddel',
-  'shellon liddell': 'Shellon Liddel',
-  'shellon  liddel': 'Shellon Liddel',
-  'shellon  liddell': 'Shellon Liddel',
-  'shellon liddel-selby': 'Shellon Liddel',
-  'shellon liddell-selby': 'Shellon Liddel',
-  'shellon liddel selby': 'Shellon Liddel',
-  'shellon liddell selby': 'Shellon Liddel',
-  's liddel': 'Shellon Liddel',
-  's. liddel': 'Shellon Liddel',
-  's liddell': 'Shellon Liddel',
-  's. liddell': 'Shellon Liddel',
-  'uvanie@yahoo.com': 'Shellon Liddel',
-  'shellon massiah': 'Shellon Liddel',
-  'shellon  massiah': 'Shellon Liddel',
-  'shellon messiah': 'Shellon Liddel',
-  's massiah': 'Shellon Liddel',
-  's. massiah': 'Shellon Liddel',
-  'massiahshellon@gmail.com': 'Shellon Liddel',
+  // Shellon Liddell (synced with Shellon Massiah)
+  'shellon liddel': 'Shellon Liddell',
+  'shellon liddell': 'Shellon Liddell',
+  'shellon  liddel': 'Shellon Liddell',
+  'shellon  liddell': 'Shellon Liddell',
+  'shellon liddel-selby': 'Shellon Liddell',
+  'shellon liddell-selby': 'Shellon Liddell',
+  'shellon liddel selby': 'Shellon Liddell',
+  'shellon liddell selby': 'Shellon Liddell',
+  's liddel': 'Shellon Liddell',
+  's. liddel': 'Shellon Liddell',
+  's liddell': 'Shellon Liddell',
+  's. liddell': 'Shellon Liddell',
+  'uvanie@yahoo.com': 'Shellon Liddell',
+  'shellon massiah': 'Shellon Liddell',
+  'shellon  massiah': 'Shellon Liddell',
+  'shellon messiah': 'Shellon Liddell',
+  's massiah': 'Shellon Liddell',
+  's. massiah': 'Shellon Liddell',
+  'massiahshellon@gmail.com': 'Shellon Liddell',
 
   // Niomi Loverne Joseph Marksman
   'niomi': 'Niomi Loverne Joseph Marksman',
@@ -259,14 +259,14 @@ const MANUAL_ALIASES: Record<string, string> = {
   'mishael daniel06@gmail.com': 'Mishael Daniel',
   'mishael daniel06@gmeil.com': 'Mishael Daniel',
 
-  // Colette Blackburne Joseph
-  'colette blackburn joseph': 'Colette Blackburne Joseph',
-  'colette blackburne joseph': 'Colette Blackburne Joseph',
-  'colette blackburne joseph ': 'Colette Blackburne Joseph',
-  'colette blackburn': 'Colette Blackburne Joseph',
-  'colette blackburne': 'Colette Blackburne Joseph',
-  'colette blackburne-joseph': 'Colette Blackburne Joseph',
-  'colette blackburne -joseph': 'Colette Blackburne Joseph',
+  // Colette Blackburne-Joseph
+  'colette blackburn joseph': 'Colette Blackburne-Joseph',
+  'colette blackburne joseph': 'Colette Blackburne-Joseph',
+  'colette blackburne joseph ': 'Colette Blackburne-Joseph',
+  'colette blackburn': 'Colette Blackburne-Joseph',
+  'colette blackburne': 'Colette Blackburne-Joseph',
+  'colette blackburne-joseph': 'Colette Blackburne-Joseph',
+  'colette blackburne -joseph': 'Colette Blackburne-Joseph',
 
   // Ingrid Bonval-Butcher
   'ingrid': 'Ingrid Bonval-Butcher',
@@ -303,9 +303,9 @@ const MANUAL_ALIASES: Record<string, string> = {
   'racian roy': 'Racine Roy',
   'racine roy': 'Racine Roy',
 
-  // Kemrolene Opadeyi
-  'kemrolene opadeyi': 'Kemrolene Opadeyi',
-  'kemrolene bowens-opadeyi': 'Kemrolene Opadeyi',
+  // Kemrolene Bowens-Opadeyi
+  'kemrolene opadeyi': 'Kemrolene Bowens-Opadeyi',
+  'kemrolene bowens-opadeyi': 'Kemrolene Bowens-Opadeyi',
 
   // Keyshana Gomes
   'keyshana gomes': 'Keyshana Gomes',
@@ -327,9 +327,9 @@ const MANUAL_ALIASES: Record<string, string> = {
   'anne marie davis': 'Anne-Marie Davis',
   'anne-marie davis': 'Anne-Marie Davis',
 
-  // Susan Spark
-  'susan spark': 'Susan Spark',
-  'susan sparks': 'Susan Spark',
+  // Susan Sparks
+  'susan spark': 'Susan Sparks',
+  'susan sparks': 'Susan Sparks',
 
   // Wendy Woodruffe
   'wendy woodruffe': 'Wendy Woodruffe',
@@ -1070,7 +1070,7 @@ export function AppRouter() {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize names using MANUAL_ALIASES (specifically Shellon Massiah / Shellon Liddell -> Shellon Liddel, Regina Joseph-Gonzales, etc.)
+          // Normalize names using MANUAL_ALIASES (specifically Shellon Massiah / Shellon Liddell -> Shellon Liddell, Regina Joseph-Gonzales, etc.)
           const normalized = parsed.map((p: any) => {
             if (!p || !p.studentName) return p;
             const pLower = p.studentName.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
@@ -1080,7 +1080,7 @@ export function AppRouter() {
             }
             return p;
           });
-          // De-duplicate if multiple records exist for the same student (e.g. Shellon Liddel)
+          // De-duplicate if multiple records exist for the same student (e.g. Shellon Liddell)
           const seenNames = new Set<string>();
           const seenIds = new Set<string>();
           const deduped: PaymentRecord[] = [];
@@ -1165,8 +1165,11 @@ export function AppRouter() {
     const saved = localStorage.getItem('classDays');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 14) return parsed;
+        const parsed: ClassDay[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter(d => d && d.id && !isObsoleteLegacyClassDay(d.id) && !isObsoleteLegacyClassDay(d.name));
+          if (cleaned.length >= 14) return cleaned;
+        }
       } catch (e) {}
     }
     return CURRICULUM_CLASS_DAYS;
@@ -1183,20 +1186,46 @@ export function AppRouter() {
       try {
         const loaded: AttendanceRecord[] = JSON.parse(saved);
         if (Array.isArray(loaded) && loaded.length >= 50) {
-          return loaded.filter(r => {
+          const cleaned = loaded.filter(r => {
             if (!r || !r.name) return false;
+            if (r.classDay && isObsoleteLegacyClassDay(r.classDay)) return false;
             const nameLower = (r?.name || '').toLowerCase().trim();
             if (isExcludedStudent(r.name)) return false;
             if (deletedList.some(d => (d || '').toLowerCase().trim() === nameLower)) return false;
             return true;
           });
+          if (cleaned.length >= 50) {
+            return cleaned;
+          }
         }
       } catch (e) {}
     }
 
-    // Default permanent attendance records for all 14 curriculum classes
-    return RAW_CURRICULUM_RECORDS.filter(r => !isExcludedStudent(r.name));
+    // Default permanent attendance records for all 16 curriculum classes & quizzes
+    return RAW_CURRICULUM_RECORDS.filter(r => !isExcludedStudent(r.name) && !isObsoleteLegacyClassDay(r.classDay));
   });
+
+  // Active runtime migration: immediately purge any obsolete legacy duplicated class days & records from localStorage
+  useEffect(() => {
+    let currentClassDays = classDays;
+    let currentRecords = records;
+    let hasDirtyDays = false;
+    let hasDirtyRecords = false;
+
+    if (currentClassDays.some(d => isObsoleteLegacyClassDay(d.id) || isObsoleteLegacyClassDay(d.name))) {
+      currentClassDays = currentClassDays.filter(d => !isObsoleteLegacyClassDay(d.id) && !isObsoleteLegacyClassDay(d.name));
+      setClassDays(currentClassDays);
+      localStorage.setItem('classDays', JSON.stringify(currentClassDays));
+      hasDirtyDays = true;
+    }
+
+    if (currentRecords.some(r => isObsoleteLegacyClassDay(r.classDay))) {
+      currentRecords = currentRecords.filter(r => !isObsoleteLegacyClassDay(r.classDay));
+      setRecords(currentRecords);
+      localStorage.setItem('attendanceRecords', JSON.stringify(currentRecords));
+      hasDirtyRecords = true;
+    }
+  }, []);
   const [deletedClassDayIds, setDeletedClassDayIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('deletedClassDayIds');
     if (saved) {
@@ -2896,8 +2925,8 @@ export function AppRouter() {
         });
       }
 
-      // Filter out existing records that correspond to these synced sheets
-      const preservedRecords = records.filter(r => r && r.classDay && !syncedSheetTitles.has(r.classDay));
+      // Filter out existing records that correspond to these synced sheets and remove any obsolete legacy days
+      const preservedRecords = records.filter(r => r && r.classDay && !syncedSheetTitles.has(r.classDay) && !isObsoleteLegacyClassDay(r.classDay));
 
       const parsedSheetDataByClassDay = new Map<string, {
         displayDate: string;
@@ -3006,7 +3035,7 @@ export function AppRouter() {
       const allCanonicalStudentNames = Array.from(new Set(Array.from(allRawNames).map(n => canonicalNamesMap.get(n) || n)));
 
       const newSyncedRecords: AttendanceRecord[] = [];
-      const updatedClassDays = [...classDays.filter(d => !syncedSheetTitles.has(d.id))];
+      const updatedClassDays = [...classDays.filter(d => !syncedSheetTitles.has(d.id) && !isObsoleteLegacyClassDay(d.id))];
       const conflictsList: MergeConflict[] = [];
 
       parsedSheetDataByClassDay.forEach((data, sheetTitle) => {
@@ -3209,7 +3238,7 @@ export function AppRouter() {
     });
 
     records.forEach(r => {
-      if (!r) return;
+      if (!r || !r.classDay || isObsoleteLegacyClassDay(r.classDay)) return;
       const recName = (r.name || r.studentName || '').toString().trim();
       if (!recName) return;
       const canonicalName = canonicalNames.get(recName) || recName;
@@ -3836,14 +3865,16 @@ export function AppRouter() {
   const allQuizSheets = useMemo(() => {
     const sheets = new Set<string>();
     records.forEach(r => {
-      if (r.score && r.score.trim() !== '') {
+      if (r.score && r.score.trim() !== '' && r.classDay && !isObsoleteLegacyClassDay(r.classDay)) {
         const pct = parseScorePercentage(r.score);
         if (pct !== null) {
           sheets.add(r.classDay);
         }
       }
     });
-    return classDays.map(d => d.id).filter(id => sheets.has(id));
+    return classDays
+      .map(d => d.id)
+      .filter(id => !isObsoleteLegacyClassDay(id) && sheets.has(id));
   }, [records, classDays]);
 
   // Date Range & Module/Semester Filtering for Class Days

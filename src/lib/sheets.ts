@@ -121,21 +121,22 @@ export const extractPublicSheetNames = (html: string): string[] => {
 };
 
 export const KNOWN_CURRICULUM_SHEETS: Array<{ name: string; gid: string }> = [
-  { name: "School of the Pastors Pt3", gid: "1993821034" },
-  { name: "School of the Pastors Pt2", gid: "1782631722" },
-  { name: "School of the Pastors pt 1", gid: "341965343" },
-  { name: "Apostolic Pt 3", gid: "265985311" },
-  { name: "Apostolic Pt 2", gid: "614888378" },
-  { name: "Apostolic Pt 1", gid: "872967012" },
-  { name: "Lesson 8 Assignment", gid: "1330339016" },
-  { name: "Lesson 7 Assignment", gid: "1416083793" },
-  { name: "Lesson 6 Assignment", gid: "1104669526" },
-  { name: "Lesson 5 Assignment", gid: "1334229063" },
-  { name: "Lesson 4 Assignment Part 2", gid: "1826712115" },
-  { name: "Lesson 4 Assignment", gid: "922223528" },
-  { name: "Lesson 3 Assignment", gid: "583428121" },
-  { name: "Lesson 2 Assignment", gid: "283667804" },
-  { name: "Lesson 1 Responses", gid: "1245607890" },
+  { name: "School of the Pastors Lesson 16", gid: "677921601" },
+  { name: "School of the Pastors Lesson 15", gid: "25231755" },
+  { name: "School of the Pastors Lesson 14", gid: "1782631722" },
+  { name: "School of the Pastors Lesson 13", gid: "341965343" },
+  { name: "Apostolic Lesson 12", gid: "265985311" },
+  { name: "Apostolic Lesson 11", gid: "614888378" },
+  { name: "Apostolic Lesson 10", gid: "872967012" },
+  { name: "Ministerial Ethics lesson 9", gid: "1330339016" },
+  { name: "Ministerial Ethics Lesson 8", gid: "1416083793" },
+  { name: "Evangelism Lesson 7", gid: "1104669526" },
+  { name: "Evangelism lesson 6", gid: "1334229063" },
+  { name: "Evangelism Lesson 5", gid: "1826712115" },
+  { name: "Evangelism Lesson 4", gid: "922223528" },
+  { name: "Evangelism Lesson 3", gid: "583428121" },
+  { name: "Evangelism Lesson 2", gid: "283667804" },
+  { name: "Introduction", gid: "1245607890" },
 ];
 
 /**

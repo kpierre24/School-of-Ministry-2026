@@ -211,16 +211,16 @@ export const isMatchingCredential = (cred: UserCredential, query: string | AppUs
     const genFacEmail = getFacultyEmailFromName(displayName, cred.email).toLowerCase();
     if (genFacEmail && genFacEmail === cleanInput) return true;
 
-    // Support known student aliases (e.g. Shellon Massiah / Shellon Liddell -> Shellon Liddel)
+    // Support known student aliases (e.g. Shellon Massiah / Shellon Liddel -> Shellon Liddell)
     const aliases: Record<string, string> = {
-      'shellon massiah': 'shellon liddel',
-      'shellon liddell': 'shellon liddel',
-      'shellon liddel': 'shellon liddel',
-      'shellon.massiah': 'shellon liddel',
-      'shellon.liddell': 'shellon liddel',
-      'shellon.liddel': 'shellon liddel',
-      'massiahshellon@gmail.com': 'shellon liddel',
-      'uvanie@yahoo.com': 'shellon liddel',
+      'shellon massiah': 'shellon liddell',
+      'shellon liddell': 'shellon liddell',
+      'shellon liddel': 'shellon liddell',
+      'shellon.massiah': 'shellon liddell',
+      'shellon.liddell': 'shellon liddell',
+      'shellon.liddel': 'shellon liddell',
+      'massiahshellon@gmail.com': 'shellon liddell',
+      'uvanie@yahoo.com': 'shellon liddell',
     };
     const mappedAlias = aliases[cleanInput];
     if (mappedAlias && displayName.toLowerCase().trim() === mappedAlias) {
@@ -489,11 +489,11 @@ export const ensureUserCredentials = (
 
   // 2. Ensure Faculty / Teachers exist with proper email accounts
   const defaultTeachers = [
-    { name: 'Dr. Gillian Selkridge', email: 'gillian.selkridge@hteim.edu', module: 'Module 1: Apostolic Foundations' },
-    { name: 'Rev. Samuel Selkridge', email: 'samuel.selkridge@hteim.edu', module: 'Module 2: Practical Evangelism' },
-    { name: 'Pastor Gale Grant', email: 'gale.grant@hteim.edu', module: 'Module 3: Ministerial Ethics' },
-    { name: 'Minister Christy Ruben', email: 'christy.ruben@hteim.edu', module: 'Module 4: Homiletics & Hermeneutics' },
-    { name: 'Rev. Garod Andrews', email: 'garod.andrews@hteim.edu', module: 'Module 5: Church Leadership' }
+    { name: 'Apostle Gillian Selkridge', email: 'apostle.gillian@hteim.edu', module: 'School of the Apostles' },
+    { name: 'Pastor Samuel Selkridge', email: 'pastor.samuel@hteim.edu', module: 'Introduction & School of the Pastor' },
+    { name: 'Pastor Gale Grant', email: 'gale.grant@hteim.edu', module: 'Ministerial Ethics' },
+    { name: 'Pastor Christy Arthur', email: 'christy.arthur@hteim.edu', module: 'School of the Pastor and Holy Spirit' },
+    { name: 'Prophet Garod Andrews', email: 'garod.andrews@hteim.edu', module: 'School of the Prophets' }
   ];
 
   const allFaculty = facultyList && facultyList.length > 0 ? facultyList : defaultTeachers;

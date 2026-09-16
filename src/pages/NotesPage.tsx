@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { LazyNotesTab } from '../components/tabs';
+import { StudentNotesBibleTab } from '../components/StudentNotesBibleTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 
@@ -14,7 +14,7 @@ export const NotesPage: React.FC<NotesPageProps> = (props) => {
   return (
     <Suspense fallback={<DashboardSkeleton label="Loading Bible Study Notes & Multi-version Scriptures..." />}>
       <ErrorBoundary label="Student Notes & AMP Bible Tab">
-        <LazyNotesTab
+        <StudentNotesBibleTab
           currentStudentName={props.currentStudentName || 'Student'}
           userRole={props.userRole}
           availableClassDays={props.availableClassDays || []}

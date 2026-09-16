@@ -11,16 +11,21 @@ import {
   Layers, 
   Search,
   ExternalLink,
-  BookMarked
+  BookMarked,
+  Users,
+  Edit3,
+  UserCheck
 } from 'lucide-react';
-import { MasterCourse, CourseOffering } from '../../types/academicEngine';
+import { MasterCourse, CourseOffering, AUTHORIZED_TEACHERS, getFacultyTeacherByName } from '../../types/academicEngine';
 import { UserRole } from '../../lib/userAuth';
+import { EditModuleTeachersModal } from './EditModuleTeachersModal';
 
 interface MasterCourseCatalogViewProps {
   masterCourses: MasterCourse[];
   courseOfferings: CourseOffering[];
   onSelectCourseOffering: (offering: CourseOffering) => void;
   onScheduleCourse: (course: MasterCourse) => void;
+  onUpdateMasterCourse?: (course: MasterCourse) => void;
   userRole?: UserRole;
 }
 
@@ -29,11 +34,13 @@ export const MasterCourseCatalogView: React.FC<MasterCourseCatalogViewProps> = (
   courseOfferings,
   onSelectCourseOffering,
   onScheduleCourse,
+  onUpdateMasterCourse,
   userRole = 'admin'
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
+  const [editingCourseForTeachers, setEditingCourseForTeachers] = useState<MasterCourse | null>(null);
 
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
 
@@ -43,7 +50,8 @@ export const MasterCourseCatalogView: React.FC<MasterCourseCatalogViewProps> = (
     const matchesSearch = 
       course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.description.toLowerCase().includes(searchQuery.toLowerCase());
+      course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (course.teachers && course.teachers.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
     const matchesDept = selectedDepartment === 'all' || course.department === selectedDepartment;
     return matchesSearch && matchesDept;
   });
@@ -139,6 +147,59 @@ export const MasterCourseCatalogView: React.FC<MasterCourseCatalogViewProps> = (
                   {course.description}
                 </p>
 
+                {/* Faculty Teachers Section */}
+                <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                      Appointed Teachers ({course.teachers?.length || 0})
+                    </span>
+
+                    {isTeacherOrAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingCourseForTeachers(course)}
+                        className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit Teachers</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {course.teachers && course.teachers.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {course.teachers.map((teacherName) => {
+                        const teacherInfo = getFacultyTeacherByName(teacherName);
+                        return (
+                          <div
+                            key={teacherName}
+                            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs"
+                          >
+                            <img
+                              src={teacherInfo?.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100'}
+                              alt={teacherName}
+                              className="w-5 h-5 rounded-full object-cover border border-indigo-200 dark:border-indigo-800"
+                            />
+                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              {teacherName}
+                            </span>
+                            {teacherInfo?.role && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-300">
+                                {teacherInfo.role}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">
+                      No faculty teachers currently assigned to this module.
+                    </p>
+                  )}
+                </div>
+
                 {/* Learning Outcomes & Syllabus Expansion */}
                 {isExpanded && (
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
@@ -227,6 +288,15 @@ export const MasterCourseCatalogView: React.FC<MasterCourseCatalogViewProps> = (
               {isTeacherOrAdmin && (
                 <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
                   <button
+                    type="button"
+                    onClick={() => setEditingCourseForTeachers(course)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    Edit Teachers
+                  </button>
+
+                  <button
                     onClick={() => onScheduleCourse(course)}
                     className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-colors"
                   >
@@ -239,6 +309,19 @@ export const MasterCourseCatalogView: React.FC<MasterCourseCatalogViewProps> = (
           );
         })}
       </div>
+
+      {/* Edit Teachers Modal for Module */}
+      {editingCourseForTeachers && (
+        <EditModuleTeachersModal
+          course={editingCourseForTeachers}
+          onClose={() => setEditingCourseForTeachers(null)}
+          onSave={(updatedCourse) => {
+            if (onUpdateMasterCourse) {
+              onUpdateMasterCourse(updatedCourse);
+            }
+          }}
+        />
+      )}
 
     </div>
   );

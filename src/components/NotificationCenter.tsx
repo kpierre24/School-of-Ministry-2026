@@ -187,12 +187,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     if (!def) return;
 
     const sampleTargets: Record<string, any> = {
-      new_assignment: { title: 'New Exegesis Paper Assigned: SOM-101', msg: 'Pastor John Selkridge has posted a new Hermeneutical Exegesis assignment due next Tuesday.', role: 'student', tab: 'courses' },
+      new_assignment: { title: 'New Exegesis Paper Assigned: SOM-101', msg: 'Pastor Samuel Selkridge has posted a new Hermeneutical Exegesis assignment due next Tuesday.', role: 'student', tab: 'courses' },
       assignment_deadline: { title: 'Deadline Approaching: Evangelism Practicum Log', msg: 'Your 2-page personal soul-winning practicum report is due in 48 hours for SOM-102.', role: 'student', tab: 'courses' },
       grade_published: { title: 'Grade Published: Pastoral Ethics Exam', msg: 'Your evaluation for Ministerial Ethics Module 3 has been graded: 92% (A - High Distinction).', role: 'student', tab: 'courses' },
       attendance_warning: { title: 'Institutional Attendance Warning (< 75%)', msg: 'Your attendance rate in Module 2 Evangelism is currently 66.7%, below the mandatory 75% threshold.', role: 'student', tab: 'attendance', prio: 'urgent' },
       payment_reminder: { title: 'Tuition Installment Notice: 2026 Semester 1', msg: 'Your second semester tuition installment is due on the 15th. Check your payment statement to view receipts.', role: 'student', tab: 'payments' },
-      new_announcement: { title: 'Apostolic Convocation & Live Broadcast', msg: 'Special Ministry Convocation this Friday at 7:00 PM EST with Apostle Dr. Kendell Pierre.', role: 'student', tab: 'home' },
+      new_announcement: { title: 'Apostolic Convocation & Live Broadcast', msg: 'Special Ministry Convocation this Friday at 7:00 PM EST with Apostle Gillian Selkridge.', role: 'student', tab: 'home' },
       registration_confirmation: { title: 'Course Registration Confirmed: SOM-101', msg: 'You are officially enrolled in SOM-101 Biblical Hermeneutics & Exegesis for 2026 Semester 1.', role: 'student', tab: 'courses' },
       library_resource_added: { title: 'New Ministerial Resource Uploaded', msg: 'The "Hermeneutics & Exegesis Handout 2026" PDF syllabus has been added to the institutional digital library.', role: 'student', tab: 'library' },
       
@@ -200,7 +200,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       new_enrollment: { title: 'New Student Application Submitted', msg: 'Pastor David Warner submitted an application for the Level 1 Foundation Cohort.', role: 'admin', tab: 'students' },
       payment_received: { title: 'Tuition Payment Received: $250.00', msg: 'Student Abigail Selkridge submitted payment for 2026 Semester 1 tuition via Bank Transfer.', role: 'admin', tab: 'payments' },
       outstanding_balance: { title: 'Overdue Balance Notice: 3 Students', msg: 'Three students have outstanding tuition balances totaling $750.00 that are past due for Semester 1.', role: 'admin', tab: 'payments', prio: 'high' },
-      attendance_issue: { title: 'At-Risk Attendance Flagged: Minister Christy Ruben', msg: 'Minister Christy Ruben attendance rate dropped to 66.7% in SOM-102 (At-Risk trigger < 75%).', role: 'admin', tab: 'attendance', prio: 'urgent' },
+      attendance_issue: { title: 'At-Risk Attendance Flagged: Pastor Christy Arthur', msg: 'Pastor Christy Arthur attendance rate dropped to 66.7% in SOM-102 (At-Risk trigger < 75%).', role: 'admin', tab: 'attendance', prio: 'urgent' },
       assignment_submitted: { title: 'Assignment Submissions Ready for Grading', msg: '4 students have submitted their Module 1 Exegesis papers in SOM-101.', role: 'admin', tab: 'courses' },
       lecturer_pending_grades: { title: 'Pending Grades Alert: SOM-104', msg: 'Lecturer grades for Apostolic Governance Quiz #1 are pending evaluation beyond the 5-day SLA.', role: 'admin', tab: 'courses', prio: 'high' }
     };

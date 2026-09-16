@@ -29,7 +29,9 @@ import {
   OfferingAssignment, 
   OfferingExam, 
   OfferingGradeRecord,
-  AcademicStanding 
+  AcademicStanding,
+  AUTHORIZED_TEACHERS,
+  getFacultyTeacherByName
 } from '../../types/academicEngine';
 import { generateUUID, getNextSequenceNumber } from '../../lib/idGenerator';
 import { UserRole } from '../../lib/userAuth';
@@ -79,6 +81,35 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
 
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
+
+  // Faculty Teachers State & Handlers
+  const [showEditOfferingTeachers, setShowEditOfferingTeachers] = useState(false);
+  const [selectedOfferingTeachers, setSelectedOfferingTeachers] = useState<string[]>(() => {
+    return offering.teachers && offering.teachers.length > 0 
+      ? [...offering.teachers]
+      : AUTHORIZED_TEACHERS.map(t => t.name);
+  });
+
+  const handleToggleOfferingTeacher = (teacherName: string) => {
+    setSelectedOfferingTeachers(prev => {
+      const exists = prev.some(t => t.toLowerCase().trim() === teacherName.toLowerCase().trim());
+      if (exists) {
+        return prev.filter(t => t.toLowerCase().trim() !== teacherName.toLowerCase().trim());
+      } else {
+        return [...prev, teacherName];
+      }
+    });
+  };
+
+  const handleSaveOfferingTeachers = () => {
+    if (!onUpdateOffering) return;
+    const updatedOffering: CourseOffering = {
+      ...offering,
+      teachers: selectedOfferingTeachers
+    };
+    onUpdateOffering(updatedOffering);
+    setShowEditOfferingTeachers(false);
+  };
 
   // Filter students
   const filteredStudents = offering.enrolledStudents.filter(s => 
@@ -388,6 +419,61 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
                       </p>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Appointed Faculty Teachers Roster */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      Appointed Faculty Instructors ({offering.teachers?.length || 0})
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Authorized HTEIM teachers assigned to modules across this course offering.
+                    </p>
+                  </div>
+
+                  {isTeacherOrAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditOfferingTeachers(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Manage Faculty</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {(offering.teachers && offering.teachers.length > 0 ? offering.teachers : AUTHORIZED_TEACHERS.map(t => t.name)).map((tName) => {
+                    const info = getFacultyTeacherByName(tName);
+                    return (
+                      <div
+                        key={tName}
+                        className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center gap-3 shadow-xs"
+                      >
+                        <img
+                          src={info?.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100'}
+                          alt={tName}
+                          className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                            {tName}
+                          </h4>
+                          <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 block truncate">
+                            {info?.role || 'Faculty'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 truncate block">
+                            {info?.specialization || 'School of Ministry'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1170,6 +1256,105 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT FACULTY TEACHERS FOR OFFERING */}
+      {showEditOfferingTeachers && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Manage Appointed Faculty Teachers
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Select authorized teachers assigned to deliver this School of Ministry offering.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditOfferingTeachers(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-2.5 max-h-[60vh] overflow-y-auto">
+              {AUTHORIZED_TEACHERS.map((teacher) => {
+                const isSelected = selectedOfferingTeachers.some(
+                  t => t.toLowerCase().trim() === teacher.name.toLowerCase().trim()
+                );
+
+                return (
+                  <div
+                    key={teacher.id}
+                    onClick={() => handleToggleOfferingTeacher(teacher.name)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={teacher.avatarUrl}
+                        alt={teacher.name}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                          {teacher.name}
+                        </h4>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium block truncate">
+                          {teacher.title}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block truncate">
+                          {teacher.specialization}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex-shrink-0">
+                      <div
+                        className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                          isSelected
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : 'border-slate-300 dark:border-slate-600'
+                        }`}
+                      >
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40">
+              <span className="text-xs text-slate-500">
+                {selectedOfferingTeachers.length} teacher{selectedOfferingTeachers.length !== 1 ? 's' : ''} selected
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditOfferingTeachers(false)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveOfferingTeachers}
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                >
+                  Save Teachers
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

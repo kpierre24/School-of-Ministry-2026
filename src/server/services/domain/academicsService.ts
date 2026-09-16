@@ -1,6 +1,12 @@
 import { getServerSupabase, logAuditEvent } from '../supabaseServer';
 import { logger } from '../../../lib/logger';
 import { AuthenticatedUser } from '../../../types/rbac';
+import { 
+  DEFAULT_ACADEMIC_YEARS, 
+  DEFAULT_TERMS, 
+  DEFAULT_MASTER_COURSES, 
+  DEFAULT_COURSE_OFFERINGS 
+} from '../../../data/defaultAcademicData';
 
 export const academicsService = {
   /**
@@ -25,10 +31,15 @@ export const academicsService = {
         supabase.from('course_offerings').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
       ]);
 
-      const academicYears = yearsRes.data || [];
-      const terms = termsRes.data || [];
-      const masterCourses = (defsRes.data && defsRes.data.length > 0) ? defsRes.data : (coursesRes.data || []);
-      const courseOfferings = offeringsRes.data || [];
+      const academicYears = (yearsRes.data && yearsRes.data.length > 0) ? yearsRes.data : DEFAULT_ACADEMIC_YEARS;
+      const terms = (termsRes.data && termsRes.data.length > 0) ? termsRes.data : DEFAULT_TERMS;
+      const masterCourses = (defsRes.data && defsRes.data.length > 0) 
+        ? defsRes.data 
+        : ((coursesRes.data && coursesRes.data.length >= 6) ? coursesRes.data : DEFAULT_MASTER_COURSES);
+      
+      const courseOfferings = (offeringsRes.data && offeringsRes.data.length > 0)
+        ? offeringsRes.data
+        : DEFAULT_COURSE_OFFERINGS;
 
       const activeTerm = terms.find((t: any) => t.status === 'active') || terms[0];
 
@@ -37,16 +48,16 @@ export const academicsService = {
         terms,
         masterCourses,
         courseOfferings,
-        activeTermId: activeTerm?.id || null,
+        activeTermId: activeTerm?.id || 'term_2026_s1',
       };
     } catch (err) {
-      logger.error('Error fetching academic structure from relational tables:', err);
+      logger.error('Error fetching academic structure from relational tables, using defaults:', err);
       return {
-        academicYears: [],
-        terms: [],
-        masterCourses: [],
-        courseOfferings: [],
-        activeTermId: null,
+        academicYears: DEFAULT_ACADEMIC_YEARS,
+        terms: DEFAULT_TERMS,
+        masterCourses: DEFAULT_MASTER_COURSES,
+        courseOfferings: DEFAULT_COURSE_OFFERINGS,
+        activeTermId: 'term_2026_s1',
       };
     }
   },

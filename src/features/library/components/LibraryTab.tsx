@@ -186,7 +186,7 @@ export const INITIAL_RESOURCES: LibraryResource[] = [
     id: 'res_som_mod1_video',
     title: 'Livestream Video: Biblical Hermeneutics & Exegesis Methodologies',
     category: 'Livestream Recording',
-    author: 'Pastor John Selkridge',
+    author: 'Pastor Samuel Selkridge',
     courseCode: 'SOM-MOD-1',
     moduleTrack: 'SOM-MOD-1',
     format: 'VIDEO',
@@ -198,7 +198,7 @@ export const INITIAL_RESOURCES: LibraryResource[] = [
       'Avoiding eisegesis and allegorical distortions',
       'Extracting timeless spiritual principles'
     ],
-    fullContent: 'HTEIM School of Ministry Module 1: Biblical Hermeneutics\nInstructor: Pastor John Selkridge\n\n1. The Authority of Scripture\n2. Exegetical Principles\n3. Genre Analysis\n4. Homiletical Synthesis.',
+    fullContent: 'HTEIM School of Ministry Module 1: Biblical Hermeneutics\nInstructor: Pastor Samuel Selkridge\n\n1. The Authority of Scripture\n2. Exegetical Principles\n3. Genre Analysis\n4. Homiletical Synthesis.',
     aiEvaluated: true,
     isRequiredReading: true,
     uploadedAt: '2026-05-05'
@@ -207,7 +207,7 @@ export const INITIAL_RESOURCES: LibraryResource[] = [
     id: 'res_som_mod2_video',
     title: 'Livestream Video: Evangelism, The Great Commission & Soul Winning',
     category: 'Livestream Recording',
-    author: 'Minister Christy Ruben',
+    author: 'Pastor Christy Arthur',
     courseCode: 'SOM-MOD-2',
     moduleTrack: 'SOM-MOD-2',
     format: 'VIDEO',
@@ -219,7 +219,7 @@ export const INITIAL_RESOURCES: LibraryResource[] = [
       'Personal witnessing without fear or compromise',
       'Discipleship integration pathways'
     ],
-    fullContent: 'HTEIM School of Ministry Module 2: Evangelism & Soul Winning\nInstructor: Minister Christy Ruben\n\n1. The Great Commission Mandate\n2. Gospel Presentation Protocols\n3. Street Ministry and City Outreach\n4. Follow-Up and Discipleship Tracking.',
+    fullContent: 'HTEIM School of Ministry Module 2: Evangelism & Soul Winning\nInstructor: Pastor Christy Arthur\n\n1. The Great Commission Mandate\n2. Gospel Presentation Protocols\n3. Street Ministry and City Outreach\n4. Follow-Up and Discipleship Tracking.',
     aiEvaluated: true,
     isRequiredReading: true,
     uploadedAt: '2026-05-19'
@@ -228,7 +228,7 @@ export const INITIAL_RESOURCES: LibraryResource[] = [
     id: 'res_som_mod3_textbook',
     title: 'Ministerial Character, Ethics & Financial Integrity',
     category: 'Textbook',
-    author: 'Rev. Gillian Selkridge',
+    author: 'Apostle Gillian Selkridge',
     courseCode: 'SOM-MOD-3',
     moduleTrack: 'SOM-MOD-3',
     format: 'PDF',
@@ -248,7 +248,7 @@ export const INITIAL_RESOURCES: LibraryResource[] = [
     id: 'res_som_mod6_studyguide',
     title: 'School of the Pastors: Shepherding & Expository Preaching',
     category: 'Study Guide',
-    author: 'Pastor John Selkridge',
+    author: 'Pastor Samuel Selkridge',
     courseCode: 'SOM-MOD-6',
     moduleTrack: 'SOM-MOD-6',
     format: 'PDF',

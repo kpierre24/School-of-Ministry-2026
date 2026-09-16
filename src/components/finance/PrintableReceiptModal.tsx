@@ -238,7 +238,7 @@ export const PrintableReceiptModal: React.FC<PrintableReceiptModalProps> = ({
             <div className="text-right sm:text-right space-y-1">
               <div className="inline-block border-b border-slate-400 w-48 pb-1 mb-1">
                 <span className="font-serif italic text-slate-800 dark:text-slate-200 text-sm">
-                  Pastor John Selkridge
+                  Pastor Samuel Selkridge
                 </span>
               </div>
               <p className="text-[10px] font-black uppercase text-slate-400">

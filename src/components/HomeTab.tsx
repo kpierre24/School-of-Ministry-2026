@@ -134,7 +134,7 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
   {
     id: 'gillian-selkridge',
     name: 'Apostle Gillian Selkridge',
-    title: 'Senior Apostle & School Director',
+    title: 'Apostle & School Director',
     role: 'Apostolic Oversight & Ministerial Governance',
     bio: 'Visionary founder of Heaven Touching Earth International Ministries. Overseeing apostolic alignment, ministerial ethics, and five-fold leadership equipping across the 6 core modules.',
     module: 'Module 1 & 6: Apostolic Governance',
@@ -162,8 +162,8 @@ export const DEFAULT_FACULTY_TEACHERS: FacultyTeacher[] = [
     badgeColor: 'bg-[#01883c]/20 text-[#01883c] dark:bg-[#01883c]/60 dark:text-[#a7f3d0] border-[#01883c]/40'
   },
   {
-    id: 'christy-ruben',
-    name: 'Pastor Christy Ruben',
+    id: 'christy-arthur',
+    name: 'Pastor Christy Arthur',
     title: 'Lead Instructor & Student Mentor',
     role: 'Homiletics & Practical Preaching',
     bio: 'Dedicated to empowering ministers in the art of sermon preparation, spirit-led homiletics, pulpit decorum, and transformative community outreach.',

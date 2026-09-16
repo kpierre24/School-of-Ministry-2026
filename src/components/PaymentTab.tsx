@@ -471,7 +471,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-33",
-    "studentName": "Shellon Liddel",
+    "studentName": "Shellon Liddell",
     "studentId": "HTEIM-2026-1455",
     "email": "uvanie@yahoo.com",
     "moduleTrack": "General Ministry Studies (On Hold)",
@@ -497,7 +497,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-35",
-    "studentName": "Susan Spark",
+    "studentName": "Susan Sparks",
     "studentId": "HTEIM-2026-1067",
     "email": "Susane.spark999@gmail.com",
     "moduleTrack": "Active Ministry Module",
@@ -692,7 +692,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-50",
-    "studentName": "Colette Blackburne Joseph",
+    "studentName": "Colette Blackburne-Joseph",
     "studentId": "HTEIM-2026-2418",
     "email": "cbburne@gmail.com",
     "moduleTrack": "Active Ministry Module",
@@ -705,7 +705,7 @@ export const INITIAL_PAYMENTS: PaymentRecord[] = [
   },
   {
     "id": "pay-sheet-51",
-    "studentName": "Kemrolene Opadeyi",
+    "studentName": "Kemrolene Bowens-Opadeyi",
     "studentId": "HTEIM-2026-1677",
     "email": "K_bowens@hotmail.com",
     "moduleTrack": "General Ministry Studies (On Hold)",
@@ -900,14 +900,14 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
           }
         }
 
-        // Self-heal: Merge "Shellon Massiah" and "Shellon Liddell" to "Shellon Liddel"
+        // Self-heal: Merge "Shellon Massiah" and "Shellon Liddel" to "Shellon Liddell"
         const shellonMatches = parsed.filter((p: any) => {
           if (!p || !p.studentName) return false;
           const s = p.studentName.toLowerCase().trim();
           return s === 'shellon massiah' || s === 'shellon liddell' || s === 'shellon liddel';
         });
         if (shellonMatches.length > 0) {
-          const needsHealing = shellonMatches.length > 1 || shellonMatches[0].studentName !== 'Shellon Liddel';
+          const needsHealing = shellonMatches.length > 1 || shellonMatches[0].studentName !== 'Shellon Liddell';
           if (needsHealing) {
             modified = true;
             const totalPaid = shellonMatches.reduce((sum: number, r: any) => sum + (Number(r.amountPaid) || 0), 0);
@@ -915,7 +915,7 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             const mergedShellon = {
               ...baseRec,
               id: 'pay-sheet-33',
-              studentName: 'Shellon Liddel',
+              studentName: 'Shellon Liddell',
               email: 'uvanie@yahoo.com',
               amountPaid: totalPaid,
               status: totalPaid >= (baseRec.totalTuition || 1200) ? 'Paid In Full' : (totalPaid > 0 ? 'Partial' : 'Pending Review'),

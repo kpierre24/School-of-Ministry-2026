@@ -80,7 +80,7 @@ export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
   {
     id: 'media_som_mod1',
     title: 'Livestream Video: Biblical Hermeneutics & Exegesis Methodologies',
-    speaker: 'Pastor John Selkridge',
+    speaker: 'Pastor Samuel Selkridge',
     duration: '54:30',
     type: 'video',
     url: 'https://www.youtube.com/watch?v=3JZ_D3ELwOQ',
@@ -96,7 +96,7 @@ export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
   {
     id: 'media_som_mod2',
     title: 'Livestream Video: Evangelism, The Great Commission & Soul Winning',
-    speaker: 'Minister Christy Ruben',
+    speaker: 'Pastor Christy Arthur',
     duration: '48:15',
     type: 'video',
     url: 'https://www.youtube.com/watch?v=21X5lGlDOfg',
@@ -112,7 +112,7 @@ export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
   {
     id: 'media_som_mod3',
     title: 'Livestream Video: Ministerial Ethics, Financial Integrity & Pastoral Care',
-    speaker: 'Rev. Gillian Selkridge',
+    speaker: 'Apostle Gillian Selkridge',
     duration: '1:02:00',
     type: 'video',
     url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -128,7 +128,7 @@ export const DEFAULT_PRESET_MEDIA: MediaResource[] = [
   {
     id: 'media_som_mod6',
     title: 'Livestream Video: School of the Pastors & Expository Preaching',
-    speaker: 'Pastor John Selkridge',
+    speaker: 'Pastor Samuel Selkridge',
     duration: '1:12:00',
     type: 'video',
     url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
@@ -1202,7 +1202,7 @@ export const ClassroomMediaPlayer: React.FC<ClassroomMediaPlayerProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Dr. Samuel Selkridge"
+                    placeholder="e.g. Pastor Samuel Selkridge"
                     value={editSpeaker}
                     onChange={(e) => setEditSpeaker(e.target.value)}
                     className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-indigo-400 text-white"

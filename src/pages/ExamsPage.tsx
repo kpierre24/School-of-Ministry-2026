@@ -1,6 +1,6 @@
 import React, { Suspense, useState } from 'react';
 import { AssessmentsPage } from '../features/assessments';
-import { LazyExamsTab } from '../components/tabs';
+import { ExamsTab } from '../components/ExamsTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { DashboardSkeleton } from '../components/DashboardSkeleton';
 import { INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from '../components/ExamsTab';
@@ -100,7 +100,7 @@ export const ExamsPage: React.FC<ExamsPageProps> = (props) => {
                 Return to Modern Hub
               </Button>
             </div>
-            <LazyExamsTab {...(props as any)} />
+            <ExamsTab {...(props as any)} />
           </div>
         )}
       </ErrorBoundary>
