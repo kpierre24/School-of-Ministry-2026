@@ -2280,21 +2280,22 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
             ) : (
               /* Table View */
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse text-xs" aria-label="Student Invoice Ledger">
+                  <caption className="sr-only">Student Invoice Ledger with base tuition, discounts, net tuition, and payment status</caption>
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <th className="p-4">Invoice ID</th>
-                      <th className="p-4">Student Name & ID</th>
-                      <th className="p-4">Program Track</th>
-                      <th className="p-4 text-right">Base Tuition</th>
-                      <th className="p-4 text-right">Scholarships</th>
-                      <th className="p-4 text-right">Discounts</th>
-                      <th className="p-4 text-right">Net Tuition</th>
-                      <th className="p-4 text-right">Amount Paid</th>
-                      <th className="p-4 text-right">Outstanding Balance</th>
-                      <th className="p-4">Payment Plan</th>
-                      <th className="p-4">Status</th>
-                      <th className="p-4 text-center">Actions</th>
+                      <th scope="col" className="p-4">Invoice ID</th>
+                      <th scope="col" className="p-4">Student Name & ID</th>
+                      <th scope="col" className="p-4">Program Track</th>
+                      <th scope="col" className="p-4 text-right">Base Tuition</th>
+                      <th scope="col" className="p-4 text-right">Scholarships</th>
+                      <th scope="col" className="p-4 text-right">Discounts</th>
+                      <th scope="col" className="p-4 text-right">Net Tuition</th>
+                      <th scope="col" className="p-4 text-right">Amount Paid</th>
+                      <th scope="col" className="p-4 text-right">Outstanding Balance</th>
+                      <th scope="col" className="p-4">Payment Plan</th>
+                      <th scope="col" className="p-4">Status</th>
+                      <th scope="col" className="p-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
@@ -2346,8 +2347,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                                   setEditInvoiceNotes(inv.notes || '');
                                   setShowEditInvoiceModal(true);
                                 }}
-                                title="Edit Invoice Settings"
-                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                                title={`Edit Invoice Settings for ${inv.studentName}`}
+                                aria-label={`Edit Invoice Settings for ${inv.studentName}`}
+                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500"
                               >
                                 <Settings className="w-4 h-4" />
                               </button>
@@ -2359,16 +2361,18 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({
                                     setRecordPaymentNotes('');
                                     setShowRecordCustomPaymentModal(true);
                                   }}
-                                  title="Record Tuition Payment"
-                                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors cursor-pointer"
+                                  title={`Record Tuition Payment for ${inv.studentName}`}
+                                  aria-label={`Record Tuition Payment for ${inv.studentName}`}
+                                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500"
                                 >
                                   <DollarSign className="w-4 h-4" />
                                 </button>
                               )}
                               <button
                                 onClick={() => viewInvoiceAsReceipt(inv)}
-                                title="View Account Statement"
-                                className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors cursor-pointer"
+                                title={`View Account Statement for ${inv.studentName}`}
+                                aria-label={`View Account Statement for ${inv.studentName}`}
+                                className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500"
                               >
                                 <FileText className="w-4 h-4" />
                               </button>

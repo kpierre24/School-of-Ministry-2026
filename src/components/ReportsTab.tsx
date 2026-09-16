@@ -600,7 +600,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
       </div>
 
       {/* Report Categories Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 print:hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 print:hidden" role="region" aria-label="Report Selection Categories">
         {reportCategories.map(cat => {
           const Icon = cat.icon;
           const isActive = activeReport === cat.id;
@@ -608,7 +608,9 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
             <button
               key={cat.id}
               onClick={() => setActiveReport(cat.id as ReportType)}
-              className={`p-3 rounded-xl border text-left transition-all ${
+              aria-pressed={isActive}
+              aria-label={`Select ${cat.name} report (${cat.badge})`}
+              className={`p-3 rounded-xl border text-left transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 isActive
                   ? 'bg-amber-500/10 border-amber-500/50 text-amber-900 dark:text-amber-300 shadow-xs ring-1 ring-amber-500/30'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
@@ -771,11 +773,12 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
 
         {/* Data Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse" aria-label={activeReportData.title}>
+            <caption className="sr-only">{activeReportData.title} containing student performance data and records</caption>
             <thead>
               <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider">
                 {activeReportData.columns.map((col, idx) => (
-                  <th key={idx} className="p-3 border-b border-slate-800">
+                  <th key={idx} scope="col" className="p-3 border-b border-slate-800">
                     {col.header}
                   </th>
                 ))}

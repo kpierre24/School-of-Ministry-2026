@@ -835,13 +835,14 @@ export const StudentAttendancePortal: React.FC<Partial<StudentAttendancePortalPr
 
         {/* Desktop View (>= md) */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse" aria-label="Student Attendance History Log">
+            <caption className="sr-only">Student Attendance Session History Log showing session name, attendance status, date, and excuse note submissions</caption>
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
-                <th className="p-3.5 rounded-l-xl">Class Day / Session</th>
-                <th className="p-3.5">Attendance Status</th>
-                <th className="p-3.5">Attendance Date / Time</th>
-                <th className="p-3.5 rounded-r-xl text-right">Faculty Actions / Excuse</th>
+                <th scope="col" className="p-3.5 rounded-l-xl">Class Day / Session</th>
+                <th scope="col" className="p-3.5">Attendance Status</th>
+                <th scope="col" className="p-3.5">Attendance Date / Time</th>
+                <th scope="col" className="p-3.5 rounded-r-xl text-right">Faculty Actions / Excuse</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
