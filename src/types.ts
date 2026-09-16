@@ -346,6 +346,14 @@ export type Course = {
   cohortId?: string;
 };
 
+export type QuizQuestionType = 
+  | 'multiple_choice' 
+  | 'checkboxes' 
+  | 'true_false' 
+  | 'short_answer' 
+  | 'paragraph'
+  | 'fill_blank';
+
 export type QuizQuestionOption = {
   id: string;
   text: string;
@@ -354,11 +362,32 @@ export type QuizQuestionOption = {
 export type QuizQuestion = {
   id: string;
   questionText: string;
-  type?: 'multiple_choice' | 'true_false';
+  type?: QuizQuestionType;
   options: QuizQuestionOption[];
-  correctOptionId: string;
+  correctOptionId?: string; // for multiple_choice, true_false
+  correctOptionIds?: string[]; // for checkboxes (multi-select)
+  acceptableAnswers?: string[]; // for short_answer / fill_blank
   weight: number; // points for this question (e.g. 5, 10, 20)
   explanation?: string;
+  feedbackCorrect?: string; // Google Forms style feedback for correct answer
+  feedbackIncorrect?: string; // Google Forms style feedback for incorrect answer
+  required?: boolean;
+  imageUrl?: string;
+  sectionTitle?: string;
+};
+
+export type QuizSettings = {
+  shuffleQuestions?: boolean;
+  shuffleOptions?: boolean;
+  showCorrectAnswers?: boolean;
+  showPointValues?: boolean;
+  showFeedback?: boolean;
+  passingScorePercentage?: number; // default 75%
+  allowMultipleAttempts?: boolean;
+  maxAttempts?: number; // 1, 2, 3, etc. or undefined for unlimited
+  gradeReleasePolicy?: 'immediate' | 'manual';
+  requireAllQuestionsAnswered?: boolean;
+  collectStudentEmail?: boolean;
 };
 
 export type QuizAssignment = {
@@ -378,13 +407,21 @@ export type QuizAssignment = {
   shareCode: string; // e.g. "qz_9f8a2" for shareable links
   timeLimitMinutes?: number;
   quizData?: QuizAssignment;
+  settings?: QuizSettings;
+  category?: string;
+  sectionHeaders?: { id: string; title: string; description?: string; afterQuestionIndex: number }[];
 };
 
 export type QuizSubmissionResponse = {
   questionId: string;
-  selectedOptionId: string;
+  selectedOptionId?: string;
+  selectedOptionIds?: string[];
+  textAnswer?: string;
   isCorrect?: boolean;
   pointsEarned: number;
+  instructorFeedback?: string;
+  manualScoreOverride?: number;
+  evaluatedBy?: string;
 };
 
 export type QuizSubmission = {
@@ -401,6 +438,10 @@ export type QuizSubmission = {
   score: number;
   totalPossible: number;
   percentage: number;
+  attemptNumber?: number;
+  timeSpentSeconds?: number;
+  feedbackGiven?: boolean;
+  isReleased?: boolean;
 };
 
 export type ExamItem = {

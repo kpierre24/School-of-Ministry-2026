@@ -1,3 +1,4 @@
+import { DEFAULT_QUIZ_TEMPLATES } from '../data/quizTemplates';
 import { ApplicationShell } from './ApplicationShell';
 import { VALID_TABS, getTabFromLocation, navigation, getNavigationItem, isNavigationAccessible } from './navigation';
 import { PortalFooter, MobileBottomNav } from '../components/layout';
@@ -1476,14 +1477,31 @@ export function AppRouter() {
 
   // Lifted Custom Assignments & Submissions State
   const [customAssignments, setCustomAssignments] = useState<CustomAssignment[]>(() => {
+    let list: CustomAssignment[] = [];
     const saved = localStorage.getItem('hteim_custom_assignments');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return parsed.filter((a: any) => !['ASG-Q100', 'ASG-100', 'ASG-101', 'ASG-102', 'ASG-103'].includes(a.id));
+        list = parsed.filter((a: any) => !['ASG-Q100', 'ASG-100', 'ASG-101', 'ASG-102', 'ASG-103'].includes(a.id));
       } catch (e) { console.error(e); }
     }
-    return [];
+
+    const defaultAsgs: CustomAssignment[] = DEFAULT_QUIZ_TEMPLATES.map(tmpl => ({
+      id: tmpl.id,
+      title: tmpl.title,
+      courseCode: tmpl.courseCode,
+      moduleTrack: tmpl.moduleTrack,
+      description: tmpl.description || 'Interactive Google Forms style class day quiz.',
+      dueDate: tmpl.dueDate || '2026-09-30',
+      maxPoints: tmpl.totalPoints || 100,
+      createdAt: tmpl.createdAt,
+      type: 'quiz',
+      quizData: tmpl
+    }));
+
+    const existingIds = new Set(list.map(a => a.id));
+    const missingDefaults = defaultAsgs.filter(a => !existingIds.has(a.id));
+    return [...list, ...missingDefaults];
   });
 
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(() => {

@@ -186,8 +186,24 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<CustomAssignment | null>(null);
   const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
 
-  // Stored Quiz Submissions List
-  const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>([]);
+  // Stored Quiz Submissions List with persistence
+  const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>(() => {
+    try {
+      const saved = localStorage.getItem('hteim_quiz_submissions');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hteim_quiz_submissions', JSON.stringify(quizSubmissionsList));
+    } catch {
+      // ignore
+    }
+  }, [quizSubmissionsList]);
 
   // CSV Import Modal State
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
