@@ -18,6 +18,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { StudentSummary, ClassDay } from '../types';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
+import { announceToScreenReader } from '../lib/a11yAnnouncer';
 
 export interface SpeedCheckInModalProps {
   isOpen: boolean;
@@ -68,6 +70,8 @@ export const SpeedCheckInModal: React.FC<SpeedCheckInModalProps> = ({
   atRiskThreshold = 75,
   satisfactoryThreshold = 75,
 }) => {
+  const dialogRef = useAccessibleModal(isOpen, onClose);
+
   // Selected session (fallback to first available or activeDayId)
   const currentSessionId = activeDayId || (classDays.length > 0 ? classDays[classDays.length - 1].id : '');
   const activeClassDay = classDays.find((d) => d.id === currentSessionId) || classDays[classDays.length - 1];
@@ -167,6 +171,7 @@ export const SpeedCheckInModal: React.FC<SpeedCheckInModalProps> = ({
 
     // Call update handler
     onToggleAttendance(currentStudent.name, currentSessionId, status);
+    announceToScreenReader(`${currentStudent.name} marked ${status}`);
 
     // Add to history stack
     const historyItem: ActionHistoryItem = {
@@ -204,6 +209,7 @@ export const SpeedCheckInModal: React.FC<SpeedCheckInModalProps> = ({
       currentSessionId,
       lastAction.previousStatus
     );
+    announceToScreenReader(`Undid attendance status for ${lastAction.studentName}`);
 
     // Pop history
     setHistory((prev) => prev.slice(0, -1));
@@ -275,6 +281,7 @@ export const SpeedCheckInModal: React.FC<SpeedCheckInModalProps> = ({
 
   return (
     <div
+      ref={dialogRef}
       id="speed-check-in-modal"
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-6 overflow-hidden"
       role="dialog"

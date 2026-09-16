@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { QuizAssignment, QuizQuestion, QuizSubmission, QuizSubmissionResponse } from '../types';
 import { gradeQuizSubmission } from '../data/quizTemplates';
+import { useAccessibleModal } from '../lib/useAccessibleModal';
 
 export interface QuizTakerViewProps {
   quiz: QuizAssignment;
@@ -51,6 +52,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   onComplete,
   onClose
 }) => {
+  const dialogRef = useAccessibleModal(true, onClose);
   const loggedInStudentName = studentName || currentStudentName || '';
   const initialStudentName = loggedInStudentName || (studentRoster[0]?.name || '');
   const [selectedStudentName, setSelectedStudentName] = useState(initialStudentName);
@@ -266,7 +268,13 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fadeIn modal-material-scrim">
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${quiz.title || 'Quiz'} Workspace`}
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fadeIn modal-material-scrim"
+    >
       <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[96vh] flex flex-col overflow-hidden modal-material-dialog">
 
         {/* Top Gradient Banner (Google Forms Style) */}

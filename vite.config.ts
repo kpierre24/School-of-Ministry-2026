@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [
       react(),
       tailwindcss(),
@@ -102,11 +103,14 @@ export default defineConfig(() => {
     },
     build: {
       outDir: 'dist',
-      emptyOutDir: false,
+      emptyOutDir: true,
       sourcemap: false,
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]',
           manualChunks(id) {
             if (id.includes('node_modules')) {
               if (id.includes('react') || id.includes('react-dom')) {

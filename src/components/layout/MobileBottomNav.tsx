@@ -58,7 +58,7 @@ export function MobileBottomNav({
             onClick={() => handleNavigate(tab as TabType)}
             aria-label={`Open ${label}`}
             aria-current={isActive ? 'page' : undefined}
-            className={`flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 touch-min-44 ${
+            className={`flex-1 shrink-0 max-w-[20%] min-h-[48px] min-w-[48px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 ${
               isActive
                 ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -81,7 +81,9 @@ export function MobileBottomNav({
         type="button"
         onClick={() => setShowMobileMoreMenu(true)}
         aria-label="Open more portal sections"
-        className={`relative flex-1 shrink-0 max-w-[20%] min-h-[44px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 touch-min-44 ${
+        aria-expanded={showMobileMoreMenu}
+        aria-haspopup="dialog"
+        className={`relative flex-1 shrink-0 max-w-[20%] min-h-[48px] min-w-[48px] py-1 px-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-xl transition-all active:opacity-80 ${
           showMobileMoreMenu
             ? 'bg-slate-100 dark:bg-[#0e2540] text-[#023264] dark:text-white font-bold'
             : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

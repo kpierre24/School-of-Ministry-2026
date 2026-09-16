@@ -17,6 +17,7 @@ import { PortalFooter, MobileBottomNav, MobileMoreMenuDrawer, BackToTopButton } 
 import { FloatingQuizBanner } from '../features/assignments';
 import { OfflineSyncDrawer } from '../components/OfflineSyncDrawer';
 import { PWAUpdateNotification } from '../components/PWAUpdateNotification';
+import { A11yLiveRegion } from '../components/shared/A11yLiveRegion';
 import { getDesktopNavigation } from './navigation';
 
 export interface ApplicationShellProps {
@@ -191,6 +192,7 @@ export function ApplicationShell({
 
   return (
     <>
+      <A11yLiveRegion />
       <a href="#main-workspace" className="md-skip-link">Skip to main content</a>
       <div className="flex flex-col min-h-screen w-full app-ambient-shell text-slate-900 dark:text-slate-100 font-sans p-2.5 sm:p-5 md:p-6 pb-mobile-nav md:pb-6 select-text">
         {/* Compact Offline Status Pill (Step 7.1) */}
