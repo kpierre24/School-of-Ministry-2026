@@ -40,7 +40,7 @@ import {
 } from '../types';
 import { DEFAULT_QUIZ_TEMPLATES } from '../data/quizTemplates';
 
-interface QuizCreatorModalProps {
+export interface QuizCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   quizToEdit?: QuizAssignment | null;

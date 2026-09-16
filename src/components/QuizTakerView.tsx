@@ -30,7 +30,7 @@ import {
 import { QuizAssignment, QuizQuestion, QuizSubmission, QuizSubmissionResponse } from '../types';
 import { gradeQuizSubmission } from '../data/quizTemplates';
 
-interface QuizTakerViewProps {
+export interface QuizTakerViewProps {
   quiz: QuizAssignment;
   studentRoster?: { name: string }[];
   currentStudentName?: string;

@@ -440,6 +440,8 @@ export type QuizSubmission = {
   percentage: number;
   attemptNumber?: number;
   timeSpentSeconds?: number;
+  teacherFeedback?: string;
+  instructorFeedback?: string;
   feedbackGiven?: boolean;
   isReleased?: boolean;
 };
@@ -662,6 +664,8 @@ export type StudentSummary = {
   enrolledModule?: string;
   cohortId?: string;
 };
+
+export type StudentRecord = StudentSummary;
 
 export type MessagePriority = 'normal' | 'important' | 'urgent';
 export type MessageCategory = 'general' | 'assignment' | 'attendance' | 'tuition' | 'exam' | 'technical';
