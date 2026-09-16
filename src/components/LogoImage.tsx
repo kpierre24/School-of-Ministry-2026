@@ -23,6 +23,8 @@ export const LogoImage: React.FC<LogoImageProps> = ({
       alt={alt}
       className={`${className} object-contain`}
       onClick={onClick}
+      loading="eager"
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={() => {
         if (!useFallbackPng) setUseFallbackPng(true);

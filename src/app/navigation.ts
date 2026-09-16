@@ -16,31 +16,17 @@ import {
   LucideIcon
 } from 'lucide-react';
 
-import { DashboardPage } from '../pages/DashboardPage';
-import { StudentsPage } from '../pages/StudentsPage';
-import { AttendancePage } from '../pages/AttendancePage';
-import { CoursesPage } from '../pages/CoursesPage';
-import { ExamsPage } from '../pages/ExamsPage';
-import { SchedulePage } from '../pages/SchedulePage';
-import { LibraryPage } from '../pages/LibraryPage';
-import { FinancePage } from '../pages/FinancePage';
-import { MessagesPage } from '../pages/MessagesPage';
-import { ReportsPage } from '../pages/ReportsPage';
-import { NotesPage } from '../pages/NotesPage';
-
-export {
-  DashboardPage,
-  StudentsPage,
-  AttendancePage,
-  CoursesPage,
-  ExamsPage,
-  SchedulePage,
-  LibraryPage,
-  FinancePage,
-  MessagesPage,
-  ReportsPage,
-  NotesPage,
-};
+export const DashboardPage = React.lazy(() => import('../pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+export const StudentsPage = React.lazy(() => import('../pages/StudentsPage').then(m => ({ default: m.StudentsPage })));
+export const AttendancePage = React.lazy(() => import('../pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
+export const CoursesPage = React.lazy(() => import('../pages/CoursesPage').then(m => ({ default: m.CoursesPage })));
+export const ExamsPage = React.lazy(() => import('../pages/ExamsPage').then(m => ({ default: m.ExamsPage })));
+export const SchedulePage = React.lazy(() => import('../pages/SchedulePage').then(m => ({ default: m.SchedulePage })));
+export const LibraryPage = React.lazy(() => import('../pages/LibraryPage').then(m => ({ default: m.LibraryPage })));
+export const FinancePage = React.lazy(() => import('../pages/FinancePage').then(m => ({ default: m.FinancePage })));
+export const MessagesPage = React.lazy(() => import('../pages/MessagesPage').then(m => ({ default: m.MessagesPage })));
+export const ReportsPage = React.lazy(() => import('../pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+export const NotesPage = React.lazy(() => import('../pages/NotesPage').then(m => ({ default: m.NotesPage })));
 
 /**
  * Single Canonical Route Registry interface.

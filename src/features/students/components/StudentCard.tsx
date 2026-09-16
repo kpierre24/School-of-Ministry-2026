@@ -33,6 +33,8 @@ export function StudentCard({
                 <img
                   src={student.photoUrl}
                   alt={student.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full rounded-2xl object-cover"
                 />
               ) : (

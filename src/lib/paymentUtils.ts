@@ -1,5 +1,5 @@
 import { PaymentRecord } from '../types';
-import { INITIAL_PAYMENTS } from '../components/PaymentTab';
+import { INITIAL_PAYMENTS } from '../data/initialPortalData';
 
 export type StudentPaymentSummary = {
   hasOutstanding: boolean;

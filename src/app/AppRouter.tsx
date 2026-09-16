@@ -95,13 +95,22 @@ import {
 import { loadAuthoritativeState as loadFromSupabase, saveAuthoritativeState as saveToSupabase } from '../services/dataSyncService';
 import { testSupabaseConnection, loadFromSupabase as loadDirectFromSupabase } from '../lib/supabaseSync';
 import { supabase, uploadToSupabaseStorage, ensureSupabaseStorageUrl, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase, syncStudentPhotosToSupabase } from '../lib/supabaseClient';
-import { SupabaseDiagnosticModal } from '../components/SupabaseDiagnosticModal';
-import { BatchAnnouncementModal } from '../components/BatchAnnouncementModal';
-import { MobileDownloadCenterModal } from '../components/MobileDownloadCenterModal';
-import { ManageClassDaysModal } from '../components/ManageClassDaysModal';
-import { SheetMergeConflictModal } from '../components/SheetMergeConflictModal';
-import { OfflineSyncDrawer } from '../components/OfflineSyncDrawer';
-import { FinancePage } from '../features/finance';
+import { INITIAL_COURSES, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS, INITIAL_SCHEDULE, INITIAL_RESOURCES, INITIAL_PAYMENTS, INITIAL_MESSAGES } from '../data/initialPortalData';
+import { DEFAULT_FACULTY_TEACHERS } from '../components/HomeTab';
+
+// Lazy-loaded Modal Components for Optimal Bundle Splitting
+const SupabaseDiagnosticModal = React.lazy(() => import('../components/SupabaseDiagnosticModal').then(m => ({ default: m.SupabaseDiagnosticModal })));
+const BatchAnnouncementModal = React.lazy(() => import('../components/BatchAnnouncementModal').then(m => ({ default: m.BatchAnnouncementModal })));
+const MobileDownloadCenterModal = React.lazy(() => import('../components/MobileDownloadCenterModal').then(m => ({ default: m.MobileDownloadCenterModal })));
+const ManageClassDaysModal = React.lazy(() => import('../components/ManageClassDaysModal').then(m => ({ default: m.ManageClassDaysModal })));
+const SheetMergeConflictModal = React.lazy(() => import('../components/SheetMergeConflictModal').then(m => ({ default: m.SheetMergeConflictModal })));
+const CohortManagementModal = React.lazy(() => import('../components/CohortManagementModal').then(m => ({ default: m.CohortManagementModal })));
+const AdminAuditAndBackupModal = React.lazy(() => import('../components/AdminAuditAndBackupModal').then(m => ({ default: m.AdminAuditAndBackupModal })));
+const StudentTranscriptModal = React.lazy(() => import('../features/students/StudentTranscriptModal').then(m => ({ default: m.StudentTranscriptModal })));
+const CertificateModal = React.lazy(() => import('../features/students/CertificateModal').then(m => ({ default: m.CertificateModal })));
+const BatchEmailModal = React.lazy(() => import('../features/attendance/BatchEmailModal').then(m => ({ default: m.BatchEmailModal })));
+const PrintableReportModal = React.lazy(() => import('../features/attendance/PrintableReportModal').then(m => ({ default: m.PrintableReportModal })));
+const GuideModal = React.lazy(() => import('../components/shared/GuideModal').then(m => ({ default: m.GuideModal })));
 import { PINCheckinQRModal } from '../components/PINCheckinQRModal';
 import { RoleManagementModal } from '../components/RoleManagementModal';
 import { getAttendanceLockInfo, isAttendanceLocked, ATTENDANCE_LOCK_WINDOW_HOURS } from '../lib/attendanceLock';
@@ -128,30 +137,12 @@ import { LoginModal } from '../components/LoginModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { UserManagementModal } from '../components/UserManagementModal';
 import { SettingsModal, ThemeMode } from '../components/SettingsModal';
-import { CohortManagementModal } from '../components/CohortManagementModal';
 import { portalApiClient } from '../services/api/portalApiClient';
 import { AttendanceStatus } from '../types/database';
-import { StudentAttendancePortal } from '../components/StudentAttendancePortal';
-import { AttendanceWorkspace as AttendanceTab } from '../features/attendance/AttendanceWorkspace';
-import { HomeTab, DEFAULT_FACULTY_TEACHERS } from '../components/HomeTab';
-import { StudentsTab } from '../components/StudentsTab';
-import { CoursesTab, INITIAL_COURSES } from '../components/CoursesTab';
-import { ExamsTab, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from '../components/ExamsTab';
-import { ScheduleTab, INITIAL_SCHEDULE } from '../components/ScheduleTab';
-import { LibraryTab, INITIAL_RESOURCES } from '../features/library/components/LibraryTab';
-import { PaymentTab, INITIAL_PAYMENTS } from '../components/PaymentTab';
-import { MessagesTab, INITIAL_MESSAGES } from '../components/MessagesTab';
-import { ReportsTab } from '../components/ReportsTab';
-import { StudentNotesBibleTab } from '../components/StudentNotesBibleTab';
 import { DEFAULT_PRESET_MEDIA } from '../components/ClassroomMediaPlayer';
 import { IntroSplashScreen } from '../components/IntroSplashScreen';
 import { OutstandingPaymentBanner } from '../components/OutstandingPaymentBanner';
 import { StudentDetailModal } from '../features/students/StudentDetailModal';
-import { StudentTranscriptModal } from '../features/students/StudentTranscriptModal';
-import { CertificateModal } from '../features/students/CertificateModal';
-import { BatchEmailModal } from '../features/attendance/BatchEmailModal';
-import { PrintableReportModal } from '../features/attendance/PrintableReportModal';
-import { GuideModal } from '../components/shared/GuideModal';
 import { MobileMoreMenuDrawer } from '../components/layout/MobileMoreMenuDrawer';
 import { formatGradePercentage } from '../lib/securityHelper';
 
@@ -168,7 +159,6 @@ const pageFadeTransition = {
 };
 import { getStudentPaymentDetails, StudentPaymentSummary } from '../lib/paymentUtils';
 import { SwipeableAttendanceCard } from '../components/SwipeableAttendanceCard';
-import { AdminAuditAndBackupModal } from '../components/AdminAuditAndBackupModal';
 import { CommandPaletteModal } from '../components/CommandPaletteModal';
 import { AppPresentationModal } from '../components/AppPresentationModal';
 import { EmptyState } from '../components/UXPrimitives';
@@ -552,15 +542,6 @@ const parseScorePercentage = (scoreStr?: any): number | null => {
 
   return null;
 };
-
-const LazyHomeTab = HomeTab;
-const LazyStudentsTab = StudentsTab;
-const LazyCoursesTab = CoursesTab;
-const LazyExamsTab = ExamsTab;
-const LazyScheduleTab = ScheduleTab;
-const LazyLibraryTab = LibraryTab;
-const LazyPaymentTab = PaymentTab;
-const LazyMessagesTab = MessagesTab;
 
 export function AppRouter() {
   const [user, setUser] = useState<User | null>(null);

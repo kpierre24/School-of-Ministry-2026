@@ -1,6 +1,5 @@
 import { getAuditLogs, logActivity, AuditLogEntry } from './auditLogger';
-import { INITIAL_PAYMENTS } from '../components/PaymentTab';
-import { INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from '../components/ExamsTab';
+import { INITIAL_PAYMENTS, INITIAL_ASSIGNMENTS, INITIAL_SUBMISSIONS } from '../data/initialPortalData';
 import { logger } from './logger';
 
 export type FullBackupBundle = {
