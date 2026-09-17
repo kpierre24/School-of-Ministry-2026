@@ -1,12 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { assignmentsService } from '../server/services/domain/assignmentsService';
-import * as supabaseServerModule from '../server/services/supabaseServer';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-describe('Public Quiz Server Integration & Security Hardening', () => {
-  let mockExistingSubmissions: any[] = [];
-  let supabaseSpy: any;
+// Declare mutable mock state starting with 'mock' so Vitest permits hoisting
+const mockExistingSubmissions = { data: [] as any[] };
 
-  const mockSupabase = {
+// Mock the entire supabaseServer module at the top level
+vi.mock('../server/services/supabaseServer', () => {
+  const mockSupabaseInstance = {
     from: vi.fn((table: string) => {
       const queryChain = {
         select: vi.fn().mockReturnThis(),
@@ -17,31 +16,46 @@ describe('Public Quiz Server Integration & Security Hardening', () => {
         order: vi.fn().mockImplementation(() => {
           if (table === 'quiz_submissions') {
             return Promise.resolve({
-              data: mockExistingSubmissions,
+              data: mockExistingSubmissions.data,
               error: null
             });
           }
           return Promise.resolve({ data: [], error: null });
         }),
-        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        insert: vi.fn().mockResolvedValue({ error: null }),
-        upsert: vi.fn().mockResolvedValue({ error: null }),
+        maybeSingle: vi.fn().mockImplementation(() => {
+          return Promise.resolve({ data: null, error: null });
+        }),
+        single: vi.fn().mockImplementation(() => {
+          return Promise.resolve({ data: null, error: null });
+        }),
+        insert: vi.fn().mockImplementation(() => {
+          return Promise.resolve({ error: null });
+        }),
+        upsert: vi.fn().mockImplementation(() => {
+          return Promise.resolve({ error: null });
+        }),
       };
       return queryChain;
     })
   };
 
-  beforeEach(() => {
-    mockExistingSubmissions = [];
-    supabaseSpy = vi.spyOn(supabaseServerModule, 'getServerSupabase').mockReturnValue(mockSupabase as any);
-  });
+  return {
+    getServerSupabase: vi.fn(() => mockSupabaseInstance),
+    logAuditEvent: vi.fn(() => Promise.resolve(true)),
+    getAuthoritativeState: vi.fn(() => Promise.resolve(null)),
+    getAuthorizedStateForUser: vi.fn(() => Promise.resolve(null)),
+    saveAuthoritativeState: vi.fn(() => Promise.resolve(true)),
+  };
+});
 
-  afterEach(() => {
+// Import assignmentsService AFTER defining the mock
+import { assignmentsService } from '../server/services/domain/assignmentsService';
+
+describe('Public Quiz Server Integration & Security Hardening', () => {
+
+  beforeEach(() => {
+    mockExistingSubmissions.data = [];
     vi.clearAllMocks();
-    if (supabaseSpy) {
-      supabaseSpy.mockRestore();
-    }
   });
 
   it('1. Valid Quiz: retrieves public quiz by valid share code or ID', async () => {
@@ -117,7 +131,7 @@ describe('Public Quiz Server Integration & Security Hardening', () => {
     };
 
     // Populate mock data to simulate a previous submission 5 seconds ago
-    mockExistingSubmissions = [
+    mockExistingSubmissions.data = [
       { id: 'sub_prev', submitted_at: new Date(Date.now() - 5000).toISOString() }
     ];
 
