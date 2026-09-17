@@ -116,7 +116,7 @@ export function StudentTable({
     <DataTable
       columns={columns}
       data={students}
-      keyExtractor={(student) => student.id || student.name}
+      keyExtractor={(student, idx) => student.id ? `${student.id}-${idx}` : `student-${idx}`}
       emptyState={
         <EmptyState
           title="No students found"

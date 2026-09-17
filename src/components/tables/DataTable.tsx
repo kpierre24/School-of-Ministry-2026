@@ -11,7 +11,7 @@ export interface Column<T> {
 export interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
-  keyExtractor: (item: T) => string;
+  keyExtractor: (item: T, index: number) => string;
   emptyState?: React.ReactNode;
   currentPage?: number;
   totalPages?: number;
@@ -51,8 +51,8 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--md-outline-variant)]">
-            {data.map((item) => (
-              <tr key={keyExtractor(item)} className="transition-colors hover:bg-[var(--md-surface-container-highest)]/40">
+            {data.map((item, index) => (
+              <tr key={keyExtractor(item, index)} className="transition-colors hover:bg-[var(--md-surface-container-highest)]/40">
                 {columns.map((col) => (
                   <td key={col.key} className={`px-4 py-3.5 ${col.className || ''}`}>
                     {col.render ? col.render(item) : (item as any)[col.key]}

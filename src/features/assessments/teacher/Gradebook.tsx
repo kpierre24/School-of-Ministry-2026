@@ -45,13 +45,13 @@ export const Gradebook: React.FC<GradebookProps> = ({
 
       {/* Mobile View: Cards */}
       <div className="grid grid-cols-1 gap-3 sm:hidden">
-        {filteredStudents.map((student) => {
+        {filteredStudents.map((student, idx) => {
           const avgScore = student.avgScore !== null && student.avgScore !== undefined ? Math.round(student.avgScore) : null;
           const status = avgScore !== null && avgScore >= 75 ? 'graded' : 'pending';
 
           return (
             <MobileAssessmentCard
-              key={student.id || student.name}
+              key={student.id ? `${student.id}-${idx}` : `std-card-${idx}`}
               studentName={student.name}
               courseTitle="Class of 2026 • Ministry Core"
               score={avgScore}
@@ -76,14 +76,14 @@ export const Gradebook: React.FC<GradebookProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border)]/60 dark:divide-slate-800/60">
-            {filteredStudents.map((student) => {
+            {filteredStudents.map((student, idx) => {
               const avgScore = student.avgScore !== null && student.avgScore !== undefined ? Math.round(student.avgScore) : null;
               const isHonor = avgScore !== null && avgScore >= 85;
               const isPassing = avgScore !== null && avgScore >= 75;
 
               return (
                 <tr
-                  key={student.id || student.name}
+                  key={student.id ? `${student.id}-${idx}` : `std-row-${idx}`}
                   className="hover:bg-slate-50/80 transition-colors dark:hover:bg-slate-800/40"
                 >
                   <td className="px-5 py-4 font-bold text-[var(--color-text)] dark:text-slate-100">

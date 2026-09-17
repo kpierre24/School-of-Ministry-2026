@@ -174,3 +174,14 @@ export const handleExportPDF = async (
     window.print();
   }
 };
+
+export const exportElementToPDF = async (
+  elementId: string,
+  defaultFileName: string,
+  onFallbackMessage?: (msg: string) => void
+) => {
+  return handleExportPDF(elementId, defaultFileName, {
+    onFallback: onFallbackMessage,
+  });
+};
+

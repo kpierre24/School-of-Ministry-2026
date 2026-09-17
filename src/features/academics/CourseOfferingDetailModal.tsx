@@ -613,12 +613,12 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {filteredStudents.map((st) => {
+                      {filteredStudents.map((st, idx) => {
                         const isAtRisk = st.standing === 'at_risk' || st.attendanceRate < 75;
                         const isHonors = st.standing === 'high_distinction';
 
                         return (
-                          <tr key={st.studentId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          <tr key={st.studentId ? `${st.studentId}-${idx}` : `st-row-${idx}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                             <td className="px-4 py-3">
                               <div className="font-semibold text-slate-900 dark:text-slate-100">
                                 {st.studentName}
@@ -925,8 +925,8 @@ export const CourseOfferingDetailModal: React.FC<CourseOfferingDetailModalProps>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {offering.enrolledStudents.map((st) => (
-                      <tr key={st.studentId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                    {offering.enrolledStudents.map((st, idx) => (
+                      <tr key={st.studentId ? `${st.studentId}-${idx}` : `st-enroll-${idx}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
                           {st.studentName}
                         </td>

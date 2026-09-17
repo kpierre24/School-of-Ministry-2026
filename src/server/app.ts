@@ -91,7 +91,7 @@ export function createApp(): Express {
   app.use("/api/whatsapp", requireAuth, whatsappRouter);
   app.use("/api/github", requireAuth, githubRateLimiter, githubRouter);
   app.use("/api/ai", requireAuth, aiRateLimiter, aiRouter);
-  app.use("/api/drive-proxy", requireAuth, driveProxyRateLimiter, driveProxyRouter);
+  app.use("/api/drive-proxy", driveProxyRateLimiter, driveProxyRouter);
 
   return app;
 }

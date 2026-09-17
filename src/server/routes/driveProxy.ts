@@ -4,9 +4,6 @@ import { requireAuth } from "../middleware/rbac";
 
 export const driveProxyRouter = Router();
 
-// Default-deny at the router level: All drive proxy endpoints require authentication
-driveProxyRouter.use(requireAuth);
-
 /**
  * Proxy to fetch public spreadsheet sheet/tab names and GIDs server-side,
  * completely bypassing browser CORS restrictions on /htmlview.
@@ -104,7 +101,7 @@ driveProxyRouter.get("/spreadsheet/:spreadsheetId/data", async (req, res) => {
   }
 });
 
-driveProxyRouter.get("/stream/:fileId", async (req, res) => {
+driveProxyRouter.get("/stream/:fileId", requireAuth, async (req, res) => {
   const { fileId } = req.params;
   if (!fileId || !/^[a-zA-Z0-9_-]{15,80}$/.test(fileId)) {
     return res.status(400).json({ error: "Invalid Google Drive File ID" });

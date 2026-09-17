@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { logActivity } from '../lib/auditLogger';
+import { parseAndApplyQuizCsv } from '../lib/quizCsvImporter';
 import { 
   FileSpreadsheet, 
   Search, 
@@ -65,14 +66,19 @@ import { isDemoAssignment } from '../data/guards';
 import { generateUUID } from '../lib/idGenerator';
 import { CURRICULUM_CLASS_DAYS, isObsoleteLegacyClassDay } from '../data';
 import { formatGradePercentage } from '../lib/securityHelper';
+import { normalizeStudentName } from '../lib/studentNames';
 
 type StudentScoreRecord = {
   name: string;
-  scoreStr: string;
-  percentage: number | null;
-  attendedSessions: number;
-  totalSessions: number;
-  attendanceRate: number;
+  scoreStr?: string;
+  percentage?: number | null;
+  avgScore?: number | null;
+  attendedSessions?: number;
+  totalSessions?: number;
+  attendanceRate?: number;
+  rate?: number;
+  attended?: number;
+  totalDays?: number;
   attendanceByDay?: Record<string, { present: boolean; timestamp?: string; score?: string }>;
 };
 
@@ -102,11 +108,118 @@ interface ExamsTabProps {
   lastSyncedTime?: string | null;
   recentSheets?: { id: string; title: string; url: string; lastLoaded?: string }[];
   onRemoveRecentSheet?: (id: string, e: React.MouseEvent) => void;
+  records?: any[];
+  setRecords?: React.Dispatch<React.SetStateAction<any[]>>;
+  onImportQuizScores?: (targetClassDay: string, csvText: string) => any;
+  classDays?: { id: string; name?: string }[];
+  effectiveClassDays?: { id: string; name?: string }[];
 }
 
 export const INITIAL_ASSIGNMENTS: CustomAssignment[] = [];
 
 export const INITIAL_SUBMISSIONS: AssignmentSubmission[] = [];
+
+export const getQuizScoreForStudent = (
+  student: StudentScoreRecord,
+  quizSheetTitle: string,
+  allRecords?: any[],
+  classDaysList?: { id: string; name?: string }[]
+): { displayScore: string; hasScore: boolean; numericPct: number | null } => {
+  if (!student) return { displayScore: '—', hasScore: false, numericPct: null };
+
+  const normQuiz = (quizSheetTitle || '').toLowerCase().trim();
+  const strippedQuiz = normQuiz.split('(')[0].trim();
+
+  // 1. Direct match in attendanceByDay
+  let cellData = student.attendanceByDay?.[quizSheetTitle];
+  
+  // 2. Try match by stripped title (without date suffix) or lowercase
+  if (!cellData || !cellData.score) {
+    for (const [k, v] of Object.entries(student.attendanceByDay || {})) {
+      const normK = k.toLowerCase().trim();
+      const strippedK = normK.split('(')[0].trim();
+      if (normK === normQuiz || strippedK === strippedQuiz || (strippedQuiz.length > 3 && normK.includes(strippedQuiz)) || (strippedK.length > 3 && strippedQuiz.includes(strippedK))) {
+        if (v && v.score) {
+          cellData = v;
+          break;
+        }
+      }
+    }
+  }
+
+  // 3. Try matching via classDaysList
+  if ((!cellData || !cellData.score) && classDaysList) {
+    const matchedDay = classDaysList.find(d => 
+      (d.id || '').toLowerCase().trim() === normQuiz || 
+      (d.name && (d.name || '').toLowerCase().trim() === normQuiz) ||
+      (d.id || '').toLowerCase().trim() === strippedQuiz ||
+      (d.name && (d.name || '').toLowerCase().trim().includes(strippedQuiz))
+    );
+    if (matchedDay) {
+      if (student.attendanceByDay?.[matchedDay.id]?.score) {
+        cellData = student.attendanceByDay[matchedDay.id];
+      } else if (matchedDay.name && student.attendanceByDay?.[matchedDay.name]?.score) {
+        cellData = student.attendanceByDay[matchedDay.name];
+      }
+    }
+  }
+
+  // 4. Fallback search directly in records
+  let rawScore = cellData?.score;
+  if (!rawScore && allRecords && allRecords.length > 0) {
+    const normStudent = normalizeStudentName(student.name);
+    const matchedRecord = allRecords.find(r => {
+      if (!r) return false;
+      const rName = normalizeStudentName(r.name || r.studentName || '');
+      if (rName !== normStudent && !rName.includes(normStudent) && !normStudent.includes(rName)) return false;
+      
+      const rDay = (r.classDay || '').toLowerCase().trim();
+      const rDayStripped = rDay.split('(')[0].trim();
+      return rDay === normQuiz || rDayStripped === strippedQuiz || rDay.includes(strippedQuiz) || (strippedQuiz.length > 3 && strippedQuiz.includes(rDayStripped));
+    });
+    if (matchedRecord && matchedRecord.score) {
+      rawScore = matchedRecord.score;
+    }
+  }
+
+  if (!rawScore || rawScore === '—' || String(rawScore).trim() === '') {
+    return { displayScore: '—', hasScore: false, numericPct: null };
+  }
+
+  const str = String(rawScore).trim();
+  let displayScore = str;
+  let numericPct: number | null = null;
+
+  if (str.includes('/')) {
+    const parts = str.split('/');
+    const num = parseFloat(parts[0].trim());
+    const den = parseFloat(parts[1].trim());
+    if (!isNaN(num) && !isNaN(den) && den > 0) {
+      numericPct = Math.round((num / den) * 100);
+      displayScore = `${num}/${den} (${numericPct}%)`;
+    }
+  } else if (str.includes('%')) {
+    const num = parseFloat(str.replace('%', '').trim());
+    if (!isNaN(num)) {
+      numericPct = Math.round(num);
+      displayScore = `${numericPct}%`;
+    }
+  } else {
+    const num = parseFloat(str);
+    if (!isNaN(num)) {
+      if (num <= 15) {
+        const base = num <= 10 ? 10 : (num <= 15 ? 15 : 20);
+        numericPct = Math.round((num / base) * 100);
+        displayScore = `${num}/${base} (${numericPct}%)`;
+      } else {
+        numericPct = Math.round(num);
+        displayScore = `${numericPct}%`;
+      }
+    }
+  }
+
+  return { displayScore, hasScore: true, numericPct };
+};
 
 const parseScorePercentage = (scoreStr?: string): number | null => {
   if (!scoreStr) return null;
@@ -156,7 +269,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   isLoadingSheets,
   lastSyncedTime,
   recentSheets = [],
-  onRemoveRecentSheet
+  onRemoveRecentSheet,
+  records = [],
+  setRecords,
+  onImportQuizScores,
+  classDays = [],
+  effectiveClassDays = [],
 }) => {
   const isStudent = userRole === 'student';
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
@@ -369,6 +487,56 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       return [newAssignmentSub, ...filtered];
     });
 
+    // Automatically sync into attendance records so the gradebook matrix updates in real-time
+    if (setRecords) {
+      const quizTitle = matchingAsg?.title || '';
+      let targetDayKey = quizTitle;
+      const matchedClassDay = (classDays || []).find(d => 
+        (d.id && quizTitle.toLowerCase().includes(d.id.toLowerCase())) ||
+        (d.name && quizTitle.toLowerCase().includes(d.name.toLowerCase()))
+      );
+      if (matchedClassDay) {
+        targetDayKey = matchedClassDay.id;
+      }
+
+      const scoreFormatted = `${submission.score}/${submission.totalPossible} (${submission.percentage}%)`;
+
+      setRecords(prev => {
+        const normStudent = normalizeStudentName(submission.studentName);
+        const next = [...prev];
+        const existingIdx = next.findIndex(r => {
+          if (!r) return false;
+          const rName = normalizeStudentName(r.name || r.studentName || '');
+          const rDay = (r.classDay || '').toLowerCase().trim();
+          const targetDayLower = targetDayKey.toLowerCase().trim();
+          return (rName === normStudent || rName.includes(normStudent) || normStudent.includes(rName)) && 
+            (rDay === targetDayLower || targetDayLower.includes(rDay) || rDay.includes(targetDayLower));
+        });
+
+        if (existingIdx >= 0) {
+          next[existingIdx] = {
+            ...next[existingIdx],
+            present: true,
+            score: scoreFormatted,
+            percentage: submission.percentage,
+            timestamp: nowStr
+          };
+        } else {
+          next.push({
+            id: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+            name: submission.studentName,
+            studentName: submission.studentName,
+            classDay: targetDayKey,
+            present: true,
+            score: scoreFormatted,
+            percentage: submission.percentage,
+            timestamp: nowStr
+          });
+        }
+        return next;
+      });
+    }
+
     logActivity({
       actor: submission.studentName,
       role: 'student',
@@ -525,13 +693,13 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const activeStudentName = studentRecord?.name || currentStudentName || 'Student Candidate';
 
   // Grade Metrics for Quizzes Tab
-  const studentsWithQuiz = students.filter(s => s.percentage !== null);
+  const studentsWithQuiz = students.filter(s => (s.percentage !== null && s.percentage !== undefined) || (s.avgScore !== null && s.avgScore !== undefined));
   const totalEvaluated = studentsWithQuiz.length;
-  const sumScores = studentsWithQuiz.reduce((acc, curr) => acc + (curr.percentage || 0), 0);
+  const sumScores = studentsWithQuiz.reduce((acc, curr) => acc + (curr.percentage ?? curr.avgScore ?? 0), 0);
   const classExamAvg = totalEvaluated > 0 ? Math.round(sumScores / totalEvaluated) : 0;
-  const perfectScores = studentsWithQuiz.filter(s => (s.percentage || 0) >= 100).length;
-  const passedScores = studentsWithQuiz.filter(s => (s.percentage || 0) >= 70 && (s.percentage || 0) < 100).length;
-  const failedScores = studentsWithQuiz.filter(s => (s.percentage || 0) < 70).length;
+  const perfectScores = studentsWithQuiz.filter(s => (s.percentage ?? s.avgScore ?? 0) >= 100).length;
+  const passedScores = studentsWithQuiz.filter(s => (s.percentage ?? s.avgScore ?? 0) >= 70 && (s.percentage ?? s.avgScore ?? 0) < 100).length;
+  const failedScores = studentsWithQuiz.filter(s => (s.percentage ?? s.avgScore ?? 0) < 70).length;
 
   const displayedStudents = useMemo(() => {
     let list = isStudent && studentRecord ? [studentRecord] : students;
@@ -540,11 +708,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       list = list.filter(s => s && s.name && (s?.name || '').toLowerCase().includes(q));
     }
     if (gradeFilter === 'passed') {
-      list = list.filter(s => (s.percentage || 0) >= 70 && (s.percentage || 0) < 100);
+      list = list.filter(s => (s.percentage ?? s.avgScore ?? 0) >= 70 && (s.percentage ?? s.avgScore ?? 0) < 100);
     } else if (gradeFilter === 'perfect') {
-      list = list.filter(s => (s.percentage || 0) >= 100);
+      list = list.filter(s => (s.percentage ?? s.avgScore ?? 0) >= 100);
     } else if (gradeFilter === 'failed') {
-      list = list.filter(s => (s.percentage || 0) < 70);
+      list = list.filter(s => (s.percentage ?? s.avgScore ?? 0) < 70);
     }
 
     return [...list].sort((a, b) => {
@@ -557,10 +725,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         return nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
       }
       if (studentSortOrder === 'score_desc') {
-        return ((b?.percentage ?? -1) - (a?.percentage ?? -1)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        return ((b?.percentage ?? b?.avgScore ?? -1) - (a?.percentage ?? a?.avgScore ?? -1)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
       }
       if (studentSortOrder === 'score_asc') {
-        return ((a?.percentage ?? 101) - (b?.percentage ?? 101)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        return ((a?.percentage ?? a?.avgScore ?? 101) - (b?.percentage ?? b?.avgScore ?? 101)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
       }
       return 0;
     });
@@ -1036,12 +1204,13 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     targets.forEach(s => {
       const studentKey = (s?.name || '').toLowerCase().trim();
       const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-      const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
+      const qPct = s.percentage !== null && s.percentage !== undefined ? Math.round(s.percentage) : (s.avgScore !== null && s.avgScore !== undefined ? Math.round(s.avgScore) : 0);
       const composite = Math.round((qPct + rub.assignment) / 2);
       
       csv += `"${s.name}",`;
       sanitizedQuizSheets.forEach(qs => {
-        csv += `"${s.attendanceByDay?.[qs]?.score || 'N/A'}",`;
+        const scoreInfo = getQuizScoreForStudent(s, qs, records, effectiveClassDays || classDays);
+        csv += `"${scoreInfo.displayScore || 'N/A'}",`;
       });
       customAssignments.forEach(asg => {
         const sub = submissions.find(subItem => 
@@ -1052,7 +1221,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         const scoreVal = sub && sub.score !== undefined ? `${sub.score}/${asg.maxPoints}` : 'N/A';
         csv += `"${scoreVal}",`;
       });
-      csv += `${qPct}%,${getGradeLetter(s.percentage)},${rub.assignment}%,${composite}%\n`;
+      csv += `${qPct}%,${getGradeLetter(s.percentage ?? s.avgScore ?? null)},${rub.assignment}%,${composite}%\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -2444,9 +2613,9 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                   {displayedStudents.map((s, sIdx) => {
                     const studentKey = (s?.name || '').toLowerCase().trim();
                     const rub = rubricScores[studentKey] || { participation: 90, scripture: 95, assignment: 85 };
-                    const qPct = s.percentage !== null ? Math.round(s.percentage) : 0;
+                    const qPct = s.percentage !== null && s.percentage !== undefined ? Math.round(s.percentage) : (s.avgScore !== null && s.avgScore !== undefined ? Math.round(s.avgScore) : 0);
                     const composite = Math.round((qPct + rub.assignment) / 2);
-                    const gradeLetter = getGradeLetter(s.percentage);
+                    const gradeLetter = getGradeLetter(s.percentage ?? s.avgScore ?? null);
 
                     return (
                       <tr key={`student-row-${s.name || sIdx}-${sIdx}`} className="group hover:bg-slate-50/80 transition-colors">
@@ -2456,12 +2625,15 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           </div>
                         </td>
                         {sanitizedQuizSheets.map((qs, qIdx) => {
-                          const rawScore = s.attendanceByDay?.[qs]?.score;
-                          const score = rawScore ? formatGradePercentage(rawScore, rawScore) : '—';
-                          const hasScore = score !== '—';
+                          const { displayScore, hasScore } = getQuizScoreForStudent(s, qs, records, effectiveClassDays || classDays);
                           return (
-                            <td key={`qs-cell-${qs}-${score}-${qIdx}`} className={`p-3 text-center font-mono font-bold text-slate-800 border-b border-slate-200 transition-all duration-300 ${hasScore ? 'animate-grade-pulse' : ''}`}>
-                              {score}
+                            <td 
+                              key={`qs-cell-${qs}-${s.name}-${qIdx}`} 
+                              className={`p-3 text-center font-mono font-bold text-slate-800 border-b border-slate-200 transition-all duration-300 ${
+                                hasScore ? 'text-indigo-900 bg-indigo-50/40 font-extrabold animate-grade-pulse' : 'text-slate-400'
+                              }`}
+                            >
+                              {displayScore}
                             </td>
                           );
                         })}
@@ -2480,7 +2652,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           );
                         })}
                         <td className="p-3 text-center font-mono font-extrabold text-indigo-700 border-b border-slate-200 transition-all duration-300 animate-grade-pulse">
-                          {s.percentage !== null ? `${Math.round(s.percentage)}%` : 'N/A'}
+                          {(s.percentage !== null && s.percentage !== undefined) ? `${Math.round(s.percentage)}%` : (s.avgScore !== null && s.avgScore !== undefined ? `${Math.round(s.avgScore)}%` : 'N/A')}
                         </td>
                         <td className="p-3 text-center border-b border-slate-200">
                           <span className="px-2 py-0.5 rounded font-mono font-black text-[11px] bg-indigo-100 text-indigo-800 transition-all duration-300 inline-block animate-grade-pulse">
@@ -3523,20 +3695,23 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               <button
                 onClick={() => {
                   if (!csvText.trim()) return;
-                  const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean);
-                  if (lines.length < 2) return;
-                  let count = 0;
-                  lines.slice(1).forEach(line => {
-                    const parts = line.split(',');
-                    if (parts.length >= 3) {
-                      const name = parts[2]?.replace(/"/g, '').trim();
-                      const score = parts[1]?.trim();
-                      if (name && score) {
-                        count++;
-                      }
+                  if (onImportQuizScores) {
+                    const res = onImportQuizScores(targetClassDay, csvText);
+                    setCsvImportSuccess(`Successfully imported and evaluated ${res.count} student quiz records for ${res.targetClassDay}!`);
+                  } else {
+                    const res = parseAndApplyQuizCsv(csvText, targetClassDay, records);
+                    if (setRecords) {
+                      setRecords(res.updatedRecords);
+                      localStorage.setItem('attendanceRecords', JSON.stringify(res.updatedRecords));
                     }
+                    setCsvImportSuccess(`Successfully imported and evaluated ${res.count} student quiz records for ${res.targetClassDay}!`);
+                  }
+                  logActivity({
+                    action: 'UPDATE_GRADE',
+                    actionCategory: 'Grade Adjustment',
+                    actionTitle: 'Quiz Scores Evaluated from CSV',
+                    details: `Imported and evaluated quiz CSV scores for ${targetClassDay}`,
                   });
-                  setCsvImportSuccess(`Successfully imported and evaluated ${count} student quiz records for ${targetClassDay}!`);
                   setTimeout(() => {
                     setShowCsvImportModal(false);
                     setCsvImportSuccess(null);

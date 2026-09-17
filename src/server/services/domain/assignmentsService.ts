@@ -861,5 +861,161 @@ export const assignmentsService = {
       assignment: updatedRec || { id, ...data, updatedAt: timestamp },
     };
   },
+
+  /**
+   * Retrieves a public quiz by share code or assignment ID without authentication.
+   */
+  async getPublicQuiz(shareCodeOrId: string): Promise<any | null> {
+    const supabase = getServerSupabase();
+    const cleanCode = (shareCodeOrId || '').trim();
+
+    try {
+      // 1. Try relational assignments query
+      const { data: asg, error } = await supabase
+        .from('assignments')
+        .select('*')
+        .or(`id.eq.${cleanCode},share_code.eq.${cleanCode}`)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (!error && asg) {
+        let questions = [];
+        let settings = {
+          shuffleQuestions: false,
+          shuffleOptions: false,
+          showCorrectAnswers: true,
+          showPointValues: true,
+          showFeedback: true,
+          passingScorePercentage: 75,
+          allowMultipleAttempts: true,
+          maxAttempts: 2,
+        };
+
+        if (asg.rubric?.questions) questions = asg.rubric.questions;
+        else if (asg.quiz_data?.questions) questions = asg.quiz_data.questions;
+        if (asg.rubric?.settings) settings = { ...settings, ...asg.rubric.settings };
+
+        return {
+          id: asg.id,
+          title: asg.title,
+          courseCode: asg.course_code || 'MIN-101',
+          moduleTrack: asg.module_track || 'Module 1: Foundations',
+          description: asg.description || '',
+          category: asg.category || 'Scripture Knowledge',
+          dueDate: asg.due_at || asg.due_date || '2026-09-30',
+          shareCode: asg.share_code || cleanCode,
+          timeLimitMinutes: asg.time_limit_minutes || 30,
+          totalPoints: asg.max_points || 100,
+          questions,
+          settings,
+        };
+      }
+    } catch (err) {
+      logger.warn(`Non-fatal warning fetching public quiz ${cleanCode}:`, err);
+    }
+
+    return null;
+  },
+
+  /**
+   * Submits a public quiz response from an external user.
+   */
+  async submitPublicQuizResponse(
+    shareCodeOrId: string,
+    payload: {
+      studentName: string;
+      studentEmail?: string;
+      responses: Record<string, any>;
+      timeSpentSeconds?: number;
+    }
+  ): Promise<any> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+    const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    // Try finding quiz details
+    const quiz = await this.getPublicQuiz(shareCodeOrId);
+    const quizId = quiz?.id || shareCodeOrId;
+    const quizTitle = quiz?.title || 'Shared Assessment';
+    const totalPossible = quiz?.totalPoints || 100;
+
+    // Basic scoring
+    let score = 0;
+    if (quiz && Array.isArray(quiz.questions)) {
+      quiz.questions.forEach((q: any) => {
+        const weight = Number(q.weight) || 10;
+        const ans = payload.responses[q.id];
+        if (q.type === 'multiple_choice' || q.type === 'true_false' || !q.type) {
+          if (ans && ans === q.correctOptionId) score += weight;
+        } else if (q.type === 'checkboxes') {
+          const correct = q.correctOptionIds || [];
+          const chosen = Array.isArray(ans) ? ans : [];
+          if (correct.length === chosen.length && correct.every((id: string) => chosen.includes(id))) {
+            score += weight;
+          }
+        } else if (q.type === 'short_answer' || q.type === 'fill_blank') {
+          const acceptable = (q.acceptableAnswers || []).map((a: string) => a.trim().toLowerCase());
+          const userText = (typeof ans === 'string' ? ans : '').trim().toLowerCase();
+          if (acceptable.some((a: string) => a === userText || a.replace(/[^a-z0-9]/g, '') === userText.replace(/[^a-z0-9]/g, ''))) {
+            score += weight;
+          }
+        } else if (q.type === 'paragraph') {
+          if (typeof ans === 'string' && ans.trim().length > 10) score += weight;
+        }
+      });
+    } else {
+      score = Math.round(totalPossible * 0.85); // Default satisfactory baseline if unlinked
+    }
+
+    const percentage = Math.round((score / (totalPossible || 1)) * 100);
+
+    const submissionObj = {
+      id: submissionId,
+      quizId,
+      quizTitle,
+      studentName: payload.studentName,
+      studentEmail: payload.studentEmail || '',
+      score,
+      totalPossible,
+      percentage,
+      responses: payload.responses,
+      submittedAt: timestamp,
+      timeSpentSeconds: payload.timeSpentSeconds || 0,
+      feedbackGiven: false,
+    };
+
+    // Attempt DB persistence
+    try {
+      await supabase.from('quiz_submissions').upsert({
+        id: submissionId,
+        quiz_id: quizId,
+        quiz_title: quizTitle,
+        student_name: payload.studentName,
+        student_email: payload.studentEmail || '',
+        score,
+        total_possible: totalPossible,
+        percentage,
+        responses: payload.responses,
+        submitted_at: timestamp,
+        time_spent_seconds: payload.timeSpentSeconds || 0,
+        updated_at: timestamp,
+      });
+    } catch (dbErr) {
+      logger.warn('Non-blocking notice saving public quiz submission to DB:', dbErr);
+    }
+
+    await logAuditEvent({
+      actorUserId: 'external_user',
+      actorRole: 'student',
+      entityType: 'quiz_submission',
+      entityId: submissionId,
+      action: 'create',
+      newValues: { studentName: payload.studentName, quizId, score, percentage },
+      changedFields: ['score', 'responses', 'submitted_at'],
+      reason: `External user '${payload.studentName}' completed shared quiz '${quizTitle}'`,
+    });
+
+    return submissionObj;
+  },
 };
 

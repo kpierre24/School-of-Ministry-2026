@@ -104,10 +104,10 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
   const courseCodes = Array.from(new Set(quizzes.map(q => q.courseCode || 'MIN-101')));
 
   const handleCopyLink = (shareCode: string) => {
-    const url = `${window.location.origin}${window.location.pathname}#quiz/${shareCode}`;
+    const url = `${window.location.origin}${window.location.pathname}?quiz=${shareCode}`;
     navigator.clipboard.writeText(url);
-    setCopiedToast(`Copied direct quiz link! (${shareCode})`);
-    setTimeout(() => setCopiedToast(null), 3000);
+    setCopiedToast(`Copied direct shareable quiz link! Anyone with this link can answer outside the app.`);
+    setTimeout(() => setCopiedToast(null), 3500);
   };
 
   const handleExportCsv = (quiz: QuizAssignment) => {

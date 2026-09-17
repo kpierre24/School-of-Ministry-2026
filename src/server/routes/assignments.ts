@@ -5,7 +5,65 @@ import { logger } from "../../lib/logger";
 
 export const assignmentsRouter = Router();
 
-// Default-deny at the router level: All routes require authentication
+/**
+ * PUBLIC / EXTERNAL QUIZ ROUTES (No authentication required)
+ * Allows external users outside the portal to access a shared quiz and submit their responses.
+ */
+
+/**
+ * GET /api/assignments/public/quiz/:shareCode
+ * Fetches public quiz details by share code or assignment ID.
+ */
+assignmentsRouter.get("/public/quiz/:shareCode", async (req: Request, res: Response) => {
+  try {
+    const { shareCode } = req.params;
+    if (!shareCode) {
+      return res.status(400).json({ error: "Share code parameter is required" });
+    }
+
+    const quiz = await assignmentsService.getPublicQuiz(shareCode);
+    if (!quiz) {
+      return res.status(404).json({ error: "Quiz not found or link is invalid" });
+    }
+
+    return res.status(200).json({ quiz });
+  } catch (err: any) {
+    logger.error(`GET /api/assignments/public/quiz/${req.params.shareCode} error:`, err);
+    return res.status(500).json({ error: "Failed to fetch public quiz" });
+  }
+});
+
+/**
+ * POST /api/assignments/public/quiz/:shareCode/submit
+ * Captures quiz responses submitted by external/public users.
+ */
+assignmentsRouter.post("/public/quiz/:shareCode/submit", async (req: Request, res: Response) => {
+  try {
+    const { shareCode } = req.params;
+    const { studentName, studentEmail, responses, timeSpentSeconds, quizId } = req.body || {};
+
+    if (!studentName || typeof studentName !== "string" || !studentName.trim()) {
+      return res.status(400).json({ error: "Student Name is required to submit this assessment." });
+    }
+
+    const submission = await assignmentsService.submitPublicQuizResponse(
+      shareCode || quizId,
+      {
+        studentName: studentName.trim(),
+        studentEmail: studentEmail?.trim() || "",
+        responses: responses || {},
+        timeSpentSeconds: Number(timeSpentSeconds) || 0,
+      }
+    );
+
+    return res.status(201).json({ submission, success: true });
+  } catch (err: any) {
+    logger.error(`POST /api/assignments/public/quiz/${req.params.shareCode}/submit error:`, err);
+    return res.status(500).json({ error: err?.message || "Failed to submit public quiz response" });
+  }
+});
+
+// Default-deny at the router level: All routes below require authentication
 assignmentsRouter.use(requireAuth);
 
 /**

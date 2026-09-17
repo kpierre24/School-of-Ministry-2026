@@ -120,3 +120,5 @@ export async function renderPdfPageToCanvas(
     return null;
   }
 }
+
+export { exportElementToPDF } from './pdfExporter';

@@ -146,7 +146,7 @@ export const KNOWN_CURRICULUM_SHEETS: Array<{ name: string; gid: string }> = [
 export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
   let sheets: Array<{ name: string; gid?: string }> = [];
 
-  // 1. Try fetching dynamically via server proxy (bypasses browser CORS)
+  // 1. Try fetching dynamically via server proxy (bypasses browser CORS completely)
   try {
     const proxyResp = await fetch(`/api/drive-proxy/spreadsheet/${spreadsheetId}/sheets`);
     if (proxyResp.ok) {
@@ -156,7 +156,7 @@ export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
       }
     }
   } catch (err) {
-    logger.warn("Server proxy sheet list fetch failed or unavailable:", err);
+    logger.warn("Server proxy sheet list fetch failed:", err);
   }
 
   // 2. Try fetching public htmlview directly if proxy was not reachable
@@ -181,41 +181,41 @@ export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
     sheets = [...KNOWN_CURRICULUM_SHEETS];
   }
 
-  const valueRanges: any[] = [];
-
-  for (const sheetItem of sheets) {
+  const fetchSheetData = async (sheetItem: { name: string; gid?: string }) => {
     try {
-      let gvizUrl = "";
-      if (sheetItem.gid) {
-        gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${sheetItem.gid}`;
-      } else if (sheetItem.name) {
-        gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetItem.name)}`;
-      } else {
-        gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
-      }
-
       let data: any = null;
+
+      // 1. Try server proxy first (same origin, reliable)
       try {
-        const gvizResp = await fetch(gvizUrl);
-        if (gvizResp.ok) {
-          const gvizText = await gvizResp.text();
-          const startIdx = gvizText.indexOf('{');
-          const endIdx = gvizText.lastIndexOf('}');
-          if (startIdx !== -1 && endIdx !== -1) {
-            data = JSON.parse(gvizText.substring(startIdx, endIdx + 1));
-          }
+        const proxyParam = sheetItem.gid ? `?gid=${sheetItem.gid}` : `?sheet=${encodeURIComponent(sheetItem.name)}`;
+        const proxyRes = await fetch(`/api/drive-proxy/spreadsheet/${spreadsheetId}/data${proxyParam}`);
+        if (proxyRes.ok) {
+          data = await proxyRes.json();
         }
-      } catch (err) {
-        logger.warn(`Direct GViz fetch failed for ${sheetItem.name}, attempting proxy:`, err);
+      } catch (proxyErr) {
+        logger.warn(`Proxy data fetch failed for ${sheetItem.name}:`, proxyErr);
       }
 
-      // If direct GViz failed, attempt backend data proxy
+      // 2. Direct GViz fallback if proxy failed
       if (!data) {
+        let gvizUrl = "";
+        if (sheetItem.gid) {
+          gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${sheetItem.gid}`;
+        } else if (sheetItem.name) {
+          gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetItem.name)}`;
+        } else {
+          gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
+        }
+
         try {
-          const proxyParam = sheetItem.gid ? `?gid=${sheetItem.gid}` : `?sheet=${encodeURIComponent(sheetItem.name)}`;
-          const proxyRes = await fetch(`/api/drive-proxy/spreadsheet/${spreadsheetId}/data${proxyParam}`);
-          if (proxyRes.ok) {
-            data = await proxyRes.json();
+          const gvizResp = await fetch(gvizUrl);
+          if (gvizResp.ok) {
+            const gvizText = await gvizResp.text();
+            const startIdx = gvizText.indexOf('{');
+            const endIdx = gvizText.lastIndexOf('}');
+            if (startIdx !== -1 && endIdx !== -1) {
+              data = JSON.parse(gvizText.substring(startIdx, endIdx + 1));
+            }
           }
         } catch {}
       }
@@ -224,7 +224,7 @@ export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
         const cols = data.table.cols || [];
         const rows = data.table.rows || [];
 
-        const headers = cols.map((c: any) => c ? (c.label || c.id || '') : '');
+        let headers = cols.map((c: any) => c ? (c.label || c.id || '') : '');
         const parsedRows = rows.map((r: any) => {
           if (!r || !r.c) return [];
           return r.c.map((cell: any) => {
@@ -246,22 +246,38 @@ export const fetchPublicSpreadsheetData = async (spreadsheetId: string) => {
           });
         });
 
-        valueRanges.push({
+        // If headers from cols are missing or just column letters (A, B, C), and rows exist, check row 0
+        const isDefaultLetterHeaders = headers.every((h: string) => !h || /^[A-Z]+$/.test(h.trim()));
+        let finalValues = [headers, ...parsedRows];
+        if (isDefaultLetterHeaders && parsedRows.length > 0) {
+          const firstRowLooksLikeHeader = parsedRows[0].some((c: string) => 
+            typeof c === 'string' && (c.toLowerCase().includes('name') || c.toLowerCase().includes('score') || c.toLowerCase().includes('timestamp'))
+          );
+          if (firstRowLooksLikeHeader) {
+            finalValues = parsedRows;
+          }
+        }
+
+        return {
           range: sheetItem.name || 'Sheet1',
-          values: [headers, ...parsedRows]
-        });
+          values: finalValues
+        };
       }
     } catch (err) {
       logger.warn(`Failed to fetch public sheet values for ${sheetItem.name}:`, err);
     }
-  }
+    return null;
+  };
+
+  const results = await Promise.all(sheets.map(sheetItem => fetchSheetData(sheetItem)));
+  const valueRanges = results.filter(Boolean);
 
   if (valueRanges.length === 0) {
     throw new Error("No data could be retrieved from the public spreadsheet. Ensure 'Anyone with the link' view access is active.");
   }
 
   return {
-    properties: { title: 'Public Google Sheet Quiz Data' },
+    properties: { title: 'HTEIM Curriculum Master Sheet' },
     valueRanges
   };
 };

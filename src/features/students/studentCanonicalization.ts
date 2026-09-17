@@ -198,6 +198,26 @@ export const MANUAL_ALIASES: Record<string, string> = {
   'beverly selkridge': 'Beverly Selkridge',
   'vikash ramnarace': 'Vikash Ramnarace',
   'francisca swift': 'Francisca Swift',
+  'jessica fiddler': 'Jessica Fiddler',
+  'tricia worrell': 'Tricia Worrell',
+  'jovanka williams': 'Jovanka Williams',
+  'felicia williams': 'Felicia Williams',
+  'candy webb': 'Candy Webb',
+  'claudia cashe': 'Claudia Cashe',
+  'kristy alexander': 'Kristy Alexander',
+  'jerzelle whiteman': 'Jerzelle Whiteman',
+  'catherine vidale': 'Catherine Vidale',
+  'natalie webb lewis': 'Natalie Webb Lewis',
+  'leslie inniss': 'Leslie Inniss',
+  'josanne pompey': 'Josanne Pompey',
+  'lynton pompey': 'Lynton Pompey',
+  'atiya williams': 'Atiya Williams',
+  'zahra andrews': 'Zahra Andrews',
+  'kadijah daniel': 'Kadijah Daniel',
+  'stacey waithe': 'Stacey Waithe',
+  'javier marks': 'Javier Marks',
+  'gale': 'Gale Agrant',
+  'gillian': 'Gillian Selkridge',
 };
 
 export const normalizeStudentName = (str: string): string =>
@@ -325,7 +345,11 @@ export const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> =>
     }
 
     group.forEach((name: string) => {
-      if (name) canonicalNames.set((name || '').trim(), canonical);
+      if (name) {
+        canonicalNames.set((name || '').trim(), canonical);
+        canonicalNames.set(normalizeStudentName(name), canonical);
+        canonicalNames.set(name.toLowerCase().trim(), canonical);
+      }
     });
   });
 

@@ -149,15 +149,36 @@ export const stateHydrationService = {
         financeService.getTransactions({}, user),
       ]);
 
+      // Safely extract domain data with fallbacks
+      const studentsList = studentsRes?.students || [];
+      const recordsList = attendanceRes?.records || [];
+      const classDaysList = (attendanceRes?.classDays && attendanceRes.classDays.length > 0)
+        ? attendanceRes.classDays
+        : CURRICULUM_CLASS_DAYS;
+      const excusedAbsences = attendanceRes?.excusedAbsences || {};
+      const academicYears = academicsRes?.academicYears || [];
+      const terms = academicsRes?.terms || [];
+      const activeTermId = academicsRes?.activeTermId || null;
+      const masterCourses = academicsRes?.masterCourses || [];
+      const courses = coursesRes?.courses || [];
+      const courseOfferings = academicsRes?.courseOfferings || [];
+      const customAssignments = assignmentsRes?.assignments || [];
+      const submissions = submissionsRes?.submissions || [];
+      const rubricScores = submissionsRes?.rubricScores || {};
+      const invoicesList = invoicesRes?.invoices || [];
+      const transactionsList = transactionsRes?.transactions || [];
+
       // Build dictionary structures expected by frontend views for backward compatibility
       const studentLevels: Record<string, string> = {};
       const studentPhotos: Record<string, string> = {};
       const studentNotes: Record<string, string> = {};
 
-      studentsRes.students.forEach((s) => {
-        studentLevels[s.name] = s.level;
-        if (s.photoUrl) studentPhotos[s.name.toLowerCase().trim()] = s.photoUrl;
-        if (s.note) studentNotes[s.name] = s.note;
+      studentsList.forEach((s) => {
+        if (s?.name) {
+          studentLevels[s.name] = s.level || 'Level 1 Foundation';
+          if (s.photoUrl) studentPhotos[s.name.toLowerCase().trim()] = s.photoUrl;
+          if (s.note) studentNotes[s.name] = s.note;
+        }
       });
 
       // Assemble unified authoritative state composed dynamically from relational tables
@@ -168,31 +189,31 @@ export const stateHydrationService = {
         updatedAt: new Date().toISOString(),
 
         // Academic Structure
-        academicYears: academicsRes.academicYears,
-        terms: academicsRes.terms,
-        activeTermId: academicsRes.activeTermId,
-        masterCourses: academicsRes.masterCourses,
-        courses: coursesRes.courses,
-        courseOfferings: academicsRes.courseOfferings,
+        academicYears,
+        terms,
+        activeTermId,
+        masterCourses,
+        courses,
+        courseOfferings,
 
         // Student & Attendance Domain
-        students: studentsRes.students,
+        students: studentsList,
         studentLevels,
         studentPhotos,
         studentNotes,
-        records: attendanceRes.records,
-        classDays: attendanceRes.classDays.length > 0 ? attendanceRes.classDays : CURRICULUM_CLASS_DAYS,
-        excusedAbsences: attendanceRes.excusedAbsences,
+        records: recordsList,
+        classDays: classDaysList,
+        excusedAbsences,
 
         // Academic Assignments & Grades
-        customAssignments: assignmentsRes.assignments,
-        submissions: submissionsRes.submissions,
-        rubricScores: submissionsRes.rubricScores,
+        customAssignments,
+        submissions,
+        rubricScores,
 
         // Financial Domain
-        invoices: invoicesRes.invoices,
-        transactions: transactionsRes.transactions,
-        payments: transactionsRes.transactions,
+        invoices: invoicesList,
+        transactions: transactionsList,
+        payments: transactionsList,
         receipts: [],
         adjustments: [],
 

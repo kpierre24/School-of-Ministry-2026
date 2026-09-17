@@ -27,7 +27,7 @@ import { DEFAULT_FACULTY_TEACHERS } from '../components/HomeTab';
 import { DEFAULT_PRESET_MEDIA } from '../components/ClassroomMediaPlayer';
 import { CURRICULUM_CLASS_DAYS, MASTER_ENROLLED_STUDENTS, RAW_CURRICULUM_RECORDS, isObsoleteLegacyClassDay } from '../data';
 import { DEFAULT_QUIZ_TEMPLATES } from '../data/quizTemplates';
-import { MANUAL_ALIASES, EXCLUDED_STUDENTS, isExcludedStudent, getCanonicalNamesMap } from '../features/students/studentCanonicalization';
+import { MANUAL_ALIASES, EXCLUDED_STUDENTS, isExcludedStudent, getCanonicalNamesMap, normalizeStudentName } from '../features/students/studentCanonicalization';
 import { loadAuthoritativeState as loadFromSupabase, saveAuthoritativeState as saveToSupabase } from '../services/dataSyncService';
 import { supabase, ensureSupabaseStorageUrl, syncLibraryFromSupabaseBucket, syncFacultyImagesToSupabase, syncStudentPhotosToSupabase } from '../lib/supabaseClient';
 import { updatePasswordInSupabase } from '../lib/supabaseAuth';
@@ -40,8 +40,12 @@ import { logActivity } from '../lib/auditLogger';
 import { trackUxEvent } from '../lib/uxTelemetry';
 import { usePWAInstall } from '../lib/pwa';
 import { getTabFromLocation } from './navigation';
-import { exportElementToPDF } from '../lib/pdfUtils';
+import { exportElementToPDF } from '../lib/pdfExporter';
 import { ThemeMode } from '../components/SettingsModal';
+import { parseAndApplyQuizCsv } from '../lib/quizCsvImporter';
+import { useGoogleSheetsSync } from '../hooks/useGoogleSheetsSync';
+import { portalApi } from '../services/api/portalApiClient';
+import { QuizAssignment, QuizSubmission } from '../types';
 
 export type MergeConflict = {
   studentName: string;
@@ -107,7 +111,6 @@ export function usePortalState() {
   const [showResetPasswordModal, setShowResetPasswordModal] = useState<boolean>(false);
   const [resetTargetEmail, setResetTargetEmail] = useState<string>('');
   const [isResetFromEmailLink, setIsResetFromEmailLink] = useState<boolean>(false);
-  const [pendingSyncData, setPendingSyncData] = useState<any>(null);
   const [showRoleMenu, setShowRoleMenu] = useState<boolean>(false);
   const [showToolsMenu, setShowToolsMenu] = useState<boolean>(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState<boolean>(false);
@@ -234,13 +237,6 @@ export function usePortalState() {
     setTimeout(() => setSyncedBannerMessage(null), 3500);
   };
 
-  const [sheetUrl, setSheetUrl] = useState(() => {
-    const saved = localStorage.getItem('sheetUrl');
-    if (!saved || saved.includes('gid=283667804')) {
-      return 'https://docs.google.com/spreadsheets/d/1k9Vn2-ZkHtePYeQO0mQstzesCW4-UJLAELoFCVuVfEI/edit?gid=614888378#gid=614888378';
-    }
-    return saved;
-  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'info' | 'warning' | 'error'; title: string; message: string }>>([]);
@@ -469,16 +465,6 @@ export function usePortalState() {
     localStorage.setItem('deletedClassDayIds', JSON.stringify(deletedClassDayIds));
   }, [deletedClassDayIds]);
 
-  const [dataSource, setDataSource] = useState<'demo' | 'sheets' | null>(() => {
-    return (localStorage.getItem('dataSource') as any) || null;
-  });
-
-  const [sheetMergePolicy, setSheetMergePolicy] = useState<'sheets' | 'manual' | 'prompt'>(() => {
-    return (localStorage.getItem('hteim_sheet_merge_policy') as any) || 'manual';
-  });
-
-  const [pendingConflicts, setPendingConflicts] = useState<MergeConflict[]>([]);
-
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'at_risk' | 'moderate' | 'perfect' | 'fifty_percent' | 'unpaid' | 'honor_roll'>('all');
@@ -560,6 +546,48 @@ export function usePortalState() {
     }
     return cohorts.find(c => c.id === activeCohortId) || currentPrimary;
   }, [cohorts, activeCohortId, appUser?.role]);
+
+  const sheetsSync = useGoogleSheetsSync({
+    activeCohort,
+    cohorts,
+    token,
+    records,
+    setRecords,
+    classDays,
+    setClassDays,
+    deletedClassDayIds,
+    setError: (err) => {
+      setError(err);
+      if (err) showToast('error', 'Sheets Sync', err);
+    },
+    setIsLoading,
+    isLoading,
+    appUser,
+  });
+
+  const {
+    sheetUrl,
+    setSheetUrl,
+    recentSheets,
+    setRecentSheets,
+    autoSyncInterval,
+    setAutoSyncInterval,
+    syncOnTabFocus,
+    setSyncOnTabFocus,
+    lastSyncedTime,
+    setLastSyncedTime,
+    dataSource,
+    setDataSource,
+    sheetMergePolicy,
+    setSheetMergePolicy,
+    pendingConflicts,
+    setPendingConflicts,
+    pendingSyncData,
+    setPendingSyncData,
+    handleLoadSheets,
+    handleResolveConflicts,
+    handleRemoveRecentSheet,
+  } = sheetsSync;
 
   const pwaHook = usePWAInstall();
 
@@ -956,22 +984,6 @@ export function usePortalState() {
     return saved ? parseInt(saved, 10) : 80;
   });
 
-  const [recentSheets, setRecentSheets] = useState<RecentSheet[]>(() => {
-    const saved = localStorage.getItem('recentSheets');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [autoSyncInterval, setAutoSyncInterval] = useState<number>(() => {
-    const saved = localStorage.getItem('autoSyncInterval');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-
-  const [syncOnTabFocus, setSyncOnTabFocus] = useState<boolean>(() => {
-    const saved = localStorage.getItem('syncOnTabFocus');
-    return saved ? JSON.parse(saved) : true;
-  });
-
-  const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
   const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
@@ -1229,72 +1241,283 @@ export function usePortalState() {
     }
   };
 
+  // Shared Public Quiz detection & response handler
+  const [activePublicQuiz, setActivePublicQuiz] = useState<QuizAssignment | null>(null);
+  const [isLoadingPublicQuiz, setIsLoadingPublicQuiz] = useState<boolean>(false);
+
+  useEffect(() => {
+    const getQuizShareCodeFromUrl = (): string | null => {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const qParam = searchParams.get('quiz') || searchParams.get('shareCode') || searchParams.get('quizId') || searchParams.get('q');
+        if (qParam) return qParam.trim();
+
+        const hash = window.location.hash || '';
+        if (hash.startsWith('#quiz/')) return hash.replace('#quiz/', '').trim();
+        if (hash.startsWith('#/quiz/')) return hash.replace('#/quiz/', '').trim();
+        if (hash.includes('quiz=')) {
+          const parts = hash.split('?');
+          if (parts.length > 1) {
+            const hashParams = new URLSearchParams(parts[1]);
+            const hVal = hashParams.get('quiz') || hashParams.get('shareCode');
+            if (hVal) return hVal.trim();
+          }
+        }
+      } catch {}
+      return null;
+    };
+
+    const code = getQuizShareCodeFromUrl();
+    if (!code) {
+      return;
+    }
+
+    const cleanCode = code.toLowerCase().trim();
+    const allQuizzes = [
+      ...(customAssignments || []).map(a => a.quizData!).filter(Boolean),
+      ...DEFAULT_QUIZ_TEMPLATES
+    ];
+
+    const matched = allQuizzes.find(
+      q => (q.shareCode && q.shareCode.toLowerCase().trim() === cleanCode) ||
+           (q.id && q.id.toLowerCase().trim() === cleanCode) ||
+           (`qz_${q.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}` === cleanCode)
+    );
+
+    if (matched) {
+      setActivePublicQuiz(matched);
+    } else {
+      setIsLoadingPublicQuiz(true);
+      portalApi.getPublicQuiz(code)
+        .then(res => {
+          if (res?.quiz) {
+            setActivePublicQuiz(res.quiz);
+          } else if (DEFAULT_QUIZ_TEMPLATES.length > 0) {
+            setActivePublicQuiz(DEFAULT_QUIZ_TEMPLATES[0]);
+          }
+        })
+        .catch(() => {
+          if (DEFAULT_QUIZ_TEMPLATES.length > 0) {
+            setActivePublicQuiz(DEFAULT_QUIZ_TEMPLATES[0]);
+          }
+        })
+        .finally(() => setIsLoadingPublicQuiz(false));
+    }
+  }, [customAssignments]);
+
+  const handleClosePublicQuiz = () => {
+    setActivePublicQuiz(null);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('quiz');
+      url.searchParams.delete('shareCode');
+      url.searchParams.delete('quizId');
+      url.searchParams.delete('q');
+      if (url.hash.startsWith('#quiz')) url.hash = '';
+      window.history.replaceState({}, document.title, url.toString());
+    } catch {}
+  };
+
+  const handlePublicQuizSubmit = async (submission: QuizSubmission) => {
+    const adaptedSub: AssignmentSubmission = {
+      id: submission.id,
+      assignmentId: submission.quizId,
+      studentName: submission.studentName,
+      submittedAt: submission.submittedAt,
+      score: submission.score,
+      maxScore: submission.totalPossible,
+      percentage: submission.percentage,
+      status: submission.percentage >= 75 ? 'Graded' : 'Submitted',
+      updatedAt: submission.submittedAt,
+      timeSpentSeconds: submission.timeSpentSeconds,
+      quizAnswers: submission.responses,
+    } as any;
+
+    setSubmissions(prev => {
+      const filtered = prev.filter(s => s.id !== submission.id);
+      return [adaptedSub, ...filtered];
+    });
+
+    try {
+      await portalApi.submitPublicQuizResponse(
+        submission.quizId,
+        {
+          studentName: submission.studentName,
+          studentEmail: submission.studentEmail,
+          responses: submission.responses,
+          timeSpentSeconds: submission.timeSpentSeconds,
+          quizId: submission.quizId
+        }
+      );
+      showToast('success', 'Quiz Response Recorded', 'Your submission has been captured in HTEIM School of Ministry.');
+    } catch (err: any) {
+      console.warn('Public quiz response submission server notice:', err);
+    }
+  };
+
   // Helper values for students & effective class days
   const effectiveClassDays = useMemo(() => {
     return classDays.filter(d => !deletedClassDayIds.includes(d.id));
   }, [classDays, deletedClassDayIds]);
 
   const uniqueStudents = useMemo(() => {
-    const rawNames = MASTER_ENROLLED_STUDENTS;
-    const canonicalMap = getCanonicalNamesMap(rawNames);
-    const namesSet = new Set<string>();
+    const allRawNames = [
+      ...MASTER_ENROLLED_STUDENTS,
+      ...records.map(r => r.name || r.studentName || '').filter(Boolean)
+    ];
+    const canonicalMap = getCanonicalNamesMap(allRawNames);
 
+    const resolveCanonical = (rawName: string): string => {
+      if (!rawName) return '';
+      const norm = normalizeStudentName(rawName);
+      if (MANUAL_ALIASES[norm]) return MANUAL_ALIASES[norm];
+      if (canonicalMap.has(norm)) return canonicalMap.get(norm)!;
+      if (canonicalMap.has(rawName.trim())) return canonicalMap.get(rawName.trim())!;
+      const masterMatch = MASTER_ENROLLED_STUDENTS.find(m => normalizeStudentName(m) === norm);
+      if (masterMatch) return masterMatch;
+      return rawName.trim();
+    };
+
+    // Use a Map keyed by normalized name to guarantee exactly one entry per student
+    const studentNameMap = new Map<string, string>();
+
+    // 1. Authoritative enrolled students
+    MASTER_ENROLLED_STUDENTS.forEach(name => {
+      if (!name || isExcludedStudent(name)) return;
+      const canonical = resolveCanonical(name);
+      if (!isExcludedStudent(canonical)) {
+        const key = normalizeStudentName(canonical);
+        studentNameMap.set(key, canonical);
+      }
+    });
+
+    // 2. Extra valid students from records
     records.forEach(r => {
-      if (r && r.name && !isExcludedStudent(r.name)) {
-        const lower = (r.name || '').toLowerCase().trim();
-        const canon = MANUAL_ALIASES[lower] || canonicalMap.get(r.name.trim()) || r.name;
-        if (!isExcludedStudent(canon)) {
-          namesSet.add(canon);
+      const raw = r.name || r.studentName;
+      if (!raw || isExcludedStudent(raw)) return;
+      const canonical = resolveCanonical(raw);
+      if (!isExcludedStudent(canonical)) {
+        const key = normalizeStudentName(canonical);
+        if (!studentNameMap.has(key)) {
+          studentNameMap.set(key, canonical);
         }
       }
     });
 
-    MASTER_ENROLLED_STUDENTS.forEach(n => {
-      if (n && !isExcludedStudent(n)) {
-        const lower = (n || '').toLowerCase().trim();
-        const canon = MANUAL_ALIASES[lower] || canonicalMap.get(n.trim()) || n;
-        if (!isExcludedStudent(canon)) {
-          namesSet.add(canon);
-        }
-      }
-    });
+    const seenIds = new Set<string>();
 
-    const studentList: StudentSummary[] = Array.from(namesSet)
-      .filter(name => !deletedStudentNames.some(d => (d || '').toLowerCase().trim() === (name || '').toLowerCase().trim()))
-      .map(name => {
+    const studentList: StudentSummary[] = Array.from(studentNameMap.values())
+      .filter(name => !deletedStudentNames.some(d => normalizeStudentName(d) === normalizeStudentName(name)))
+      .map((name, idx) => {
+        const studentNorm = normalizeStudentName(name);
         const studentRecords = records.filter(r => {
-          const rLower = (r.name || '').toLowerCase().trim();
-          const rCanon = MANUAL_ALIASES[rLower] || canonicalMap.get((r.name || '').trim()) || r.name;
-          return (rCanon || '').toLowerCase().trim() === (name || '').toLowerCase().trim();
+          const rRaw = r.name || r.studentName || '';
+          const rCanon = resolveCanonical(rRaw);
+          return normalizeStudentName(rCanon) === studentNorm || normalizeStudentName(rRaw) === studentNorm;
         });
 
         let attended = 0;
         let total = 0;
+        let totalScorePct = 0;
+        let scoredLessons = 0;
         const attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }> = {};
 
         effectiveClassDays.forEach(day => {
-          const rec = studentRecords.find(r => r.classDay === day.id);
+          const normDayId = (day.id || '').toLowerCase().trim();
+          const normDayName = (day.name || '').toLowerCase().trim();
+          const strippedDayId = normDayId.split('(')[0].trim();
+          const strippedDayName = normDayName.split('(')[0].trim();
+
+          const rec = studentRecords.find(r => {
+            if (!r || !r.classDay) return false;
+            const rDay = r.classDay.toLowerCase().trim();
+            const rDayStripped = rDay.split('(')[0].trim();
+            return (
+              rDay === normDayId ||
+              rDay === normDayName ||
+              rDayStripped === strippedDayId ||
+              rDayStripped === strippedDayName ||
+              (strippedDayId && rDay.includes(strippedDayId)) ||
+              (strippedDayName && rDay.includes(strippedDayName)) ||
+              (rDayStripped && (normDayId.includes(rDayStripped) || normDayName.includes(rDayStripped)))
+            );
+          });
+
           if (rec) {
-            const isPresent = (rec.status || '').toLowerCase() === 'present';
-            attendanceByDay[day.id] = { present: isPresent, score: rec.score };
+            const isPresent = rec.present === true || (rec.status || '').toLowerCase() === 'present';
+            const dayEntry = { present: isPresent, score: rec.score, timestamp: rec.timestamp };
+            
+            attendanceByDay[day.id] = dayEntry;
+            if (day.name) attendanceByDay[day.name] = dayEntry;
+            attendanceByDay[normDayId] = dayEntry;
+            if (normDayName) attendanceByDay[normDayName] = dayEntry;
+            if (strippedDayId) attendanceByDay[strippedDayId] = dayEntry;
+            if (strippedDayName) attendanceByDay[strippedDayName] = dayEntry;
+
             if (isPresent) attended++;
+
+            if (rec.score) {
+              const str = String(rec.score).trim();
+              let pct: number | null = null;
+              if (str.includes('/')) {
+                const parts = str.split('/');
+                const num = parseFloat(parts[0]);
+                const den = parseFloat(parts[1]);
+                if (!isNaN(num) && !isNaN(den) && den > 0) pct = Math.round((num / den) * 100);
+              } else if (str.includes('%')) {
+                const num = parseFloat(str.replace('%', ''));
+                if (!isNaN(num)) pct = Math.round(num);
+              } else {
+                const num = parseFloat(str);
+                if (!isNaN(num)) {
+                  if (num <= 15) {
+                    const base = num <= 10 ? 10 : (num <= 15 ? 15 : 20);
+                    pct = Math.round((num / base) * 100);
+                  } else if (num <= 100) {
+                    pct = Math.round(num);
+                  }
+                }
+              }
+              if (pct !== null) {
+                totalScorePct += pct;
+                scoredLessons++;
+              }
+            }
           } else {
-            attendanceByDay[day.id] = { present: false };
+            const absentEntry = { present: false };
+            attendanceByDay[day.id] = absentEntry;
+            if (day.name) attendanceByDay[day.name] = absentEntry;
+            attendanceByDay[normDayId] = absentEntry;
+            if (normDayName) attendanceByDay[normDayName] = absentEntry;
           }
           total++;
         });
 
         const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
         const levelId = studentLevels[name] || getDefaultLevelForStudent(name);
+        const avgScore = scoredLessons > 0 ? Math.round(totalScorePct / scoredLessons) : (attended > 0 ? rate : null);
+        const percentage = avgScore;
+        const scoreStr = avgScore !== null ? `${avgScore}%` : '—';
+
+        let id = `std-${studentNorm.replace(/[^a-z0-9]+/g, '-')}`;
+        if (seenIds.has(id)) {
+          id = `${id}-${idx}`;
+        }
+        seenIds.add(id);
 
         return {
-          id: `std-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          id,
           name,
           attended,
           totalDays: total,
           rate,
+          attendanceRate: rate,
+          attendedSessions: attended,
+          totalSessions: total,
           attendanceByDay,
-          avgScore: rate, // default score representation
+          avgScore,
+          percentage,
+          scoreStr,
           levelId,
         };
       });
@@ -1305,7 +1528,10 @@ export function usePortalState() {
   const classDayStats = useMemo(() => {
     const stats: Record<string, { count: number; percentage: number }> = {};
     effectiveClassDays.forEach(day => {
-      const dayRecs = records.filter(r => r.classDay === day.id && (r.status || '').toLowerCase() === 'present');
+      const dayRecs = records.filter(r => 
+        (r.classDay === day.id || r.classDay === day.name || (day.name && r.classDay && r.classDay.toLowerCase().trim() === day.name.toLowerCase().trim())) && 
+        (r.present === true || (r.status || '').toLowerCase() === 'present')
+      );
       const totalStds = uniqueStudents.length || 1;
       stats[day.id] = { count: dayRecs.length, percentage: Math.round((dayRecs.length / totalStds) * 100) };
     });
@@ -1553,6 +1779,7 @@ export function usePortalState() {
     handleAppLogout,
     showOutstandingPaymentBanner,
     setShowOutstandingPaymentBanner,
+    pendingSyncData,
     setPendingSyncData,
     studentPaymentSummary,
     sheetUrl,
@@ -1711,6 +1938,7 @@ export function usePortalState() {
     syncOnTabFocus,
     setSyncOnTabFocus,
     lastSyncedTime,
+    setLastSyncedTime,
     isCloudSyncing,
     cloudSyncError,
     supabaseTableMissing,
@@ -1739,6 +1967,134 @@ export function usePortalState() {
     },
     handleAssignStudentCohort: (studentName: string, cohortId: string) => {
       showToast('success', 'Cohort Assigned', `${studentName} assigned to cohort ${cohortId}`);
+    },
+    handleQuickRoleSwitch: (role: UserRole | string, customName?: string, studentIdChoice?: string) => {
+      let newUser: AppUser;
+      const cleanRole = (role || 'student') as UserRole;
+
+      if (cleanRole === 'super_admin') {
+        newUser = {
+          id: 'u-super-admin',
+          username: 'superadmin',
+          name: customName || 'Apostle Kendell Pierre',
+          role: 'super_admin',
+          email: 'kpierre24@gmail.com'
+        };
+      } else if (cleanRole === 'admin') {
+        newUser = {
+          id: 'u-admin-kpierre',
+          username: 'admin',
+          name: customName || 'Kendell Pierre',
+          role: 'admin',
+          email: 'kpierre24@gmail.com'
+        };
+      } else if (cleanRole === 'registrar') {
+        newUser = {
+          id: 'u-registrar',
+          username: 'registrar',
+          name: customName || 'Dr. Evelyn Registrar',
+          role: 'registrar',
+          email: 'registrar@hteim.edu'
+        };
+      } else if (cleanRole === 'lecturer' || cleanRole === 'teacher') {
+        newUser = {
+          id: 'u-lecturer',
+          username: 'lecturer',
+          name: customName || 'Rev. Dr. Matthew Faculty',
+          role: 'lecturer',
+          email: 'lecturer@hteim.edu',
+          assignedCourses: ['SOM-101', 'SOM-102']
+        };
+      } else if (cleanRole === 'finance_officer') {
+        newUser = {
+          id: 'u-finance',
+          username: 'finance',
+          name: customName || 'Minister David Bursar',
+          role: 'finance_officer',
+          email: 'finance@hteim.edu'
+        };
+      } else if (cleanRole === 'librarian') {
+        newUser = {
+          id: 'u-librarian',
+          username: 'librarian',
+          name: customName || 'Sister Grace Librarian',
+          role: 'librarian',
+          email: 'librarian@hteim.edu'
+        };
+      } else if (cleanRole === 'viewer') {
+        newUser = {
+          id: 'u-viewer',
+          username: 'viewer',
+          name: customName || 'Guest Observer',
+          role: 'viewer',
+          email: 'guest@hteim.edu'
+        };
+      } else {
+        let chosenName = customName || 'Aaron Miller';
+        if (!customName) {
+          if (uniqueStudents && uniqueStudents.length > 0) {
+            const firstStudent = uniqueStudents[0];
+            if (typeof firstStudent === 'string') {
+              chosenName = firstStudent;
+            } else if (firstStudent && typeof (firstStudent as any).name === 'string') {
+              chosenName = (firstStudent as any).name;
+            }
+          }
+        }
+
+        newUser = {
+          id: `u-student-${(chosenName || '').toLowerCase().replace(/\s+/g, '-')}`,
+          username: generateStudentUsername(chosenName),
+          name: chosenName,
+          role: 'student',
+          studentName: chosenName,
+          studentId: studentIdChoice || 'HTEIM-2026-0001',
+          email: `${(generateStudentUsername(chosenName) || '').toLowerCase()}@student.hteim.edu`
+        };
+      }
+      setAppUser(newUser);
+      setShowRoleMenu(false);
+      setSyncedBannerMessage(`Role Switch: Previewing portal as ${cleanRole.toUpperCase().replace('_', ' ')} (${newUser.name})`);
+      setTimeout(() => {
+        setSyncedBannerMessage('');
+      }, 4500);
+    },
+    handleUpdateUserCredentials: async (updatedCreds: UserCredential[]) => {
+      setUserCredentials(updatedCreds);
+      try {
+        localStorage.setItem('hteim_user_credentials', JSON.stringify(updatedCreds));
+      } catch (e) {}
+      
+      try {
+        const activeEmail = appUser?.email || user?.email;
+        const stateToSave = {
+          records,
+          classDays,
+          studentNotes,
+          excusedAbsences,
+          rubricScores,
+          deletedStudentNames,
+          studentPhotos,
+          studentLevels,
+          customAssignments,
+          submissions,
+          notifications,
+          sheetUrl,
+          courses,
+          schedules,
+          libraryResources,
+          classroomMedia,
+          facultyTeachers,
+          payments,
+          messages,
+          zoomExceptionNote,
+          hasZoomException,
+          userCredentials: updatedCreds
+        };
+        await saveToSupabase(activeEmail, stateToSave);
+      } catch (err) {
+        console.error("Failed syncing manual credentials update to Supabase:", err);
+      }
     },
     handleChangeUserPassword: async (emailOrUsername: string | AppUser, newPass: string) => {
       const targetEmail = typeof emailOrUsername === 'string' ? emailOrUsername : emailOrUsername.email;
@@ -1784,9 +2140,28 @@ export function usePortalState() {
       setRecords(prev => prev.filter(r => r.name !== name));
       showToast('info', 'Records Cleared', `Attendance records cleared for ${name}.`);
     },
-    handleResolveConflicts: (resolutions: Record<string, 'local' | 'sheets'>) => {
-      showToast('success', 'Merge Conflicts Resolved', 'Incoming Google Sheets data synchronized.');
-      setPendingConflicts([]);
+    handleResolveConflicts,
+    handleLoadSheets,
+    handleRemoveRecentSheet,
+    handleImportQuizScores: (targetClassDay: string, csvText: string) => {
+      const result = parseAndApplyQuizCsv(csvText, targetClassDay, records);
+      if (result.count > 0) {
+        setRecords(result.updatedRecords);
+        localStorage.setItem('attendanceRecords', JSON.stringify(result.updatedRecords));
+        showToast('success', 'Quiz Scores Evaluated', `Successfully evaluated and synced ${result.count} student quiz scores for ${result.targetClassDay}!`);
+      } else {
+        showToast('info', 'Import Empty', 'No valid student quiz records found in the provided CSV.');
+      }
+      return result;
+    },
+    handleUpdateRubric: (studentName: string, key: 'participation' | 'scripture' | 'assignment', val: number) => {
+      setRubricScores(prev => ({
+        ...prev,
+        [studentName]: {
+          ...(prev[studentName] || { participation: 0, scripture: 0, assignment: 0 }),
+          [key]: val,
+        },
+      }));
     },
     handleAddClassDay: (title: string) => {
       const newDay: ClassDay = { id: `day_${Date.now()}`, name: title };
@@ -1818,7 +2193,7 @@ export function usePortalState() {
     handleRestoreAllStudents,
     handleUpdateStudentPhoto,
     getStudentIdForName: (name: string) => {
-      return `std-${name.toLowerCase().replace(/\s+/g, '-')}`;
+      return `std-${normalizeStudentName(name).replace(/[^a-z0-9]+/g, '-')}`;
     },
     getStudentBadges: (student: any) => {
       const badges = [];
@@ -1826,5 +2201,9 @@ export function usePortalState() {
       if (student.rate < 75) badges.push({ label: 'At-Risk', color: 'rose' });
       return badges;
     },
+    activePublicQuiz,
+    isLoadingPublicQuiz,
+    handleClosePublicQuiz,
+    handlePublicQuizSubmit,
   };
 }

@@ -54,12 +54,12 @@ export const GradebookMatrix: React.FC<GradebookMatrixProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-800 dark:text-slate-200">
-            {filteredStudents.slice(0, 25).map(student => {
+            {filteredStudents.slice(0, 25).map((student, sIdx) => {
               let totalEarned = 0;
               let totalPossible = 0;
 
               return (
-                <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                <tr key={student.id ? `${student.id}-${sIdx}` : `std-gb-${sIdx}`} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
                   <td className="p-3 font-bold sticky left-0 bg-white dark:bg-slate-800 z-10 border-r border-slate-200 dark:border-slate-700">
                     {student.name}
                   </td>

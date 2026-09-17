@@ -110,10 +110,53 @@ export const studentsService = {
 
       studentQuery = studentQuery.order('created_at', { ascending: true });
 
-      const { data: dbStudents, error: studentErr } = await studentQuery;
+      let { data: dbStudents, error: studentErr } = await studentQuery;
 
       if (studentErr) {
-        logger.warn('Error querying students from relational table:', studentErr);
+        logger.warn('Embedded relation query warning for students, attempting direct table join fallback:', studentErr.message || studentErr);
+        let fallbackQuery = supabase
+          .from('students')
+          .select('id, user_id, student_number, enrollment_status, cohort_level, admission_date')
+          .is('deleted_at', null);
+
+        if (isStudent) {
+          if (studentRecordUuid && userUuid) {
+            fallbackQuery = fallbackQuery.or(`id.eq.${studentRecordUuid},user_id.eq.${userUuid}`);
+          } else if (studentRecordUuid) {
+            fallbackQuery = fallbackQuery.eq('id', studentRecordUuid);
+          } else if (userUuid) {
+            fallbackQuery = fallbackQuery.eq('user_id', userUuid);
+          } else if (studentNumber) {
+            fallbackQuery = fallbackQuery.eq('student_number', studentNumber);
+          }
+        } else {
+          if (options?.studentId && UUID_REGEX.test(options.studentId)) {
+            fallbackQuery = fallbackQuery.eq('id', options.studentId);
+          }
+          if (options?.cohortLevel) {
+            fallbackQuery = fallbackQuery.eq('cohort_level', options.cohortLevel);
+          }
+          if (options?.enrollmentStatus) {
+            fallbackQuery = fallbackQuery.eq('enrollment_status', options.enrollmentStatus);
+          }
+        }
+
+        const { data: rawStudents, error: rawErr } = await fallbackQuery;
+        if (!rawErr && rawStudents && rawStudents.length > 0) {
+          const userIds = rawStudents.map((s: any) => s.user_id).filter(Boolean);
+          const [{ data: profs }, { data: usrs }] = await Promise.all([
+            userIds.length > 0 ? supabase.from('profiles').select('user_id, first_name, last_name, avatar_url, bio, phone').in('user_id', userIds) : Promise.resolve({ data: [] }),
+            userIds.length > 0 ? supabase.from('users').select('id, email, is_active').in('id', userIds) : Promise.resolve({ data: [] })
+          ]);
+          const profMap = new Map((profs || []).map((p: any) => [p.user_id, p]));
+          const usrMap = new Map((usrs || []).map((u: any) => [u.id, u]));
+
+          dbStudents = rawStudents.map((s: any) => ({
+            ...s,
+            profiles: profMap.get(s.user_id) || null,
+            users: usrMap.get(s.user_id) || null,
+          }));
+        }
       }
 
       if (!dbStudents || dbStudents.length === 0) {

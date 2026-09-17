@@ -191,9 +191,9 @@ export function StudentsPage({
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredStudents.map((student) => (
+          {filteredStudents.map((student, sIdx) => (
             <StudentCard
-              key={student.id || student.name}
+              key={student.id ? `${student.id}-${sIdx}` : `std-${sIdx}`}
               student={student}
               onSelect={handleSelectStudent}
               onViewTranscript={onSelectStudentForTranscript}

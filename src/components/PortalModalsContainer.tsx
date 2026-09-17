@@ -29,9 +29,10 @@ import { SettingsModal, ThemeMode } from './SettingsModal';
 import { OutstandingPaymentBanner } from './OutstandingPaymentBanner';
 import { MobileMoreMenuDrawer } from './layout/MobileMoreMenuDrawer';
 
-export interface PortalModalsContainerProps {
-  selectedStudent: any | null;
-  setSelectedStudent: (student: any | null) => void;
+export interface PortalModalsContainerExplicitProps {
+  state?: any;
+  selectedStudent?: any | null;
+  setSelectedStudent?: (student: any | null) => void;
   setShowEmailDraftModal: (val: boolean) => void;
   studentNotes: any;
   excusedAbsences: any;
@@ -185,7 +186,13 @@ export interface PortalModalsContainerProps {
   setLiveCheckinDayId: (val: string) => void;
 }
 
-export const PortalModalsContainer: React.FC<PortalModalsContainerProps> = (props) => {
+export type PortalModalsContainerProps = {
+  state?: any;
+  [key: string]: any;
+} & Partial<PortalModalsContainerExplicitProps>;
+
+export const PortalModalsContainer: React.FC<PortalModalsContainerProps> = (rawProps) => {
+  const props: any = (rawProps as any).state ? { ...(rawProps as any).state, ...rawProps } : rawProps;
   return (
     <Suspense fallback={null}>
       {/* Student Detail Modal */}

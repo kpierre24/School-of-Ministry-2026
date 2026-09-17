@@ -656,6 +656,11 @@ export type StudentSummary = {
   rate: number;
   attended: number;
   avgScore: number | null;
+  percentage?: number | null;
+  scoreStr?: string;
+  attendanceRate?: number;
+  attendedSessions?: number;
+  totalSessions?: number;
   note?: string;
   photoUrl?: string;
   levelId: string;

@@ -198,14 +198,36 @@ export const MANUAL_ALIASES: Record<string, string> = {
   'beverly selkridge': 'Beverly Selkridge',
   'vikash ramnarace': 'Vikash Ramnarace',
   'francisca swift': 'Francisca Swift',
+  'jessica fiddler': 'Jessica Fiddler',
+  'tricia worrell': 'Tricia Worrell',
+  'jovanka williams': 'Jovanka Williams',
+  'felicia williams': 'Felicia Williams',
+  'candy webb': 'Candy Webb',
+  'claudia cashe': 'Claudia Cashe',
+  'kristy alexander': 'Kristy Alexander',
+  'jerzelle whiteman': 'Jerzelle Whiteman',
+  'catherine vidale': 'Catherine Vidale',
+  'natalie webb lewis': 'Natalie Webb Lewis',
+  'leslie inniss': 'Leslie Inniss',
+  'josanne pompey': 'Josanne Pompey',
+  'lynton pompey': 'Lynton Pompey',
+  'atiya williams': 'Atiya Williams',
+  'zahra andrews': 'Zahra Andrews',
+  'kadijah daniel': 'Kadijah Daniel',
+  'stacey waithe': 'Stacey Waithe',
+  'javier marks': 'Javier Marks',
+  'gale': 'Gale Agrant',
+  'gillian': 'Gillian Selkridge',
 };
+
+export const normalizeStudentName = (str: string): string => (str || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
 
 export const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> => {
   const nameGroups: string[][] = [];
   const canonicalNames = new Map<string, string>();
 
   // Helper to normalize strings for comparison
-  const normalize = (str: string) => (str || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+  const normalize = normalizeStudentName;
 
   rawNames.forEach((rawName: string) => {
     if (!rawName) return;
@@ -329,7 +351,11 @@ export const getCanonicalNamesMap = (rawNames: string[]): Map<string, string> =>
     }
 
     group.forEach((name: string) => {
-      if (name) canonicalNames.set((name || '').trim(), canonical);
+      if (name) {
+        canonicalNames.set((name || '').trim(), canonical);
+        canonicalNames.set(normalize(name), canonical);
+        canonicalNames.set(name.toLowerCase().trim(), canonical);
+      }
     });
   });
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ClassDay, AttendanceRecord, MergeConflict, Cohort, RecentSheet } from '../types';
-import { isExcludedStudent, getCanonicalNamesMap } from '../lib/studentNames';
+import { isExcludedStudent, getCanonicalNamesMap, normalizeStudentName, MANUAL_ALIASES } from '../lib/studentNames';
 import { isObsoleteLegacyClassDay } from '../data';
+import { MASTER_ENROLLED_STUDENTS } from '../data/curriculum';
 import {
   fetchSpreadsheetMetadata,
   fetchMultipleRanges,
@@ -215,6 +216,13 @@ export const useGoogleSheetsSync = ({
         }
       });
 
+      // Add all officially enrolled students so their attendance records exist for all class days
+      MASTER_ENROLLED_STUDENTS.forEach(n => {
+        if (n && !isExcludedStudent(n)) {
+          allRawNames.add(n.trim());
+        }
+      });
+
       if (batchData.valueRanges) {
         batchData.valueRanges.forEach((rangeData: any, index: number) => {
           const rangeName = rangeData.range || '';
@@ -247,14 +255,38 @@ export const useGoogleSheetsSync = ({
           const headers = rangeData.values[0] as string[];
           const rows = rangeData.values.slice(1) as string[][];
 
-          let nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('first and last name'));
-          if (nameIndex === -1) nameIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('name'));
+          const normalizedHeaders = headers.map(h => (h || '').toString().toLowerCase().trim());
+
+          let nameIndex = normalizedHeaders.findIndex(h => 
+            h.includes('first and last name') || 
+            h.includes('full name') || 
+            h === 'name' || 
+            h === 'student name' || 
+            h.endsWith(' name')
+          );
+          if (nameIndex === -1) {
+            nameIndex = normalizedHeaders.findIndex(h => h.includes('name') && !h.includes('user') && !h.includes('file'));
+          }
           if (nameIndex === -1) nameIndex = 2; // fallback
 
-          let timestampIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('timestamp'));
-          let scoreIndex = headers.findIndex(h => h && String(h || '').toLowerCase().includes('score'));
+          let timestampIndex = normalizedHeaders.findIndex(h => h.includes('timestamp') || h.includes('date') || h.includes('time'));
           if (timestampIndex === -1) timestampIndex = 0;
-          if (scoreIndex === -1) scoreIndex = 1;
+
+          let scoreIndex = normalizedHeaders.findIndex(h => 
+            h === 'score' || 
+            h === 'total score' ||
+            h.includes('score') || 
+            h.includes('grade') || 
+            h.includes('points') || 
+            h.includes('result') ||
+            h.includes('mark') ||
+            h.includes('quiz')
+          );
+          if (scoreIndex === -1 && normalizedHeaders.length > 1) {
+            if (nameIndex !== 1 && timestampIndex !== 1) {
+              scoreIndex = 1;
+            }
+          }
 
           let displayDate = sheetTitle;
           if (rows.length > 0) {
@@ -291,8 +323,8 @@ export const useGoogleSheetsSync = ({
               }
             }
 
-            const rowScore = row[scoreIndex] || '';
-            const rowTimestamp = row[timestampIndex] || '';
+            const rowScore = scoreIndex >= 0 ? (row[scoreIndex] || '') : '';
+            const rowTimestamp = timestampIndex >= 0 ? (row[timestampIndex] || '') : '';
 
             studentsCompleted.set((name || '').toLowerCase().trim(), {
               score: rowScore,
@@ -308,9 +340,21 @@ export const useGoogleSheetsSync = ({
       }
 
       const canonicalNamesMap = getCanonicalNamesMap(Array.from(allRawNames));
-      const allCanonicalStudentNames = Array.from(
-        new Set(Array.from(allRawNames).map(n => canonicalNamesMap.get(n) || n))
-      );
+      const studentMap = new Map<string, string>();
+      MASTER_ENROLLED_STUDENTS.forEach(n => {
+        if (n && !isExcludedStudent(n)) {
+          studentMap.set(normalizeStudentName(n), n);
+        }
+      });
+      Array.from(allRawNames).forEach(n => {
+        if (!n || isExcludedStudent(n)) return;
+        const norm = normalizeStudentName(n);
+        const canon = MANUAL_ALIASES[norm] || canonicalNamesMap.get(norm) || canonicalNamesMap.get(n.trim()) || n;
+        if (!studentMap.has(norm) && !isExcludedStudent(canon)) {
+          studentMap.set(norm, canon);
+        }
+      });
+      const allCanonicalStudentNames = Array.from(studentMap.values());
 
       const newSyncedRecords: AttendanceRecord[] = [];
       const updatedClassDays = [
@@ -337,22 +381,35 @@ export const useGoogleSheetsSync = ({
 
         allCanonicalStudentNames.forEach(studentName => {
           let completionRow: { score: string; timestamp: string } | null = null;
+          const normStudentName = normalizeStudentName(studentName);
+
           for (const [rawLower, rowData] of Array.from(studentsCompleted.entries())) {
-            const matchedRawName = Array.from(allRawNames).find(n => (n || '').toLowerCase().trim() === rawLower);
-            if (matchedRawName) {
-              const mappedCanonical = canonicalNamesMap.get(matchedRawName) || matchedRawName;
-              if ((mappedCanonical || '').toLowerCase().trim() === (studentName || '').toLowerCase().trim()) {
-                completionRow = rowData;
-                break;
-              }
+            const matchedRawName = Array.from(allRawNames).find(n => (n || '').toLowerCase().trim() === rawLower) || rawLower;
+            const mappedCanonical = MANUAL_ALIASES[rawLower] || MANUAL_ALIASES[normalizeStudentName(matchedRawName)] || canonicalNamesMap.get(matchedRawName) || matchedRawName;
+            
+            const normMapped = normalizeStudentName(mappedCanonical);
+            const normMatched = normalizeStudentName(matchedRawName);
+
+            if (
+              normMapped === normStudentName ||
+              normMatched === normStudentName ||
+              rawLower === normStudentName ||
+              (normStudentName.length > 4 && (normMapped.includes(normStudentName) || normStudentName.includes(normMapped))) ||
+              (normStudentName.length > 4 && (normMatched.includes(normStudentName) || normStudentName.includes(normMatched)))
+            ) {
+              completionRow = rowData;
+              break;
             }
           }
 
           const existingRecord = records.find(
             r =>
               r &&
-              (r.name || r.studentName || '').toLowerCase().trim() === (studentName || '').toLowerCase().trim() &&
-              r.classDay === sheetTitle
+              normalizeStudentName(r.name || r.studentName || '') === normStudentName &&
+              (r.classDay === sheetTitle || 
+               r.classDay === data.displayDate || 
+               (r.classDay && sheetTitle && r.classDay.toLowerCase().includes(sheetTitle.toLowerCase())) ||
+               (r.classDay && sheetTitle && sheetTitle.toLowerCase().includes(r.classDay.toLowerCase())))
           );
           const hasManualOverride = existingRecord && existingRecord.manualOverride === true;
           const sheetsPresent = !!completionRow;
@@ -375,6 +432,9 @@ export const useGoogleSheetsSync = ({
             // Prefer local manual override
             newSyncedRecords.push({
               ...existingRecord,
+              studentName,
+              present: existingRecord.present ?? (existingRecord.status === 'present'),
+              status: existingRecord.status || (existingRecord.present ? 'present' : 'absent'),
               score: completionRow ? completionRow.score : existingRecord.score || '',
               timestamp: completionRow ? completionRow.timestamp : existingRecord.timestamp || '',
             });
@@ -382,10 +442,12 @@ export const useGoogleSheetsSync = ({
             // Default: Sheets rules
             newSyncedRecords.push({
               name: studentName,
+              studentName,
               timestamp: completionRow ? completionRow.timestamp : '',
               score: completionRow ? completionRow.score : '',
               classDay: sheetTitle,
               present: sheetsPresent,
+              status: sheetsPresent ? 'present' : 'absent',
               manualOverride: existingRecord ? existingRecord.manualOverride : false,
             });
           }
@@ -405,7 +467,12 @@ export const useGoogleSheetsSync = ({
         setClassDays(updatedClassDays);
         setRecords(finalRecords);
         setDataSource('sheets');
-        setLastSyncedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+        const formattedTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        setLastSyncedTime(formattedTime);
+        localStorage.setItem('dataSource', 'sheets');
+        localStorage.setItem('attendanceRecords', JSON.stringify(finalRecords));
+        localStorage.setItem('classDays', JSON.stringify(updatedClassDays));
+        localStorage.setItem('lastSyncedTime', formattedTime);
       }
     } catch (err: any) {
       const appErr = displayErrorToUser(err, 'handleSyncWithGoogleSheets - sync sequence failure', 'network');
@@ -480,6 +547,15 @@ export const useGoogleSheetsSync = ({
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [syncOnTabFocus, dataSource, isLoading, sheetUrl]);
+
+  // Initial load: automatically sync on mount if sheetUrl is configured
+  const initialSyncTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (!initialSyncTriggeredRef.current && sheetUrl) {
+      initialSyncTriggeredRef.current = true;
+      handleLoadSheets();
+    }
+  }, [sheetUrl]);
 
   return {
     sheetUrl,

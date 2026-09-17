@@ -2,12 +2,13 @@ import React, { useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, CheckCircle2, XCircle, Info, X } from 'lucide-react';
 import { ApplicationShell } from './ApplicationShell';
-import { PortalModalsContainer } from './PortalModalsContainer';
+import { PortalModalsContainer } from '../components/PortalModalsContainer';
 import { usePortalState } from './usePortalState';
 import { navigation, getNavigationItem, isNavigationAccessible } from './navigation';
 import { TabType } from '../types';
 import { PageLoader } from '../components/PageLoader';
 import { OutstandingPaymentBanner } from '../components/OutstandingPaymentBanner';
+import { PublicQuizPage } from '../components/PublicQuizPage';
 import { filterNotificationsForUser } from '../lib/notifications';
 import { testSupabaseConnection } from '../lib/supabaseSync';
 import { trackUxEvent } from '../lib/uxTelemetry';
@@ -263,6 +264,20 @@ export function AppRouter() {
           appUser: state.appUser,
           userRole: state.appUser?.role,
           courses: state.courses,
+          onLoadSheets: state.handleLoadSheets,
+          isLoadingSheets: state.isLoading,
+          sheetUrl: state.sheetUrl,
+          setSheetUrl: state.setSheetUrl,
+          lastSyncedTime: state.lastSyncedTime,
+          recentSheets: state.recentSheets,
+          allQuizSheets: state.effectiveClassDays.map(d => d.name || d.id),
+          rubricScores: state.rubricScores,
+          onUpdateRubric: state.handleUpdateRubric,
+          records: state.records,
+          setRecords: state.setRecords,
+          onImportQuizScores: state.handleImportQuizScores,
+          classDays: state.classDays,
+          effectiveClassDays: state.effectiveClassDays,
         };
 
       case 'schedule':
@@ -343,6 +358,18 @@ export function AppRouter() {
   const isAccessible = isNavigationAccessible(navItem, state.appUser?.role, (state.appUser as any)?.permissions);
   const pageProps = getPropsForTab(navItem.id);
 
+  if (state.activePublicQuiz) {
+    return (
+      <PublicQuizPage
+        quiz={state.activePublicQuiz}
+        studentRoster={state.uniqueStudents.map(s => typeof s === 'string' ? { name: s } : { name: s.name })}
+        currentStudentName={state.appUser?.studentName || state.appUser?.name}
+        onSubmitResponse={state.handlePublicQuizSubmit}
+        onClose={state.handleClosePublicQuiz}
+      />
+    );
+  }
+
   return (
     <>
       <ApplicationShell
@@ -395,7 +422,7 @@ export function AppRouter() {
         onOpenRoleSwitch={() => state.setShowRoleMenu(true)}
         dataSource={state.dataSource}
         isLoading={state.isLoading}
-        onLoadSheets={() => {}}
+        onLoadSheets={state.handleLoadSheets}
         onOpenBroadcast={() => state.setShowBatchBroadcastModal(true)}
         onOpenAuditLog={() => state.setShowAdminAuditModal(true)}
         onOpenUserManagement={() => state.setShowUserManagementModal(true)}

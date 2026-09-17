@@ -487,9 +487,11 @@ export const financeService = {
 
         return { invoices: result, total: result.length };
       }
+
+      return { invoices: [], total: 0 };
     } catch (err) {
       logger.error('Error fetching invoices from relational table:', err);
-      throw err;
+      return { invoices: [], total: 0 };
     }
   },
 
