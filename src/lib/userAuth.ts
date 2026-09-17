@@ -41,40 +41,18 @@ export interface UserCredential {
 export const DEFAULT_USER_PASSWORD = 'password1';
 export const DEFAULT_ADMIN_EMAIL = 'kpierre24@gmail.com';
 export const DEFAULT_ADMIN_NAME = 'Kendell Pierre';
-export const DEFAULT_ADMIN_PIN = '123654';
 
 /**
- * Authenticates the system administrator using the 6-digit PIN code (123654).
+ * Authenticates the system administrator using the 6-digit PIN code (Deprecated - standard login enforced).
  */
 export const authenticateAdminWithPin = (
   pinInput: string,
   credentials?: UserCredential[]
 ): { success: boolean; user?: AppUser; error?: string } => {
-  const cleanPin = (pinInput || '').trim();
-  if (!cleanPin) {
-    return { success: false, error: 'Please enter the 6-digit administrator PIN code.' };
-  }
-  if (cleanPin !== DEFAULT_ADMIN_PIN) {
-    return { success: false, error: 'Invalid Administrator PIN code. Please enter the correct 6-digit access code (123654).' };
-  }
-
-  const adminCred = (credentials || []).filter(Boolean).find(c => 
-    (c.email && c.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase()) ||
-    c.role === 'admin' ||
-    c.role === 'super_admin'
-  );
-
-  const adminUser: AppUser = {
-    id: adminCred?.id || 'u-admin-kpierre',
-    email: DEFAULT_ADMIN_EMAIL,
-    name: DEFAULT_ADMIN_NAME,
-    username: 'admin',
-    role: 'admin',
-    status: 'active',
-    mustChangePassword: false
+  return { 
+    success: false, 
+    error: 'Administrator PIN authentication has been deprecated and disabled for security. Please use standard email & password login.' 
   };
-
-  return { success: true, user: adminUser };
 };
 
 /**
@@ -344,7 +322,7 @@ export const authenticateUser = (
       isHashMatch ||
       (isDefaultInput && mustChange) ||
       (isDefaultInput && isDefaultPassword(cred.passwordHash)) ||
-      (isAdminAccount && (p === DEFAULT_USER_PASSWORD || p === DEFAULT_ADMIN_PIN || p === '123654' || isDefaultInput));
+      (isAdminAccount && (p === DEFAULT_USER_PASSWORD || isDefaultInput));
 
     if (isMatch) {
       clearFailedLoginAttempts(idLower);
@@ -387,8 +365,6 @@ export const authenticateUser = (
       if (
         adminUser.passwordHash === p ||
         p === DEFAULT_USER_PASSWORD ||
-        p === DEFAULT_ADMIN_PIN ||
-        p === '123654' ||
         isDefaultInput ||
         (p === DEFAULT_USER_PASSWORD && adminMustChange)
       ) {
@@ -406,7 +382,7 @@ export const authenticateUser = (
         };
       }
     } else {
-      if (p === DEFAULT_USER_PASSWORD || p === DEFAULT_ADMIN_PIN || p === '123654' || isDefaultInput) {
+      if (p === DEFAULT_USER_PASSWORD || isDefaultInput) {
         return {
           success: true,
           user: {

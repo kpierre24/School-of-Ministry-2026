@@ -24,8 +24,8 @@ import {
   CheckCircle2,
   Hash
 } from 'lucide-react';
-import { AppUser, UserRole, UserCredential, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME, DEFAULT_ADMIN_PIN } from '../lib/userAuth';
-import { loginWithSupabaseAuth as authenticateWithSupabase, loginAdminWithPin } from '../services/authService';
+import { AppUser, UserRole, UserCredential, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_NAME } from '../lib/userAuth';
+import { loginWithSupabaseAuth as authenticateWithSupabase } from '../services/authService';
 import { updatePasswordInSupabase } from '../lib/supabaseAuth';
 import { classifyError, handleError } from '../lib/errorHandler';
 import { 
@@ -108,86 +108,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [hasBiometrics, setHasBiometrics] = useState(false);
   const [enrolledCount, setEnrolledCount] = useState(0);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [promptBiometricUser, setPromptBiometricUser] = useState<AppUser | null>(null);
-
-  // Admin PIN code state
-  const [adminPin, setAdminPin] = useState<string>('');
-  const [showAdminPin, setShowAdminPin] = useState<boolean>(false);
-  const [adminPinError, setAdminPinError] = useState<string | null>(null);
-
-  React.useEffect(() => {
+  const [promptBiometricUser, setPromptBiometricUser] = useState<AppUser | null>(null);  React.useEffect(() => {
     isBiometricAvailable().then((avail) => {
       const profiles = getEnrolledBiometricProfiles();
       setEnrolledCount(profiles.length);
       setHasBiometrics(avail || profiles.length > 0);
     });
   }, []);
-
-  // Handle Admin PIN submission
-  const handleAdminPinSubmit = async (pinOverride?: string) => {
-    const pin = (pinOverride !== undefined ? pinOverride : adminPin).trim();
-    setErrorMessage(null);
-    setAdminPinError(null);
-
-    if (!pin) {
-      setAdminPinError('Please enter the 6-digit Administrator PIN.');
-      triggerHapticFeedback('error');
-      return;
-    }
-
-    if (pin.length < 6) {
-      setAdminPinError('Please enter all 6 digits of the PIN code.');
-      triggerHapticFeedback('error');
-      return;
-    }
-
-    setIsVerifying(true);
-
-    try {
-      const result = await loginAdminWithPin(pin, userCredentials);
-      setIsVerifying(false);
-
-      if (result.success && result.user) {
-        triggerHapticFeedback('success');
-        onLoginSuccess(result.user);
-        if (onClose) onClose();
-      } else {
-        triggerHapticFeedback('error');
-        const err = result.error || 'Invalid Admin PIN code. Please use 123654.';
-        setAdminPinError(err);
-        setErrorMessage(err);
-      }
-    } catch (err: any) {
-      setIsVerifying(false);
-      triggerHapticFeedback('error');
-      const errMessage = err.message || 'Authentication failed';
-      setAdminPinError(errMessage);
-      setErrorMessage(errMessage);
-    }
-  };
-
-  const handleAdminPinDigit = (digit: string) => {
-    if (adminPin.length >= 6) return;
-    const nextPin = `${adminPin}${digit}`.slice(0, 6);
-    setAdminPin(nextPin);
-    setAdminPinError(null);
-    setErrorMessage(null);
-    if (nextPin.length === 6) {
-      handleAdminPinSubmit(nextPin);
-    }
-  };
-
-  const handleAdminPinBackspace = () => {
-    setAdminPin(prev => prev.slice(0, -1));
-    setAdminPinError(null);
-  };
-
-  const handleAdminPinClear = () => {
-    setAdminPin('');
-    setAdminPinError(null);
-    setErrorMessage(null);
-  };
-
   const handleBiometricLogin = async () => {
     triggerHapticFeedback('medium');
     setIsBiometricBusy(true);
@@ -285,9 +212,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleSelectTab = (tab: UserRole) => {
     setActiveTab(tab);
     setErrorMessage(null);
-    setAdminPinError(null);
-    setAdminPin('');
-    setEmailInput('');
+    setEmailInput(tab === 'admin' ? 'kpierre24@gmail.com' : '');
     setPasswordInput('');
     setShowPasswordChangeForm(false);
     setPendingUser(null);
@@ -297,10 +222,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleAutofillDemo = (role: UserRole) => {
     setActiveTab(role);
     setErrorMessage(null);
-    setAdminPinError(null);
     if (role === 'admin') {
-      setAdminPin('123654');
-      handleAdminPinSubmit('123654');
+      setEmailInput('kpierre24@gmail.com');
+      setPasswordInput('password1');
     } else if (role === 'teacher') {
       const teacher = userCredentials.find(c => c.role === 'teacher');
       setEmailInput(teacher?.email || 'gillian.selkridge@hteim.edu');
@@ -584,228 +508,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </button>
             </div>
           </form>
-        ) : activeTab === 'admin' ? (
-          /* ========================================================================= */
-          /* ADMIN PIN CODE AUTHENTICATION (Kendell Pierre - kpierre24@gmail.com)       */
-          /* ========================================================================= */
-          <div className="p-6 space-y-4">
-            {/* Admin Profile Identity Header */}
-            <div className="p-3.5 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border border-purple-200/80 dark:border-purple-800/50 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
-                  KP
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-xs font-extrabold text-slate-900 dark:text-white">Kendell Pierre</h3>
-                    <span className="px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded">
-                      Admin
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400 font-medium">
-                    kpierre24@gmail.com
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-600" /> PIN Access
-                </span>
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {(adminPinError || errorMessage) && (
-              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{adminPinError || errorMessage}</span>
-              </div>
-            )}
-
-            {/* 6-Digit PIN Code Entry Area */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="admin-pin-input" className="text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider flex items-center gap-1">
-                  <Key className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Enter 6-Digit Admin PIN Code</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAdminPin(prev => !prev)}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer"
-                  aria-label={showAdminPin ? "Hide PIN digits" : "Show PIN digits"}
-                >
-                  {showAdminPin ? (
-                    <>
-                      <EyeOff className="w-3.5 h-3.5" />
-                      <span className="text-[10px]">Hide PIN</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3.5 h-3.5" />
-                      <span className="text-[10px]">Show PIN</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Direct Keyboard Input (Hidden visually or overlayed for keyboard typing) */}
-              <div className="relative">
-                <input
-                  id="admin-pin-input"
-                  type={showAdminPin ? "text" : "password"}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={adminPin}
-                  onChange={(e) => {
-                    const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
-                    setAdminPin(clean);
-                    setAdminPinError(null);
-                    setErrorMessage(null);
-                    if (clean.length === 6) {
-                      handleAdminPinSubmit(clean);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAdminPinSubmit();
-                    }
-                  }}
-                  autoFocus
-                  placeholder="Enter 6-digit PIN"
-                  className="w-full text-center text-lg font-mono font-black tracking-[0.4em] py-2.5 px-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500"
-                  aria-label="6-digit administrator PIN"
-                />
-              </div>
-
-              {/* Visual 6-Digit PIN Indicators */}
-              <div className="flex justify-center gap-2 pt-1" onClick={() => document.getElementById('admin-pin-input')?.focus()}>
-                {[0, 1, 2, 3, 4, 5].map((idx) => {
-                  const digit = adminPin[idx];
-                  const isCurrent = adminPin.length === idx;
-                  const isFilled = digit !== undefined;
-
-                  return (
-                    <div
-                      key={idx}
-                      className={`w-10 h-11 rounded-xl flex items-center justify-center font-mono font-black text-sm transition-all duration-150 border cursor-pointer select-none ${
-                        isFilled
-                          ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 text-purple-700 dark:text-purple-300 shadow-xs'
-                          : isCurrent
-                          ? 'bg-white dark:bg-slate-800 border-purple-400 ring-2 ring-purple-400/20'
-                          : 'bg-slate-100/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-400'
-                      }`}
-                    >
-                      {isFilled ? (showAdminPin ? digit : '●') : ''}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* On-screen Numeric Keypad */}
-            <div className="grid grid-cols-3 gap-1.5 pt-1">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => handleAdminPinDigit(num)}
-                  disabled={isVerifying || adminPin.length >= 6}
-                  className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 font-mono font-extrabold text-sm border border-slate-200 dark:border-slate-700/80 transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
-                >
-                  {num}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={handleAdminPinClear}
-                disabled={isVerifying || adminPin.length === 0}
-                className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-600 dark:text-slate-300 font-extrabold text-xs border border-slate-200 dark:border-slate-700/80 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAdminPinDigit('0')}
-                disabled={isVerifying || adminPin.length >= 6}
-                className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 font-mono font-extrabold text-sm border border-slate-200 dark:border-slate-700/80 transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
-              >
-                0
-              </button>
-              <button
-                type="button"
-                onClick={handleAdminPinBackspace}
-                disabled={isVerifying || adminPin.length === 0}
-                className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-600 dark:text-slate-300 font-extrabold text-xs border border-slate-200 dark:border-slate-700/80 transition-all active:scale-95 disabled:opacity-40 cursor-pointer flex items-center justify-center"
-                aria-label="Backspace"
-              >
-                <Delete className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Submit Action Button */}
-            <button
-              type="button"
-              onClick={() => handleAdminPinSubmit()}
-              disabled={adminPin.length < 6 || isVerifying}
-              className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isVerifying ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  <span>Verifying PIN Code...</span>
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Unlock Administrator Suite</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-
-            {/* Quick Demo Access for Admin PIN */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Admin PIN:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setAdminPin('123654');
-                  handleAdminPinSubmit('123654');
-                }}
-                className="text-purple-600 dark:text-purple-400 hover:text-purple-800 font-mono font-bold underline cursor-pointer"
-              >
-                Auto-fill Code: 123654
-              </button>
-            </div>
-
-            {/* Scripture Quote Box */}
-            <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl flex items-start gap-2">
-              <BookMarked className="w-4 h-4 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-[11px] text-amber-950 dark:text-amber-200 font-serif italic leading-snug">
-                  "{currentScripture.text}"
-                </p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[9px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-wider">
-                    — {currentScripture.verse} ({currentScripture.theme})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={nextScripture}
-                    className="text-[9px] font-bold text-amber-800 dark:text-amber-400 hover:underline cursor-pointer"
-                  >
-                    Next Quote →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         ) : (
           /* ========================================================================= */
-          /* TEACHER / STUDENT USERNAME & PASSWORD AUTHENTICATION                      */
+          /* CENTRAL AUTHENTICATION: STUDENT / TEACHER / ADMIN                         */
           /* ========================================================================= */
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {errorMessage && (
@@ -830,7 +535,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     setEmailError(validateEmailOrUser(e.target.value));
                   }}
                   onBlur={() => setEmailError(validateEmailOrUser(emailInput))}
-                  placeholder={activeTab === 'teacher' ? 'gillian.selkridge@hteim.edu' : 'aburke@student.hteim.edu'}
+                  placeholder={activeTab === 'admin' ? 'kpierre24@gmail.com' : activeTab === 'teacher' ? 'gillian.selkridge@hteim.edu' : 'aburke@student.hteim.edu'}
                   className={`w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 ${emailError ? 'border-rose-300 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
                   required
                 />
@@ -893,7 +598,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </>
               ) : (
                 <>
-                  <span>Log In to {activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
+                  <span>Log In to {activeTab === 'admin' ? 'Administrator Suite' : activeTab === 'teacher' ? 'Faculty Suite' : 'Student Portal'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -957,7 +662,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   onClick={() => handleAutofillDemo('admin')}
                   className="px-2 py-0.5 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 rounded text-purple-700 dark:text-purple-300 hover:text-purple-900 font-bold cursor-pointer"
                 >
-                  Admin PIN
+                  Admin
                 </button>
               </div>
             </div>

@@ -41,24 +41,15 @@ export async function loginWithSupabaseAuth(
 }
 
 /**
- * Direct Administrator 6-digit PIN authentication (Kendell Pierre - kpierre24@gmail.com).
+ * Direct Administrator 6-digit PIN authentication (Deprecated - standard login enforced).
  */
 export async function loginAdminWithPin(
   pin: string,
   userCredentialsList: any[] = []
 ): Promise<AuthVerificationResult> {
-  const result = authenticateAdminWithPin(pin, userCredentialsList);
-  if (!result.success || !result.user) {
-    return {
-      success: false,
-      error: result.error || 'Invalid Administrator PIN code.'
-    };
-  }
   return {
-    success: true,
-    user: result.user,
-    mustChangePassword: false,
-    cloudSynced: true
+    success: false,
+    error: 'Administrator PIN authentication has been disabled for security. Please use standard email & password login.'
   };
 }
 
