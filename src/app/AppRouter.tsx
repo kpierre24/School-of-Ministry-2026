@@ -43,15 +43,33 @@ export function AppRouter() {
     switch (tabId) {
       case 'home':
         return {
-          uniqueStudents: state.uniqueStudents,
-          effectiveClassDays: state.effectiveClassDays,
-          attendanceRecords: state.records,
-          courses: state.courses,
-          schedules: state.schedules,
+          onNavigate: (tab: TabType) => state.handleNavigate(tab),
+          appUser: state.appUser,
+          onOpenLogin: () => state.setShowLoginModal(true),
+          onLogout: () => state.setAppUser(null),
+          onOpenPresentationDemo: () => state.setShowPresentationModal(true),
+          studentsCount: state.uniqueStudents.length,
+          students: state.uniqueStudents,
+          payments: state.payments,
+          classDays: state.classDays,
+          records: state.records,
+          coursesCount: state.courses.length || 6,
+          classDaysCount: state.effectiveClassDays.length,
+          avgAttendanceRate: state.avgAttendance,
+          onPlayIntro: () => state.setShowIntro(true),
+          pendingAssignmentsCount: state.pendingAssignmentsCount,
+          uncollectedTuitionAmount: state.uncollectedTuitionAmount,
+          libraryResourcesCount: state.libraryResources.length,
+          nextClassTitle: state.classDays.length > 0 ? state.classDays[state.classDays.length - 1].name : 'Session 1',
+          isCloudSyncing: state.isCloudSyncing,
+          cloudSyncError: state.cloudSyncError,
+          lastSyncedTime: state.lastSyncedTime,
+          onPushToCloud: state.handlePushToCloud,
+          userEmail: state.user?.email,
+          supabaseTableMissing: state.supabaseTableMissing,
+          atRiskThreshold: state.atRiskThreshold,
           customAssignments: state.customAssignments,
           submissions: state.submissions,
-          libraryResources: state.libraryResources,
-          classroomMedia: state.classroomMedia,
           facultyTeachers: state.facultyTeachers,
           onSaveFacultyTeachers: async (newList: any[]) => {
             state.setFacultyTeachers(newList);
@@ -59,87 +77,171 @@ export function AppRouter() {
               localStorage.setItem('hteim_faculty_teachers_v1', JSON.stringify(newList));
             } catch (e) {}
           },
-          zoomExceptionNote: state.zoomExceptionNote,
-          setZoomExceptionNote: state.setZoomExceptionNote,
-          hasZoomException: state.hasZoomException,
-          setHasZoomException: state.setHasZoomException,
-          userRole: state.appUser?.role,
-          appUser: state.appUser,
-          onNavigateTab: (targetTab: string) => state.handleNavigate(targetTab as TabType),
-          onOpenLoginModal: () => state.setShowLoginModal(true),
-          onOpenPresentationModal: () => state.setShowPresentationModal(true),
-          onOpenDownloadModal: () => state.setShowMobileDownloadModal(true),
-          atRiskThreshold: state.atRiskThreshold,
-          satisfactoryThreshold: state.satisfactoryThreshold,
+          onTakeQuiz: () => state.setActiveErpTab('exams'),
         };
 
       case 'attendance':
         return {
-          uniqueStudents: state.uniqueStudents,
-          effectiveClassDays: state.effectiveClassDays,
-          classDays: state.classDays,
-          attendanceRecords: state.records,
-          setAttendanceRecords: state.setRecords,
-          excusedAbsences: state.excusedAbsences,
-          setExcusedAbsences: state.setExcusedAbsences,
-          studentNotes: state.studentNotes,
-          setStudentNotes: state.setStudentNotes,
-          studentPhotos: state.studentPhotos,
-          studentLevels: state.studentLevels,
-          setStudentLevels: state.setStudentLevels,
-          selectedStudent: state.selectedStudent,
-          setSelectedStudent: state.setSelectedStudent,
           appUser: state.appUser,
+          currentStudentPortalData: state.currentStudentPortalData,
+          classDays: state.classDays,
+          rubricScores: state.rubricScores,
+          onUpdateStudentPhoto: state.handleUpdateStudentPhoto,
+          onRequestTranscript: (s: any) => {
+            const found = state.uniqueStudents.find(u => u.name === s.name);
+            if (found) {
+              state.setSelectedStudent(found);
+              state.setShowStudentTranscriptModal(true);
+            }
+          },
+          onRequestCertificate: (s: any) => {
+            state.setCertificateData({
+              studentName: s.name,
+              awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
+              criteria: `Demonstrated commitment with ${s.rate.toFixed(1)}% class attendance.`,
+              rate: s.rate,
+              avgScore: s.avgScore ?? undefined,
+            });
+            state.setShowCertificateModal(true);
+          },
           atRiskThreshold: state.atRiskThreshold,
           satisfactoryThreshold: state.satisfactoryThreshold,
+          records: state.records,
+          uniqueStudents: state.uniqueStudents,
+          excusedAbsences: state.excusedAbsences,
+          studentPhotos: state.studentPhotos,
+          studentNotes: state.studentNotes,
+          searchQuery: state.searchQuery,
+          setSearchQuery: state.setSearchQuery,
+          dateRangeFilter: 'all',
+          setDateRangeFilter: () => {},
+          studentLevels: state.studentLevels,
+          selectedModule: state.selectedModule,
+          setSelectedModule: state.setSelectedModule,
+          sortBy: state.sortBy,
+          setSortBy: state.setSortBy,
           viewMode: state.viewMode,
           setViewMode: state.setViewMode,
           densityMode: state.densityMode,
           setDensityMode: state.setDensityMode,
-          searchQuery: state.searchQuery,
-          setSearchQuery: state.setSearchQuery,
           statusFilter: state.statusFilter,
           setStatusFilter: state.setStatusFilter,
-          sortBy: state.sortBy,
-          setSortBy: state.setSortBy,
-          selectedStudentNames: state.selectedStudentNames,
-          setSelectedStudentNames: state.setSelectedStudentNames,
-          onOpenBatchEmailModal: () => state.setShowBatchEmailModal(true),
-          onOpenLiveCheckinModal: () => state.setShowLiveCheckinModal(true),
-          onOpenPINCheckinModal: () => state.setShowPINCheckinModal(true),
-          onOpenClassDaysModal: () => state.setShowClassDaysModal(true),
-          onOpenReportModal: () => state.setShowReportModal(true),
-          onOpenSettingsModal: () => state.setShowSettingsModal(true),
-          onPushToCloud: state.handlePushToCloud,
-          isCloudSyncing: state.isCloudSyncing,
-          lastSyncedTime: state.lastSyncedTime,
-          showTrendChart: state.showTrendChart,
-          setShowTrendChart: state.setShowTrendChart,
-        };
-
-      case 'students':
-        return {
-          uniqueStudents: state.uniqueStudents,
-          effectiveClassDays: state.effectiveClassDays,
-          records: state.records,
-          payments: state.payments,
-          studentNotes: state.studentNotes,
-          studentPhotos: state.studentPhotos,
-          studentLevels: state.studentLevels,
-          setStudentLevels: state.setStudentLevels,
           selectedStudent: state.selectedStudent,
           setSelectedStudent: state.setSelectedStudent,
-          deletedStudentNames: state.deletedStudentNames,
-          setDeletedStudentNames: state.setDeletedStudentNames,
+          selectedStudentNames: state.selectedStudentNames,
+          setSelectedStudentNames: state.setSelectedStudentNames,
+          filteredAndSortedStudents: state.filteredAndSortedStudents,
+          effectiveClassDays: state.effectiveClassDays,
+          classDayStats: state.classDayStats,
+          trendChartData: state.trendChartData,
+          getStudentBadges: state.getStudentBadges,
+          handleToggleStudentAttendance: state.handleToggleStudentAttendance,
+          handleAddClassDay: state.handleAddClassDay,
+          handleEditClassDayTitle: state.handleEditClassDayTitle,
+          handleDeleteClassDay: state.handleDeleteClassDay,
+          handleClearClassDayRecords: state.handleClearClassDayRecords,
+          handleSaveStudentNote: state.handleSaveStudentNote,
+          handleToggleExcusedAbsence: state.handleToggleExcusedAbsence,
+          handleSelectAllDisplayed: state.handleSelectAllDisplayed,
+          handleSelectAllAtRisk: state.handleSelectAllAtRisk,
+          clearBatchSelection: state.clearBatchSelection,
+          handleExportCSV: state.handleExportCSV,
+          handleLoadDemo: () => {},
+          isLoading: false,
+          dataSource: state.dataSource || 'local',
+          error: null,
+          showReportModal: state.showReportModal,
+          setShowReportModal: state.setShowReportModal,
+          showEmailDraftModal: state.showEmailDraftModal,
+          setShowEmailDraftModal: state.setShowEmailDraftModal,
+          copiedEmail: false,
+          setCopiedEmail: () => {},
+          showStudentTranscriptModal: state.showStudentTranscriptModal,
+          setShowStudentTranscriptModal: state.setShowStudentTranscriptModal,
+          showCertificateModal: state.showCertificateModal,
+          setShowCertificateModal: state.setShowCertificateModal,
+          showBatchEmailModal: state.showBatchEmailModal,
+          setShowBatchEmailModal: state.setShowBatchEmailModal,
+          certificateData: state.certificateData,
+          setCertificateData: state.setCertificateData,
+          isGeneratingPDF: state.isGeneratingPDF,
+          showClassDaysModal: state.showClassDaysModal,
+          setShowClassDaysModal: state.setShowClassDaysModal,
+          liveCheckinDayId: state.liveCheckinDayId,
+          setLiveCheckinDayId: state.setLiveCheckinDayId,
+          handleClearStudentAttendanceRecords: state.handleClearStudentAttendanceRecords,
+          selectedReportLevel: state.selectedReportLevel,
+          setSelectedReportLevel: state.setSelectedReportLevel,
+          selectedReportAttendanceFilter: state.selectedReportAttendanceFilter,
+          setSelectedReportAttendanceFilter: state.setSelectedReportAttendanceFilter,
+          toggleSelectStudent: state.toggleSelectStudent,
+          setRecords: state.setRecords,
+          setExcusedAbsences: state.setExcusedAbsences,
+          onOpenClassDaysModal: () => state.setShowClassDaysModal(true),
+          onOpenLiveCheckin: (dayId?: string) => {
+            state.setLiveCheckinDayId(dayId || '');
+            state.setShowLiveCheckinModal(true);
+          },
+          onOpenReportModal: (filter?: string) => {
+            if (filter) state.setSelectedReportAttendanceFilter(filter as any);
+            state.setShowReportModal(true);
+          },
+          onOpenMobileDownloadModal: () => state.setShowMobileDownloadModal(true),
+          onOpenPresentation: () => state.setShowPresentationModal(true),
+          onResetStudentPassword: () => {},
+        };
+
+      case 'students': {
+        const mappedStudentsList = state.uniqueStudents.map(s => ({
+          id: s.id || `stu_${(s.name || '').toLowerCase().replace(/\s+/g, '_')}`,
+          name: s.name,
+          studentNumber: s.studentNumber,
+          email: s.email,
+          phone: s.phone,
+          rate: s.rate,
+          attended: s.attended,
+          totalDays: s.totalDays,
+          avgScore: s.avgScore,
+          note: s.note,
+          photoUrl: state.studentPhotos[(s.name || '').toLowerCase().trim()] || s.photoUrl,
+          levelId: s.levelId,
+          cohortId: s.cohortId || state.activeCohortId,
+          attendanceByDay: s.attendanceByDay,
+        }));
+        return {
+          classDays: state.classDays,
+          students: mappedStudentsList,
+          initialStudents: mappedStudentsList,
+          onDeleteStudent: state.handleDeleteStudent,
+          onSelectStudentForTranscript: (s: any) => {
+            const found = state.uniqueStudents.find(u => u.name === s.name);
+            if (found) {
+              state.setSelectedStudent(found);
+              state.setShowStudentTranscriptModal(true);
+            }
+          },
+          onSelectStudentForCertificate: (s: any) => {
+            state.setCertificateData({
+              studentName: s.name,
+              awardTitle: s.rate >= 100 ? 'Perfect Attendance Honor Distinction' : 'Ministry Academic Completion Award',
+              criteria: `Demonstrated exceptional commitment with ${s.rate.toFixed(1)}% class attendance across all required School of Ministry sessions.`,
+              rate: s.rate,
+              avgScore: s.avgScore,
+            });
+            state.setShowCertificateModal(true);
+          },
+          onSelectStudentForEmail: (s: any) => {
+            const found = state.uniqueStudents.find(u => u.name === s.name);
+            if (found) {
+              state.setSelectedStudent(found);
+              state.setShowEmailDraftModal(true);
+            }
+          },
           atRiskThreshold: state.atRiskThreshold,
           satisfactoryThreshold: state.satisfactoryThreshold,
-          appUser: state.appUser,
-          userRole: state.appUser?.role,
-          cohorts: state.cohorts,
-          activeCohortId: state.activeCohortId,
-          onOpenCohortModal: () => state.setShowCohortModal(true),
-          onOpenUserManagementModal: () => state.setShowUserManagementModal(true),
+          appRole: state.appUser?.role,
         };
+      }
 
       case 'courses':
         return {
@@ -201,6 +303,8 @@ export function AppRouter() {
           currentStudentName: state.appUser?.studentName || state.appUser?.name,
           payments: state.payments,
           setPayments: state.setPayments,
+          onDeleteStudent: state.handleDeleteStudent,
+          onRestoreStudent: state.handleRestoreStudent,
         };
 
       case 'messages':

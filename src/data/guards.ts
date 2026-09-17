@@ -17,6 +17,9 @@ export const DEMO_EMAIL_PATTERNS = [
   'demo@',
   'test@',
   '@example.com',
+  '@example.test',
+  '.example.test',
+  '.test',
   'guest@hteim.edu',
   'demo@demo.hteim.edu',
   'teacher@demo.hteim.edu',
@@ -78,6 +81,7 @@ export function isDemoPayment(paymentOrInvoice: any): boolean {
   if (paymentOrInvoice.source === 'demo' || paymentOrInvoice.source === 'mock') return true;
   if (typeof paymentOrInvoice.id === 'string' && paymentOrInvoice.id.toLowerCase().startsWith('demo-')) return true;
   if (typeof paymentOrInvoice.studentName === 'string' && paymentOrInvoice.studentName.toLowerCase().includes('demo')) return true;
+  if (typeof paymentOrInvoice.studentId === 'string' && (paymentOrInvoice.studentId.toLowerCase().startsWith('demo-') || paymentOrInvoice.studentId.toLowerCase().startsWith('hteim-demo-'))) return true;
   if (typeof paymentOrInvoice.email === 'string' && isDemoUser(paymentOrInvoice.email)) return true;
   return false;
 }

@@ -8,46 +8,74 @@ import {
   Course 
 } from '../types';
 
+import { MASTER_ENROLLED_STUDENTS } from './curriculum';
+
 export const INITIAL_PAYMENTS: PaymentRecord[] = [
   {
-    "id": "pay-sheet-1",
-    "studentName": "Afeshia Burke",
-    "studentId": "HTEIM-2026-1226",
-    "email": "afeshiajones16@gmail.com",
-    "moduleTrack": "Active Ministry Module",
-    "totalTuition": 1200,
-    "amountPaid": 600,
-    "status": "Partial",
-    "lastPaymentDate": "8th april 2026",
-    "paymentMethod": "Cash",
-    "notes": "Google Sheet Record #1. Country: Trinidad. Role: Student. Enrollment Status: Active. Payment History: $400 on 8th June 2026, $200 on 8th april 2026."
+    id: "demo-pay-001",
+    studentName: "Student One",
+    studentId: "HTEIM-DEMO-001",
+    email: "student.one@example.test",
+    moduleTrack: "Active Ministry Module",
+    totalTuition: 1200,
+    amountPaid: 600,
+    status: "Partial",
+    lastPaymentDate: "2026-04-08",
+    paymentMethod: "Bank Transfer",
+    notes: "[Demo Fixture] Sample synthetic student payment record for development and demonstration.",
+    isDemo: true
   },
   {
-    "id": "pay-sheet-2",
-    "studentName": "Afi Thompson",
-    "studentId": "HTEIM-2026-1160",
-    "email": "Afireforestation2016@gmail.com",
-    "moduleTrack": "General Ministry Studies (On Hold)",
-    "totalTuition": 1200,
-    "amountPaid": 0,
-    "status": "Pending Review",
-    "lastPaymentDate": "N/A",
-    "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #2. Country: Tobago. Role: Student. Enrollment Status: Inactive."
+    id: "demo-pay-002",
+    studentName: "Student Two",
+    studentId: "HTEIM-DEMO-002",
+    email: "student.two@example.test",
+    moduleTrack: "General Ministry Studies",
+    totalTuition: 1200,
+    amountPaid: 1200,
+    status: "Paid In Full",
+    lastPaymentDate: "2026-05-15",
+    paymentMethod: "Bank Transfer",
+    notes: "[Demo Fixture] Sample synthetic student payment record for development and demonstration.",
+    isDemo: true
   },
   {
-    "id": "pay-sheet-3",
-    "studentName": "ANNE-MARIE DAVIS",
-    "studentId": "HTEIM-2026-1108",
-    "email": "annejazz2014@gmail.com",
-    "moduleTrack": "Active Ministry Module",
-    "totalTuition": 1200,
-    "amountPaid": 600,
-    "status": "Partial",
-    "lastPaymentDate": "22/03/2026",
-    "paymentMethod": "Bank Transfer",
-    "notes": "Google Sheet Record #3. Country: Trinidad. Role: Student. Enrollment Status: Active. Payment History: $400 on 20/05/2026, $200 on 22/03/2026."
-  }
+    id: "demo-pay-003",
+    studentName: "Student Three",
+    studentId: "HTEIM-DEMO-003",
+    email: "student.three@example.test",
+    moduleTrack: "Apostolic Leadership Track",
+    totalTuition: 1200,
+    amountPaid: 0,
+    status: "Pending Review",
+    lastPaymentDate: "N/A",
+    paymentMethod: "Bank Transfer",
+    notes: "[Demo Fixture] Sample synthetic student payment record for development and demonstration.",
+    isDemo: true
+  },
+  ...MASTER_ENROLLED_STUDENTS.map((name, index) => {
+    const cleanId = String(index + 101);
+    const emailPrefix = name.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+    const isPaid = index % 3 === 0;
+    const isPartial = index % 3 === 1;
+    const amountPaid = isPaid ? 1200 : isPartial ? 600 : 0;
+    const status: PaymentRecord['status'] = isPaid ? 'Paid In Full' : isPartial ? 'Partial' : 'Pending Review';
+
+    return {
+      id: `pay-som-${cleanId}`,
+      studentName: name,
+      studentId: `HTEIM-DEMO-${cleanId}`,
+      email: `${emailPrefix}@example.test`,
+      moduleTrack: index % 2 === 0 ? "Active Ministry Module" : "General Ministry Studies",
+      totalTuition: 1200,
+      amountPaid,
+      status,
+      lastPaymentDate: amountPaid > 0 ? "2026-04-15" : "N/A",
+      paymentMethod: "Bank Transfer" as const,
+      notes: `[Demo Fixture] Synthetic enrollment and tuition fixture for ${name}.`,
+      isDemo: true
+    };
+  })
 ];
 
 export const INITIAL_ASSIGNMENTS: CustomAssignment[] = [];

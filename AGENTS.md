@@ -48,3 +48,16 @@ This file serves as persistent instructions for AI coding agents working on the 
 - **Animations**: `motion` from `motion/react`.
 - **Data Visualizations**: `recharts` for charts and responsive SVG graphs.
 - **Theme Support**: Seamless Light / Dark theme toggling with high-contrast accessibility.
+
+---
+
+## 6. Data Privacy, PII Protection & Synthetic Fixtures Policy
+- **Production Data Architecture**:
+  - `Production` → `Supabase/PostgreSQL Database` → `Authenticated API (/api/payments, /api/students)` → `Application`.
+  - Real student records, personally identifiable information (PII), email addresses, student IDs, and financial payment histories must strictly live in the secure database behind authenticated and authorized API endpoints.
+  - Real institutional data must **never** be hardcoded or committed into Git repository files.
+- **Demo / Development Fixtures Policy**:
+  - `Demo / Development` → `Clearly Synthetic Fixtures`.
+  - All default seed files and test fixtures checked into the repository must use explicitly synthetic identities (e.g. `Student One`, `student.one@example.test`, `HTEIM-DEMO-001`).
+  - Synthetic records must be flagged with `isDemo: true` or `notes: "[Demo Fixture]..."` and be protected by isolation guards in `guards.ts` to prevent accidental persistence or pollution of production datasets.
+

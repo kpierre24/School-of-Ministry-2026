@@ -1300,7 +1300,221 @@ export function usePortalState() {
       });
 
     return studentList;
-  }, [records, effectiveClassDays, deletedStudentNames]);
+  }, [records, effectiveClassDays, deletedStudentNames, studentLevels]);
+
+  const classDayStats = useMemo(() => {
+    const stats: Record<string, { count: number; percentage: number }> = {};
+    effectiveClassDays.forEach(day => {
+      const dayRecs = records.filter(r => r.classDay === day.id && (r.status || '').toLowerCase() === 'present');
+      const totalStds = uniqueStudents.length || 1;
+      stats[day.id] = { count: dayRecs.length, percentage: Math.round((dayRecs.length / totalStds) * 100) };
+    });
+    return stats;
+  }, [effectiveClassDays, records, uniqueStudents.length]);
+
+  const trendChartData = useMemo(() => {
+    return effectiveClassDays.map(day => {
+      const stats = classDayStats[day.id] || { count: 0, percentage: 0 };
+      return {
+        name: day.name.length > 16 ? day.name.substring(0, 14) + '...' : day.name,
+        fullName: day.name,
+        rate: Math.round(stats.percentage),
+        present: stats.count,
+        total: uniqueStudents.length,
+      };
+    });
+  }, [effectiveClassDays, classDayStats, uniqueStudents.length]);
+
+  const filteredAndSortedStudents = useMemo(() => {
+    return uniqueStudents
+      .filter(student => {
+        if (searchQuery.trim() !== '') {
+          if (!(student?.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())) {
+            return false;
+          }
+        }
+        if (statusFilter === 'at_risk' && student.rate >= atRiskThreshold) return false;
+        if (statusFilter === 'moderate' && (student.rate < atRiskThreshold || student.rate >= satisfactoryThreshold)) return false;
+        if (statusFilter === 'perfect' && student.rate < satisfactoryThreshold) return false;
+        if (statusFilter === 'fifty_percent' && student.rate > 50) return false;
+        if (statusFilter === 'honor_roll') {
+          const isHonor = student.rate >= 100 || (student.avgScore !== null && student.avgScore >= 85);
+          if (!isHonor) return false;
+        }
+        if (statusFilter === 'unpaid') {
+          const pDetails = getStudentPaymentDetails(student.name);
+          if (!pDetails.hasOutstanding) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const nameA = (a?.name || '').trim();
+        const nameB = (b?.name || '').trim();
+
+        const getLastName = (fullName: string) => {
+          const parts = fullName.trim().split(/\s+/);
+          return parts.length > 1 ? parts[parts.length - 1] : fullName;
+        };
+
+        if (sortBy === 'name_asc') {
+          return nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'name_desc') {
+          return nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'last_name_asc') {
+          const lastCmp = getLastName(nameA).localeCompare(getLastName(nameB), undefined, { sensitivity: 'base', numeric: true });
+          return lastCmp !== 0 ? lastCmp : nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'last_name_desc') {
+          const lastCmp = getLastName(nameB).localeCompare(getLastName(nameA), undefined, { sensitivity: 'base', numeric: true });
+          return lastCmp !== 0 ? lastCmp : nameB.localeCompare(nameA, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'rate_desc') {
+          return b.rate - a.rate || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'rate_asc') {
+          return a.rate - b.rate || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'score_desc') {
+          return ((b.avgScore ?? 0) - (a.avgScore ?? 0)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        if (sortBy === 'score_asc') {
+          return ((a.avgScore ?? 0) - (b.avgScore ?? 0)) || nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+        }
+        return 0;
+      });
+  }, [uniqueStudents, searchQuery, statusFilter, sortBy, atRiskThreshold, satisfactoryThreshold]);
+
+  const loggedInStudentData = useMemo(() => {
+    if (appUser && appUser.role === 'student') {
+      const rawName = appUser.studentName || appUser.name || '';
+      const studentNameLower = (rawName || '').toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+      const mappedCanonical = (MANUAL_ALIASES[studentNameLower] || rawName).toLowerCase().trim();
+
+      return uniqueStudents.find(st => {
+        if (!st || !st.name) return false;
+        const stLower = st.name.toLowerCase().trim().replace(/[\u00A0\s]+/g, ' ');
+        const stCanonical = (MANUAL_ALIASES[stLower] || st.name).toLowerCase().trim();
+        return stLower === studentNameLower || stLower === mappedCanonical || stCanonical === mappedCanonical || stCanonical === studentNameLower;
+      });
+    }
+    return null;
+  }, [appUser, uniqueStudents]);
+
+  const currentStudentPortalData = useMemo(() => {
+    const sName = appUser?.studentName || appUser?.name || 'Student';
+    if (loggedInStudentData) {
+      return {
+        name: loggedInStudentData.name,
+        rate: loggedInStudentData.rate,
+        attended: loggedInStudentData.attended,
+        totalDays: loggedInStudentData.totalDays,
+        avgScore: loggedInStudentData.avgScore,
+        attendanceByDay: loggedInStudentData.attendanceByDay,
+        note: loggedInStudentData.note,
+        photoUrl: studentPhotos[(sName || '').toLowerCase().trim()] || loggedInStudentData.photoUrl
+      };
+    }
+    return {
+      name: sName,
+      rate: 100,
+      attended: effectiveClassDays.length,
+      totalDays: effectiveClassDays.length || 1,
+      avgScore: null,
+      attendanceByDay: {},
+      photoUrl: studentPhotos[(sName || '').toLowerCase().trim()] || ''
+    };
+  }, [appUser, loggedInStudentData, studentPhotos, effectiveClassDays.length]);
+
+  const avgAttendance = useMemo(() => {
+    if (uniqueStudents.length === 0) return 0;
+    const totalRate = uniqueStudents.reduce((sum, s) => sum + s.rate, 0);
+    return Math.round(totalRate / uniqueStudents.length);
+  }, [uniqueStudents]);
+
+  const uncollectedTuitionAmount = useMemo(() => {
+    return payments.reduce((sum, p) => sum + Math.max(0, (p.totalTuition || 0) - (p.amountPaid || 0)), 0);
+  }, [payments]);
+
+  const pendingAssignmentsCount = useMemo(() => {
+    if (appUser?.role === 'student') {
+      const studentNameLower = (appUser.studentName || appUser.name || '').toLowerCase().trim();
+      const submittedIds = new Set(
+        submissions
+          .filter(s => s.studentName && (s?.studentName || '').toLowerCase().trim() === studentNameLower)
+          .map(s => s.assignmentId)
+      );
+      return customAssignments.filter(a => !submittedIds.has(a.id)).length;
+    }
+    const unGraded = submissions.filter(s => s.status === 'Submitted' || s.status === 'Pending Review').length;
+    return unGraded > 0 ? unGraded : customAssignments.length;
+  }, [appUser, submissions, customAssignments]);
+
+  const toggleSelectStudent = (name: string) => {
+    setSelectedStudentNames(prev => 
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
+  };
+
+  const handleSelectAllDisplayed = () => {
+    if (selectedStudentNames.length >= filteredAndSortedStudents.length && filteredAndSortedStudents.length > 0) {
+      setSelectedStudentNames([]);
+    } else {
+      setSelectedStudentNames(filteredAndSortedStudents.map(s => s.name));
+    }
+  };
+
+  const handleSelectAllAtRisk = () => {
+    const atRiskNames = uniqueStudents.filter(s => s.rate < atRiskThreshold).map(s => s.name);
+    setSelectedStudentNames(atRiskNames);
+  };
+
+  const clearBatchSelection = () => {
+    setSelectedStudentNames([]);
+  };
+
+  const handleExportCSV = () => {
+    if (uniqueStudents.length === 0) return;
+
+    const headers = ['Student Name', ...classDays.map(d => `"${d.name.replace(/"/g, '""')}"`), 'Total Attended', 'Attendance Rate %'];
+    const csvRows: string[] = [headers.join(',')];
+
+    uniqueStudents.forEach(student => {
+      const row = [
+        `"${student.name.replace(/"/g, '""')}"`,
+        ...classDays.map(d => student.attendanceByDay[d.id]?.present ? 'Present' : 'Absent'),
+        student.attended,
+        `${student.rate.toFixed(1)}%`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `HTEIM_Attendance_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestoreStudent = (studentName: string) => {
+    const lower = (studentName || '').toLowerCase().trim();
+    setDeletedStudentNames(prev => prev.filter(n => (n || '').toLowerCase().trim() !== lower));
+  };
+
+  const handleRestoreAllStudents = () => {
+    setDeletedStudentNames([]);
+  };
+
+  const handleUpdateStudentPhoto = (studentName: string, photoUrl: string) => {
+    setStudentPhotos(prev => ({
+      ...prev,
+      [(studentName || '').toLowerCase().trim()]: photoUrl
+    }));
+  };
 
   return {
     user,
@@ -1587,15 +1801,22 @@ export function usePortalState() {
     handleClearClassDayRecords: (id: string) => {
       setRecords(prev => prev.filter(r => r.classDay !== id));
     },
-    classDayStats: (() => {
-      const stats: Record<string, { count: number; percentage: number }> = {};
-      classDays.forEach(day => {
-        const dayRecs = records.filter(r => r.classDay === day.id && r.status === 'present');
-        const totalStds = uniqueStudents.length || 1;
-        stats[day.id] = { count: dayRecs.length, percentage: Math.round((dayRecs.length / totalStds) * 100) };
-      });
-      return stats;
-    })(),
+    classDayStats,
+    trendChartData,
+    filteredAndSortedStudents,
+    loggedInStudentData,
+    currentStudentPortalData,
+    avgAttendance,
+    uncollectedTuitionAmount,
+    pendingAssignmentsCount,
+    toggleSelectStudent,
+    handleSelectAllDisplayed,
+    handleSelectAllAtRisk,
+    clearBatchSelection,
+    handleExportCSV,
+    handleRestoreStudent,
+    handleRestoreAllStudents,
+    handleUpdateStudentPhoto,
     getStudentIdForName: (name: string) => {
       return `std-${name.toLowerCase().replace(/\s+/g, '-')}`;
     },
