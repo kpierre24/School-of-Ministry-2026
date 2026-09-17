@@ -939,3 +939,19 @@ export interface OfflineQueueItem {
   payload: any;
 }
 
+export interface MergeConflict {
+  studentName: string;
+  classDay: string;
+  localStatus: 'present' | 'absent';
+  sheetsStatus: 'present' | 'absent';
+  sheetsScore: string;
+  sheetsTimestamp: string;
+}
+
+export interface RecentSheet {
+  id: string;
+  url: string;
+  title: string;
+  lastLoaded: string;
+}
+
