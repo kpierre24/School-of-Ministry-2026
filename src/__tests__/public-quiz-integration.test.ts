@@ -1,9 +1,49 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { assignmentsService } from '../server/services/domain/assignmentsService';
 import * as supabaseServerModule from '../server/services/supabaseServer';
 
 describe('Public Quiz Server Integration & Security Hardening', () => {
-  
+  let mockExistingSubmissions: any[] = [];
+  let supabaseSpy: any;
+
+  const mockSupabase = {
+    from: vi.fn((table: string) => {
+      const queryChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        order: vi.fn().mockImplementation(() => {
+          if (table === 'quiz_submissions') {
+            return Promise.resolve({
+              data: mockExistingSubmissions,
+              error: null
+            });
+          }
+          return Promise.resolve({ data: [], error: null });
+        }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        insert: vi.fn().mockResolvedValue({ error: null }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      };
+      return queryChain;
+    })
+  };
+
+  beforeEach(() => {
+    mockExistingSubmissions = [];
+    supabaseSpy = vi.spyOn(supabaseServerModule, 'getServerSupabase').mockReturnValue(mockSupabase as any);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    if (supabaseSpy) {
+      supabaseSpy.mockRestore();
+    }
+  });
+
   it('1. Valid Quiz: retrieves public quiz by valid share code or ID', async () => {
     const validCode = 'hermeneutics101';
     const result = await assignmentsService.getPublicQuiz(validCode);
@@ -76,39 +116,14 @@ describe('Public Quiz Server Integration & Security Hardening', () => {
       responses: { 'q_herm_1': 'opt_1a' }
     };
 
-    // Mock Supabase to return an existing submission submitted 5 seconds ago
-    const mockSupabase = {
-      from: vi.fn((table: string) => {
-        if (table === 'quiz_submissions') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            ilike: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({
-              data: [{ id: 'sub_prev', submitted_at: new Date(Date.now() - 5000).toISOString() }],
-              error: null
-            }),
-            insert: vi.fn().mockResolvedValue({ error: null })
-          };
-        }
-        return {
-          select: vi.fn().mockReturnThis(),
-          or: vi.fn().mockReturnThis(),
-          is: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
-        };
-      })
-    };
+    // Populate mock data to simulate a previous submission 5 seconds ago
+    mockExistingSubmissions = [
+      { id: 'sub_prev', submitted_at: new Date(Date.now() - 5000).toISOString() }
+    ];
 
-    const spy = vi.spyOn(supabaseServerModule, 'getServerSupabase').mockReturnValue(mockSupabase as any);
-
-    try {
-      await expect(
-        assignmentsService.submitPublicQuizResponse(shareCode, payload)
-      ).rejects.toThrow(/Duplicate submission detected/i);
-    } finally {
-      spy.mockRestore();
-    }
+    await expect(
+      assignmentsService.submitPublicQuizResponse(shareCode, payload)
+    ).rejects.toThrow(/Duplicate submission detected/i);
   });
 
 });
