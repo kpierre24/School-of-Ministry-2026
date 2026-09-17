@@ -358,10 +358,13 @@ export function AppRouter() {
   const isAccessible = isNavigationAccessible(navItem, state.appUser?.role, (state.appUser as any)?.permissions);
   const pageProps = getPropsForTab(navItem.id);
 
-  if (state.activePublicQuiz) {
+  if (state.activePublicQuiz || state.isLoadingPublicQuiz || state.isPublicQuizNotFound) {
     return (
       <PublicQuizPage
         quiz={state.activePublicQuiz}
+        isLoading={state.isLoadingPublicQuiz}
+        isNotFound={state.isPublicQuizNotFound}
+        errorMessage={state.publicQuizError || undefined}
         studentRoster={state.uniqueStudents.map(s => typeof s === 'string' ? { name: s } : { name: s.name })}
         currentStudentName={state.appUser?.studentName || state.appUser?.name}
         onSubmitResponse={state.handlePublicQuizSubmit}

@@ -1244,6 +1244,8 @@ export function usePortalState() {
   // Shared Public Quiz detection & response handler
   const [activePublicQuiz, setActivePublicQuiz] = useState<QuizAssignment | null>(null);
   const [isLoadingPublicQuiz, setIsLoadingPublicQuiz] = useState<boolean>(false);
+  const [isPublicQuizNotFound, setIsPublicQuizNotFound] = useState<boolean>(false);
+  const [publicQuizError, setPublicQuizError] = useState<string | null>(null);
 
   useEffect(() => {
     const getQuizShareCodeFromUrl = (): string | null => {
@@ -1285,21 +1287,41 @@ export function usePortalState() {
     );
 
     if (matched) {
-      setActivePublicQuiz(matched);
+      if (matched.isPublished === false) {
+        setActivePublicQuiz(null);
+        setIsPublicQuizNotFound(true);
+        setPublicQuizError('This quiz is currently unpublished or revoked by the instructor.');
+      } else {
+        setActivePublicQuiz(matched);
+        setIsPublicQuizNotFound(false);
+        setPublicQuizError(null);
+      }
     } else {
       setIsLoadingPublicQuiz(true);
+      setIsPublicQuizNotFound(false);
+      setPublicQuizError(null);
       portalApi.getPublicQuiz(code)
         .then(res => {
           if (res?.quiz) {
-            setActivePublicQuiz(res.quiz);
-          } else if (DEFAULT_QUIZ_TEMPLATES.length > 0) {
-            setActivePublicQuiz(DEFAULT_QUIZ_TEMPLATES[0]);
+            if (res.quiz.isPublished === false) {
+              setActivePublicQuiz(null);
+              setIsPublicQuizNotFound(true);
+              setPublicQuizError('This quiz is currently unpublished or revoked by the instructor.');
+            } else {
+              setActivePublicQuiz(res.quiz);
+              setIsPublicQuizNotFound(false);
+              setPublicQuizError(null);
+            }
+          } else {
+            setActivePublicQuiz(null);
+            setIsPublicQuizNotFound(true);
+            setPublicQuizError('Quiz unavailable or link is invalid.');
           }
         })
-        .catch(() => {
-          if (DEFAULT_QUIZ_TEMPLATES.length > 0) {
-            setActivePublicQuiz(DEFAULT_QUIZ_TEMPLATES[0]);
-          }
+        .catch((err: any) => {
+          setActivePublicQuiz(null);
+          setIsPublicQuizNotFound(true);
+          setPublicQuizError(err?.message || 'Quiz unavailable or link is invalid.');
         })
         .finally(() => setIsLoadingPublicQuiz(false));
     }
@@ -1307,6 +1329,8 @@ export function usePortalState() {
 
   const handleClosePublicQuiz = () => {
     setActivePublicQuiz(null);
+    setIsPublicQuizNotFound(false);
+    setPublicQuizError(null);
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete('quiz');
@@ -2203,6 +2227,8 @@ export function usePortalState() {
     },
     activePublicQuiz,
     isLoadingPublicQuiz,
+    isPublicQuizNotFound,
+    publicQuizError,
     handleClosePublicQuiz,
     handlePublicQuizSubmit,
   };

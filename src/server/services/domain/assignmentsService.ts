@@ -1,6 +1,7 @@
 import { getServerSupabase, logAuditEvent } from '../supabaseServer';
 import { logger } from '../../../lib/logger';
 import { AuthenticatedUser } from '../../../types/rbac';
+import { DEFAULT_QUIZ_TEMPLATES } from '../../../data/quizTemplates';
 
 export const assignmentsService = {
   /**
@@ -864,19 +865,26 @@ export const assignmentsService = {
 
   /**
    * Retrieves a public quiz by share code or assignment ID without authentication.
+   * Authoritatively checks existence, publication status, and expiration.
    */
-  async getPublicQuiz(shareCodeOrId: string): Promise<any | null> {
+  async getPublicQuiz(shareCodeOrId: string): Promise<{ quiz?: any; isNotFound?: boolean; isUnpublished?: boolean; isExpired?: boolean; message?: string }> {
     const supabase = getServerSupabase();
     const cleanCode = (shareCodeOrId || '').trim();
 
+    if (!cleanCode) {
+      return { isNotFound: true, message: 'Share code or quiz ID parameter is required.' };
+    }
+
     try {
-      // 1. Try relational assignments query
+      // 1. Query relational assignments table
       const { data: asg, error } = await supabase
         .from('assignments')
         .select('*')
         .or(`id.eq.${cleanCode},share_code.eq.${cleanCode}`)
         .is('deleted_at', null)
         .maybeSingle();
+
+      let matchedQuiz: any = null;
 
       if (!error && asg) {
         let questions = [];
@@ -895,7 +903,7 @@ export const assignmentsService = {
         else if (asg.quiz_data?.questions) questions = asg.quiz_data.questions;
         if (asg.rubric?.settings) settings = { ...settings, ...asg.rubric.settings };
 
-        return {
+        matchedQuiz = {
           id: asg.id,
           title: asg.title,
           courseCode: asg.course_code || 'MIN-101',
@@ -903,22 +911,58 @@ export const assignmentsService = {
           description: asg.description || '',
           category: asg.category || 'Scripture Knowledge',
           dueDate: asg.due_at || asg.due_date || '2026-09-30',
+          lockAt: asg.lock_at || null,
           shareCode: asg.share_code || cleanCode,
           timeLimitMinutes: asg.time_limit_minutes || 30,
           totalPoints: asg.max_points || 100,
+          isPublished: asg.is_published !== false,
           questions,
           settings,
         };
       }
+
+      // 2. Fallback lookup in DEFAULT_QUIZ_TEMPLATES if not found in database
+      if (!matchedQuiz && Array.isArray(DEFAULT_QUIZ_TEMPLATES)) {
+        const tmpl = DEFAULT_QUIZ_TEMPLATES.find(
+          (t) =>
+            t.shareCode?.toLowerCase() === cleanCode.toLowerCase() ||
+            t.id?.toLowerCase() === cleanCode.toLowerCase()
+        );
+
+        if (tmpl) {
+          matchedQuiz = {
+            ...tmpl,
+            isPublished: tmpl.isPublished !== false,
+          };
+        }
+      }
+
+      if (!matchedQuiz) {
+        return { isNotFound: true, message: 'Quiz not found or link is invalid.' };
+      }
+
+      // 3. Authoritative publication check
+      if (matchedQuiz.isPublished === false) {
+        return { isUnpublished: true, message: 'This quiz is currently unpublished or has been revoked by the instructor.' };
+      }
+
+      // 4. Authoritative expiration check (if lockAt or dueDate passed)
+      if (matchedQuiz.lockAt) {
+        const lockTime = new Date(matchedQuiz.lockAt).getTime();
+        if (!isNaN(lockTime) && Date.now() > lockTime) {
+          return { isExpired: true, message: 'This quiz submission window has closed.' };
+        }
+      }
+
+      return { quiz: matchedQuiz };
     } catch (err) {
       logger.warn(`Non-fatal warning fetching public quiz ${cleanCode}:`, err);
+      return { isNotFound: true, message: 'Failed to retrieve quiz details.' };
     }
-
-    return null;
   },
 
   /**
-   * Submits a public quiz response from an external user.
+   * Submits a public quiz response from an external user with authoritative server-side score validation.
    */
   async submitPublicQuizResponse(
     shareCodeOrId: string,
@@ -933,69 +977,125 @@ export const assignmentsService = {
     const timestamp = new Date().toISOString();
     const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
-    // Try finding quiz details
-    const quiz = await this.getPublicQuiz(shareCodeOrId);
-    const quizId = quiz?.id || shareCodeOrId;
-    const quizTitle = quiz?.title || 'Shared Assessment';
-    const totalPossible = quiz?.totalPoints || 100;
-
-    // Basic scoring
-    let score = 0;
-    if (quiz && Array.isArray(quiz.questions)) {
-      quiz.questions.forEach((q: any) => {
-        const weight = Number(q.weight) || 10;
-        const ans = payload.responses[q.id];
-        if (q.type === 'multiple_choice' || q.type === 'true_false' || !q.type) {
-          if (ans && ans === q.correctOptionId) score += weight;
-        } else if (q.type === 'checkboxes') {
-          const correct = q.correctOptionIds || [];
-          const chosen = Array.isArray(ans) ? ans : [];
-          if (correct.length === chosen.length && correct.every((id: string) => chosen.includes(id))) {
-            score += weight;
-          }
-        } else if (q.type === 'short_answer' || q.type === 'fill_blank') {
-          const acceptable = (q.acceptableAnswers || []).map((a: string) => a.trim().toLowerCase());
-          const userText = (typeof ans === 'string' ? ans : '').trim().toLowerCase();
-          if (acceptable.some((a: string) => a === userText || a.replace(/[^a-z0-9]/g, '') === userText.replace(/[^a-z0-9]/g, ''))) {
-            score += weight;
-          }
-        } else if (q.type === 'paragraph') {
-          if (typeof ans === 'string' && ans.trim().length > 10) score += weight;
-        }
-      });
-    } else {
-      score = Math.round(totalPossible * 0.85); // Default satisfactory baseline if unlinked
+    // 1. Authoritative Quiz Lookup & Status Verification
+    const quizLookup = await this.getPublicQuiz(shareCodeOrId);
+    if (!quizLookup || quizLookup.isNotFound || !quizLookup.quiz) {
+      throw new Error(quizLookup?.message || 'Quiz not found or link is invalid.');
+    }
+    if (quizLookup.isUnpublished) {
+      throw new Error(quizLookup.message || 'This quiz is currently unpublished or revoked by the instructor.');
+    }
+    if (quizLookup.isExpired) {
+      throw new Error(quizLookup.message || 'This quiz has expired and is no longer accepting responses.');
     }
 
-    const percentage = Math.round((score / (totalPossible || 1)) * 100);
+    const quiz = quizLookup.quiz;
+    const quizId = quiz.id;
+    const quizTitle = quiz.title || 'Shared Assessment';
+
+    // 2. Validate Student Name and Payload Integrity
+    const cleanStudentName = (payload.studentName || '').trim();
+    if (!cleanStudentName || cleanStudentName.length < 2) {
+      throw new Error('A valid Student Name (at least 2 characters) is required to submit this assessment.');
+    }
+    if (cleanStudentName.length > 100) {
+      throw new Error('Student Name exceeds maximum allowed length (100 characters).');
+    }
+
+    const responsesPayload = payload.responses && typeof payload.responses === 'object' && !Array.isArray(payload.responses)
+      ? payload.responses
+      : {};
+
+    // 3. Anti-Spam / Rate Limit & Multiple Attempt Check
+    try {
+      const { data: existingSubs } = await supabase
+        .from('quiz_submissions')
+        .select('id, submitted_at')
+        .eq('quiz_id', quizId)
+        .ilike('student_name', cleanStudentName)
+        .order('submitted_at', { ascending: false });
+
+      if (existingSubs && existingSubs.length > 0) {
+        // Anti-spam check: prevent submission within 30 seconds
+        const lastSubmittedAt = new Date(existingSubs[0].submitted_at).getTime();
+        if (!isNaN(lastSubmittedAt) && Date.now() - lastSubmittedAt < 30000) {
+          throw new Error('Duplicate submission detected. Please wait at least 30 seconds before re-submitting.');
+        }
+
+        // Multiple attempts check if restricted by quiz settings
+        if (quiz.settings?.allowMultipleAttempts === false) {
+          throw new Error('Multiple attempts are not allowed for this quiz.');
+        }
+      }
+    } catch (checkErr: any) {
+      if (checkErr.message?.includes('Duplicate submission') || checkErr.message?.includes('Multiple attempts')) {
+        throw checkErr;
+      }
+      logger.warn('Non-blocking notice checking existing public quiz submissions:', checkErr);
+    }
+
+    // 4. Authoritative Server-Side Score Calculation (NEVER trust client score/percentage)
+    let earnedScore = 0;
+    let computedTotalPossible = 0;
+    const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+
+    questions.forEach((q: any) => {
+      const weight = Number(q.weight) || 10;
+      computedTotalPossible += weight;
+      const ans = responsesPayload[q.id];
+
+      if (q.type === 'multiple_choice' || q.type === 'true_false' || !q.type) {
+        if (ans && ans === q.correctOptionId) earnedScore += weight;
+      } else if (q.type === 'checkboxes') {
+        const correct = q.correctOptionIds || [];
+        const chosen = Array.isArray(ans) ? ans : [];
+        if (correct.length === chosen.length && correct.every((id: string) => chosen.includes(id))) {
+          earnedScore += weight;
+        }
+      } else if (q.type === 'short_answer' || q.type === 'fill_blank') {
+        const acceptable = (q.acceptableAnswers || []).map((a: string) => a.trim().toLowerCase());
+        const userText = (typeof ans === 'string' ? ans : '').trim().toLowerCase();
+        if (acceptable.some((a: string) => a === userText || a.replace(/[^a-z0-9]/g, '') === userText.replace(/[^a-z0-9]/g, ''))) {
+          earnedScore += weight;
+        }
+      } else if (q.type === 'paragraph') {
+        if (typeof ans === 'string' && ans.trim().length >= 10) earnedScore += weight;
+      }
+    });
+
+    const totalPossible = quiz.totalPoints || (computedTotalPossible > 0 ? computedTotalPossible : 100);
+    const percentage = Math.round((earnedScore / (totalPossible || 1)) * 100);
+    const passingThreshold = Number(quiz.settings?.passingScorePercentage) || 75;
+    const isPassed = percentage >= passingThreshold;
 
     const submissionObj = {
       id: submissionId,
       quizId,
       quizTitle,
-      studentName: payload.studentName,
-      studentEmail: payload.studentEmail || '',
-      score,
+      studentName: cleanStudentName,
+      studentEmail: (payload.studentEmail || '').trim(),
+      score: earnedScore,
       totalPossible,
       percentage,
-      responses: payload.responses,
+      isPassed,
+      responses: responsesPayload,
       submittedAt: timestamp,
       timeSpentSeconds: payload.timeSpentSeconds || 0,
       feedbackGiven: false,
     };
 
-    // Attempt DB persistence
+    // 5. Database Persistence
     try {
       await supabase.from('quiz_submissions').upsert({
         id: submissionId,
         quiz_id: quizId,
         quiz_title: quizTitle,
-        student_name: payload.studentName,
-        student_email: payload.studentEmail || '',
-        score,
+        student_name: cleanStudentName,
+        student_email: (payload.studentEmail || '').trim(),
+        score: earnedScore,
         total_possible: totalPossible,
         percentage,
-        responses: payload.responses,
+        responses: responsesPayload,
         submitted_at: timestamp,
         time_spent_seconds: payload.timeSpentSeconds || 0,
         updated_at: timestamp,
@@ -1010,9 +1110,9 @@ export const assignmentsService = {
       entityType: 'quiz_submission',
       entityId: submissionId,
       action: 'create',
-      newValues: { studentName: payload.studentName, quizId, score, percentage },
+      newValues: { studentName: cleanStudentName, quizId, score: earnedScore, percentage, isPassed },
       changedFields: ['score', 'responses', 'submitted_at'],
-      reason: `External user '${payload.studentName}' completed shared quiz '${quizTitle}'`,
+      reason: `External student '${cleanStudentName}' completed public quiz '${quizTitle}' (Server calculated score: ${earnedScore}/${totalPossible}, ${percentage}%)`,
     });
 
     return submissionObj;

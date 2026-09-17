@@ -21,12 +21,21 @@ assignmentsRouter.get("/public/quiz/:shareCode", async (req: Request, res: Respo
       return res.status(400).json({ error: "Share code parameter is required" });
     }
 
-    const quiz = await assignmentsService.getPublicQuiz(shareCode);
-    if (!quiz) {
-      return res.status(404).json({ error: "Quiz not found or link is invalid" });
+    const result = await assignmentsService.getPublicQuiz(shareCode);
+
+    if (!result || result.isNotFound || !result.quiz) {
+      return res.status(404).json({ error: result?.message || "Quiz not found or link is invalid" });
     }
 
-    return res.status(200).json({ quiz });
+    if (result.isUnpublished) {
+      return res.status(403).json({ error: result.message || "This quiz is currently unpublished or revoked by the instructor." });
+    }
+
+    if (result.isExpired) {
+      return res.status(410).json({ error: result.message || "This quiz has expired and is no longer accepting responses." });
+    }
+
+    return res.status(200).json({ quiz: result.quiz });
   } catch (err: any) {
     logger.error(`GET /api/assignments/public/quiz/${req.params.shareCode} error:`, err);
     return res.status(500).json({ error: "Failed to fetch public quiz" });
@@ -42,8 +51,12 @@ assignmentsRouter.post("/public/quiz/:shareCode/submit", async (req: Request, re
     const { shareCode } = req.params;
     const { studentName, studentEmail, responses, timeSpentSeconds, quizId } = req.body || {};
 
-    if (!studentName || typeof studentName !== "string" || !studentName.trim()) {
-      return res.status(400).json({ error: "Student Name is required to submit this assessment." });
+    if (!studentName || typeof studentName !== "string" || !studentName.trim() || studentName.trim().length < 2) {
+      return res.status(400).json({ error: "A valid Student Name (at least 2 characters) is required to submit this assessment." });
+    }
+
+    if (!responses || typeof responses !== "object" || Array.isArray(responses)) {
+      return res.status(400).json({ error: "Invalid quiz responses format." });
     }
 
     const submission = await assignmentsService.submitPublicQuizResponse(
@@ -51,7 +64,7 @@ assignmentsRouter.post("/public/quiz/:shareCode/submit", async (req: Request, re
       {
         studentName: studentName.trim(),
         studentEmail: studentEmail?.trim() || "",
-        responses: responses || {},
+        responses,
         timeSpentSeconds: Number(timeSpentSeconds) || 0,
       }
     );
@@ -59,7 +72,8 @@ assignmentsRouter.post("/public/quiz/:shareCode/submit", async (req: Request, re
     return res.status(201).json({ submission, success: true });
   } catch (err: any) {
     logger.error(`POST /api/assignments/public/quiz/${req.params.shareCode}/submit error:`, err);
-    return res.status(500).json({ error: err?.message || "Failed to submit public quiz response" });
+    const status = err?.message?.includes('not found') ? 404 : err?.message?.includes('unpublished') || err?.message?.includes('expired') || err?.message?.includes('Duplicate') || err?.message?.includes('Multiple attempts') ? 400 : 500;
+    return res.status(status).json({ error: err?.message || "Failed to submit public quiz response" });
   }
 });
 
