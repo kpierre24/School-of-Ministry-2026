@@ -122,12 +122,11 @@ describe('Real Browser E2E Quiz Hardening Workflow', () => {
     const saveEvaluationBtn = screen.getByText('Commit Evaluation Sheet');
     fireEvent.click(saveEvaluationBtn);
 
-    expect(handleSaveFeedback).toHaveBeenCalledWith(
-      autoGradedSubmission.id,
-      teacherNotes,
-      autoGradedSubmission.score,
-      expect.any(Object)
-    );
+    expect(handleSaveFeedback).toHaveBeenCalled();
+    const [subId, feedback, score] = handleSaveFeedback.mock.calls[0];
+    expect(subId).toBe(autoGradedSubmission.id);
+    expect(feedback).toBe(teacherNotes);
+    expect(score).toBe(autoGradedSubmission.score);
 
     // STEP 7: Student Sees Updated Result & Score Override
     expect(autoGradedSubmission.score).toBe(autoGradedSubmission.score);

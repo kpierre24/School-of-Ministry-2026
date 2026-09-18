@@ -4,7 +4,7 @@ declare module 'vitest' {
   export function describe(name: string, fn: () => void): void;
   export function it(name: string, fn: () => void | Promise<void>): void;
   export function test(name: string, fn: () => void | Promise<void>): void;
-  export function expect<T>(actual: T): any;
+  export const expect: any;
   export const vi: any;
   export function beforeEach(fn: () => void | Promise<void>): void;
   export function afterEach(fn: () => void | Promise<void>): void;
@@ -14,6 +14,7 @@ declare module 'vitest' {
 }
 
 declare module '@testing-library/react' {
+  export const waitFor: (callback: () => void | Promise<void>, options?: { timeout?: number }) => Promise<void>;
   export function render(ui: React.ReactElement, options?: unknown): {
     container: HTMLElement;
     baseElement: HTMLElement;
