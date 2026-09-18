@@ -58,6 +58,7 @@ import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 import { QuizCreatorModal } from './QuizCreatorModal';
 import { QuizTakerView } from './QuizTakerView';
+import { DuplicateQuizModal } from './DuplicateQuizModal';
 import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
 import { Modal } from './Modal';
@@ -67,6 +68,7 @@ import { generateUUID } from '../lib/idGenerator';
 import { CURRICULUM_CLASS_DAYS, isObsoleteLegacyClassDay } from '../data';
 import { formatGradePercentage } from '../lib/securityHelper';
 import { normalizeStudentName } from '../lib/studentNames';
+import { scrubQuizForClient } from '../data/quizTemplates';
 
 type StudentScoreRecord = {
   name: string;
@@ -301,6 +303,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [showQuizCreatorModal, setShowQuizCreatorModal] = useState(false);
   const [editingQuizData, setEditingQuizData] = useState<QuizAssignment | null>(null);
   const [activeQuizTaker, setActiveQuizTaker] = useState<QuizAssignment | null>(null);
+  const [quizToDuplicate, setQuizToDuplicate] = useState<QuizAssignment | null>(null);
   const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<CustomAssignment | null>(null);
   const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
 
@@ -322,6 +325,56 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       // ignore
     }
   }, [quizSubmissionsList]);
+
+  // Sync global submissions (which now includes quiz_submissions from the cloud) into local quizSubmissionsList
+  useEffect(() => {
+    if (submissions && submissions.length > 0) {
+      setQuizSubmissionsList(prev => {
+        const currentMap = new Map(prev.map(s => [s.id, s]));
+        let modified = false;
+
+        submissions.forEach(sub => {
+          if (sub.quizAnswers && !currentMap.has(sub.id)) {
+            // Find the associated quiz to grade the raw answers
+            const matchingQuiz = customAssignments.find(a => a.quizData?.id === sub.assignmentId || a.id === sub.assignmentId)?.quizData;
+            
+            let responsesArray: any[] = [];
+            
+            if (matchingQuiz && !Array.isArray(sub.quizAnswers)) {
+              // It's a raw key-value mapping from the cloud API; we need to re-grade it to match QuizSubmissionResponse format
+              import('../data/quizTemplates').then(({ gradeQuizSubmission }) => {
+                 const graded = gradeQuizSubmission(matchingQuiz, sub.quizAnswers, sub.studentName || 'Student', sub.student?.email, sub.timeSpentSeconds);
+                 setQuizSubmissionsList(current => {
+                    const nextMap = new Map(current.map(s => [s.id, s]));
+                    nextMap.set(sub.id, graded);
+                    return Array.from(nextMap.values());
+                 });
+              });
+              return; // Skip adding it synchronously, we'll add it asynchronously
+            } else if (Array.isArray(sub.quizAnswers)) {
+              responsesArray = sub.quizAnswers;
+            }
+
+            currentMap.set(sub.id, {
+              id: sub.id,
+              quizId: sub.assignmentId,
+              studentName: sub.studentName || 'Student',
+              studentEmail: sub.student?.email || '',
+              submittedAt: sub.submittedAt,
+              responses: responsesArray,
+              score: sub.score || 0,
+              totalPossible: sub.maxPoints || sub.maxScore || 100,
+              percentage: sub.percentage || (sub.maxPoints ? Math.round(((sub.score || 0)/sub.maxPoints)*100) : 0),
+              timeSpentSeconds: sub.timeSpentSeconds || 0,
+            });
+            modified = true;
+          }
+        });
+        
+        return modified ? Array.from(currentMap.values()) : prev;
+      });
+    }
+  }, [submissions, customAssignments]);
 
   // CSV Import Modal State
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
@@ -410,41 +463,79 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   };
 
   const handleDuplicateQuiz = (quiz: QuizAssignment) => {
-    const asg = customAssignments.find(a => a.quizData?.id === quiz.id || a.id === quiz.id);
-    if (!asg?.quizData) return;
+    setQuizToDuplicate(quiz);
+  };
 
+  const finalizeDuplicateQuiz = (options: {
+    newTitle: string;
+    duplicateQuestions: boolean;
+    duplicateSettings: boolean;
+    duplicateRubric: boolean;
+    duplicateSchedule: boolean;
+    duplicateAssignments: boolean;
+  }) => {
+    if (!quizToDuplicate) return;
+    
+    const asg = customAssignments.find(a => a.quizData?.id === quizToDuplicate.id || a.id === quizToDuplicate.id);
+    const sourceQuiz = asg?.quizData || quizToDuplicate;
+    
     const newShareCode = `qz_${Math.random().toString(36).substring(2, 8)}`;
     const newQuizId = generateUUID();
+    
     const duplicatedQuiz: QuizAssignment = {
-      ...quiz,
+      ...sourceQuiz,
       id: newQuizId,
-      title: `${quiz.title} (Copy)`,
+      title: options.newTitle,
       shareCode: newShareCode,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    const newAsg: CustomAssignment = {
-      id: `ASG-${newQuizId}`,
-      title: duplicatedQuiz.title,
-      courseCode: duplicatedQuiz.courseCode,
-      moduleTrack: duplicatedQuiz.moduleTrack,
-      description: duplicatedQuiz.description || '',
-      dueDate: duplicatedQuiz.dueDate || new Date().toISOString().split('T')[0],
-      maxPoints: duplicatedQuiz.totalPoints || 100,
       createdAt: new Date().toISOString().split('T')[0],
-      type: 'quiz',
-      quizData: duplicatedQuiz
+      questions: options.duplicateQuestions ? [...sourceQuiz.questions] : [],
+      settings: options.duplicateSettings ? (sourceQuiz.settings ? { ...sourceQuiz.settings } : undefined) : undefined,
+      dueDate: options.duplicateSchedule ? sourceQuiz.dueDate : undefined,
+      availableFrom: options.duplicateSchedule ? sourceQuiz.availableFrom : undefined,
+      availableUntil: options.duplicateSchedule ? sourceQuiz.availableUntil : undefined
     };
 
-    setCustomAssignments(prev => [newAsg, ...prev]);
+    if (options.duplicateAssignments && asg) {
+      const newAsg: CustomAssignment = {
+        id: `ASG-${newQuizId}`,
+        title: duplicatedQuiz.title,
+        courseCode: duplicatedQuiz.courseCode,
+        moduleTrack: duplicatedQuiz.moduleTrack,
+        description: duplicatedQuiz.description || '',
+        dueDate: duplicatedQuiz.dueDate || new Date().toISOString().split('T')[0],
+        maxPoints: duplicatedQuiz.totalPoints || 100,
+        createdAt: new Date().toISOString().split('T')[0],
+        type: 'quiz',
+        quizData: duplicatedQuiz
+      };
+      setCustomAssignments(prev => [newAsg, ...prev]);
+    } else if (!asg) {
+      // Just a raw quiz (should typically not happen as quizzes are attached to assignments)
+      // But if it does, we just need to ensure the system handles it.
+      const newAsg: CustomAssignment = {
+        id: `ASG-${newQuizId}`,
+        title: duplicatedQuiz.title,
+        courseCode: duplicatedQuiz.courseCode,
+        moduleTrack: duplicatedQuiz.moduleTrack,
+        description: duplicatedQuiz.description || '',
+        dueDate: duplicatedQuiz.dueDate || new Date().toISOString().split('T')[0],
+        maxPoints: duplicatedQuiz.totalPoints || 100,
+        createdAt: new Date().toISOString().split('T')[0],
+        type: 'quiz',
+        quizData: duplicatedQuiz
+      };
+      setCustomAssignments(prev => [newAsg, ...prev]);
+    }
 
     logActivity({
       actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
       role: userRole === 'admin' ? 'admin' : 'teacher',
       actionCategory: 'Quiz Management',
       actionTitle: 'Class Day Quiz Duplicated',
-      details: `Duplicated "${quiz.title}" to create "${newAsg.title}". New Share Code: ${newShareCode}`
+      details: `Duplicated "${sourceQuiz.title}" to create "${options.newTitle}". New Share Code: ${newShareCode}`
     });
+    
+    setQuizToDuplicate(null);
   };
 
   const handleCopyQuizLink = (quiz: QuizAssignment) => {
@@ -2710,6 +2801,15 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         />
       )}
 
+      {quizToDuplicate && (
+        <DuplicateQuizModal
+          isOpen={!!quizToDuplicate}
+          onClose={() => setQuizToDuplicate(null)}
+          quiz={quizToDuplicate}
+          onDuplicate={finalizeDuplicateQuiz}
+        />
+      )}
+
       {/* ========================================================= */}
       {/* MODAL 1: ADD/EDIT ASSIGNMENT (TEACHER / ADMIN) */}
       {/* ========================================================= */}
@@ -3447,7 +3547,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       {/* ========================================================= */}
       {activeQuizTaker && (
         <QuizTakerView
-          quiz={activeQuizTaker}
+          quiz={scrubQuizForClient(activeQuizTaker)}
           currentStudentName={activeStudentName}
           onClose={() => setActiveQuizTaker(null)}
           onSubmitQuiz={handleQuizSubmissionComplete}

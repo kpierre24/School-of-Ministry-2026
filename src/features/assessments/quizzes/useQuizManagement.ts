@@ -21,7 +21,8 @@ export interface UseQuizManagementReturn {
   updateTeacherFeedback: (
     submissionId: string,
     feedback: string,
-    manualScoreOverride?: number
+    manualScoreOverride?: number,
+    updatedSubmission?: Partial<QuizSubmission>
   ) => Promise<void>;
   saveDraft: (quizId: string, studentName: string, responses: Record<string, any>, email?: string) => void;
   getDraft: (quizId: string, studentName: string) => { responses: Record<string, any>; email?: string; savedAt?: string } | null;
@@ -215,10 +216,17 @@ export function useQuizManagement(
   const updateTeacherFeedback = useCallback(async (
     submissionId: string,
     feedback: string,
-    manualScoreOverride?: number
+    manualScoreOverride?: number,
+    updatedSubmission?: Partial<QuizSubmission>
   ) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id !== submissionId) return s;
+      if (updatedSubmission) {
+        return {
+          ...s,
+          ...updatedSubmission
+        };
+      }
       const newScore = manualScoreOverride !== undefined ? manualScoreOverride : s.score;
       const newPercentage = Math.round((newScore / (s.totalPossible || 1)) * 100);
       return {
@@ -227,7 +235,8 @@ export function useQuizManagement(
         totalScore: newScore,
         percentage: newPercentage,
         scorePercentage: newPercentage,
-        feedbackGiven: true
+        feedbackGiven: true,
+        teacherFeedback: feedback
       };
     }));
   }, []);

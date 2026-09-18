@@ -322,7 +322,9 @@ export function gradeQuizSubmission(
         questionId: q.id,
         selectedOptionId: selectedOptId,
         isCorrect,
-        pointsEarned
+        pointsEarned,
+        correctOptionId: q.correctOptionId,
+        explanation: q.explanation
       };
     } else if (q.type === 'checkboxes') {
       const selectedOptIds = Array.isArray(rawVal) ? rawVal : (typeof rawVal === 'string' ? [rawVal] : []);
@@ -339,41 +341,71 @@ export function gradeQuizSubmission(
         questionId: q.id,
         selectedOptionIds: selectedOptIds,
         isCorrect,
-        pointsEarned
+        pointsEarned,
+        correctOptionIds: correctIds,
+        explanation: q.explanation
       };
     } else if (q.type === 'short_answer' || q.type === 'fill_blank') {
-      const textVal = (typeof rawVal === 'string' ? rawVal : '').trim().toLowerCase();
-      const acceptable = (q.acceptableAnswers || []).map(a => a.trim().toLowerCase());
+      const originalText = typeof rawVal === 'string' ? rawVal : '';
+      const mode = q.gradingMode || 'case_insensitive';
+      let textVal = originalText;
       
-      isCorrect = acceptable.length > 0 && acceptable.some(acc => {
-        if (acc === textVal) return true;
-        // Strip punctuation
-        const cleanAcc = acc.replace(/[^a-z0-9]/g, '');
-        const cleanVal = textVal.replace(/[^a-z0-9]/g, '');
-        return cleanAcc.length > 0 && cleanAcc === cleanVal;
-      });
+      if (mode === 'manual') {
+        isCorrect = false;
+        pointsEarned = 0;
+      } else {
+        if (mode === 'trim' || mode === 'case_insensitive' || mode === 'multiple') {
+          textVal = originalText.trim();
+        }
+        
+        const checkValue = (mode === 'case_insensitive' || mode === 'multiple')
+          ? textVal.toLowerCase()
+          : textVal;
 
-      pointsEarned = isCorrect ? weight : 0;
+        const acceptable = (q.acceptableAnswers || []).map(a => {
+          let ans = a;
+          if (mode === 'trim' || mode === 'case_insensitive' || mode === 'multiple') {
+            ans = ans.trim();
+          }
+          if (mode === 'case_insensitive' || mode === 'multiple') {
+            ans = ans.toLowerCase();
+          }
+          return ans;
+        });
+
+        if (mode === 'exact') {
+          isCorrect = acceptable.includes(checkValue);
+        } else {
+          isCorrect = acceptable.length > 0 && acceptable.some(acc => {
+            if (acc === checkValue) return true;
+            const cleanAcc = acc.replace(/[^a-z0-9]/g, '');
+            const cleanVal = checkValue.replace(/[^a-z0-9]/g, '');
+            return cleanAcc.length > 0 && cleanAcc === cleanVal;
+          });
+        }
+        pointsEarned = isCorrect ? weight : 0;
+      }
 
       return {
         questionId: q.id,
-        textAnswer: typeof rawVal === 'string' ? rawVal : '',
+        textAnswer: originalText,
         isCorrect,
-        pointsEarned
+        pointsEarned,
+        acceptableAnswers: q.acceptableAnswers,
+        explanation: q.explanation
       };
     } else if (q.type === 'paragraph') {
-      // Open-ended essay - marked as submitted, full points awarded tentatively or pending instructor review
+      // Open-ended essay - marked as submitted, auto-graded score is 0 until teacher manual review or given temporary tentative credit
       const textVal = (typeof rawVal === 'string' ? rawVal : '').trim();
-      const hasContent = textVal.length > 10;
-      isCorrect = hasContent;
-      pointsEarned = hasContent ? weight : 0; // provisional points
-
+      const hasContent = textVal.length > 5;
+      
       return {
         questionId: q.id,
         textAnswer: textVal,
-        isCorrect,
-        pointsEarned,
-        instructorFeedback: 'Pending instructor review of open reflection.'
+        isCorrect: false, // essay is false (pending review) under advanced auto-grading
+        pointsEarned: 0, // auto score is 0; must be teacher reviewed
+        instructorFeedback: 'Pending teacher evaluation of essay.',
+        explanation: q.explanation
       };
     }
 
@@ -381,7 +413,8 @@ export function gradeQuizSubmission(
       questionId: q.id,
       selectedOptionId: typeof rawVal === 'string' ? rawVal : '',
       isCorrect: false,
-      pointsEarned: 0
+      pointsEarned: 0,
+      explanation: q.explanation
     };
   });
 
@@ -404,7 +437,12 @@ export function gradeQuizSubmission(
     percentage,
     scorePercentage: percentage,
     timeSpentSeconds,
-    isReleased: quiz.settings?.gradeReleasePolicy !== 'manual'
+    isReleased: quiz.settings?.gradeReleasePolicy !== 'manual',
+    autoScore: totalScore,
+    teacherScore: totalScore,
+    moderatedScore: totalScore,
+    releasedScore: totalScore,
+    gradingStatus: 'auto_graded'
   };
 }
 
@@ -455,3 +493,20 @@ export function exportQuizSubmissionsCsv(quiz: QuizAssignment, submissions: Quiz
 
   return [headers.join(','), ...rows].join('\n');
 }
+
+export function scrubQuizForClient(quiz: QuizAssignment): QuizAssignment {
+  if (!quiz) return quiz;
+  return {
+    ...quiz,
+    questions: (quiz.questions || []).map(q => ({
+      ...q,
+      correctOptionId: undefined,
+      correctOptionIds: undefined,
+      acceptableAnswers: undefined,
+      explanation: undefined,
+      feedbackCorrect: undefined,
+      feedbackIncorrect: undefined
+    }))
+  };
+}
+

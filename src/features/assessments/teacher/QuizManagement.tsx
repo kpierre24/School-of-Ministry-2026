@@ -48,7 +48,8 @@ export const QuizManagement: React.FC<QuizManagementProps> = ({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {quizList.map((quiz) => {
-          const questionsCount = quiz.quizData?.questions?.length || 5;
+          const questionsCount = quiz.quizData?.questions?.length || 0;
+          const totalPoints = quiz.quizData?.totalPoints || quiz.maxPoints || 100;
           const isPublished = quiz.quizData?.isPublished !== false;
 
           return (
@@ -78,7 +79,7 @@ export const QuizManagement: React.FC<QuizManagementProps> = ({
                 </p>
 
                 <p className="text-xs font-semibold text-[var(--color-primary)] dark:text-sky-400">
-                  {questionsCount} Questions • 100 Points
+                  {questionsCount} Questions • {totalPoints} Points
                 </p>
               </div>
 

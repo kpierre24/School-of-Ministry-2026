@@ -1,6 +1,7 @@
 import React from 'react';
 import { QuizAssignment, QuizSubmission } from '../types';
 import { QuizTakerView } from './QuizTakerView';
+import { scrubQuizForClient } from '../data/quizTemplates';
 import { GraduationCap, ArrowLeft, Share2, CheckCircle, AlertCircle, Loader2, Home } from 'lucide-react';
 
 export interface PublicQuizPageProps {
@@ -178,7 +179,7 @@ export const PublicQuizPage: React.FC<PublicQuizPageProps> = ({
       {/* Main Quiz Taker Body */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 my-2">
         <QuizTakerView
-          quiz={quiz}
+          quiz={quiz ? scrubQuizForClient(quiz) : (undefined as any)}
           studentRoster={studentRoster}
           currentStudentName={currentStudentName}
           onSubmitQuiz={(sub) => {

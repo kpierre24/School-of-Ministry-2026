@@ -43,8 +43,10 @@ export const StudentQuizzes: React.FC<StudentQuizzesProps> = ({
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {publishedQuizzes.map((quiz) => {
-            const questionCount = quiz.quizData?.questions?.length || 5;
+            const questionCount = quiz.quizData?.questions?.length || 0;
             const timeLimit = quiz.quizData?.timeLimitMinutes;
+
+            const quizDate = quiz.quizData?.availableUntil || quiz.quizData?.dueDate || quiz.dueDate || new Date().toISOString().split('T')[0];
 
             return (
               <Card
@@ -84,8 +86,7 @@ export const StudentQuizzes: React.FC<StudentQuizzesProps> = ({
                       title: `Quiz: ${quiz.title}`,
                       description: quiz.description || 'Module Quiz Examination for HTEIM School of Ministry',
                       location: 'HTEIM Student Portal Online',
-                      date: quiz.dueDate ? (quiz.dueDate.includes('2026') ? quiz.dueDate : '2026-09-20') : '2026-09-20',
-                      startTime: '19:00',
+                      date: quizDate,
                       courseCode: quiz.moduleTrack || 'SOM'
                     }}
                     className="shrink-0"

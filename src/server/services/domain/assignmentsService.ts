@@ -138,10 +138,10 @@ export const assignmentsService = {
       }
 
       const { data: dbSubmissions } = await query;
+      let result: any[] = [];
+      const rubricScores: Record<string, any> = {};
 
       if (dbSubmissions && dbSubmissions.length > 0) {
-        const rubricScores: Record<string, any> = {};
-
         const formatted = dbSubmissions.map((s: any) => {
           const std = s.students;
           const p = Array.isArray(std?.profiles) ? std?.profiles[0] : std?.profiles;
@@ -173,15 +173,52 @@ export const assignmentsService = {
             courseCode: asg?.course_code || asg?.course_definition_id || '',
           };
         });
+        result = formatted;
+      }
+        
+      try {
+         let quizQuery = supabase.from('quiz_submissions').select('*');
+         if (filters?.assignmentId) {
+           quizQuery = quizQuery.eq('quiz_id', filters.assignmentId);
+         }
+         const { data: dbQuizSubs, error: qsError } = await quizQuery;
+         if (!qsError && dbQuizSubs && dbQuizSubs.length > 0) {
+            const formattedQuizSubs = dbQuizSubs.map((qs: any) => ({
+               id: qs.id,
+               assignmentId: qs.quiz_id,
+               assignmentTitle: qs.quiz_title || 'Quiz',
+               studentId: qs.student_id || qs.student_email || qs.student_name || 'external_user',
+               student: {
+                 id: qs.student_id || 'external_user',
+                 name: qs.student_name,
+                 email: qs.student_email
+               },
+               studentName: qs.student_name,
+               status: qs.percentage >= 75 ? 'Graded' : 'Submitted',
+               submittedAt: qs.submitted_at,
+               score: qs.score,
+               percentage: qs.percentage,
+               maxPoints: qs.total_possible || 100,
+               maxScore: qs.total_possible || 100,
+               timeSpentSeconds: qs.time_spent_seconds || 0,
+               quizAnswers: qs.responses || {},
+               studentNotes: `Completed Class Day Quiz (${qs.percentage}% score). Correct tally: ${qs.score}/${qs.total_possible || 100} pts.`,
+               teacherFeedback: `Automated quiz tally: ${qs.score}/${qs.total_possible || 100} points (${qs.percentage}%). Completed on ${qs.submitted_at}.`
+            }));
+            result = [...result, ...formattedQuizSubs];
+         }
+      } catch (e) {
+         // Ignore quietly if table doesn't exist
+      }
 
-        let result = formatted;
-        if (user && user.role === 'student') {
+      if (user && user.role === 'student') {
           const studentUuid = user.studentRecordId || user.studentId || user.userId;
           const userUuid = user.userId || user.id;
-          result = formatted.filter(
+          result = result.filter(
             (sub) => (sub.studentId && (sub.studentId === studentUuid || sub.studentId === userUuid)) ||
                      (sub.student?.id && (sub.student.id === studentUuid || sub.student.id === userUuid)) ||
-                     ((sub as any).student_id && ((sub as any).student_id === studentUuid || (sub as any).student_id === userUuid))
+                     ((sub as any).student_id && ((sub as any).student_id === studentUuid || (sub as any).student_id === userUuid)) ||
+                     (sub.studentName && user.name && sub.studentName.toLowerCase().trim() === user.name.toLowerCase().trim())
           );
         } else if (user && (user.role === 'lecturer' || user.role === 'teacher')) {
           let lecturerUserId = (user.userId || user.id || '').trim();
@@ -223,13 +260,13 @@ export const assignmentsService = {
             }
           }
 
-          result = formatted.filter((sub) => {
+          result = result.filter((sub) => {
             const courseId = String(sub.courseCode || '').trim().toUpperCase();
             if (!courseId) return false;
             return allowedCourseIdentifiers.has(courseId);
           });
         } else if (filters?.studentId) {
-          result = formatted.filter((sub) => sub.studentId === filters.studentId || (sub as any).student_id === filters.studentId);
+          result = result.filter((sub) => sub.studentId === filters.studentId || (sub as any).student_id === filters.studentId);
         }
 
         return {
@@ -237,7 +274,6 @@ export const assignmentsService = {
           rubricScores,
           count: result.length,
         };
-      }
     } catch (err) {
       logger.error('Error fetching submissions from relational table:', err);
     }

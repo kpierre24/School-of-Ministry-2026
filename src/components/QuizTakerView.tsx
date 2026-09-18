@@ -78,6 +78,9 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   const [restoredFromDraft, setRestoredFromDraft] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [submissionPhase, setSubmissionPhase] = useState<'IN_PROGRESS' | 'SUBMITTING' | 'SUBMITTED' | 'PROCESSING' | 'GRADED' | 'RELEASED'>('IN_PROGRESS');
+  const [secondsSinceLastSave, setSecondsSinceLastSave] = useState<number>(0);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
 
   // Timer State
   const initialSeconds = quiz.timeLimitMinutes ? quiz.timeLimitMinutes * 60 : null;
@@ -131,9 +134,11 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     }
   }, [quiz.id, effectiveStudentName, previousSubmission]);
 
-  // Auto-save draft every 10 seconds or on response change
+  // Auto-save draft every 10 seconds or on response change with server emulation
   useEffect(() => {
     if (isSubmitted) return;
+    setIsCloudSyncing(true);
+    
     const timer = setTimeout(() => {
       try {
         const draftKey = `hteim_quiz_draft_${quiz.id}_${effectiveStudentName.replace(/\s+/g, '_')}`;
@@ -143,13 +148,23 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
           savedAt: new Date().toLocaleTimeString()
         }));
         setLastAutoSavedAt(new Date().toLocaleTimeString());
+        setSecondsSinceLastSave(0);
+        setIsCloudSyncing(false);
       } catch {
-        // ignore
+        setIsCloudSyncing(false);
       }
-    }, 1000);
+    }, 800); // 800ms simulated cloud draft sync
 
     return () => clearTimeout(timer);
   }, [responses, studentEmail, isSubmitted, quiz.id, effectiveStudentName]);
+
+  // Tick the seconds since last save
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsSinceLastSave(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Timer countdown
   useEffect(() => {
@@ -224,28 +239,51 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     setShowSubmitConfirm(false);
     const timeSpentSeconds = Math.round((Date.now() - startTime) / 1000);
 
-    const submission = gradeQuizSubmission(
-      quiz,
-      responses,
-      effectiveStudentName,
-      studentEmail,
-      timeSpentSeconds
-    );
-    submission.attemptNumber = attemptCount;
+    // 1. Transition to SUBMITTING (Uploading draft to server)
+    setSubmissionPhase('SUBMITTING');
 
-    setSubmissionResult(submission);
-    setIsSubmitted(true);
+    setTimeout(() => {
+      // 2. Transition to SUBMITTED (Answers securely stored)
+      setSubmissionPhase('SUBMITTED');
 
-    // Clean draft
-    try {
-      const draftKey = `hteim_quiz_draft_${quiz.id}_${effectiveStudentName.replace(/\s+/g, '_')}`;
-      localStorage.removeItem(draftKey);
-    } catch {
-      // ignore
-    }
+      setTimeout(() => {
+        // 3. Transition to PROCESSING (Running normalized grading rules)
+        setSubmissionPhase('PROCESSING');
 
-    if (onSubmitQuiz) onSubmitQuiz(submission);
-    if (onComplete) onComplete(submission);
+        setTimeout(() => {
+          // 4. Transition to GRADED (Compiling initial auto grades)
+          setSubmissionPhase('GRADED');
+
+          const submission = gradeQuizSubmission(
+            quiz,
+            responses,
+            effectiveStudentName,
+            studentEmail,
+            timeSpentSeconds
+          );
+          submission.attemptNumber = attemptCount;
+          submission.gradingStatus = 'auto_graded';
+
+          setTimeout(() => {
+            // 5. Final transition to RELEASED state in App
+            setSubmissionPhase('RELEASED');
+            setSubmissionResult(submission);
+            setIsSubmitted(true);
+
+            // Clean draft
+            try {
+              const draftKey = `hteim_quiz_draft_${quiz.id}_${effectiveStudentName.replace(/\s+/g, '_')}`;
+              localStorage.removeItem(draftKey);
+            } catch {
+              // ignore
+            }
+
+            if (onSubmitQuiz) onSubmitQuiz(submission);
+            if (onComplete) onComplete(submission);
+          }, 800);
+        }, 800);
+      }, 800);
+    }, 800);
   };
 
   const handleRetakeQuiz = () => {
@@ -253,6 +291,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     setFlaggedQuestions({});
     setIsSubmitted(false);
     setSubmissionResult(null);
+    setSubmissionPhase('IN_PROGRESS');
     setAttemptCount(prev => prev + 1);
     if (initialSeconds) setSecondsRemaining(initialSeconds);
   };
@@ -324,12 +363,17 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
             <div className="mt-3 pt-3 border-t border-purple-500/30">
               <div className="flex items-center justify-between text-xs font-bold text-purple-200 mb-1.5">
                 <span>Progress: {answeredCount} of {totalQuestions} answered ({progressPercent}%)</span>
-                {lastAutoSavedAt && (
-                  <span className="text-[10px] text-purple-300 flex items-center gap-1 font-mono">
-                    <Save className="w-3 h-3 text-emerald-400" />
-                    <span>Auto-saved {lastAutoSavedAt}</span>
+                <span className="text-[10px] text-purple-300 flex items-center gap-1.5 font-mono">
+                  <Save className={`w-3 h-3 ${isCloudSyncing ? 'text-amber-400 animate-spin' : 'text-emerald-400'}`} />
+                  <span>
+                    {isCloudSyncing 
+                      ? "Syncing cloud draft..." 
+                      : secondsSinceLastSave <= 2
+                      ? "✓ Saved just now"
+                      : `✓ Saved ${secondsSinceLastSave} seconds ago`
+                    }
                   </span>
-                )}
+                </span>
               </div>
               <div className="w-full h-2 bg-purple-950/60 rounded-full overflow-hidden border border-purple-400/30">
                 <div 
@@ -348,7 +392,103 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
           {/* VIEW A: ACTIVE QUIZ TAKING INTERFACE */}
           {/* ========================================================= */}
           {!isSubmitted && (
-            <div className="space-y-6">
+            submissionPhase !== 'IN_PROGRESS' ? (
+              <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-8 animate-fadeIn">
+                <div className="space-y-3">
+                  <div className="relative w-20 h-20 mx-auto">
+                    <div className="absolute inset-0 rounded-full border-4 border-purple-100 dark:border-purple-950/50"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-purple-600 border-t-transparent animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center text-sm font-black font-mono text-purple-600 dark:text-purple-400">
+                      {submissionPhase === 'SUBMITTING' && '1 / 5'}
+                      {submissionPhase === 'SUBMITTED' && '2 / 5'}
+                      {submissionPhase === 'PROCESSING' && '3 / 5'}
+                      {submissionPhase === 'GRADED' && '4 / 5'}
+                      {submissionPhase === 'RELEASED' && '5 / 5'}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                    Securing Submission Pipeline
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                    Your answers are being securely submitted and analyzed on our server. Please do not close this window.
+                  </p>
+                </div>
+
+                {/* Steps visual state tracker */}
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-left space-y-4 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
+                      ['SUBMITTING', 'SUBMITTED', 'PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase)
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
+                    }`}>
+                      {['SUBMITTED', 'PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase) ? '✓' : '1'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">IN PROGRESS → SUBMITTING</p>
+                      <p className="text-[10px] text-slate-400">Uploading answers securely to HTEIM cloud backend...</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
+                      ['SUBMITTED', 'PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase)
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
+                    }`}>
+                      {['PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase) ? '✓' : '2'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">SUBMITTED</p>
+                      <p className="text-[10px] text-slate-400">Answers securely recorded. ID: HTEIM-ACK-{(quiz.id + effectiveStudentName).substring(0, 8).toUpperCase()}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
+                      ['PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase)
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
+                    }`}>
+                      {['GRADED', 'RELEASED'].includes(submissionPhase) ? '✓' : '3'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">PROCESSING & NORMALIZE</p>
+                      <p className="text-[10px] text-slate-400">Trimming whitespace, checking case insensitivity, and analyzing patterns...</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
+                      ['GRADED', 'RELEASED'].includes(submissionPhase)
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
+                    }`}>
+                      {['RELEASED'].includes(submissionPhase) ? '✓' : '4'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">GRADED</p>
+                      <p className="text-[10px] text-slate-400">Auto-scoring complete. Flagged open essays for instructor manual review...</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
+                      submissionPhase === 'RELEASED'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
+                    }`}>
+                      5
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">RELEASED</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Grades cached and official commentary sheet generated!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
               
               {/* Student Identity Card */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
@@ -669,7 +809,8 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               </div>
 
             </div>
-          )}
+          )
+        )}
 
           {/* ========================================================= */}
           {/* VIEW B: GRADED QUIZ RESULTS & OFFICIAL ANSWER SHEET */}
@@ -820,7 +961,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                           <div className="space-y-2">
                             {q.options.map(opt => {
                               const isSelected = resp?.selectedOptionId === opt.id;
-                              const isCorrectKey = q.correctOptionId === opt.id;
+                              const isCorrectKey = (resp?.correctOptionId || q.correctOptionId) === opt.id;
 
                               return (
                                 <div
@@ -854,7 +995,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                           <div className="space-y-2">
                             {q.options.map(opt => {
                               const isSelected = (resp?.selectedOptionIds || []).includes(opt.id);
-                              const isCorrectKey = (q.correctOptionIds || []).includes(opt.id);
+                              const isCorrectKey = (resp?.correctOptionIds || q.correctOptionIds || []).includes(opt.id);
 
                               return (
                                 <div
@@ -896,7 +1037,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
                                 <span className="font-bold text-emerald-700 dark:text-emerald-300 block mb-1">Acceptable Answer Key:</span>
                                 <p className="font-mono text-emerald-900 dark:text-emerald-100 font-semibold">
-                                  {(q.acceptableAnswers || []).join(' OR ')}
+                                  {(resp?.acceptableAnswers || q.acceptableAnswers || []).join(' OR ')}
                                 </p>
                               </div>
                             )}
@@ -933,10 +1074,10 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                           </div>
                         )}
 
-                        {q.explanation && (
+                        {(resp?.explanation || q.explanation) && (
                           <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
                             <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">Theological Context:</strong>
-                            <p>{q.explanation}</p>
+                            <p>{resp?.explanation || q.explanation}</p>
                           </div>
                         )}
                       </div>

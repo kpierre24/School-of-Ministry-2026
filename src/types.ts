@@ -354,6 +354,18 @@ export type QuizQuestionType =
   | 'paragraph'
   | 'fill_blank';
 
+export type QuizRubricCriteria = {
+  name: string;
+  weightPercentage: number; // e.g. 30 (for 30%), 25, 20, 15, 10
+  maxScore: number; // e.g. 20, 30, etc.
+};
+
+export type QuizRubric = {
+  id: string;
+  name: string;
+  criteria: QuizRubricCriteria[];
+};
+
 export type QuizQuestionOption = {
   id: string;
   text: string;
@@ -374,7 +386,62 @@ export type QuizQuestion = {
   required?: boolean;
   imageUrl?: string;
   sectionTitle?: string;
+  gradingMode?: 'exact' | 'case_insensitive' | 'trim' | 'multiple' | 'manual';
+  rubric?: QuizRubric;
 };
+
+export type QuizStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'published'
+  | 'in_progress'
+  | 'closed'
+  | 'graded'
+  | 'archived';
+
+export type QuizGradeCalculation = 'highest' | 'latest' | 'average' | 'first';
+
+export type QuizAttemptStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'SUBMITTED'
+  | 'AUTO_SUBMITTED'
+  | 'ABANDONED'
+  | 'GRADED'
+  | 'RELEASED';
+
+export type QuizAttempt = {
+  id: string;
+  quizId: string;
+  studentId: string;
+  studentName: string;
+  studentEmail?: string;
+  attemptNumber: number;
+  startedAt: string; // ISO String
+  expiresAt?: string; // ISO String - Authoritative Timer
+  submittedAt?: string; // ISO String
+  status: QuizAttemptStatus;
+  lastSavedAt: string; // ISO String
+  responses: QuizSubmissionResponse[];
+  score?: number;
+  maxPoints?: number;
+  scorePercentage?: number;
+  timeSpentSeconds?: number;
+  feedbackGiven?: boolean;
+  instructorFeedback?: string;
+  isReleased?: boolean;
+};
+
+export interface QuizPoolConfig {
+  id: string;
+  poolName: string;
+  courseCode?: string;
+  moduleTrack?: string;
+  topic?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  questionCountToPresent: number;
+  randomize: boolean;
+}
 
 export type QuizSettings = {
   shuffleQuestions?: boolean;
@@ -388,6 +455,14 @@ export type QuizSettings = {
   gradeReleasePolicy?: 'immediate' | 'manual';
   requireAllQuestionsAnswered?: boolean;
   collectStudentEmail?: boolean;
+  gradeCalculation?: QuizGradeCalculation;
+  audienceCohortId?: string; // e.g. "Class of 2026", "Class of 2027", "all"
+  availableFromDate?: string; // YYYY-MM-DD
+  availableFromTime?: string; // HH:MM
+  closeDate?: string; // YYYY-MM-DD
+  closeTime?: string; // HH:MM
+  poolConfig?: QuizPoolConfig;
+  randomizeFromPool?: boolean;
 };
 
 export type QuizAssignment = {
@@ -400,16 +475,21 @@ export type QuizAssignment = {
   questions: QuizQuestion[];
   totalPoints: number; // sum of weights
   dueDate?: string;
+  availableFrom?: string;
+  availableUntil?: string;
   createdAt: string;
   updatedAt?: string;
   isPublished?: boolean;
   isTemplate?: boolean;
+  status?: QuizStatus;
   shareCode: string; // e.g. "qz_9f8a2" for shareable links
   timeLimitMinutes?: number;
   quizData?: QuizAssignment;
   settings?: QuizSettings;
   category?: string;
   sectionHeaders?: { id: string; title: string; description?: string; afterQuestionIndex: number }[];
+  version?: number; // starts at 1
+  versionHistory?: { version: number; updatedAt: string; questions: QuizQuestion[]; changeLog?: string }[];
 };
 
 export type QuizSubmissionResponse = {
@@ -422,6 +502,16 @@ export type QuizSubmissionResponse = {
   instructorFeedback?: string;
   manualScoreOverride?: number;
   evaluatedBy?: string;
+  correctOptionId?: string; // Securely returned post-submission for results center
+  correctOptionIds?: string[]; // Securely returned post-submission for results center
+  acceptableAnswers?: string[]; // Securely returned post-submission for results center
+  explanation?: string; // Theological exegesis explanation returned post-submission
+  rubricEvaluation?: {
+    understanding?: number;
+    biblicalAccuracy?: number;
+    application?: number;
+    structure?: number;
+  };
 };
 
 export type QuizSubmission = {
@@ -444,6 +534,15 @@ export type QuizSubmission = {
   instructorFeedback?: string;
   feedbackGiven?: boolean;
   isReleased?: boolean;
+  autoScore?: number;
+  teacherScore?: number;
+  moderatedScore?: number;
+  releasedScore?: number;
+  moderationReason?: string;
+  moderatorName?: string;
+  manualAdjustmentPoints?: number;
+  manualAdjustmentReason?: string;
+  gradingStatus?: 'auto_graded' | 'teacher_reviewed' | 'moderated' | 'released';
 };
 
 export type ExamItem = {
@@ -557,6 +656,11 @@ export type AssignmentSubmission = {
   
   // Quiz auto-graded responses
   quizSubmissionData?: QuizSubmission;
+  quizAnswers?: any;
+  percentage?: number;
+  timeSpentSeconds?: number;
+  maxScore?: number;
+  maxPoints?: number;
 
   // Teacher's correction, evaluation, and corrected document upload
   teacherCorrectedFileUrl?: string;

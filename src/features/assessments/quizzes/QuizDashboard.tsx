@@ -24,7 +24,9 @@ import { QuizTaker } from './QuizTaker';
 import { QuizAnalytics } from './QuizAnalytics';
 import { QuizSubmissionReview } from './QuizSubmissionReview';
 import { useQuizManagement } from './useQuizManagement';
-import { exportQuizSubmissionsCsv } from '../../../data/quizTemplates';
+import { exportQuizSubmissionsCsv, scrubQuizForClient } from '../../../data/quizTemplates';
+import { ImportQuizModal } from '../../../components/ImportQuizModal';
+import { ExportQuizModal } from '../../../components/ExportQuizModal';
 
 export interface QuizDashboardProps {
   userRole: UserRole;
@@ -67,7 +69,9 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
 
   // Modals
   const [showCreatorModal, setShowCreatorModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [quizToEdit, setQuizToEdit] = useState<QuizAssignment | null>(null);
+  const [quizToExport, setQuizToExport] = useState<QuizAssignment | null>(null);
   const [previewQuiz, setPreviewQuiz] = useState<QuizAssignment | null>(null);
 
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher';
@@ -154,16 +158,26 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setQuizToEdit(null);
-            setShowCreatorModal(true);
-          }}
-          className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Quiz</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            <span>Import Quiz</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setQuizToEdit(null);
+              setShowCreatorModal(true);
+            }}
+            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create New Quiz</span>
+          </button>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -255,13 +269,18 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredQuizzes.map(quiz => {
                 const subCount = submissions.filter(s => s.quizId === quiz.id || (s as any).assignmentId === quiz.id).length;
+                const status = quiz.status || (quiz.isPublished ? 'published' : 'draft');
+                
+                // Detailed sub stats for GRADING
+                const awaitingReviewCount = submissions.filter(s => (s.quizId === quiz.id || (s as any).assignmentId === quiz.id) && !s.teacherFeedback).length;
+                const autoGradedCount = Math.max(0, subCount - awaitingReviewCount);
 
                 return (
                   <div
                     key={quiz.id}
                     className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs hover:border-purple-300 dark:hover:border-purple-600 transition-all flex flex-col justify-between space-y-4"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
                           {quiz.courseCode || 'MIN-101'}
@@ -279,8 +298,63 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
                         {quiz.description || 'Ministerial assessment quiz.'}
                       </p>
 
+                      {/* Status Badging Segment */}
+                      <div className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700/50 space-y-1">
+                        {status === 'published' || status === 'in_progress' ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-extrabold text-emerald-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              🟢 OPEN & LIVE
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              Available until {quiz.dueDate || 'September 24, 2026'} · 11:59 PM
+                            </span>
+                          </div>
+                        ) : status === 'scheduled' ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-extrabold text-amber-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              🟡 SCHEDULED
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              Opens {quiz.settings?.availableFromDate || 'September 24'} · {quiz.settings?.availableFromTime || '7:00 PM'}
+                            </span>
+                          </div>
+                        ) : status === 'graded' ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-extrabold text-indigo-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                              🔵 GRADING / COMPLETE
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              {subCount} submissions · {autoGradedCount} auto graded · {awaitingReviewCount} review
+                            </span>
+                          </div>
+                        ) : status === 'closed' ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-extrabold text-rose-600 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-rose-500" />
+                              🔴 CLOSED
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              Locks on {quiz.settings?.closeDate || quiz.dueDate || 'Closed'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-extrabold text-slate-500 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-slate-400" />
+                              📋 DRAFT MODE
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              Invisible to candidates. Edit parameter to publish.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="pt-2 flex items-center justify-between text-xs font-mono font-bold text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700/60">
-                        <span>{quiz.questions?.length || 0} Questions</span>
+                        <span>{quiz.questions?.length || quiz.settings?.poolConfig?.questionCountToPresent || 0} Questions</span>
                         <span className="text-purple-600 dark:text-purple-400 font-sans">
                           {subCount} Submissions
                         </span>
@@ -307,9 +381,16 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          onClick={() => setQuizToExport(quiz)}
+                          className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-600 rounded-lg cursor-pointer"
+                          title="Export Quiz"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleExportCsv(quiz)}
                           className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-purple-600 rounded-lg cursor-pointer"
-                          title="Export CSV"
+                          title="Export Submissions CSV"
                         >
                           <Download className="w-3.5 h-3.5" />
                         </button>
@@ -380,9 +461,16 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
+                                onClick={() => setQuizToExport(quiz)}
+                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 cursor-pointer"
+                                title="Export Quiz"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
+                              <button
                                 onClick={() => handleExportCsv(quiz)}
                                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 cursor-pointer"
-                                title="Export CSV"
+                                title="Export Submissions CSV"
                               >
                                 <Download className="w-3.5 h-3.5" />
                               </button>
@@ -449,6 +537,22 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
       )}
 
       {/* MODALS */}
+      {showImportModal && (
+        <ImportQuizModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onImport={handleSaveQuiz}
+        />
+      )}
+
+      {quizToExport && (
+        <ExportQuizModal
+          isOpen={!!quizToExport}
+          onClose={() => setQuizToExport(null)}
+          quiz={quizToExport}
+        />
+      )}
+
       {showCreatorModal && (
         <QuizCreator
           isOpen={showCreatorModal}
@@ -463,7 +567,7 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
 
       {previewQuiz && (
         <QuizTaker
-          quiz={previewQuiz}
+          quiz={scrubQuizForClient(previewQuiz)}
           studentName="Faculty Preview User"
           onClose={() => setPreviewQuiz(null)}
           onSubmitQuiz={() => setPreviewQuiz(null)}
@@ -473,8 +577,12 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
       {selectedSubmissionForReview && (
         <QuizSubmissionReview
           submission={selectedSubmissionForReview}
+          questions={quizzes.find(q => q.id === selectedSubmissionForReview.quizId)?.questions}
           onClose={() => setSelectedSubmissionForReview(null)}
-          onSaveFeedback={(subId, feedback, score) => quizManager.updateTeacherFeedback(subId, feedback, score)}
+          onSaveFeedback={(subId, feedback, score, updatedSub) => {
+            quizManager.updateTeacherFeedback(subId, feedback, score, updatedSub);
+            setSelectedSubmissionForReview(null);
+          }}
         />
       )}
 
