@@ -500,6 +500,7 @@ export type QuizSubmissionResponse = {
   isCorrect?: boolean;
   pointsEarned: number;
   instructorFeedback?: string;
+  comment?: string;
   manualScoreOverride?: number;
   evaluatedBy?: string;
   correctOptionId?: string; // Securely returned post-submission for results center

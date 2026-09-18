@@ -565,10 +565,10 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={resp.comment || ''}
+                      value={resp.comment || resp.instructorFeedback || ''}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setResponses(prev => prev.map((r, idx) => idx === i ? { ...r, comment: val } : r));
+                        setResponses(prev => prev.map((r, idx) => idx === i ? { ...r, comment: val, instructorFeedback: val } : r));
                       }}
                       placeholder="e.g. Excellent explanation."
                       className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-slate-200"
