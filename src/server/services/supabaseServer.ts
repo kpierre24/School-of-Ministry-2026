@@ -597,7 +597,7 @@ export async function provisionOrApproveUserByAdmin({
     if (firebaseUid) {
       const { data: userByUid } = await supabase
         .from('users')
-        .select('id, email, role, is_active, assigned_courses, firebase_uid')
+        .select('id, email, role, is_active, firebase_uid')
         .eq('firebase_uid', firebaseUid)
         .maybeSingle();
       if (userByUid) existingUser = userByUid;
@@ -606,7 +606,7 @@ export async function provisionOrApproveUserByAdmin({
     if (!existingUser) {
       const { data: userByEmail } = await supabase
         .from('users')
-        .select('id, email, role, is_active, assigned_courses, firebase_uid')
+        .select('id, email, role, is_active, firebase_uid')
         .eq('email', cleanEmail)
         .maybeSingle();
       if (userByEmail) existingUser = userByEmail;
@@ -622,9 +622,6 @@ export async function provisionOrApproveUserByAdmin({
         is_active: true,
         updated_at: new Date().toISOString(),
       };
-      if (Array.isArray(assignedCourses)) {
-        updatePayload.assigned_courses = assignedCourses;
-      }
       if (firebaseUid && !existingUser.firebase_uid) {
         updatePayload.firebase_uid = firebaseUid;
       }
@@ -633,7 +630,7 @@ export async function provisionOrApproveUserByAdmin({
         .from('users')
         .update(updatePayload)
         .eq('id', existingUser.id)
-        .select('id, email, role, is_active, assigned_courses, firebase_uid, updated_at')
+        .select('id, email, role, is_active, firebase_uid, updated_at')
         .single();
 
       if (updateErr) {
@@ -649,14 +646,11 @@ export async function provisionOrApproveUserByAdmin({
       if (firebaseUid) {
         insertPayload.firebase_uid = firebaseUid;
       }
-      if (Array.isArray(assignedCourses) && assignedCourses.length > 0) {
-        insertPayload.assigned_courses = assignedCourses;
-      }
 
       const { data: created, error: insertErr } = await supabase
         .from('users')
         .insert(insertPayload)
-        .select('id, email, role, is_active, assigned_courses, firebase_uid, created_at')
+        .select('id, email, role, is_active, firebase_uid, created_at')
         .single();
 
       if (insertErr) {

@@ -425,6 +425,7 @@ export function gradeQuizSubmission(
   return {
     id: `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     quizId: quiz.id,
+    shareCode: quiz.shareCode || quiz.id,
     quizTitle: quiz.title,
     studentName,
     studentEmail,

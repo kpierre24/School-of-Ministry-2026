@@ -3,7 +3,24 @@ import { logger } from '../../../lib/logger';
 import { AuthenticatedUser } from '../../../types/rbac';
 import { DEFAULT_QUIZ_TEMPLATES } from '../../../data/quizTemplates';
 
+const inMemoryQuizzesCache = new Map<string, any>();
+const inMemoryQuizAttempts = new Map<string, any>();
+
 export const assignmentsService = {
+  /**
+   * Caches a quiz in memory for instant public retrieval across all client sessions.
+   */
+  cacheQuizInMemory(quiz: any): void {
+    if (!quiz) return;
+    const code = (quiz.shareCode || quiz.share_code || quiz.id || '').toLowerCase().trim();
+    if (code) {
+      inMemoryQuizzesCache.set(code, quiz);
+    }
+    if (quiz.id) {
+      inMemoryQuizzesCache.set(String(quiz.id).toLowerCase().trim(), quiz);
+      inMemoryQuizzesCache.set(`qz_${String(quiz.id).replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`, quiz);
+    }
+  },
   /**
    * Retrieves assignments from relational assignments table.
    */
@@ -183,28 +200,39 @@ export const assignmentsService = {
          }
          const { data: dbQuizSubs, error: qsError } = await quizQuery;
          if (!qsError && dbQuizSubs && dbQuizSubs.length > 0) {
-            const formattedQuizSubs = dbQuizSubs.map((qs: any) => ({
-               id: qs.id,
-               assignmentId: qs.quiz_id,
-               assignmentTitle: qs.quiz_title || 'Quiz',
-               studentId: qs.student_id || qs.student_email || qs.student_name || 'external_user',
-               student: {
-                 id: qs.student_id || 'external_user',
-                 name: qs.student_name,
-                 email: qs.student_email
-               },
-               studentName: qs.student_name,
-               status: qs.percentage >= 75 ? 'Graded' : 'Submitted',
-               submittedAt: qs.submitted_at,
-               score: qs.score,
-               percentage: qs.percentage,
-               maxPoints: qs.total_possible || 100,
-               maxScore: qs.total_possible || 100,
-               timeSpentSeconds: qs.time_spent_seconds || 0,
-               quizAnswers: qs.responses || {},
-               studentNotes: `Completed Class Day Quiz (${qs.percentage}% score). Correct tally: ${qs.score}/${qs.total_possible || 100} pts.`,
-               teacherFeedback: `Automated quiz tally: ${qs.score}/${qs.total_possible || 100} points (${qs.percentage}%). Completed on ${qs.submitted_at}.`
-            }));
+            const formattedQuizSubs = dbQuizSubs.map((qs: any) => {
+               const tmpl = Array.isArray(DEFAULT_QUIZ_TEMPLATES)
+                 ? DEFAULT_QUIZ_TEMPLATES.find((t: any) => t.id === qs.quiz_id || t.shareCode === qs.quiz_id)
+                 : null;
+               const courseCode = qs.course_code || tmpl?.courseCode || 'MIN-101';
+               const quizTitle = qs.quiz_title || tmpl?.title || 'Quiz Assessment';
+
+               return {
+                  id: qs.id,
+                  assignmentId: qs.quiz_id,
+                  quizId: qs.quiz_id,
+                  assignmentTitle: quizTitle,
+                  quizTitle,
+                  courseCode,
+                  studentId: qs.student_id || qs.student_email || qs.student_name || 'external_user',
+                  student: {
+                    id: qs.student_id || 'external_user',
+                    name: qs.student_name,
+                    email: qs.student_email
+                  },
+                  studentName: qs.student_name,
+                  status: qs.percentage >= 75 ? 'Graded' : 'Submitted',
+                  submittedAt: qs.submitted_at,
+                  score: qs.score,
+                  percentage: qs.percentage,
+                  maxPoints: qs.total_possible || 100,
+                  maxScore: qs.total_possible || 100,
+                  timeSpentSeconds: qs.time_spent_seconds || 0,
+                  quizAnswers: qs.responses || {},
+                  studentNotes: `Completed Class Day Quiz (${qs.percentage}% score). Correct tally: ${qs.score}/${qs.total_possible || 100} pts.`,
+                  teacherFeedback: `Automated quiz tally: ${qs.score}/${qs.total_possible || 100} points (${qs.percentage}%). Completed on ${qs.submitted_at}.`
+               };
+            });
             result = [...result, ...formattedQuizSubs];
          }
       } catch (e) {
@@ -817,20 +845,29 @@ export const assignmentsService = {
       reason: `Assignment '${cleanTitle}' created`,
     });
 
+    const createdAssignment = {
+      id: createdId,
+      title: cleanTitle,
+      description: data.description || '',
+      courseCode,
+      dueDate: dueAt,
+      dueAt,
+      maxScore: maxPoints,
+      maxPoints,
+      totalPoints: maxPoints,
+      weight: data.weight || 10,
+      isPublished: data.isPublished !== false,
+      shareCode: (data as any).shareCode || `qz_${createdId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
+      questions: (data as any).rubric?.questions || (data as any).questions || [],
+      settings: (data as any).rubric?.settings || (data as any).settings || {},
+      quizData: (data as any).quizData || null,
+    };
+
+    assignmentsService.cacheQuizInMemory(createdAssignment);
+
     return {
       status: 'created',
-      assignment: {
-        id: createdId,
-        title: cleanTitle,
-        description: data.description || '',
-        courseCode,
-        dueDate: dueAt,
-        dueAt,
-        maxScore: maxPoints,
-        maxPoints,
-        weight: data.weight || 10,
-        isPublished: data.isPublished !== false,
-      },
+      assignment: createdAssignment,
     };
   },
 
@@ -911,16 +948,24 @@ export const assignmentsService = {
       return { isNotFound: true, message: 'Share code or quiz ID parameter is required.' };
     }
 
+    const lookupCode = cleanCode.toLowerCase();
+    let matchedQuiz: any = inMemoryQuizzesCache.get(lookupCode) || null;
+
+    if (matchedQuiz) {
+      if (matchedQuiz.isPublished === false) {
+        return { isUnpublished: true, message: 'This quiz is currently unpublished or has been revoked by the instructor.' };
+      }
+      return { quiz: matchedQuiz };
+    }
+
     try {
       // 1. Query relational assignments table
-      const { data: asg, error } = await supabase
+      let { data: asg, error } = await supabase
         .from('assignments')
         .select('*')
         .or(`id.eq.${cleanCode},share_code.eq.${cleanCode}`)
         .is('deleted_at', null)
         .maybeSingle();
-
-      let matchedQuiz: any = null;
 
       if (!error && asg) {
         let questions = [];
@@ -957,7 +1002,68 @@ export const assignmentsService = {
         };
       }
 
-      // 2. Fallback lookup in DEFAULT_QUIZ_TEMPLATES if not found in database
+      // 2. Query shared app_states table if not directly found in assignments table
+      if (!matchedQuiz) {
+        try {
+          const { data: stateRows } = await supabase
+            .from('app_states')
+            .select('state')
+            .order('updated_at', { ascending: false })
+            .limit(10);
+
+          if (stateRows && stateRows.length > 0) {
+            for (const row of stateRows) {
+              const customAsgs = row.state?.customAssignments || row.state?.assignments;
+              if (Array.isArray(customAsgs)) {
+                const found = customAsgs.find((a: any) => {
+                  const q = a.quizData || a;
+                  const qShare = (q.shareCode || (q as any).share_code || '').toLowerCase().trim();
+                  const qId = (q.id || a.id || '').toLowerCase().trim();
+                  const clean = cleanCode.toLowerCase().trim();
+                  const altId = `qz_${(q.id || a.id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
+                  const matchesCode = qShare === clean || qId === clean || altId === clean;
+                  const hasQuestions = (Array.isArray(q.questions) && q.questions.length > 0) || (Array.isArray(a.questions) && a.questions.length > 0);
+                  return matchesCode && hasQuestions;
+                });
+
+                if (found) {
+                  const q = found.quizData || found;
+                  matchedQuiz = {
+                    id: q.id || found.id || `quiz_${Date.now()}`,
+                    title: q.title || found.title || 'Class Day Assessment',
+                    courseCode: q.courseCode || found.courseCode || 'MIN-101',
+                    moduleTrack: q.moduleTrack || found.moduleTrack || 'Module 1: Foundations',
+                    description: q.description || found.description || '',
+                    category: q.category || 'Scripture Knowledge',
+                    dueDate: q.dueDate || found.dueDate || '2026-09-30',
+                    lockAt: q.lockAt || null,
+                    shareCode: q.shareCode || cleanCode,
+                    timeLimitMinutes: q.timeLimitMinutes || 30,
+                    totalPoints: q.totalPoints || found.maxPoints || 100,
+                    isPublished: q.isPublished !== false,
+                    questions: q.questions || [],
+                    settings: q.settings || {
+                      shuffleQuestions: false,
+                      shuffleOptions: false,
+                      showCorrectAnswers: true,
+                      showPointValues: true,
+                      showFeedback: true,
+                      passingScorePercentage: 75,
+                      allowMultipleAttempts: true,
+                      maxAttempts: 2,
+                    },
+                  };
+                  break;
+                }
+              }
+            }
+          }
+        } catch {
+          // Ignore non-fatal app_states query error
+        }
+      }
+
+      // 3. Fallback lookup in DEFAULT_QUIZ_TEMPLATES if not found in database or app_states
       if (!matchedQuiz && Array.isArray(DEFAULT_QUIZ_TEMPLATES)) {
         const tmpl = DEFAULT_QUIZ_TEMPLATES.find(
           (t) =>
@@ -995,6 +1101,151 @@ export const assignmentsService = {
       logger.warn(`Non-fatal warning fetching public quiz ${cleanCode}:`, err);
       return { isNotFound: true, message: 'Failed to retrieve quiz details.' };
     }
+  },
+
+  /**
+   * Registers a new server-side quiz attempt before answering starts.
+   */
+  async createQuizAttempt(
+    shareCodeOrId: string,
+    payload: { studentName: string; studentEmail?: string }
+  ): Promise<{ attemptId: string; startedAt: string }> {
+    const quizLookup = await this.getPublicQuiz(shareCodeOrId);
+    if (!quizLookup || quizLookup.isNotFound || !quizLookup.quiz) {
+      throw new Error(quizLookup?.message || 'Quiz not found or link is invalid.');
+    }
+    if (quizLookup.isUnpublished) {
+      throw new Error('This quiz is currently unpublished or revoked by the instructor.');
+    }
+
+    const quiz = quizLookup.quiz;
+    const randNum = String(Math.floor(1000 + Math.random() * 9000));
+    const attemptId = (payload as any).customAttemptId || `ATT-${randNum}`;
+    const startedAt = new Date().toISOString();
+
+    const attemptObj = {
+      id: attemptId,
+      quiz_id: quiz.id,
+      share_code: quiz.shareCode || shareCodeOrId,
+      student_name: (payload.studentName || '').trim() || 'HTEIM Student',
+      student_email: (payload.studentEmail || '').trim(),
+      started_at: startedAt,
+      responses: {},
+      status: 'in_progress',
+      updated_at: startedAt
+    };
+
+    inMemoryQuizAttempts.set(attemptId, attemptObj);
+
+    try {
+      const supabase = getServerSupabase();
+      await supabase.from('quiz_attempts').insert([attemptObj]);
+    } catch (dbErr) {
+      logger.warn('Supabase quiz_attempts insert notice:', dbErr);
+    }
+
+    return { attemptId, startedAt };
+  },
+
+  /**
+   * Retrieves active in-progress and submitted attempt records for live teacher monitoring.
+   */
+  async getQuizAttempts(shareCodeOrId: string): Promise<any[]> {
+    const cleanCode = (shareCodeOrId || '').toLowerCase().trim();
+    const attemptsList: any[] = [];
+
+    // 1. Gather from inMemoryQuizAttempts
+    for (const [id, att] of inMemoryQuizAttempts.entries()) {
+      if (
+        att.share_code?.toLowerCase() === cleanCode ||
+        att.quiz_id?.toLowerCase() === cleanCode ||
+        att.id?.toLowerCase() === cleanCode
+      ) {
+        const respCount = Object.keys(att.responses || {}).length;
+        attemptsList.push({
+          id: att.id,
+          studentName: att.student_name,
+          studentEmail: att.student_email,
+          status: att.status || 'in_progress',
+          answeredCount: respCount,
+          startedAt: att.started_at,
+          lastSaved: att.updated_at,
+          responses: att.responses,
+          timeSpentSeconds: att.time_spent_seconds || 0
+        });
+      }
+    }
+
+    // 2. Query Supabase quiz_attempts table
+    try {
+      const supabase = getServerSupabase();
+      const { data } = await supabase
+        .from('quiz_attempts')
+        .select('*')
+        .or(`share_code.eq.${cleanCode},quiz_id.eq.${cleanCode}`);
+      
+      if (Array.isArray(data)) {
+        for (const row of data) {
+          if (!attemptsList.some(a => a.id === row.id)) {
+            const respCount = Object.keys(row.responses || {}).length;
+            attemptsList.push({
+              id: row.id,
+              studentName: row.student_name,
+              studentEmail: row.student_email,
+              status: row.status || 'in_progress',
+              answeredCount: respCount,
+              startedAt: row.started_at,
+              lastSaved: row.updated_at,
+              responses: row.responses,
+              timeSpentSeconds: row.time_spent_seconds || 0
+            });
+          }
+        }
+      }
+    } catch {}
+
+    return attemptsList;
+  },
+
+  /**
+   * Server autosave endpoint for student draft responses during a quiz attempt.
+   */
+  async autosaveQuizAttemptResponses(
+    shareCodeOrId: string,
+    attemptId: string,
+    payload: { responses: Record<string, any>; timeSpentSeconds?: number }
+  ): Promise<{ success: boolean; savedAt: string }> {
+    const timestamp = new Date().toISOString();
+    let existing = inMemoryQuizAttempts.get(attemptId);
+    if (!existing) {
+      existing = {
+        id: attemptId,
+        share_code: shareCodeOrId,
+        responses: {},
+        updated_at: timestamp
+      };
+    }
+
+    existing.responses = payload.responses || {};
+    existing.time_spent_seconds = payload.timeSpentSeconds || 0;
+    existing.updated_at = timestamp;
+    inMemoryQuizAttempts.set(attemptId, existing);
+
+    try {
+      const supabase = getServerSupabase();
+      await supabase
+        .from('quiz_attempts')
+        .update({
+          responses: payload.responses || {},
+          time_spent_seconds: payload.timeSpentSeconds || 0,
+          updated_at: timestamp
+        })
+        .eq('id', attemptId);
+    } catch (dbErr) {
+      logger.warn('Supabase quiz_attempts update notice:', dbErr);
+    }
+
+    return { success: true, savedAt: timestamp };
   },
 
   /**
@@ -1038,9 +1289,22 @@ export const assignmentsService = {
       throw new Error('Student Name exceeds maximum allowed length (100 characters).');
     }
 
-    const responsesPayload = payload.responses && typeof payload.responses === 'object' && !Array.isArray(payload.responses)
-      ? payload.responses
-      : {};
+    // Normalize responses: accept both array of QuizSubmissionResponse and key-value mapping
+    const rawAnswers = (payload as any).rawResponses || payload.responses;
+    let responsesPayload: Record<string, any> = {};
+
+    if (Array.isArray(rawAnswers)) {
+      rawAnswers.forEach((r: any) => {
+        if (r && r.questionId) {
+          const val = r.selectedOptionId ?? r.selectedOptionIds ?? r.textAnswer ?? r.answer ?? r.value;
+          if (val !== undefined) {
+            responsesPayload[r.questionId] = val;
+          }
+        }
+      });
+    } else if (rawAnswers && typeof rawAnswers === 'object') {
+      responsesPayload = { ...rawAnswers };
+    }
 
     // 3. Anti-Spam / Rate Limit & Multiple Attempt Check
     try {

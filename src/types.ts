@@ -517,6 +517,7 @@ export type QuizSubmissionResponse = {
 export type QuizSubmission = {
   id: string;
   quizId: string;
+  shareCode?: string;
   quizTitle?: string;
   studentName: string;
   studentEmail?: string;

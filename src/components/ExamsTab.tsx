@@ -58,6 +58,7 @@ import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 import { QuizCreatorModal } from './QuizCreatorModal';
 import { QuizTakerView } from './QuizTakerView';
+import { portalApi } from '../services/api/portalApiClient';
 import { DuplicateQuizModal } from './DuplicateQuizModal';
 import { InteractiveFlashcards } from './InteractiveFlashcards';
 import { AdminQuizzesDashboard } from './AdminQuizzesDashboard';
@@ -326,6 +327,36 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     }
   }, [quizSubmissionsList]);
 
+  // Listen for public quiz submissions submitted anywhere in the portal or across browser tabs
+  useEffect(() => {
+    const handleQuizSubmitted = (e: any) => {
+      if (e.detail && e.detail.id) {
+        setQuizSubmissionsList(prev => {
+          const filtered = prev.filter(s => s.id !== e.detail.id);
+          return [e.detail, ...filtered];
+        });
+      }
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'hteim_quiz_submissions' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setQuizSubmissionsList(parsed);
+          }
+        } catch {}
+      }
+    };
+
+    window.addEventListener('hteim_quiz_submitted', handleQuizSubmitted);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('hteim_quiz_submitted', handleQuizSubmitted);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
   // Sync global submissions (which now includes quiz_submissions from the cloud) into local quizSubmissionsList
   useEffect(() => {
     if (submissions && submissions.length > 0) {
@@ -334,23 +365,27 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         let modified = false;
 
         submissions.forEach(sub => {
-          if (sub.quizAnswers && !currentMap.has(sub.id)) {
-            // Find the associated quiz to grade the raw answers
+          if (!currentMap.has(sub.id)) {
+            // Find the associated quiz to hydrate title and grade raw answers if necessary
             const matchingQuiz = customAssignments.find(a => a.quizData?.id === sub.assignmentId || a.id === sub.assignmentId)?.quizData;
             
             let responsesArray: any[] = [];
             
-            if (matchingQuiz && !Array.isArray(sub.quizAnswers)) {
-              // It's a raw key-value mapping from the cloud API; we need to re-grade it to match QuizSubmissionResponse format
+            if (matchingQuiz && sub.quizAnswers && !Array.isArray(sub.quizAnswers)) {
+              // Raw key-value mapping from the cloud API; re-grade to match QuizSubmissionResponse format
               import('../data/quizTemplates').then(({ gradeQuizSubmission }) => {
                  const graded = gradeQuizSubmission(matchingQuiz, sub.quizAnswers, sub.studentName || 'Student', sub.student?.email, sub.timeSpentSeconds);
+                 graded.id = sub.id;
+                 graded.quizTitle = matchingQuiz.title;
+                 if (sub.score !== undefined && sub.score !== null) graded.score = sub.score;
+                 if (sub.percentage !== undefined && sub.percentage !== null) graded.percentage = sub.percentage;
                  setQuizSubmissionsList(current => {
                     const nextMap = new Map(current.map(s => [s.id, s]));
                     nextMap.set(sub.id, graded);
                     return Array.from(nextMap.values());
                  });
               });
-              return; // Skip adding it synchronously, we'll add it asynchronously
+              return;
             } else if (Array.isArray(sub.quizAnswers)) {
               responsesArray = sub.quizAnswers;
             }
@@ -358,11 +393,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             currentMap.set(sub.id, {
               id: sub.id,
               quizId: sub.assignmentId,
+              quizTitle: matchingQuiz?.title || (sub as any).quizTitle || (sub as any).assignmentTitle || 'Assessment',
               studentName: sub.studentName || 'Student',
-              studentEmail: sub.student?.email || '',
+              studentEmail: sub.student?.email || (sub as any).studentEmail || '',
               submittedAt: sub.submittedAt,
               responses: responsesArray,
-              score: sub.score || 0,
+              score: sub.score ?? 0,
               totalPossible: sub.maxPoints || sub.maxScore || 100,
               percentage: sub.percentage || (sub.maxPoints ? Math.round(((sub.score || 0)/sub.maxPoints)*100) : 0),
               timeSpentSeconds: sub.timeSpentSeconds || 0,
@@ -427,12 +463,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       quizData
     };
 
+    let updatedCustom: CustomAssignment[];
     if (existingIndex >= 0) {
-      const updated = [...customAssignments];
-      updated[existingIndex] = asgObj;
-      setCustomAssignments(updated);
+      updatedCustom = [...customAssignments];
+      updatedCustom[existingIndex] = asgObj;
+      setCustomAssignments(updatedCustom);
     } else {
-      setCustomAssignments([asgObj, ...customAssignments]);
+      updatedCustom = [asgObj, ...customAssignments];
+      setCustomAssignments(updatedCustom);
 
       if (onNotificationCreated) {
         onNotificationCreated({
@@ -448,6 +486,30 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         });
       }
     }
+
+    try {
+      localStorage.setItem('hteim_custom_assignments', JSON.stringify(updatedCustom));
+    } catch {}
+
+    // Asynchronously synchronize assignment to backend API for multi-device/public link resolution
+    try {
+      portalApi.createAssignment({
+        title: quizData.title,
+        description: quizData.description || 'Interactive class day assessment',
+        courseCode: quizData.courseCode,
+        dueDate: quizData.dueDate,
+        maxPoints: quizData.totalPoints,
+        isPublished: quizData.isPublished !== false,
+        shareCode: quizData.shareCode,
+        rubric: {
+          questions: quizData.questions,
+          settings: quizData.settings,
+        },
+        quizData,
+      } as any).catch(() => {
+        // Safe offline fallback
+      });
+    } catch {}
 
     logActivity({
       actor: userRole === 'admin' ? 'Administrator' : 'Instructor',
@@ -2343,7 +2405,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     questions: []
                   };
 
-                  const submissionCount = quizSubmissionsList.filter(s => s.quizId === quiz.id).length;
+                  const submissionCount = quizSubmissionsList.filter(s => 
+                    s.quizId === quiz.id || 
+                    s.quizId === asg.id || 
+                    (quiz.shareCode && s.quizId === quiz.shareCode)
+                  ).length;
 
                   return (
                     <div 
@@ -2375,9 +2441,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           <span className="font-bold flex items-center gap-1 text-amber-700">
                             <Award className="w-3.5 h-3.5 text-amber-600" /> {quiz.totalPoints} Total Points
                           </span>
-                          <span className="font-bold text-slate-700">
-                            {submissionCount} Submissions
-                          </span>
+                          {submissionCount > 0 ? (
+                            <span className="font-bold inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              {submissionCount} {submissionCount === 1 ? 'Sub (Done)' : 'Subs (Done)'}
+                            </span>
+                          ) : (
+                            <span className="font-bold text-slate-500">
+                              0 Submissions
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -2788,7 +2861,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             totalPoints: a.maxPoints,
             createdAt: a.createdAt || '2026-08-01',
             dueDate: a.dueDate,
-            shareCode: `qz_${a.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
+            shareCode: a.quizData?.shareCode || (a as any).shareCode || `qz_${a.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
             questions: []
           })}
           submissions={quizSubmissionsList}

@@ -43,6 +43,59 @@ assignmentsRouter.get("/public/quiz/:shareCode", async (req: Request, res: Respo
 });
 
 /**
+ * GET /api/assignments/public/quiz/:shareCode/attempts
+ * Retrieves registered attempt progress / responses for live teacher monitoring.
+ */
+assignmentsRouter.get("/public/quiz/:shareCode/attempts", async (req: Request, res: Response) => {
+  try {
+    const { shareCode } = req.params;
+    const attempts = await assignmentsService.getQuizAttempts(shareCode);
+    return res.json({ attempts });
+  } catch (err: any) {
+    logger.error(`GET /api/assignments/public/quiz/${req.params.shareCode}/attempts error:`, err);
+    return res.status(500).json({ error: err?.message || "Failed to fetch quiz attempts" });
+  }
+});
+
+/**
+ * POST /api/assignments/public/quiz/:shareCode/attempts
+ * Registers a new server-side quiz attempt before answering starts.
+ */
+assignmentsRouter.post("/public/quiz/:shareCode/attempts", async (req: Request, res: Response) => {
+  try {
+    const { shareCode } = req.params;
+    const { studentName, studentEmail } = req.body || {};
+    const result = await assignmentsService.createQuizAttempt(shareCode, {
+      studentName: studentName || 'Student',
+      studentEmail: studentEmail || ''
+    });
+    return res.status(201).json(result);
+  } catch (err: any) {
+    logger.error(`POST /api/assignments/public/quiz/${req.params.shareCode}/attempts error:`, err);
+    return res.status(400).json({ error: err?.message || "Failed to create quiz attempt" });
+  }
+});
+
+/**
+ * PATCH /api/assignments/public/quiz/:shareCode/attempts/:attemptId/responses
+ * Server autosave endpoint for student draft responses during a quiz attempt.
+ */
+assignmentsRouter.patch("/public/quiz/:shareCode/attempts/:attemptId/responses", async (req: Request, res: Response) => {
+  try {
+    const { shareCode, attemptId } = req.params;
+    const { responses, timeSpentSeconds } = req.body || {};
+    const result = await assignmentsService.autosaveQuizAttemptResponses(shareCode, attemptId, {
+      responses: responses || {},
+      timeSpentSeconds: Number(timeSpentSeconds) || 0
+    });
+    return res.json(result);
+  } catch (err: any) {
+    logger.error(`PATCH /api/assignments/public/quiz/${req.params.shareCode}/attempts/${req.params.attemptId}/responses error:`, err);
+    return res.status(400).json({ error: err?.message || "Failed to autosave quiz attempt responses" });
+  }
+});
+
+/**
  * POST /api/assignments/public/quiz/:shareCode/submit
  * Captures quiz responses submitted by external/public users.
  */
@@ -116,14 +169,14 @@ assignmentsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const user = req.user!;
-      const { title, description, courseCode, courseId, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric } = req.body;
+      const { title, description, courseCode, courseId, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric, shareCode, quizData, questions, settings } = req.body;
 
       if (!title || typeof title !== "string") {
         return res.status(400).json({ error: "Assignment title is required" });
       }
 
       const result = await assignmentsService.createAssignment(
-        { title, description, courseCode, courseId, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric },
+        { title, description, courseCode, courseId, dueDate, dueAt, maxScore, maxPoints, weight, isPublished, rubric, shareCode, quizData, questions, settings } as any,
         user
       );
 

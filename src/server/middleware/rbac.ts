@@ -296,7 +296,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
     try {
       const { data: identityRecord, error: idErr } = await supabase
         .from("user_identities")
-        .select("user_id, users(id, email, role, is_active, assigned_courses, firebase_uid)")
+        .select("user_id, users(id, email, role, is_active, firebase_uid)")
         .eq("provider", "firebase")
         .eq("provider_uid", firebaseUid)
         .maybeSingle();
@@ -313,7 +313,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
       try {
         const { data: directUser, error: directErr } = await supabase
           .from("users")
-          .select("id, email, role, is_active, assigned_courses, firebase_uid")
+          .select("id, email, role, is_active, firebase_uid")
           .eq("firebase_uid", firebaseUid)
           .maybeSingle();
 
@@ -333,7 +333,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
       try {
         const { data: legacyUser, error: legacyErr } = await supabase
           .from("users")
-          .select("id, email, role, is_active, assigned_courses, firebase_uid")
+          .select("id, email, role, is_active, firebase_uid")
           .eq("email", cleanEmail)
           .maybeSingle();
 
@@ -443,7 +443,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
             is_active: true,
             firebase_uid: firebaseUid,
           })
-          .select("id, email, role, is_active, assigned_courses, firebase_uid")
+          .select("id, email, role, is_active, firebase_uid")
           .maybeSingle();
 
         if (adminUser) {
@@ -549,7 +549,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
               is_active: true,
               firebase_uid: firebaseUid,
             })
-            .select("id, email, role, is_active, assigned_courses, firebase_uid")
+            .select("id, email, role, is_active, firebase_uid")
             .maybeSingle();
 
           if (insertErr) {
@@ -665,7 +665,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
         try {
           const { data: profByUid, error: profUidErr } = await supabase
             .from("profiles")
-            .select("id, first_name, last_name, students(id, student_number)")
+            .select("id, first_name, last_name")
             .eq("user_id", dbUser.id)
             .maybeSingle();
 
@@ -681,7 +681,7 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
         try {
           const { data: profByEmail, error: profEmailErr } = await supabase
             .from("profiles")
-            .select("id, first_name, last_name, students(id, student_number)")
+            .select("id, first_name, last_name")
             .eq("email", cleanEmail)
             .maybeSingle();
 
@@ -698,10 +698,21 @@ export async function resolveUserFromRequest(req: Request): Promise<Authenticate
       if (prof) {
         const fullProfName = `${prof.first_name || ""} ${prof.last_name || ""}`.trim();
         if (fullProfName) studentName = fullProfName;
-        const std = Array.isArray(prof.students) ? prof.students[0] : prof.students;
-        if (std) {
-          if (std.id) studentRecordId = std.id;
-          if (std.student_number) studentNumber = std.student_number;
+
+        if (!studentRecordId && prof.id) {
+          try {
+            const { data: stdByProf } = await supabase
+              .from("students")
+              .select("id, student_number")
+              .eq("profile_id", prof.id)
+              .maybeSingle();
+            if (stdByProf) {
+              if (stdByProf.id) studentRecordId = stdByProf.id;
+              if (stdByProf.student_number) studentNumber = stdByProf.student_number;
+            }
+          } catch {
+            // ignore
+          }
         }
       }
     } catch (profErr: any) {

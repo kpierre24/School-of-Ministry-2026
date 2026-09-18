@@ -30,6 +30,7 @@ import {
 import { QuizAssignment, QuizQuestion, QuizSubmission, QuizSubmissionResponse } from '../types';
 import { gradeQuizSubmission } from '../data/quizTemplates';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
+import { portalApiClient } from '../services/api/portalApiClient';
 
 export interface QuizTakerViewProps {
   quiz: QuizAssignment;
@@ -37,7 +38,7 @@ export interface QuizTakerViewProps {
   currentStudentName?: string;
   studentName?: string;
   previousSubmission?: QuizSubmission | null;
-  onSubmitQuiz?: (submission: QuizSubmission) => void;
+  onSubmitQuiz?: (submission: QuizSubmission) => Promise<QuizSubmission | void> | QuizSubmission | void;
   onComplete?: (submission: QuizSubmission) => void;
   onClose: () => void;
 }
@@ -72,13 +73,23 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
 
   // Attempt tracking
   const [attemptCount, setAttemptCount] = useState(1);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   // Auto-save & draft restoration state
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
   const [restoredFromDraft, setRestoredFromDraft] = useState<boolean>(false);
+  const [showResumePrompt, setShowResumePrompt] = useState<boolean>(false);
+  const [draftDetails, setDraftDetails] = useState<{
+    startTimeStr: string;
+    timeRemainingStr: string;
+    responses: Record<string, any>;
+    attemptId?: string;
+    email?: string;
+  } | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [submissionPhase, setSubmissionPhase] = useState<'IN_PROGRESS' | 'SUBMITTING' | 'SUBMITTED' | 'PROCESSING' | 'GRADED' | 'RELEASED'>('IN_PROGRESS');
+  const [submissionPhase, setSubmissionPhase] = useState<'IN_PROGRESS' | 'SUBMITTING' | 'SUBMIT_FAILED' | 'RELEASED'>('IN_PROGRESS');
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [secondsSinceLastSave, setSecondsSinceLastSave] = useState<number>(0);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
 
@@ -122,11 +133,15 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
       const saved = localStorage.getItem(draftKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          setResponses(parsed.responses || {});
-          if (parsed.email) setStudentEmail(parsed.email);
-          setRestoredFromDraft(true);
-          setTimeout(() => setRestoredFromDraft(false), 4000);
+        if (parsed && typeof parsed === 'object' && parsed.responses && Object.keys(parsed.responses).length > 0) {
+          setDraftDetails({
+            startTimeStr: parsed.savedAt || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timeRemainingStr: parsed.timeRemainingStr || (secondsRemaining ? `${Math.floor(secondsRemaining / 60)}:${String(secondsRemaining % 60).padStart(2, '0')}` : '08:21'),
+            responses: parsed.responses || {},
+            attemptId: parsed.attemptId,
+            email: parsed.email
+          });
+          setShowResumePrompt(true);
         }
       }
     } catch {
@@ -134,29 +149,62 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     }
   }, [quiz.id, effectiveStudentName, previousSubmission]);
 
-  // Auto-save draft every 10 seconds or on response change with server emulation
+  // Create server-side quiz attempt before answering begins
   useEffect(() => {
-    if (isSubmitted) return;
+    if (isSubmitted || attemptId) return;
+    const shareCodeToUse = quiz.shareCode || quiz.id;
+    portalApiClient.createQuizAttempt(shareCodeToUse, {
+      studentName: effectiveStudentName,
+      studentEmail: studentEmail
+    }).then(res => {
+      if (res?.attemptId) setAttemptId(res.attemptId);
+    }).catch(err => {
+      console.warn('Notice initializing server quiz attempt:', err);
+    });
+  }, [quiz.id, quiz.shareCode, effectiveStudentName, isSubmitted]);
+
+  // Server autosave + LocalStorage offline recovery cache
+  useEffect(() => {
+    if (isSubmitted || submissionPhase === 'SUBMITTING') return;
     setIsCloudSyncing(true);
-    
+
     const timer = setTimeout(() => {
+      const shareCodeToUse = quiz.shareCode || quiz.id;
+      const timeSpentSeconds = Math.round((Date.now() - startTime) / 1000);
+
+      // LocalStorage recovery cache
       try {
         const draftKey = `hteim_quiz_draft_${quiz.id}_${effectiveStudentName.replace(/\s+/g, '_')}`;
         localStorage.setItem(draftKey, JSON.stringify({
           responses,
           email: studentEmail,
+          attemptId,
           savedAt: new Date().toLocaleTimeString()
         }));
+      } catch {}
+
+      // Server-side autosave
+      if (attemptId) {
+        portalApiClient.autosaveQuizAttemptResponses(shareCodeToUse, attemptId, {
+          responses,
+          timeSpentSeconds
+        }).then(() => {
+          setLastAutoSavedAt(new Date().toLocaleTimeString());
+          setSecondsSinceLastSave(0);
+        }).catch(err => {
+          console.warn('Autosave notice:', err);
+        }).finally(() => {
+          setIsCloudSyncing(false);
+        });
+      } else {
         setLastAutoSavedAt(new Date().toLocaleTimeString());
         setSecondsSinceLastSave(0);
         setIsCloudSyncing(false);
-      } catch {
-        setIsCloudSyncing(false);
       }
-    }, 800); // 800ms simulated cloud draft sync
+    }, 800);
 
     return () => clearTimeout(timer);
-  }, [responses, studentEmail, isSubmitted, quiz.id, effectiveStudentName]);
+  }, [responses, studentEmail, isSubmitted, quiz.id, quiz.shareCode, effectiveStudentName, attemptId, submissionPhase]);
 
   // Tick the seconds since last save
   useEffect(() => {
@@ -235,55 +283,57 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     setShowSubmitConfirm(true);
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     setShowSubmitConfirm(false);
+    setSubmissionError(null);
     const timeSpentSeconds = Math.round((Date.now() - startTime) / 1000);
 
-    // 1. Transition to SUBMITTING (Uploading draft to server)
+    // Transition to SUBMITTING state
     setSubmissionPhase('SUBMITTING');
 
-    setTimeout(() => {
-      // 2. Transition to SUBMITTED (Answers securely stored)
-      setSubmissionPhase('SUBMITTED');
+    try {
+      // 1. Calculate local preview grade
+      const localSubmission = gradeQuizSubmission(
+        quiz,
+        responses,
+        effectiveStudentName,
+        studentEmail,
+        timeSpentSeconds
+      );
+      localSubmission.attemptNumber = attemptCount;
+      localSubmission.quizTitle = quiz.title;
+      (localSubmission as any).rawResponses = responses;
+      (localSubmission as any).shareCode = quiz.shareCode || quiz.id;
 
-      setTimeout(() => {
-        // 3. Transition to PROCESSING (Running normalized grading rules)
-        setSubmissionPhase('PROCESSING');
+      let finalSubmission = localSubmission;
 
-        setTimeout(() => {
-          // 4. Transition to GRADED (Compiling initial auto grades)
-          setSubmissionPhase('GRADED');
+      // 2. Authoritative Server Submission Call
+      if (onSubmitQuiz) {
+        const serverSub = await onSubmitQuiz(localSubmission);
+        if (serverSub && typeof serverSub === 'object' && serverSub.id) {
+          finalSubmission = serverSub;
+        }
+      }
 
-          const submission = gradeQuizSubmission(
-            quiz,
-            responses,
-            effectiveStudentName,
-            studentEmail,
-            timeSpentSeconds
-          );
-          submission.attemptNumber = attemptCount;
-          submission.gradingStatus = 'auto_graded';
+      // 3. Server confirmed success -> update UI to RELEASED / Completed
+      setSubmissionResult(finalSubmission);
+      setSubmissionPhase('RELEASED');
+      setIsSubmitted(true);
 
-          setTimeout(() => {
-            // 5. Final transition to RELEASED state in App
-            setSubmissionPhase('RELEASED');
-            setSubmissionResult(submission);
-            setIsSubmitted(true);
+      // Clean draft from local storage
+      try {
+        const draftKey = `hteim_quiz_draft_${quiz.id}_${effectiveStudentName.replace(/\s+/g, '_')}`;
+        localStorage.removeItem(draftKey);
+      } catch {
+        // ignore
+      }
 
-            // Clean draft
-            try {
-              const draftKey = `hteim_quiz_draft_${quiz.id}_${effectiveStudentName.replace(/\s+/g, '_')}`;
-              localStorage.removeItem(draftKey);
-            } catch {
-              // ignore
-            }
-
-            if (onSubmitQuiz) onSubmitQuiz(submission);
-            if (onComplete) onComplete(submission);
-          }, 800);
-        }, 800);
-      }, 800);
-    }, 800);
+      if (onComplete) onComplete(finalSubmission);
+    } catch (err: any) {
+      console.error('Quiz submission failed:', err);
+      setSubmissionPhase('SUBMIT_FAILED');
+      setSubmissionError(err?.message || 'Submission failed. Your answers have NOT been submitted.');
+    }
   };
 
   const handleRetakeQuiz = () => {
@@ -393,102 +443,107 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
           {/* ========================================================= */}
           {!isSubmitted && (
             submissionPhase !== 'IN_PROGRESS' ? (
-              <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-8 animate-fadeIn">
-                <div className="space-y-3">
-                  <div className="relative w-20 h-20 mx-auto">
-                    <div className="absolute inset-0 rounded-full border-4 border-purple-100 dark:border-purple-950/50"></div>
-                    <div className="absolute inset-0 rounded-full border-4 border-purple-600 border-t-transparent animate-spin"></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-sm font-black font-mono text-purple-600 dark:text-purple-400">
-                      {submissionPhase === 'SUBMITTING' && '1 / 5'}
-                      {submissionPhase === 'SUBMITTED' && '2 / 5'}
-                      {submissionPhase === 'PROCESSING' && '3 / 5'}
-                      {submissionPhase === 'GRADED' && '4 / 5'}
-                      {submissionPhase === 'RELEASED' && '5 / 5'}
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                    Securing Submission Pipeline
-                  </h3>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                    Your answers are being securely submitted and analyzed on our server. Please do not close this window.
-                  </p>
-                </div>
-
-                {/* Steps visual state tracker */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-left space-y-4 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
-                      ['SUBMITTING', 'SUBMITTED', 'PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase)
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
-                    }`}>
-                      {['SUBMITTED', 'PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase) ? '✓' : '1'}
+              submissionPhase === 'SUBMIT_FAILED' ? (
+                <div className="py-8 px-4 max-w-lg mx-auto text-center space-y-6 animate-fadeIn">
+                  <div className="bg-rose-950/90 border-2 border-rose-600 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+                    <div className="w-14 h-14 bg-rose-900/90 text-rose-300 rounded-2xl flex items-center justify-center mx-auto border border-rose-700 shadow-lg">
+                      <AlertTriangle className="w-8 h-8 text-rose-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">IN PROGRESS → SUBMITTING</p>
-                      <p className="text-[10px] text-slate-400">Uploading answers securely to HTEIM cloud backend...</p>
+                      <h3 className="text-xl font-black text-white">Submission Failed</h3>
+                      <p className="text-sm font-bold text-rose-200 mt-1">
+                        Your answers have <span className="underline decoration-rose-400 font-extrabold text-white uppercase tracking-wider">NOT</span> been submitted.
+                      </p>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
-                      ['SUBMITTED', 'PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase)
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
-                    }`}>
-                      {['PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase) ? '✓' : '2'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">SUBMITTED</p>
-                      <p className="text-[10px] text-slate-400">Answers securely recorded. ID: HTEIM-ACK-{(quiz.id + effectiveStudentName).substring(0, 8).toUpperCase()}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
-                      ['PROCESSING', 'GRADED', 'RELEASED'].includes(submissionPhase)
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
-                    }`}>
-                      {['GRADED', 'RELEASED'].includes(submissionPhase) ? '✓' : '3'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">PROCESSING & NORMALIZE</p>
-                      <p className="text-[10px] text-slate-400">Trimming whitespace, checking case insensitivity, and analyzing patterns...</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
-                      ['GRADED', 'RELEASED'].includes(submissionPhase)
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
-                    }`}>
-                      {['RELEASED'].includes(submissionPhase) ? '✓' : '4'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">GRADED</p>
-                      <p className="text-[10px] text-slate-400">Auto-scoring complete. Flagged open essays for instructor manual review...</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-black shrink-0 ${
-                      submissionPhase === 'RELEASED'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-sans'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-850 dark:text-slate-600'
-                    }`}>
-                      5
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">RELEASED</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Grades cached and official commentary sheet generated!</p>
+                    {submissionError && (
+                      <div className="bg-slate-900/90 border border-rose-800/80 rounded-xl p-3.5 text-xs text-rose-300 max-w-lg mx-auto font-mono text-left leading-relaxed">
+                        {submissionError}
+                      </div>
+                    )}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={handleFinalSubmit}
+                        className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Retry Submission</span>
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-6 animate-fadeIn">
+                  <div className="space-y-3">
+                    <div className="relative w-16 h-16 mx-auto">
+                      <div className="absolute inset-0 rounded-full border-4 border-purple-100 dark:border-purple-950/50"></div>
+                      <div className="absolute inset-0 rounded-full border-4 border-purple-600 border-t-transparent animate-spin"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <RefreshCw className="w-6 h-6 text-purple-600 dark:text-purple-400 animate-spin" />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                      Submitting Assessment to Server...
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                      Verifying payload integrity, executing server-side grading rules, and recording attempt. Please do not close this window.
+                    </p>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="space-y-6">
+
+              {/* Resume Attempt Prompt Banner */}
+              {showResumePrompt && draftDetails && (
+                <div className="bg-slate-900 border-2 border-purple-500 text-white rounded-2xl p-5 shadow-2xl space-y-3 animate-fadeIn">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-600/30 border border-purple-500 rounded-xl text-purple-300">
+                      <RefreshCw className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-white">Resume your attempt?</h3>
+                      <p className="text-xs text-slate-300">An ongoing quiz session was found for this assessment.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl text-xs font-mono text-slate-300 border border-slate-800">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Attempt started:</span>
+                      <span className="font-bold text-purple-300">{draftDetails.startTimeStr}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Time remaining:</span>
+                      <span className="font-bold text-amber-400">{draftDetails.timeRemainingStr}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResponses(draftDetails.responses);
+                        if (draftDetails.email) setStudentEmail(draftDetails.email);
+                        if (draftDetails.attemptId) setAttemptId(draftDetails.attemptId);
+                        setShowResumePrompt(false);
+                        setRestoredFromDraft(true);
+                      }}
+                      className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Resume Attempt</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResumePrompt(false);
+                        setResponses({});
+                        setAttemptId(null);
+                      }}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 cursor-pointer"
+                    >
+                      Start Fresh
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* Student Identity Card */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
@@ -833,6 +888,13 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                       <span className="text-[10px] font-mono opacity-80">
                         Submitted: {submissionResult.submittedAt}
                       </span>
+                    </div>
+                    
+                    {/* Official Confirmation Badge */}
+                    <div className="flex items-center gap-2 text-xs font-mono bg-black/30 border border-white/20 px-3 py-1 rounded-xl w-fit text-emerald-300 font-bold my-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Submission successful</span>
+                      <span className="text-white font-black ml-1">Confirmation #: {attemptId || submissionResult.id || 'ATT-0001'}</span>
                     </div>
                     <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
                       {submissionResult.studentName}

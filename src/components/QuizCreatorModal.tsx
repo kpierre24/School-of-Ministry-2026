@@ -178,8 +178,8 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
     ? (poolQuestionCount * 10) 
     : questions.reduce((sum, q) => sum + (Number(q.weight) || 0), 0);
 
-  // Unique share code
-  const shareCode = source?.shareCode || `qz_${Math.random().toString(36).substring(2, 8)}`;
+  // Unique share code (stable in state across all renders and modal operations)
+  const [shareCode] = useState<string>(() => source?.shareCode || `qz_${Math.random().toString(36).substring(2, 8)}`);
 
   // Question manipulation handlers
   const handleAddQuestion = (type: QuizQuestionType = 'multiple_choice') => {

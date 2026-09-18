@@ -14,7 +14,7 @@ import {
   Search,
   Settings
 } from 'lucide-react';
-import { PWAInstallButton } from '../../components/PWAInstallButton';
+import { PWAInstallButton } from '../PWAInstallButton';
 
 export interface MobileMoreMenuDrawerProps {
   isOpen: boolean;

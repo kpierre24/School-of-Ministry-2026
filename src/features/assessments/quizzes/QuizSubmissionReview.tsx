@@ -382,9 +382,29 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
                     <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <BookOpen className="w-3.5 h-3.5 text-purple-600" /> Question #{i + 1}
                     </span>
-                    <span className={`font-mono font-bold ${resp.isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                      {resp.pointsEarned} pts {resp.isCorrect ? '(Correct/Passed)' : '(Review/Pending)'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[10px] font-extrabold uppercase text-slate-500">Score:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={qWeight}
+                        value={resp.pointsEarned ?? 0}
+                        onChange={(e) => {
+                          const val = Math.min(qWeight, Math.max(0, Number(e.target.value)));
+                          setResponses(prev => prev.map((r, idx) => {
+                            if (idx !== i) return r;
+                            return {
+                              ...r,
+                              pointsEarned: val,
+                              manualScoreOverride: val,
+                              isCorrect: val >= (qWeight * 0.75)
+                            };
+                          }));
+                        }}
+                        className="w-16 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs font-black text-purple-600 dark:text-purple-400 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                      <span className="font-mono text-xs font-bold text-slate-500">/ {qWeight} pts</span>
+                    </div>
                   </div>
 
                   {relatedQ?.questionText && (
@@ -537,6 +557,23 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Instructor Question Commentary / Feedback */}
+                  <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800 space-y-1">
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Instructor Question Commentary / Feedback
+                    </label>
+                    <input
+                      type="text"
+                      value={resp.comment || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setResponses(prev => prev.map((r, idx) => idx === i ? { ...r, comment: val } : r));
+                      }}
+                      placeholder="e.g. Excellent explanation."
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
 
                 </div>
               );

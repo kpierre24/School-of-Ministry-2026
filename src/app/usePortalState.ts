@@ -1254,6 +1254,12 @@ export function usePortalState() {
         const qParam = searchParams.get('quiz') || searchParams.get('shareCode') || searchParams.get('quizId') || searchParams.get('q');
         if (qParam) return qParam.trim();
 
+        const pathname = window.location.pathname || '';
+        if (pathname.startsWith('/quiz/')) {
+          const pVal = pathname.replace('/quiz/', '').trim();
+          if (pVal) return pVal;
+        }
+
         const hash = window.location.hash || '';
         if (hash.startsWith('#quiz/')) return hash.replace('#quiz/', '').trim();
         if (hash.startsWith('#/quiz/')) return hash.replace('#/quiz/', '').trim();
@@ -1275,15 +1281,59 @@ export function usePortalState() {
     }
 
     const cleanCode = code.toLowerCase().trim();
-    const allQuizzes = [
-      ...(customAssignments || []).map(a => a.quizData!).filter(Boolean),
+    
+    // Gather all local quizzes from state AND all possible localStorage keys
+    let localSavedCustom: any[] = [];
+    try {
+      const raw1 = localStorage.getItem('hteim_custom_assignments');
+      if (raw1) {
+        const parsed = JSON.parse(raw1);
+        if (Array.isArray(parsed)) localSavedCustom.push(...parsed);
+      }
+    } catch {}
+
+    try {
+      const raw2 = localStorage.getItem('hteim_offline_state_snapshot');
+      if (raw2) {
+        const parsed = JSON.parse(raw2);
+        if (Array.isArray(parsed?.customAssignments)) localSavedCustom.push(...parsed.customAssignments);
+        if (Array.isArray(parsed?.assignments)) localSavedCustom.push(...parsed.assignments);
+      }
+    } catch {}
+
+    try {
+      const raw3 = localStorage.getItem('hteim_portal_state');
+      if (raw3) {
+        const parsed = JSON.parse(raw3);
+        if (Array.isArray(parsed?.customAssignments)) localSavedCustom.push(...parsed.customAssignments);
+      }
+    } catch {}
+
+    const combinedAssignments = [
+      ...(customAssignments || []),
+      ...localSavedCustom
+    ];
+
+    const allQuizzes: QuizAssignment[] = [
+      ...combinedAssignments
+        .map(a => {
+          if (a?.quizData && Array.isArray(a.quizData.questions) && a.quizData.questions.length > 0) {
+            return a.quizData;
+          }
+          if (Array.isArray(a?.questions) && a.questions.length > 0) {
+            return a;
+          }
+          return null;
+        })
+        .filter(Boolean),
       ...DEFAULT_QUIZ_TEMPLATES
     ];
 
     const matched = allQuizzes.find(
       q => (q.shareCode && q.shareCode.toLowerCase().trim() === cleanCode) ||
            (q.id && q.id.toLowerCase().trim() === cleanCode) ||
-           (`qz_${q.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}` === cleanCode)
+           ((q as any).share_code && (q as any).share_code.toLowerCase().trim() === cleanCode) ||
+           (`qz_${(q.id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}` === cleanCode)
     );
 
     if (matched) {
@@ -1343,9 +1393,26 @@ export function usePortalState() {
   };
 
   const handlePublicQuizSubmit = async (submission: QuizSubmission) => {
+    // 1. Immediately persist to localStorage 'hteim_quiz_submissions' for Quiz Management & Submissions Log
+    try {
+      const savedSubsStr = localStorage.getItem('hteim_quiz_submissions');
+      const savedSubs: QuizSubmission[] = savedSubsStr ? JSON.parse(savedSubsStr) : [];
+      const filtered = savedSubs.filter(s => s.id !== submission.id);
+      localStorage.setItem('hteim_quiz_submissions', JSON.stringify([submission, ...filtered]));
+    } catch (e) {
+      console.warn('Could not save quiz submission to local storage:', e);
+    }
+
+    // 2. Broadcast event to instantly notify mounted components (e.g. ExamsTab, QuizDashboard)
+    try {
+      window.dispatchEvent(new CustomEvent('hteim_quiz_submitted', { detail: submission }));
+    } catch {}
+
+    // 3. Adapt for general assignment submissions state
     const adaptedSub: AssignmentSubmission = {
       id: submission.id,
       assignmentId: submission.quizId,
+      assignmentTitle: submission.quizTitle || 'Assessment',
       studentName: submission.studentName,
       submittedAt: submission.submittedAt,
       score: submission.score,
@@ -1363,17 +1430,49 @@ export function usePortalState() {
     });
 
     try {
+      const publicQuizShareCode = activePublicQuiz?.shareCode || submission.shareCode || submission.quizId;
+
+      const rawRes = (submission as any).rawResponses;
+      let responsesPayload: Record<string, any> = {};
+      if (rawRes && typeof rawRes === 'object' && !Array.isArray(rawRes)) {
+        responsesPayload = rawRes;
+      } else if (Array.isArray(submission.responses)) {
+        submission.responses.forEach(r => {
+          if (r && r.questionId) {
+            const val = r.selectedOptionId ?? r.selectedOptionIds ?? r.textAnswer;
+            if (val !== undefined) {
+              responsesPayload[r.questionId] = val;
+            }
+          }
+        });
+      }
+
       await portalApi.submitPublicQuizResponse(
-        submission.quizId,
+        publicQuizShareCode,
         {
           studentName: submission.studentName,
           studentEmail: submission.studentEmail,
-          responses: submission.responses,
+          responses: responsesPayload,
+          rawResponses: responsesPayload,
           timeSpentSeconds: submission.timeSpentSeconds,
-          quizId: submission.quizId
+          quizId: submission.quizId,
+          score: submission.score,
+          totalPossible: submission.totalPossible,
+          percentage: submission.percentage
         }
       );
       showToast('success', 'Quiz Response Recorded', 'Your submission has been captured in HTEIM School of Ministry.');
+
+      // Sync latest cloud state in background
+      loadFromSupabase(appUser?.email || user?.email).then(cloudState => {
+        if (cloudState?.submissions && Array.isArray(cloudState.submissions)) {
+          setSubmissions(prev => {
+            const cloudIds = new Set(cloudState.submissions.map((s: any) => s.id));
+            const localOnly = prev.filter(s => !cloudIds.has(s.id));
+            return [...cloudState.submissions, ...localOnly];
+          });
+        }
+      }).catch(() => {});
     } catch (err: any) {
       console.warn('Public quiz response submission server notice:', err);
     }

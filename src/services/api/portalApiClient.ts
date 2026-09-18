@@ -468,14 +468,54 @@ export const portalApi = {
     return fetchJson<{ quiz: any }>(`/assignments/public/quiz/${encodeURIComponent(shareCode)}`);
   },
 
+  async getQuizAttempts(shareCode: string): Promise<any[]> {
+    try {
+      const res = await fetchJson<{ attempts: any[] }>(
+        `/assignments/public/quiz/${encodeURIComponent(shareCode)}/attempts`
+      );
+      return res?.attempts || [];
+    } catch {
+      return [];
+    }
+  },
+
+  async createQuizAttempt(shareCode: string, payload: { studentName: string; studentEmail?: string }) {
+    return fetchJson<{ attemptId: string; startedAt: string }>(
+      `/assignments/public/quiz/${encodeURIComponent(shareCode)}/attempts`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  async autosaveQuizAttemptResponses(
+    shareCode: string,
+    attemptId: string,
+    payload: { responses: Record<string, any>; timeSpentSeconds?: number }
+  ) {
+    return fetchJson<{ success: boolean; savedAt: string }>(
+      `/assignments/public/quiz/${encodeURIComponent(shareCode)}/attempts/${encodeURIComponent(attemptId)}/responses`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
   async submitPublicQuizResponse(
     shareCode: string,
     payload: {
       studentName: string;
       studentEmail?: string;
-      responses: Record<string, any>;
+      responses: Record<string, any> | any[];
+      rawResponses?: Record<string, any>;
       timeSpentSeconds?: number;
       quizId?: string;
+      score?: number;
+      totalPossible?: number;
+      percentage?: number;
+      quizTitle?: string;
     }
   ) {
     return fetchJson<{ submission: any; success: boolean }>(

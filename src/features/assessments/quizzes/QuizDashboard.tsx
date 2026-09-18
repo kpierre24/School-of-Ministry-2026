@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   BarChart2, 
   Plus, 
@@ -15,8 +15,13 @@ import {
   List, 
   Check, 
   FileSpreadsheet,
-  ShieldAlert
+  ShieldAlert,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock,
+  RefreshCw
 } from 'lucide-react';
+import { portalApiClient } from '../../../services/api/portalApiClient';
 import { UserRole } from '../../../lib/userAuth';
 import { QuizAssignment, QuizSubmission } from '../../../types';
 import { QuizCreator } from './QuizCreator';
@@ -52,7 +57,18 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
   const quizManager = useQuizManagement();
   
   const quizzes = propsQuizzes || quizManager.quizzes;
-  const submissions = propsSubmissions || quizManager.submissions;
+  const submissions = useMemo(() => {
+    const map = new Map<string, QuizSubmission>();
+    (quizManager.submissions || []).forEach(s => {
+      if (s && s.id) map.set(s.id, s);
+    });
+    (propsSubmissions || []).forEach(s => {
+      if (s && s.id) map.set(s.id, s);
+    });
+    return Array.from(map.values()).sort((a, b) => 
+      new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
+    );
+  }, [propsSubmissions, quizManager.submissions]);
 
   // Active View Tabs
   const [activeTab, setActiveTab] = useState<'all_quizzes' | 'analytics' | 'individual'>('all_quizzes');
@@ -66,6 +82,35 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
   // Selected Quiz for Analytics / Review
   const [selectedAnalyticsQuizId, setSelectedAnalyticsQuizId] = useState<string>(quizzes[0]?.id || '');
   const [selectedSubmissionForReview, setSelectedSubmissionForReview] = useState<QuizSubmission | null>(null);
+  const [activeAttempts, setActiveAttempts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activeTab !== 'individual') return;
+    let isMounted = true;
+
+    const fetchAttempts = async () => {
+      try {
+        const allAtts: any[] = [];
+        for (const q of quizzes) {
+          const code = q.shareCode || q.id;
+          const atts = await portalApiClient.getQuizAttempts(code);
+          atts.forEach(a => {
+            if (!allAtts.some(existing => existing.id === a.id)) {
+              allAtts.push({ ...a, quizTitle: q.title });
+            }
+          });
+        }
+        if (isMounted) setActiveAttempts(allAtts);
+      } catch {}
+    };
+
+    fetchAttempts();
+    const interval = setInterval(fetchAttempts, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [activeTab, quizzes]);
 
   // Modals
   const [showCreatorModal, setShowCreatorModal] = useState(false);
@@ -215,7 +260,7 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          <span>Submissions Log</span>
+          <span>Submissions Log ({submissions.length})</span>
         </button>
       </div>
 
@@ -268,11 +313,18 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredQuizzes.map(quiz => {
-                const subCount = submissions.filter(s => s.quizId === quiz.id || (s as any).assignmentId === quiz.id).length;
+                const subCount = submissions.filter(s => 
+                  s.quizId === quiz.id || 
+                  (s as any).assignmentId === quiz.id ||
+                  (quiz.shareCode && (s.quizId === quiz.shareCode || (s as any).assignmentId === quiz.shareCode))
+                ).length;
                 const status = quiz.status || (quiz.isPublished ? 'published' : 'draft');
                 
                 // Detailed sub stats for GRADING
-                const awaitingReviewCount = submissions.filter(s => (s.quizId === quiz.id || (s as any).assignmentId === quiz.id) && !s.teacherFeedback).length;
+                const awaitingReviewCount = submissions.filter(s => 
+                  (s.quizId === quiz.id || (s as any).assignmentId === quiz.id || (quiz.shareCode && (s.quizId === quiz.shareCode || (s as any).assignmentId === quiz.shareCode))) && 
+                  !s.teacherFeedback
+                ).length;
                 const autoGradedCount = Math.max(0, subCount - awaitingReviewCount);
 
                 return (
@@ -355,9 +407,16 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
 
                       <div className="pt-2 flex items-center justify-between text-xs font-mono font-bold text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700/60">
                         <span>{quiz.questions?.length || quiz.settings?.poolConfig?.questionCountToPresent || 0} Questions</span>
-                        <span className="text-purple-600 dark:text-purple-400 font-sans">
-                          {subCount} Submissions
-                        </span>
+                        {subCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-sans font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                            {subCount} Done
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-sans font-medium">
+                            0 Submissions
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -440,14 +499,27 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-800 dark:text-slate-200 font-medium">
                     {filteredQuizzes.map(quiz => {
-                      const subCount = submissions.filter(s => s.quizId === quiz.id || (s as any).assignmentId === quiz.id).length;
+                      const subCount = submissions.filter(s => 
+                        s.quizId === quiz.id || 
+                        (s as any).assignmentId === quiz.id ||
+                        (quiz.shareCode && (s.quizId === quiz.shareCode || (s as any).assignmentId === quiz.shareCode))
+                      ).length;
                       return (
                         <tr key={quiz.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
                           <td className="p-3 font-mono font-bold text-purple-600">{quiz.courseCode || 'MIN-101'}</td>
                           <td className="p-3 font-bold text-slate-900 dark:text-white">{quiz.title}</td>
                           <td className="p-3 font-mono">{quiz.questions?.length || 0}</td>
                           <td className="p-3 font-mono font-bold text-amber-600">{quiz.totalPoints || 100}</td>
-                          <td className="p-3 font-mono">{subCount}</td>
+                          <td className="p-3 font-mono">
+                            {subCount > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                {subCount} (Done)
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">0</span>
+                            )}
+                          </td>
                           <td className="p-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
@@ -497,41 +569,130 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
         />
       )}
 
-      {/* TAB 3: INDIVIDUAL SUBMISSIONS */}
+      {/* TAB 3: INDIVIDUAL SUBMISSIONS & LIVE ATTEMPTS */}
       {activeTab === 'individual' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-extrabold uppercase">
-                <tr>
-                  <th className="p-3">Student Name</th>
-                  <th className="p-3">Quiz</th>
-                  <th className="p-3">Submitted At</th>
-                  <th className="p-3">Score</th>
-                  <th className="p-3">Percentage</th>
-                  <th className="p-3 text-right">Review</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-800 dark:text-slate-200 font-medium">
-                {submissions.map(sub => (
-                  <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                    <td className="p-3 font-bold text-slate-900 dark:text-white">{sub.studentName}</td>
-                    <td className="p-3 text-slate-500">{sub.quizTitle || sub.quizId}</td>
-                    <td className="p-3 font-mono text-[11px] text-slate-400">{sub.submittedAt}</td>
-                    <td className="p-3 font-mono font-bold">{sub.score}/{sub.totalPossible}</td>
-                    <td className="p-3 font-mono font-black">{sub.percentage}%</td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => setSelectedSubmissionForReview(sub)}
-                        className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 font-bold rounded-lg text-xs cursor-pointer"
-                      >
-                        Review
-                      </button>
-                    </td>
+        <div className="space-y-6">
+          {/* Active In-Progress Attempts Section */}
+          {activeAttempts.length > 0 && (
+            <div className="bg-purple-950/20 border-2 border-purple-500/40 rounded-2xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-purple-400 animate-pulse" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-purple-300">
+                    Live Active Candidate Attempts ({activeAttempts.length})
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-purple-400 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Auto-syncing
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-purple-900/40 text-purple-200 font-extrabold uppercase text-[10px]">
+                    <tr>
+                      <th className="p-2.5">Attempt ID</th>
+                      <th className="p-2.5">Student Candidate</th>
+                      <th className="p-2.5">Quiz</th>
+                      <th className="p-2.5">Progress</th>
+                      <th className="p-2.5">Last Saved</th>
+                      <th className="p-2.5">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-purple-500/10 text-slate-200 font-medium">
+                    {activeAttempts.map(att => (
+                      <tr key={att.id} className="hover:bg-purple-900/20">
+                        <td className="p-2.5 font-mono text-xs font-bold text-purple-300">{att.id}</td>
+                        <td className="p-2.5 font-bold text-white">{att.studentName}</td>
+                        <td className="p-2.5 text-slate-300">{att.quizTitle}</td>
+                        <td className="p-2.5 font-mono text-amber-300 font-bold">Answered: {att.answeredCount}/5</td>
+                        <td className="p-2.5 font-mono text-[11px] text-slate-400">
+                          {att.lastSaved ? new Date(att.lastSaved).toLocaleTimeString() : 'Just now'}
+                        </td>
+                        <td className="p-2.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            <Clock className="w-2.5 h-2.5" />
+                            In Progress
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Completed Submissions Log */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+          {submissions.length === 0 ? (
+            <div className="p-12 text-center space-y-3">
+              <ClipboardCheck className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+              <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">No Submissions Logged Yet</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Completed candidate responses from public and class day quizzes will be recorded here automatically.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-extrabold uppercase">
+                  <tr>
+                    <th className="p-3">Student Name</th>
+                    <th className="p-3">Quiz Title</th>
+                    <th className="p-3">Submitted At</th>
+                    <th className="p-3">Score</th>
+                    <th className="p-3">Percentage</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Review</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-800 dark:text-slate-200 font-medium">
+                  {submissions.map(sub => (
+                    <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900 dark:text-white">{sub.studentName}</div>
+                        {sub.studentEmail && (
+                          <div className="text-[10px] text-slate-400 font-mono">{sub.studentEmail}</div>
+                        )}
+                      </td>
+                      <td className="p-3 text-slate-700 dark:text-slate-300 font-medium">
+                        {sub.quizTitle || (quizzes.find(q => q.id === sub.quizId || q.shareCode === sub.quizId)?.title) || sub.quizId}
+                      </td>
+                      <td className="p-3 font-mono text-[11px] text-slate-400">
+                        {sub.submittedAt ? new Date(sub.submittedAt).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : 'Just now'}
+                      </td>
+                      <td className="p-3 font-mono font-bold">{sub.score}/{sub.totalPossible}</td>
+                      <td className="p-3 font-mono font-black">{sub.percentage}%</td>
+                      <td className="p-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          sub.percentage >= 75
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                        }`}>
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Submitted
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => setSelectedSubmissionForReview(sub)}
+                          className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 font-bold rounded-lg text-xs cursor-pointer"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           </div>
         </div>
       )}

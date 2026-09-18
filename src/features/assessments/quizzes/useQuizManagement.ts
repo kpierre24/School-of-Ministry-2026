@@ -49,7 +49,7 @@ export function useQuizManagement(
         totalPoints: a.maxPoints,
         createdAt: a.createdAt || new Date().toISOString().split('T')[0],
         dueDate: a.dueDate,
-        shareCode: `qz_${a.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
+        shareCode: a.quizData?.shareCode || (a as any).shareCode || `qz_${a.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
         questions: []
       });
       if (qList.length > 0) return qList;
@@ -90,6 +90,36 @@ export function useQuizManagement(
       // ignore
     }
   }, [submissions]);
+
+  // Listen for quiz submissions submitted anywhere in the portal or other browser tabs
+  useEffect(() => {
+    const handleQuizSubmitted = (e: any) => {
+      if (e.detail && e.detail.id) {
+        setSubmissions(prev => {
+          const filtered = prev.filter(s => s.id !== e.detail.id);
+          return [e.detail, ...filtered];
+        });
+      }
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_SUBMISSIONS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setSubmissions(parsed);
+          }
+        } catch {}
+      }
+    };
+
+    window.addEventListener('hteim_quiz_submitted', handleQuizSubmitted);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('hteim_quiz_submitted', handleQuizSubmitted);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   // Sync to database if Supabase is connected
   const syncSubmissionToDatabase = async (submission: QuizSubmission) => {
@@ -135,20 +165,37 @@ export function useQuizManagement(
       return [quiz, ...prev];
     });
 
-    if (onAssignmentsChange) {
-      const customAsgObj: CustomAssignment = {
-        id: quiz.id,
-        title: quiz.title,
-        courseCode: quiz.courseCode,
-        moduleTrack: quiz.moduleTrack,
-        description: quiz.description,
-        dueDate: quiz.dueDate || '2026-09-30',
-        maxPoints: quiz.totalPoints || 100,
-        createdAt: quiz.createdAt,
-        type: 'quiz',
-        quizData: quiz
-      };
+    const customAsgObj: CustomAssignment = {
+      id: quiz.id,
+      title: quiz.title,
+      courseCode: quiz.courseCode,
+      moduleTrack: quiz.moduleTrack,
+      description: quiz.description,
+      dueDate: quiz.dueDate || '2026-09-30',
+      maxPoints: quiz.totalPoints || 100,
+      createdAt: quiz.createdAt,
+      type: 'quiz',
+      quizData: quiz
+    };
 
+    // Always persist to localStorage immediately
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_QUIZZES_KEY);
+      const parsed: CustomAssignment[] = saved ? JSON.parse(saved) : [];
+      const idx = parsed.findIndex(a => a.id === quiz.id || a.quizData?.id === quiz.id);
+      let updatedList: CustomAssignment[];
+      if (idx >= 0) {
+        updatedList = [...parsed];
+        updatedList[idx] = customAsgObj;
+      } else {
+        updatedList = [customAsgObj, ...parsed];
+      }
+      localStorage.setItem(LOCAL_STORAGE_QUIZZES_KEY, JSON.stringify(updatedList));
+    } catch {
+      // ignore
+    }
+
+    if (onAssignmentsChange) {
       const customList = initialAssignments || [];
       const idx = customList.findIndex(a => a.id === quiz.id);
       let updatedCustom: CustomAssignment[];
