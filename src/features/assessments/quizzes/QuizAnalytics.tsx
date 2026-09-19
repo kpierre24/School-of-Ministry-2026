@@ -30,8 +30,10 @@ export const QuizAnalytics: React.FC<QuizAnalyticsProps> = ({
   onSelectQuiz
 }) => {
   const activeQuiz = quizzes.find(q => q.id === selectedQuizId) || quizzes[0];
+  const currentVerId = activeQuiz?.currentVersionId || (activeQuiz ? `ver_${activeQuiz.id}_v1` : '');
+  
   const activeSubmissions = activeQuiz 
-    ? submissions.filter(s => s.quizId === activeQuiz.id || (s as any).assignmentId === activeQuiz.id)
+    ? submissions.filter(s => (s.quizId === activeQuiz.id || (s as any).assignmentId === activeQuiz.id) && (s.quizVersionId === currentVerId || (!s.quizVersionId && currentVerId.endsWith('_v1'))))
     : [];
 
   const totalResponses = activeSubmissions.length;
@@ -126,7 +128,7 @@ export const QuizAnalytics: React.FC<QuizAnalyticsProps> = ({
     // Correct rate
     let correctCount = 0;
     activeSubmissions.forEach(sub => {
-      const resp = sub.responses?.find(r => r.questionId === q.id);
+      const resp = sub.responses?.find(r => r.questionId === q.id && (r.quizVersionId === currentVerId || (!r.quizVersionId && currentVerId.endsWith('_v1'))));
       if (resp?.isCorrect) correctCount++;
     });
     const percentCorrect = Math.round((correctCount / totalResponses) * 100);
@@ -134,7 +136,7 @@ export const QuizAnalytics: React.FC<QuizAnalyticsProps> = ({
     // High Group correct rate
     let highCorrect = 0;
     highGroup.forEach(sub => {
-      const resp = sub.responses?.find(r => r.questionId === q.id);
+      const resp = sub.responses?.find(r => r.questionId === q.id && (r.quizVersionId === currentVerId || (!r.quizVersionId && currentVerId.endsWith('_v1'))));
       if (resp?.isCorrect) highCorrect++;
     });
     const pHigh = highCorrect / highGroup.length;
@@ -142,7 +144,7 @@ export const QuizAnalytics: React.FC<QuizAnalyticsProps> = ({
     // Low Group correct rate
     let lowCorrect = 0;
     lowGroup.forEach(sub => {
-      const resp = sub.responses?.find(r => r.questionId === q.id);
+      const resp = sub.responses?.find(r => r.questionId === q.id && (r.quizVersionId === currentVerId || (!r.quizVersionId && currentVerId.endsWith('_v1'))));
       if (resp?.isCorrect) lowCorrect++;
     });
     const pLow = lowCorrect / lowGroup.length;

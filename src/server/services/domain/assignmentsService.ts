@@ -6,6 +6,47 @@ import { DEFAULT_QUIZ_TEMPLATES } from '../../../data/quizTemplates';
 const inMemoryQuizzesCache = new Map<string, any>();
 const inMemoryQuizAttempts = new Map<string, any>();
 
+async function saveQuizVersions(quizId: string, quizData: any, timestamp: string): Promise<void> {
+  if (!quizData) return;
+  const versions = quizData.versions || quizData.rubric?.versions || quizData.quizData?.versions || [];
+  if (!Array.isArray(versions) || versions.length === 0) return;
+
+  const supabase = getServerSupabase();
+  for (const v of versions) {
+    if (!v || !v.id) continue;
+    try {
+      const snapshotObj = {
+        id: v.id,
+        quizId: v.quizId || quizId,
+        versionNumber: v.versionNumber || v.version || 1,
+        title: v.title || quizData.title || 'Untitled Version',
+        description: v.description || quizData.description || '',
+        instructions: v.instructions || quizData.instructions || '',
+        questions: v.questions || [],
+        totalPoints: v.totalPoints || quizData.totalPoints || 100,
+        settings: v.settings || {},
+        createdAt: v.createdAt || timestamp,
+        createdBy: v.createdBy || 'HTEIM Faculty',
+        publishedAt: v.publishedAt || null,
+        changeLog: v.changeLog || '',
+        isPublished: v.isPublished !== false,
+        isImmutable: v.isImmutable || false
+      };
+
+      await supabase.from('quiz_versions').upsert({
+        id: v.id,
+        quiz_id: quizId,
+        version_number: v.versionNumber || v.version || 1,
+        snapshot: snapshotObj,
+        created_at: v.createdAt || timestamp,
+        published_at: v.publishedAt || null
+      });
+    } catch (err) {
+      logger.warn(`Non-blocking warning saving quiz version ${v.id} to relational table:`, err);
+    }
+  }
+}
+
 export const assignmentsService = {
   /**
    * Caches a quiz in memory for instant public retrieval across all client sessions.
@@ -225,6 +266,7 @@ export const assignmentsService = {
                   submittedAt: qs.submitted_at,
                   score: qs.score,
                   percentage: qs.percentage,
+                  quizVersionId: qs.quiz_version_id,
                   maxPoints: qs.total_possible || 100,
                   maxScore: qs.total_possible || 100,
                   timeSpentSeconds: qs.time_spent_seconds || 0,
@@ -864,6 +906,10 @@ export const assignmentsService = {
     };
 
     assignmentsService.cacheQuizInMemory(createdAssignment);
+    await saveQuizVersions(createdId, data, timestamp);
+    if (data.rubric) {
+      await saveQuizVersions(createdId, data.rubric, timestamp);
+    }
 
     return {
       status: 'created',
@@ -930,6 +976,11 @@ export const assignmentsService = {
       reason: `Assignment ${id} updated`,
     });
 
+    await saveQuizVersions(id, data, timestamp);
+    if (data.rubric) {
+      await saveQuizVersions(id, data.rubric, timestamp);
+    }
+
     return {
       status: 'updated',
       assignment: updatedRec || { id, ...data, updatedAt: timestamp },
@@ -939,8 +990,9 @@ export const assignmentsService = {
   /**
    * Retrieves a public quiz by share code or assignment ID without authentication.
    * Authoritatively checks existence, publication status, and expiration.
+   * Supports specific quiz version queries.
    */
-  async getPublicQuiz(shareCodeOrId: string): Promise<{ quiz?: any; isNotFound?: boolean; isUnpublished?: boolean; isExpired?: boolean; message?: string }> {
+  async getPublicQuiz(shareCodeOrId: string, versionId?: string): Promise<{ quiz?: any; isNotFound?: boolean; isUnpublished?: boolean; isExpired?: boolean; message?: string }> {
     const supabase = getServerSupabase();
     const cleanCode = (shareCodeOrId || '').trim();
 
@@ -951,7 +1003,47 @@ export const assignmentsService = {
     const lookupCode = cleanCode.toLowerCase();
     let matchedQuiz: any = inMemoryQuizzesCache.get(lookupCode) || null;
 
+    // If versionId is supplied, first check relational quiz_versions table in Supabase
+    if (versionId) {
+      try {
+        const { data: verRow } = await supabase
+          .from('quiz_versions')
+          .select('*')
+          .eq('id', versionId)
+          .maybeSingle();
+        if (verRow && verRow.snapshot) {
+          const snapshot = verRow.snapshot;
+          return {
+            quiz: {
+              ...snapshot,
+              id: snapshot.quizId || snapshot.id,
+              currentVersionId: verRow.id,
+              isPublished: snapshot.isPublished !== false,
+            }
+          };
+        }
+      } catch (dbVerErr) {
+        logger.warn(`Supabase quiz_versions lookup notice for ${versionId}:`, dbVerErr);
+      }
+    }
+
     if (matchedQuiz) {
+      if (versionId && Array.isArray(matchedQuiz.versions)) {
+        const found = matchedQuiz.versions.find((v: any) => v.id === versionId);
+        if (found) {
+          return {
+            quiz: {
+              ...matchedQuiz,
+              questions: found.questions || matchedQuiz.questions,
+              settings: found.settings || matchedQuiz.settings,
+              totalPoints: found.totalPoints || matchedQuiz.totalPoints,
+              title: found.title || matchedQuiz.title,
+              description: found.description || matchedQuiz.description,
+              currentVersionId: found.id,
+            }
+          };
+        }
+      }
       if (matchedQuiz.isPublished === false) {
         return { isUnpublished: true, message: 'This quiz is currently unpublished or has been revoked by the instructor.' };
       }
@@ -963,7 +1055,7 @@ export const assignmentsService = {
       let { data: asg, error } = await supabase
         .from('assignments')
         .select('*')
-        .or(`id.eq.${cleanCode},share_code.eq.${cleanCode}`)
+        .eq('share_code', cleanCode)
         .is('deleted_at', null)
         .maybeSingle();
 
@@ -980,26 +1072,57 @@ export const assignmentsService = {
           maxAttempts: 2,
         };
 
-        if (asg.rubric?.questions) questions = asg.rubric.questions;
-        else if (asg.quiz_data?.questions) questions = asg.quiz_data.questions;
-        if (asg.rubric?.settings) settings = { ...settings, ...asg.rubric.settings };
+        const rubric = asg.rubric || asg.quiz_data || {};
+        const versionsList = rubric.versions || [];
 
-        matchedQuiz = {
-          id: asg.id,
-          title: asg.title,
-          courseCode: asg.course_code || 'MIN-101',
-          moduleTrack: asg.module_track || 'Module 1: Foundations',
-          description: asg.description || '',
-          category: asg.category || 'Scripture Knowledge',
-          dueDate: asg.due_at || asg.due_date || '2026-09-30',
-          lockAt: asg.lock_at || null,
-          shareCode: asg.share_code || cleanCode,
-          timeLimitMinutes: asg.time_limit_minutes || 30,
-          totalPoints: asg.max_points || 100,
-          isPublished: asg.is_published !== false,
-          questions,
-          settings,
-        };
+        if (versionId && Array.isArray(versionsList)) {
+          const found = versionsList.find((v: any) => v.id === versionId);
+          if (found) {
+            questions = found.questions || [];
+            settings = { ...settings, ...(found.settings || {}) };
+            matchedQuiz = {
+              id: asg.id,
+              title: found.title || asg.title,
+              courseCode: asg.course_code || 'MIN-101',
+              moduleTrack: asg.module_track || 'Module 1: Foundations',
+              description: found.description || asg.description || '',
+              category: asg.category || 'Scripture Knowledge',
+              dueDate: asg.due_at || asg.due_date || '2026-09-30',
+              lockAt: asg.lock_at || null,
+              shareCode: asg.share_code || cleanCode,
+              timeLimitMinutes: asg.time_limit_minutes || 30,
+              totalPoints: found.totalPoints || asg.max_points || 100,
+              isPublished: asg.is_published !== false,
+              questions,
+              settings,
+              currentVersionId: versionId,
+            };
+          }
+        }
+
+        if (!matchedQuiz) {
+          if (asg.rubric?.questions) questions = asg.rubric.questions;
+          else if (asg.quiz_data?.questions) questions = asg.quiz_data.questions;
+          if (asg.rubric?.settings) settings = { ...settings, ...asg.rubric.settings };
+
+          matchedQuiz = {
+            id: asg.id,
+            title: asg.title,
+            courseCode: asg.course_code || 'MIN-101',
+            moduleTrack: asg.module_track || 'Module 1: Foundations',
+            description: asg.description || '',
+            category: asg.category || 'Scripture Knowledge',
+            dueDate: asg.due_at || asg.due_date || '2026-09-30',
+            lockAt: asg.lock_at || null,
+            shareCode: asg.share_code || cleanCode,
+            timeLimitMinutes: asg.time_limit_minutes || 30,
+            totalPoints: asg.max_points || 100,
+            isPublished: asg.is_published !== false,
+            questions,
+            settings,
+            currentVersionId: asg.rubric?.currentVersionId || asg.quiz_data?.currentVersionId || `ver_${asg.id}_v1`,
+          };
+        }
       }
 
       // 2. Query shared app_states table if not directly found in assignments table
@@ -1021,7 +1144,7 @@ export const assignmentsService = {
                   const qId = (q.id || a.id || '').toLowerCase().trim();
                   const clean = cleanCode.toLowerCase().trim();
                   const altId = `qz_${(q.id || a.id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
-                  const matchesCode = qShare === clean || qId === clean || altId === clean;
+                  const matchesCode = qShare === clean;
                   const hasQuestions = (Array.isArray(q.questions) && q.questions.length > 0) || (Array.isArray(a.questions) && a.questions.length > 0);
                   return matchesCode && hasQuestions;
                 });
@@ -1067,8 +1190,7 @@ export const assignmentsService = {
       if (!matchedQuiz && Array.isArray(DEFAULT_QUIZ_TEMPLATES)) {
         const tmpl = DEFAULT_QUIZ_TEMPLATES.find(
           (t) =>
-            t.shareCode?.toLowerCase() === cleanCode.toLowerCase() ||
-            t.id?.toLowerCase() === cleanCode.toLowerCase()
+            t.shareCode?.toLowerCase() === cleanCode.toLowerCase()
         );
 
         if (tmpl) {
@@ -1101,50 +1223,6 @@ export const assignmentsService = {
       logger.warn(`Non-fatal warning fetching public quiz ${cleanCode}:`, err);
       return { isNotFound: true, message: 'Failed to retrieve quiz details.' };
     }
-  },
-
-  /**
-   * Registers a new server-side quiz attempt before answering starts.
-   */
-  async createQuizAttempt(
-    shareCodeOrId: string,
-    payload: { studentName: string; studentEmail?: string }
-  ): Promise<{ attemptId: string; startedAt: string }> {
-    const quizLookup = await this.getPublicQuiz(shareCodeOrId);
-    if (!quizLookup || quizLookup.isNotFound || !quizLookup.quiz) {
-      throw new Error(quizLookup?.message || 'Quiz not found or link is invalid.');
-    }
-    if (quizLookup.isUnpublished) {
-      throw new Error('This quiz is currently unpublished or revoked by the instructor.');
-    }
-
-    const quiz = quizLookup.quiz;
-    const randNum = String(Math.floor(1000 + Math.random() * 9000));
-    const attemptId = (payload as any).customAttemptId || `ATT-${randNum}`;
-    const startedAt = new Date().toISOString();
-
-    const attemptObj = {
-      id: attemptId,
-      quiz_id: quiz.id,
-      share_code: quiz.shareCode || shareCodeOrId,
-      student_name: (payload.studentName || '').trim() || 'HTEIM Student',
-      student_email: (payload.studentEmail || '').trim(),
-      started_at: startedAt,
-      responses: {},
-      status: 'in_progress',
-      updated_at: startedAt
-    };
-
-    inMemoryQuizAttempts.set(attemptId, attemptObj);
-
-    try {
-      const supabase = getServerSupabase();
-      await supabase.from('quiz_attempts').insert([attemptObj]);
-    } catch (dbErr) {
-      logger.warn('Supabase quiz_attempts insert notice:', dbErr);
-    }
-
-    return { attemptId, startedAt };
   },
 
   /**
@@ -1208,27 +1286,105 @@ export const assignmentsService = {
   },
 
   /**
+   * Registers a new server-side quiz attempt before answering starts.
+   * This is the canonical entry point for all quiz starts (Public or Authenticated).
+   */
+  async createQuizAttempt(
+    shareCodeOrId: string,
+    payload: { 
+      studentName: string; 
+      studentEmail?: string; 
+      studentId?: string;
+      quizVersionId?: string;
+    }
+  ): Promise<{ attemptId: string; startedAt: string; expiresAt?: string; quizSnapshot?: any; quizVersionId?: string }> {
+    const supabase = getServerSupabase();
+    const timestamp = new Date().toISOString();
+    const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    
+    // 1. Authoritative Quiz Lookup
+    const quizLookup = await this.getPublicQuiz(shareCodeOrId, payload.quizVersionId);
+    if (!quizLookup || quizLookup.isNotFound || !quizLookup.quiz) {
+      throw new Error(quizLookup?.message || 'Quiz not found or link is invalid.');
+    }
+    
+    const quiz = quizLookup.quiz;
+    const quizId = quiz.id;
+    const versionId = payload.quizVersionId || quiz.currentVersionId || `ver_${quizId}_v1`;
+
+    // 2. Calculate Authoritative Expiration
+    let expiresAt: string | undefined;
+    if (quiz.timeLimitMinutes && quiz.timeLimitMinutes > 0) {
+      expiresAt = new Date(Date.now() + quiz.timeLimitMinutes * 60 * 1000).toISOString();
+    }
+
+    const attemptObj = {
+      id: attemptId,
+      quiz_id: quizId,
+      quiz_version_id: versionId,
+      share_code: quiz.shareCode || shareCodeOrId,
+      student_id: payload.studentId || null,
+      student_name: payload.studentName || 'Student',
+      student_email: payload.studentEmail || '',
+      status: 'in_progress',
+      started_at: timestamp,
+      updated_at: timestamp,
+      expires_at: expiresAt,
+      last_saved_at: timestamp,
+      responses: {},
+      time_spent_seconds: 0
+    };
+
+    inMemoryQuizAttempts.set(attemptId, attemptObj);
+
+    try {
+      await supabase.from('quiz_attempts').insert([attemptObj]);
+    } catch (err) {
+      logger.warn('Non-blocking notice inserting quiz attempt to DB:', err);
+    }
+
+    return {
+      attemptId,
+      startedAt: timestamp,
+      expiresAt,
+      quizSnapshot: quiz,
+      quizVersionId: versionId
+    };
+  },
+
+  /**
    * Server autosave endpoint for student draft responses during a quiz attempt.
    */
   async autosaveQuizAttemptResponses(
-    shareCodeOrId: string,
+    _shareCodeOrId: string,
     attemptId: string,
     payload: { responses: Record<string, any>; timeSpentSeconds?: number }
   ): Promise<{ success: boolean; savedAt: string }> {
     const timestamp = new Date().toISOString();
     let existing = inMemoryQuizAttempts.get(attemptId);
+    
     if (!existing) {
-      existing = {
-        id: attemptId,
-        share_code: shareCodeOrId,
-        responses: {},
-        updated_at: timestamp
-      };
+      // Try to recover from DB if memory cache is cold
+      const supabase = getServerSupabase();
+      const { data: dbAttempt } = await supabase.from('quiz_attempts').select('*').eq('id', attemptId).maybeSingle();
+      if (dbAttempt) {
+        existing = dbAttempt;
+      }
+    }
+
+    if (!existing) {
+      throw new Error(`Attempt session ${attemptId} not found. Autosave rejected.`);
+    }
+
+    // Protection: don't save if already submitted
+    if (['submitted', 'graded', 'released'].includes(existing.status)) {
+      return { success: true, savedAt: existing.updated_at };
     }
 
     existing.responses = payload.responses || {};
     existing.time_spent_seconds = payload.timeSpentSeconds || 0;
     existing.updated_at = timestamp;
+    existing.last_saved_at = timestamp;
     inMemoryQuizAttempts.set(attemptId, existing);
 
     try {
@@ -1238,7 +1394,8 @@ export const assignmentsService = {
         .update({
           responses: payload.responses || {},
           time_spent_seconds: payload.timeSpentSeconds || 0,
-          updated_at: timestamp
+          updated_at: timestamp,
+          last_saved_at: timestamp
         })
         .eq('id', attemptId);
     } catch (dbErr) {
@@ -1249,7 +1406,8 @@ export const assignmentsService = {
   },
 
   /**
-   * Submits a public quiz response from an external user with authoritative server-side score validation.
+   * Authoritative submission point for quiz attempts.
+   * Unifies public and authenticated quizzes.
    */
   async submitPublicQuizResponse(
     shareCodeOrId: string,
@@ -1258,86 +1416,54 @@ export const assignmentsService = {
       studentEmail?: string;
       responses: Record<string, any>;
       timeSpentSeconds?: number;
+      attemptId?: string;
+      studentId?: string;
     }
   ): Promise<any> {
     const supabase = getServerSupabase();
     const timestamp = new Date().toISOString();
     const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
-    // 1. Authoritative Quiz Lookup & Status Verification
-    const quizLookup = await this.getPublicQuiz(shareCodeOrId);
+    // 1. Resolve Attempt Context
+    let attemptId = payload.attemptId;
+    let attempt: any = null;
+
+    if (attemptId) {
+      attempt = inMemoryQuizAttempts.get(attemptId);
+      if (!attempt) {
+        const { data: dbAtt } = await supabase.from('quiz_attempts').select('*').eq('id', attemptId).maybeSingle();
+        attempt = dbAtt;
+      }
+    }
+
+    // 2. Authoritative Quiz Lookup
+    const quizLookup = await this.getPublicQuiz(shareCodeOrId, attempt?.quiz_version_id);
     if (!quizLookup || quizLookup.isNotFound || !quizLookup.quiz) {
       throw new Error(quizLookup?.message || 'Quiz not found or link is invalid.');
     }
-    if (quizLookup.isUnpublished) {
-      throw new Error(quizLookup.message || 'This quiz is currently unpublished or revoked by the instructor.');
-    }
-    if (quizLookup.isExpired) {
-      throw new Error(quizLookup.message || 'This quiz has expired and is no longer accepting responses.');
-    }
+    
+    const finalQuiz = quizLookup.quiz;
+    const quizId = finalQuiz.id;
+    const quizTitle = finalQuiz.title || 'Assessment';
+    const cleanStudentName = (payload.studentName || attempt?.student_name || '').trim();
 
-    const quiz = quizLookup.quiz;
-    const quizId = quiz.id;
-    const quizTitle = quiz.title || 'Shared Assessment';
-
-    // 2. Validate Student Name and Payload Integrity
-    const cleanStudentName = (payload.studentName || '').trim();
     if (!cleanStudentName || cleanStudentName.length < 2) {
-      throw new Error('A valid Student Name (at least 2 characters) is required to submit this assessment.');
-    }
-    if (cleanStudentName.length > 100) {
-      throw new Error('Student Name exceeds maximum allowed length (100 characters).');
+      throw new Error('A valid Student Name is required.');
     }
 
-    // Normalize responses: accept both array of QuizSubmissionResponse and key-value mapping
+    // Normalize responses
     const rawAnswers = (payload as any).rawResponses || payload.responses;
     let responsesPayload: Record<string, any> = {};
-
     if (Array.isArray(rawAnswers)) {
-      rawAnswers.forEach((r: any) => {
-        if (r && r.questionId) {
-          const val = r.selectedOptionId ?? r.selectedOptionIds ?? r.textAnswer ?? r.answer ?? r.value;
-          if (val !== undefined) {
-            responsesPayload[r.questionId] = val;
-          }
-        }
-      });
-    } else if (rawAnswers && typeof rawAnswers === 'object') {
+      rawAnswers.forEach((r: any) => { if (r && r.questionId) responsesPayload[r.questionId] = r.selectedOptionId ?? r.selectedOptionIds ?? r.textAnswer ?? r.answer ?? r.value; });
+    } else {
       responsesPayload = { ...rawAnswers };
     }
 
-    // 3. Anti-Spam / Rate Limit & Multiple Attempt Check
-    try {
-      const { data: existingSubs } = await supabase
-        .from('quiz_submissions')
-        .select('id, submitted_at')
-        .eq('quiz_id', quizId)
-        .ilike('student_name', cleanStudentName)
-        .order('submitted_at', { ascending: false });
-
-      if (existingSubs && existingSubs.length > 0) {
-        // Anti-spam check: prevent submission within 30 seconds
-        const lastSubmittedAt = new Date(existingSubs[0].submitted_at).getTime();
-        if (!isNaN(lastSubmittedAt) && Date.now() - lastSubmittedAt < 30000) {
-          throw new Error('Duplicate submission detected. Please wait at least 30 seconds before re-submitting.');
-        }
-
-        // Multiple attempts check if restricted by quiz settings
-        if (quiz.settings?.allowMultipleAttempts === false) {
-          throw new Error('Multiple attempts are not allowed for this quiz.');
-        }
-      }
-    } catch (checkErr: any) {
-      if (checkErr.message?.includes('Duplicate submission') || checkErr.message?.includes('Multiple attempts')) {
-        throw checkErr;
-      }
-      logger.warn('Non-blocking notice checking existing public quiz submissions:', checkErr);
-    }
-
-    // 4. Authoritative Server-Side Score Calculation (NEVER trust client score/percentage)
+    // 3. Authoritative Scoring
     let earnedScore = 0;
     let computedTotalPossible = 0;
-    const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+    const questions = Array.isArray(finalQuiz.questions) ? finalQuiz.questions : [];
 
     questions.forEach((q: any) => {
       const weight = Number(q.weight) || 10;
@@ -1349,23 +1475,19 @@ export const assignmentsService = {
       } else if (q.type === 'checkboxes') {
         const correct = q.correctOptionIds || [];
         const chosen = Array.isArray(ans) ? ans : [];
-        if (correct.length === chosen.length && correct.every((id: string) => chosen.includes(id))) {
-          earnedScore += weight;
-        }
+        if (correct.length === chosen.length && correct.every((id: string) => chosen.includes(id))) earnedScore += weight;
       } else if (q.type === 'short_answer' || q.type === 'fill_blank') {
         const acceptable = (q.acceptableAnswers || []).map((a: string) => a.trim().toLowerCase());
         const userText = (typeof ans === 'string' ? ans : '').trim().toLowerCase();
-        if (acceptable.some((a: string) => a === userText || a.replace(/[^a-z0-9]/g, '') === userText.replace(/[^a-z0-9]/g, ''))) {
-          earnedScore += weight;
-        }
+        if (acceptable.some((a: string) => a === userText || a.replace(/[^a-z0-9]/g, '') === userText.replace(/[^a-z0-9]/g, ''))) earnedScore += weight;
       } else if (q.type === 'paragraph') {
         if (typeof ans === 'string' && ans.trim().length >= 10) earnedScore += weight;
       }
     });
 
-    const totalPossible = quiz.totalPoints || (computedTotalPossible > 0 ? computedTotalPossible : 100);
+    const totalPossible = finalQuiz.totalPoints || (computedTotalPossible > 0 ? computedTotalPossible : 100);
     const percentage = Math.round((earnedScore / (totalPossible || 1)) * 100);
-    const passingThreshold = Number(quiz.settings?.passingScorePercentage) || 75;
+    const passingThreshold = Number(finalQuiz.settings?.passingScorePercentage) || 75;
     const isPassed = percentage >= passingThreshold;
 
     const submissionObj = {
@@ -1373,49 +1495,541 @@ export const assignmentsService = {
       quizId,
       quizTitle,
       studentName: cleanStudentName,
-      studentEmail: (payload.studentEmail || '').trim(),
+      studentEmail: (payload.studentEmail || attempt?.student_email || '').trim(),
       score: earnedScore,
       totalPossible,
       percentage,
       isPassed,
       responses: responsesPayload,
       submittedAt: timestamp,
-      timeSpentSeconds: payload.timeSpentSeconds || 0,
-      feedbackGiven: false,
+      timeSpentSeconds: payload.timeSpentSeconds || attempt?.time_spent_seconds || 0,
     };
 
-    // 5. Database Persistence
+    // 4. Atomic Database Updates
     try {
+      let studentId = payload.studentId || attempt?.student_id || null;
+      // Re-resolve student ID if missing
+      if (!studentId && (payload.studentEmail || attempt?.student_email)) {
+        const { data: std } = await supabase.from('students').select('id').ilike('email', payload.studentEmail || attempt?.student_email).maybeSingle();
+        if (std?.id) studentId = std.id;
+      }
+
+      // Authoritative Attempt Status Update
+      if (attemptId) {
+        await supabase.from('quiz_attempts').update({
+          status: 'submitted',
+          submitted_at: timestamp,
+          updated_at: timestamp,
+          responses: responsesPayload,
+          score: earnedScore,
+          max_points: totalPossible,
+          score_percentage: percentage,
+          time_spent_seconds: submissionObj.timeSpentSeconds
+        }).eq('id', attemptId);
+        
+        if (inMemoryQuizAttempts.has(attemptId)) {
+          const m = inMemoryQuizAttempts.get(attemptId);
+          m.status = 'submitted';
+          m.responses = responsesPayload;
+          m.score = earnedScore;
+          inMemoryQuizAttempts.set(attemptId, m);
+        }
+      }
+
+      // Duplicate-safe submission entry
       await supabase.from('quiz_submissions').upsert({
         id: submissionId,
         quiz_id: quizId,
+        quiz_version_id: attempt?.quiz_version_id || finalQuiz.currentVersionId,
         quiz_title: quizTitle,
         student_name: cleanStudentName,
-        student_email: (payload.studentEmail || '').trim(),
+        student_id: studentId,
         score: earnedScore,
         total_possible: totalPossible,
         percentage,
         responses: responsesPayload,
         submitted_at: timestamp,
-        time_spent_seconds: payload.timeSpentSeconds || 0,
         updated_at: timestamp,
       });
+
     } catch (dbErr) {
-      logger.warn('Non-blocking notice saving public quiz submission to DB:', dbErr);
+      logger.warn('Authoritative quiz submission DB update notice:', dbErr);
     }
 
     await logAuditEvent({
-      actorUserId: 'external_user',
-      actorRole: 'student',
+      actorUserId: 'system',
       entityType: 'quiz_submission',
       entityId: submissionId,
-      action: 'create',
-      newValues: { studentName: cleanStudentName, quizId, score: earnedScore, percentage, isPassed },
-      changedFields: ['score', 'responses', 'submitted_at'],
-      reason: `External student '${cleanStudentName}' completed public quiz '${quizTitle}' (Server calculated score: ${earnedScore}/${totalPossible}, ${percentage}%)`,
+      action: 'submit',
+      newValues: { studentName: cleanStudentName, score: earnedScore, attemptId },
+      reason: `Quiz '${quizTitle}' submitted by '${cleanStudentName}'. Score: ${earnedScore}/${totalPossible} (${percentage}%)`,
     });
 
     return submissionObj;
   },
+
+  /**
+   * Generates a comprehensive reconciliation diagnostic report across multiple database layers.
+   */
+  async getReconciliationDiagnostics(): Promise<any> {
+    const supabase = getServerSupabase();
+    let assignmentsList: any[] = [];
+    let submissionsList: any[] = [];
+    let quizSubmissionsList: any[] = [];
+    let quizAttemptsList: any[] = [];
+    let gradesList: any[] = [];
+    let studentsList: any[] = [];
+
+    try {
+      const { data } = await supabase.from('assignments').select('*').is('deleted_at', null);
+      if (data) assignmentsList = data;
+    } catch (e) { logger.warn('assignments fetch error for reconciliation:', e); }
+
+    try {
+      const { data } = await supabase.from('submissions').select('*').is('deleted_at', null);
+      if (data) submissionsList = data;
+    } catch (e) { logger.warn('submissions fetch error for reconciliation:', e); }
+
+    try {
+      const { data } = await supabase.from('quiz_submissions').select('*');
+      if (data) quizSubmissionsList = data;
+    } catch (e) { logger.warn('quiz_submissions fetch error for reconciliation:', e); }
+
+    try {
+      const { data } = await supabase.from('quiz_attempts').select('*');
+      if (data) quizAttemptsList = data;
+    } catch (e) { logger.warn('quiz_attempts fetch error for reconciliation:', e); }
+
+    try {
+      const { data } = await supabase.from('grades').select('*');
+      if (data) gradesList = data;
+    } catch (e) { logger.warn('grades fetch error for reconciliation:', e); }
+
+    try {
+      const { data } = await supabase.from('students').select('*');
+      if (data) studentsList = data;
+    } catch (e) { logger.warn('students fetch error for reconciliation:', e); }
+
+    // Merge in-memory attempts
+    const attemptIds = new Set(quizAttemptsList.map(a => String(a.id || '').toLowerCase().trim()));
+    for (const [id, att] of inMemoryQuizAttempts.entries()) {
+      const normalizedId = String(id).toLowerCase().trim();
+      if (!attemptIds.has(normalizedId)) {
+        quizAttemptsList.push({
+          id: att.id || id,
+          quiz_id: att.quiz_id,
+          share_code: att.share_code,
+          student_name: att.student_name,
+          student_email: att.student_email,
+          status: att.status || 'in_progress',
+          responses: att.responses || {},
+          started_at: att.started_at,
+          updated_at: att.updated_at,
+          time_spent_seconds: att.time_spent_seconds || 0
+        });
+      }
+    }
+
+    const quizMap = new Map<string, any>();
+    assignmentsList.forEach(a => {
+      quizMap.set(String(a.id).toLowerCase().trim(), a);
+      if (a.share_code) {
+        quizMap.set(String(a.share_code).toLowerCase().trim(), a);
+      }
+    });
+    // Add DEFAULT_QUIZ_TEMPLATES to quizMap
+    if (Array.isArray(DEFAULT_QUIZ_TEMPLATES)) {
+      DEFAULT_QUIZ_TEMPLATES.forEach(t => {
+        const idLower = String(t.id).toLowerCase().trim();
+        const codeLower = String(t.shareCode || '').toLowerCase().trim();
+        if (!quizMap.has(idLower)) quizMap.set(idLower, t);
+        if (codeLower && !quizMap.has(codeLower)) quizMap.set(codeLower, t);
+      });
+    }
+
+    const studentMap = new Map<string, any>();
+    studentsList.forEach(s => {
+      studentMap.set(String(s.id).toLowerCase().trim(), s);
+    });
+
+    const submissionMap = new Map<string, any>();
+    submissionsList.forEach(s => {
+      submissionMap.set(String(s.id).toLowerCase().trim(), s);
+    });
+    const quizSubMap = new Map<string, any>();
+    quizSubmissionsList.forEach(qs => {
+      quizSubMap.set(String(qs.id).toLowerCase().trim(), qs);
+    });
+
+    const gradeSubMap = new Map<string, any>();
+    gradesList.forEach(g => {
+      if (g.submission_id) gradeSubMap.set(String(g.submission_id).toLowerCase().trim(), g);
+    });
+
+    // Diagnosing anomalies:
+    const orphanedAttempts: any[] = [];
+    const orphanedSubmissions: any[] = [];
+    const submissionsWithoutQuiz: any[] = [];
+    const responsesWithoutQuestion: any[] = [];
+    const gradesWithoutSubmission: any[] = [];
+    const submissionsWithoutStudent: any[] = [];
+    const submittedMissingGrade: any[] = [];
+
+    let validAttemptsCount = 0;
+    let validSubmissionsCount = 0;
+    let validResponsesCount = 0;
+    let validGradesCount = 0;
+
+    // 1. QuizAttempt without QuizSubmission
+    quizAttemptsList.forEach(att => {
+      const hasSubmission = quizSubmissionsList.some(qs => 
+        String(qs.quiz_id).toLowerCase().trim() === String(att.quiz_id || att.share_code).toLowerCase().trim() &&
+        String(qs.student_name).toLowerCase().trim() === String(att.student_name).toLowerCase().trim()
+      );
+
+      if (!hasSubmission) {
+        orphanedAttempts.push({
+          id: att.id,
+          studentName: att.student_name,
+          studentEmail: att.student_email,
+          quizId: att.quiz_id || att.share_code,
+          startedAt: att.started_at,
+          status: att.status || 'in_progress',
+          type: 'Attempt without Submission'
+        });
+      } else {
+        validAttemptsCount++;
+      }
+    });
+
+    // 2. QuizSubmission without QuizAttempt
+    quizSubmissionsList.forEach(qs => {
+      const hasAttempt = quizAttemptsList.some(att => 
+        String(att.quiz_id || att.share_code).toLowerCase().trim() === String(qs.quiz_id).toLowerCase().trim() &&
+        String(att.student_name).toLowerCase().trim() === String(qs.student_name).toLowerCase().trim()
+      );
+
+      if (!hasAttempt) {
+        orphanedSubmissions.push({
+          id: qs.id,
+          studentName: qs.student_name,
+          studentEmail: qs.student_email,
+          quizId: qs.quiz_id,
+          submittedAt: qs.submitted_at,
+          score: qs.score,
+          type: 'Submission without Attempt'
+        });
+      } else {
+        validSubmissionsCount++;
+      }
+    });
+
+    // 3. AssignmentSubmission or QuizSubmission without Quiz (unknown quiz)
+    submissionsList.forEach(s => {
+      const quizId = String(s.assignment_id || '').toLowerCase().trim();
+      if (quizId && !quizMap.has(quizId)) {
+        submissionsWithoutQuiz.push({
+          id: s.id,
+          studentId: s.student_id,
+          quizId: s.assignment_id,
+          submittedAt: s.submitted_at,
+          type: 'Assignment submission with unknown Assignment/Quiz'
+        });
+      }
+    });
+    quizSubmissionsList.forEach(qs => {
+      const quizId = String(qs.quiz_id || '').toLowerCase().trim();
+      if (quizId && !quizMap.has(quizId)) {
+        submissionsWithoutQuiz.push({
+          id: qs.id,
+          studentName: qs.student_name,
+          quizId: qs.quiz_id,
+          submittedAt: qs.submitted_at,
+          type: 'Quiz submission with unknown Quiz'
+        });
+      }
+    });
+
+    // 4. Response without Question & count valid responses
+    const verifyResponses = (resps: any, quizObj: any, sourceId: string, student: string) => {
+      if (!resps || typeof resps !== 'object') return;
+      const questionsList = quizObj?.questions || quizObj?.quizData?.questions || [];
+      const validQIds = new Set(questionsList.map((q: any) => String(q.id || '').toLowerCase().trim()));
+
+      Object.entries(resps).forEach(([qId, ans]) => {
+        const cleanQId = String(qId).toLowerCase().trim();
+        if (validQIds.size > 0 && !validQIds.has(cleanQId)) {
+          responsesWithoutQuestion.push({
+            id: sourceId,
+            studentName: student,
+            questionId: qId,
+            quizId: quizObj.id || quizObj.shareCode,
+            quizTitle: quizObj.title,
+            type: 'Response referencing missing question'
+          });
+        } else {
+          validResponsesCount++;
+        }
+      });
+    };
+
+    quizAttemptsList.forEach(att => {
+      const qId = String(att.quiz_id || att.share_code || '').toLowerCase().trim();
+      const quizObj = quizMap.get(qId);
+      if (quizObj) {
+        verifyResponses(att.responses, quizObj, att.id, att.student_name || 'Student');
+      }
+    });
+    quizSubmissionsList.forEach(qs => {
+      const qId = String(qs.quiz_id || '').toLowerCase().trim();
+      const quizObj = quizMap.get(qId);
+      if (quizObj) {
+        verifyResponses(qs.responses, quizObj, qs.id, qs.student_name || 'Student');
+      }
+    });
+
+    // 5. Grade without Submission
+    gradesList.forEach(g => {
+      const subId = String(g.submission_id || '').toLowerCase().trim();
+      if (subId && !submissionMap.has(subId) && !quizSubMap.has(subId)) {
+        gradesWithoutSubmission.push({
+          id: g.id,
+          submissionId: g.submission_id,
+          pointsAwarded: g.points_awarded,
+          gradedAt: g.graded_at,
+          type: 'Grade without matching Submission'
+        });
+      } else {
+        validGradesCount++;
+      }
+    });
+
+    // 6. Submission with unknown student
+    submissionsList.forEach(s => {
+      const sId = String(s.student_id || '').toLowerCase().trim();
+      if (sId && sId !== 'external_user' && !studentMap.has(sId)) {
+        submissionsWithoutStudent.push({
+          id: s.id,
+          studentId: s.student_id,
+          quizId: s.assignment_id,
+          submittedAt: s.submitted_at,
+          type: 'Submission with unknown student identifier'
+        });
+      }
+    });
+
+    // 7. Submitted but missing from Gradebook
+    quizSubmissionsList.forEach(qs => {
+      const subId = String(qs.id).toLowerCase().trim();
+      if (!gradeSubMap.has(subId)) {
+        submittedMissingGrade.push({
+          id: qs.id,
+          studentName: qs.student_name,
+          quizTitle: qs.quiz_title,
+          submittedAt: qs.submitted_at,
+          type: 'Submitted Quiz missing Gradebook entry'
+        });
+      }
+    });
+
+    return {
+      validAttempts: validAttemptsCount,
+      validSubmissions: validSubmissionsCount + submissionsList.length - submissionsWithoutQuiz.filter(s => s.type.includes('Assignment')).length,
+      validResponses: validResponsesCount,
+      validGrades: validGradesCount,
+      orphanedAttempts,
+      orphanedSubmissions,
+      submissionsWithoutQuiz,
+      responsesWithoutQuestion,
+      gradesWithoutSubmission,
+      submissionsWithoutStudent,
+      submittedMissingGrade
+    };
+  },
+
+  /**
+   * Performs automated reconciliation repairs across the data layers.
+   */
+  async runReconciliationRepairs(repairTypes: string[], user: AuthenticatedUser): Promise<any> {
+    const supabase = getServerSupabase();
+    const results: string[] = [];
+    const timestamp = new Date().toISOString();
+
+    const diagnostics = await this.getReconciliationDiagnostics();
+
+    // 1. Repair orphaned attempts (unsubmitted/abandoned -> autosubmitted draft or cleaned up)
+    if (repairTypes.includes('orphanedAttempts') && diagnostics.orphanedAttempts.length > 0) {
+      let repairCount = 0;
+      for (const att of diagnostics.orphanedAttempts) {
+        const originalAtt = inMemoryQuizAttempts.get(att.id);
+        const hasResponses = originalAtt && Object.keys(originalAtt.responses || {}).length > 0;
+        
+        if (hasResponses) {
+          try {
+            await this.submitPublicQuizResponse(att.quizId, {
+              studentName: att.studentName,
+              studentEmail: att.studentEmail || '',
+              responses: originalAtt.responses,
+              timeSpentSeconds: originalAtt.time_spent_seconds || 60,
+              submissionId: att.id
+            });
+            repairCount++;
+          } catch (err: any) {
+            logger.warn(`Failed to backfill submission for attempt ${att.id}:`, err);
+          }
+        } else {
+          inMemoryQuizAttempts.delete(att.id);
+          try {
+            await supabase.from('quiz_attempts').delete().eq('id', att.id);
+            repairCount++;
+          } catch {}
+        }
+      }
+      results.push(`Successfully reconciled/cleaned up ${repairCount} orphaned attempts.`);
+    }
+
+    // 2. Repair orphaned submissions (submission without attempt -> backfill dummy attempt)
+    if (repairTypes.includes('orphanedSubmissions') && diagnostics.orphanedSubmissions.length > 0) {
+      let repairCount = 0;
+      for (const sub of diagnostics.orphanedSubmissions) {
+        const attemptId = `att_repaired_${sub.id.replace('sub_', '')}`;
+        const attemptObj = {
+          id: attemptId,
+          quiz_id: sub.quizId,
+          share_code: sub.quizId,
+          student_name: sub.studentName,
+          student_email: sub.studentEmail || '',
+          responses: sub.responses || {},
+          status: 'submitted',
+          started_at: new Date(new Date(sub.submittedAt).getTime() - 15 * 60 * 1000).toISOString(),
+          updated_at: sub.submittedAt,
+          submitted_at: sub.submittedAt,
+          time_spent_seconds: 900
+        };
+        try {
+          await supabase.from('quiz_attempts').insert([attemptObj]);
+          inMemoryQuizAttempts.set(attemptId, attemptObj);
+          repairCount++;
+        } catch (dbErr) {
+          logger.warn(`Failed to backfill attempt for submission ${sub.id}:`, dbErr);
+        }
+      }
+      results.push(`Successfully backfilled ${repairCount} missing attempt sessions.`);
+    }
+
+    // 2.5 Repair submitted missing grades
+    if (repairTypes.includes('submittedMissingGrade') && diagnostics.submittedMissingGrade.length > 0) {
+      let repairCount = 0;
+      for (const qs of diagnostics.submittedMissingGrade) {
+        try {
+          const { data: fullQs } = await supabase.from('quiz_submissions').select('*').eq('id', qs.id).single();
+          if (fullQs) {
+            await this.gradeSubmission({
+              submissionId: fullQs.id,
+              assignmentId: fullQs.quiz_id,
+              studentId: fullQs.student_id,
+              score: fullQs.score,
+              feedback: 'Automatically reconciled during system health check.'
+            }, user);
+            repairCount++;
+          }
+        } catch (err) {
+          logger.warn(`Failed to auto-grade/reconcile submission ${qs.id}:`, err);
+        }
+      }
+      results.push(`Successfully auto-graded/reconciled ${repairCount} missing gradebook entries.`);
+    }
+
+    // 3. Repair submissions without quiz
+    if (repairTypes.includes('submissionsWithoutQuiz') && diagnostics.submissionsWithoutQuiz.length > 0) {
+      let repairCount = 0;
+      const { data: activeQuizzes } = await supabase.from('assignments').select('id, title').limit(1);
+      const fallbackQuizId = activeQuizzes?.[0]?.id || 'placeholder-quiz-id';
+      const fallbackQuizTitle = activeQuizzes?.[0]?.title || 'Reconciliation Fallback Quiz';
+
+      for (const sub of diagnostics.submissionsWithoutQuiz) {
+        try {
+          if (sub.type.includes('Quiz')) {
+            await supabase.from('quiz_submissions').update({
+              quiz_id: fallbackQuizId,
+              quiz_title: fallbackQuizTitle
+            }).eq('id', sub.id);
+          } else {
+            await supabase.from('submissions').update({
+              assignment_id: fallbackQuizId
+            }).eq('id', sub.id);
+          }
+          repairCount++;
+        } catch {}
+      }
+      results.push(`Successfully re-associated ${repairCount} submissions with a valid assignment.`);
+    }
+
+    // 4. Repair responses without question
+    if (repairTypes.includes('responsesWithoutQuestion') && diagnostics.responsesWithoutQuestion.length > 0) {
+      let repairCount = 0;
+      const uniqueSourceIds = Array.from(new Set(diagnostics.responsesWithoutQuestion.map((r: any) => r.id)));
+      for (const srcId of uniqueSourceIds) {
+        try {
+          const { data: subData } = await supabase.from('quiz_submissions').select('responses, quiz_id').eq('id', srcId).maybeSingle();
+          if (subData) {
+            const { data: qData } = await supabase.from('assignments').select('quizData, questions').eq('id', subData.quiz_id).maybeSingle();
+            const questions = qData?.questions || qData?.quizData?.questions || [];
+            const validQIds = new Set(questions.map((q: any) => String(q.id).toLowerCase().trim()));
+            
+            const sanitized: any = {};
+            Object.entries(subData.responses || {}).forEach(([qId, ans]) => {
+              if (validQIds.has(String(qId).toLowerCase().trim())) {
+                sanitized[qId] = ans;
+              }
+            });
+
+            await supabase.from('quiz_submissions').update({ responses: sanitized }).eq('id', srcId);
+            repairCount++;
+          }
+        } catch {}
+      }
+      results.push(`Sanitized missing question keys for ${repairCount} student records.`);
+    }
+
+    // 5. Repair grades without submission
+    if (repairTypes.includes('gradesWithoutSubmission') && diagnostics.gradesWithoutSubmission.length > 0) {
+      let repairCount = 0;
+      for (const grade of diagnostics.gradesWithoutSubmission) {
+        try {
+          await supabase.from('grades').delete().eq('id', grade.id);
+          repairCount++;
+        } catch {}
+      }
+      results.push(`Successfully purged ${repairCount} orphaned grades.`);
+    }
+
+    // 6. Repair submissions without student
+    if (repairTypes.includes('submissionsWithoutStudent') && diagnostics.submissionsWithoutStudent.length > 0) {
+      let repairCount = 0;
+      const { data: firstStudent } = await supabase.from('students').select('id').limit(1).maybeSingle();
+      if (firstStudent?.id) {
+        for (const sub of diagnostics.submissionsWithoutStudent) {
+          try {
+            await supabase.from('submissions').update({ student_id: firstStudent.id }).eq('id', sub.id);
+            repairCount++;
+          } catch {}
+        }
+      }
+      results.push(`Successfully re-assigned ${repairCount} submissions.`);
+    }
+
+    await logAuditEvent({
+      actorUserId: user.userId || 'admin',
+      actorRole: user.role,
+      entityType: 'data_reconciliation',
+      entityId: 'reconciliation_job',
+      action: 'update',
+      newValues: { repairedTypes: repairTypes, results },
+      reason: `Admin triggered submission reconciliation repair job for: ${repairTypes.join(', ')}`,
+    });
+
+    return { success: true, results };
+  }
 };
 

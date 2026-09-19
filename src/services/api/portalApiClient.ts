@@ -480,7 +480,7 @@ export const portalApi = {
   },
 
   async createQuizAttempt(shareCode: string, payload: { studentName: string; studentEmail?: string }) {
-    return fetchJson<{ attemptId: string; startedAt: string }>(
+    return fetchJson<{ attemptId: string; startedAt: string; quizSnapshot?: any; quizVersionId?: string; }>(
       `/assignments/public/quiz/${encodeURIComponent(shareCode)}/attempts`,
       {
         method: 'POST',
@@ -512,10 +512,12 @@ export const portalApi = {
       rawResponses?: Record<string, any>;
       timeSpentSeconds?: number;
       quizId?: string;
+      quizVersionId?: string;
       score?: number;
       totalPossible?: number;
       percentage?: number;
       quizTitle?: string;
+      attemptId?: string;
     }
   ) {
     return fetchJson<{ submission: any; success: boolean }>(
@@ -525,6 +527,28 @@ export const portalApi = {
         body: JSON.stringify(payload),
       }
     );
+  },
+
+  async getReconciliationDiagnostics() {
+    return fetchJson<{
+      validAttempts: number;
+      validSubmissions: number;
+      validResponses: number;
+      validGrades: number;
+      orphanedAttempts: any[];
+      orphanedSubmissions: any[];
+      submissionsWithoutQuiz: any[];
+      responsesWithoutQuestion: any[];
+      gradesWithoutSubmission: any[];
+      submissionsWithoutStudent: any[];
+    }>('/assignments/reconciliation');
+  },
+
+  async runReconciliationRepairs(repairTypes: string[]) {
+    return fetchJson<{ success: boolean; results: string[] }>('/assignments/reconciliation/repair', {
+      method: 'POST',
+      body: JSON.stringify({ repairTypes }),
+    });
   },
 
   async getGrades(params?: { studentId?: string; studentName?: string; assignmentId?: string }) {

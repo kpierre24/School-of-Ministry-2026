@@ -129,6 +129,7 @@ export function useQuizManagement(
       const { error } = await supabase.from('quiz_submissions').upsert({
         id: submission.id,
         quiz_id: submission.quizId,
+        quiz_version_id: submission.quizVersionId,
         quiz_title: submission.quizTitle,
         student_name: submission.studentName,
         student_email: submission.studentEmail,
@@ -334,6 +335,7 @@ export function useQuizManagement(
         await supabase.from('quiz_submissions').upsert({
           id: item.id,
           quiz_id: item.quizId,
+          quiz_version_id: item.quizVersionId,
           quiz_title: item.quizTitle,
           student_name: item.studentName,
           student_email: item.studentEmail,

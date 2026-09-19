@@ -19,7 +19,13 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Activity,
+  X,
+  XCircle,
+  AlertCircle,
+  AlertTriangle,
+  LayoutList
 } from 'lucide-react';
 import { portalApiClient } from '../../../services/api/portalApiClient';
 import { UserRole } from '../../../lib/userAuth';
@@ -28,6 +34,7 @@ import { QuizCreator } from './QuizCreator';
 import { QuizTaker } from './QuizTaker';
 import { QuizAnalytics } from './QuizAnalytics';
 import { QuizSubmissionReview } from './QuizSubmissionReview';
+import { ResponseCenter } from './ResponseCenter';
 import { useQuizManagement } from './useQuizManagement';
 import { exportQuizSubmissionsCsv, scrubQuizForClient } from '../../../data/quizTemplates';
 import { ImportQuizModal } from '../../../components/ImportQuizModal';
@@ -71,7 +78,7 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
   }, [propsSubmissions, quizManager.submissions]);
 
   // Active View Tabs
-  const [activeTab, setActiveTab] = useState<'all_quizzes' | 'analytics' | 'individual'>('all_quizzes');
+  const [activeTab, setActiveTab] = useState<'all_quizzes' | 'analytics' | 'individual' | 'responses' | 'data_integrity' | 'submission_health'>('all_quizzes');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +90,269 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
   const [selectedAnalyticsQuizId, setSelectedAnalyticsQuizId] = useState<string>(quizzes[0]?.id || '');
   const [selectedSubmissionForReview, setSelectedSubmissionForReview] = useState<QuizSubmission | null>(null);
   const [activeAttempts, setActiveAttempts] = useState<any[]>([]);
+
+  // Submission Health states
+  const [healthResults, setHealthResults] = useState<Array<{
+    name: string;
+    key: string;
+    status: 'idle' | 'running' | 'success' | 'error';
+    error?: string;
+  }>>([
+    { name: 'Quiz Configuration', key: 'quiz_config', status: 'idle' },
+    { name: 'Published', key: 'published', status: 'idle' },
+    { name: 'Share Link', key: 'share_link', status: 'idle' },
+    { name: 'Public Endpoint', key: 'public_endpoint', status: 'idle' },
+    { name: 'Attempt Creation', key: 'attempt_creation', status: 'idle' },
+    { name: 'Response Persistence', key: 'response_persistence', status: 'idle' },
+    { name: 'Submission Persistence', key: 'submission_persistence', status: 'idle' },
+    { name: 'Auto Grading', key: 'auto_grading', status: 'idle' },
+    { name: 'Teacher Retrieval', key: 'teacher_retrieval', status: 'idle' },
+    { name: 'Grade Persistence', key: 'grade_persistence', status: 'idle' }
+  ]);
+  const [healthTesting, setHealthTesting] = useState(false);
+
+  const runSubmissionHealthCheck = async () => {
+    setHealthTesting(true);
+    
+    // Reset all checks to idle/running
+    setHealthResults(prev => prev.map(item => ({ ...item, status: 'idle', error: undefined })));
+
+    const updateStep = (key: string, status: 'success' | 'error', error?: string) => {
+      setHealthResults(prev => prev.map(item => 
+        item.key === key ? { ...item, status, error } : item
+      ));
+    };
+
+    const updateToRunning = (key: string) => {
+      setHealthResults(prev => prev.map(item => 
+        item.key === key ? { ...item, status: 'running' } : item
+      ));
+    };
+
+    try {
+      // 1. Quiz Configuration
+      updateToRunning('quiz_config');
+      const activeQuizzes = quizzes || [];
+      if (activeQuizzes.length === 0) {
+        updateStep('quiz_config', 'error', 'No active quiz assignments found in database.');
+        setHealthTesting(false);
+        return;
+      }
+      const targetQuiz = activeQuizzes[0];
+      if (!targetQuiz.title || !Array.isArray(targetQuiz.questions) || targetQuiz.questions.length === 0) {
+        updateStep('quiz_config', 'error', 'Quiz is misconfigured (lacks a title or has no questions).');
+        setHealthTesting(false);
+        return;
+      }
+      updateStep('quiz_config', 'success');
+
+      // 2. Published
+      updateToRunning('published');
+      if (!targetQuiz.isPublished && targetQuiz.status !== 'published') {
+        updateStep('published', 'error', `Quiz "${targetQuiz.title}" is in DRAFT state. Must be published.`);
+        setHealthTesting(false);
+        return;
+      }
+      updateStep('published', 'success');
+
+      // 3. Share Link
+      updateToRunning('share_link');
+      if (!targetQuiz.shareCode) {
+        updateStep('share_link', 'error', `Quiz "${targetQuiz.title}" does not have an active shareCode.`);
+        setHealthTesting(false);
+        return;
+      }
+      updateStep('share_link', 'success');
+
+      // 4. Public Endpoint
+      updateToRunning('public_endpoint');
+      try {
+        const publicQuizRes = await portalApiClient.getPublicQuiz(targetQuiz.shareCode);
+        if (!publicQuizRes || !publicQuizRes.quiz) {
+          throw new Error('Endpoint returned empty response payload.');
+        }
+        updateStep('public_endpoint', 'success');
+      } catch (err: any) {
+        updateStep('public_endpoint', 'error', `HTTP ${err.status || 500} - ${err.message || 'Verification failed'}`);
+        setHealthTesting(false);
+        return;
+      }
+
+      // 5. Attempt Creation
+      updateToRunning('attempt_creation');
+      let attemptId = '';
+      try {
+        const attemptRes = await portalApiClient.createQuizAttempt(targetQuiz.shareCode, {
+          studentName: 'HEALTH_TEST_BOT',
+          studentEmail: 'health.test@hteim.org'
+        });
+        if (!attemptRes || !attemptRes.attemptId) {
+          throw new Error('CreateAttempt endpoint did not return a valid attempt ID.');
+        }
+        attemptId = attemptRes.attemptId;
+        updateStep('attempt_creation', 'success');
+      } catch (err: any) {
+        updateStep('attempt_creation', 'error', `HTTP ${err.status || 500} - ${err.message || 'Failed'}`);
+        setHealthTesting(false);
+        return;
+      }
+
+      // 6. Response Persistence
+      updateToRunning('response_persistence');
+      try {
+        const firstQ = targetQuiz.questions[0];
+        const qId = firstQ?.id || 'q1';
+        const saveRes = await portalApiClient.autosaveQuizAttemptResponses(targetQuiz.shareCode, attemptId, {
+          responses: { [qId]: 'A' },
+          timeSpentSeconds: 10
+        });
+        if (!saveRes || !saveRes.success) {
+          throw new Error('Patch responses saved state did not return success.');
+        }
+        updateStep('response_persistence', 'success');
+      } catch (err: any) {
+        updateStep('response_persistence', 'error', `HTTP ${err.status || 500} - ${err.message || 'Autosave failed'}`);
+        setHealthTesting(false);
+        return;
+      }
+
+      // 7. Submission Persistence
+      updateToRunning('submission_persistence');
+      let submissionObj: any = null;
+      try {
+        const firstQ = targetQuiz.questions[0];
+        const qId = firstQ?.id || 'q1';
+        const submitRes = await portalApiClient.submitPublicQuizResponse(targetQuiz.shareCode, {
+          studentName: 'HEALTH_TEST_BOT',
+          studentEmail: 'health.test@hteim.org',
+          responses: { [qId]: 'A' },
+          timeSpentSeconds: 15,
+          quizId: targetQuiz.id,
+          quizTitle: targetQuiz.title,
+          totalPossible: targetQuiz.totalPoints || 10
+        });
+        if (!submitRes || !submitRes.success || !submitRes.submission) {
+          throw new Error('Submission submit endpoint returned false or empty payload.');
+        }
+        submissionObj = submitRes.submission;
+        updateStep('submission_persistence', 'success');
+      } catch (err: any) {
+        updateStep('submission_persistence', 'error', `HTTP ${err.status || 500} - ${err.message || 'Failed'}`);
+        setHealthTesting(false);
+        return;
+      }
+
+      // 8. Auto Grading
+      updateToRunning('auto_grading');
+      try {
+        if (submissionObj.score === undefined || submissionObj.score === null) {
+          throw new Error('Auto grading calculation was skipped or score returned null.');
+        }
+        updateStep('auto_grading', 'success');
+      } catch (err: any) {
+        updateStep('auto_grading', 'error', err.message || 'Automatic grade calculation failed');
+        setHealthTesting(false);
+        return;
+      }
+
+      // 9. Teacher Retrieval
+      updateToRunning('teacher_retrieval');
+      try {
+        const subsRes = await portalApiClient.getSubmissions('HEALTH_TEST_BOT');
+        const list = subsRes?.submissions || [];
+        const found = list.some((s: any) => 
+          s.studentName === 'HEALTH_TEST_BOT' || 
+          (submissionObj && String(s.id).toLowerCase() === String(submissionObj.id).toLowerCase())
+        );
+        if (!found) {
+          throw new Error('Test submission was not found in teacher retrieved data list.');
+        }
+        updateStep('teacher_retrieval', 'success');
+      } catch (err: any) {
+        updateStep('teacher_retrieval', 'error', `HTTP ${err.status || 500} - ${err.message || 'Failed'}`);
+        setHealthTesting(false);
+        return;
+      }
+
+      // 10. Grade Persistence
+      updateToRunning('grade_persistence');
+      try {
+        const gradesRes = await portalApiClient.getGrades({ studentName: 'HEALTH_TEST_BOT' });
+        const list = gradesRes?.grades || [];
+        if (list.length === 0) {
+          throw new Error('Grade collection entry was not generated or saved.');
+        }
+        updateStep('grade_persistence', 'success');
+      } catch (err: any) {
+        updateStep('grade_persistence', 'error', `HTTP ${err.status || 500} - ${err.message || 'Failed'}`);
+        setHealthTesting(false);
+        return;
+      }
+
+    } catch (err: any) {
+      console.error('Diagnostic error:', err);
+    } finally {
+      setHealthTesting(false);
+    }
+  };
+
+  // Reconciliation states
+  const [diagnostics, setDiagnostics] = useState<any | null>(null);
+  const [reconciliationLoading, setReconciliationLoading] = useState(false);
+  const [selectedRepairs, setSelectedRepairs] = useState<string[]>([]);
+  const [repairProgressLoading, setRepairProgressLoading] = useState(false);
+  const [repairResults, setRepairResults] = useState<string[] | null>(null);
+
+  const fetchDiagnostics = async () => {
+    setReconciliationLoading(true);
+    setRepairResults(null);
+    try {
+      const res = await portalApiClient.getReconciliationDiagnostics();
+      setDiagnostics(res);
+      const toSelect: string[] = [];
+      if (res.orphanedAttempts?.length > 0) toSelect.push('orphanedAttempts');
+      if (res.orphanedSubmissions?.length > 0) toSelect.push('orphanedSubmissions');
+      if (res.submissionsWithoutQuiz?.length > 0) toSelect.push('submissionsWithoutQuiz');
+      if (res.responsesWithoutQuestion?.length > 0) toSelect.push('responsesWithoutQuestion');
+      if (res.gradesWithoutSubmission?.length > 0) toSelect.push('gradesWithoutSubmission');
+      if (res.submissionsWithoutStudent?.length > 0) toSelect.push('submissionsWithoutStudent');
+      setSelectedRepairs(toSelect);
+    } catch (err) {
+      console.error('Failed to run diagnostics:', err);
+    } finally {
+      setReconciliationLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'data_integrity') {
+      fetchDiagnostics();
+    }
+  }, [activeTab]);
+
+  const toggleRepairType = (type: string) => {
+    setSelectedRepairs(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+  const handleExecuteRepairs = async () => {
+    if (selectedRepairs.length === 0) return;
+    setRepairProgressLoading(true);
+    try {
+      const res = await portalApiClient.runReconciliationRepairs(selectedRepairs);
+      if (res.success) {
+        setRepairResults(res.results);
+        const updated = await portalApiClient.getReconciliationDiagnostics();
+        setDiagnostics(updated);
+        setSelectedRepairs([]);
+      }
+    } catch (err) {
+      console.error('Failed to run repairs:', err);
+    } finally {
+      setRepairProgressLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab !== 'individual') return;
@@ -252,6 +522,18 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('responses')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'responses'
+              ? 'bg-white dark:bg-slate-700 text-purple-900 dark:text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <LayoutList className="w-3.5 h-3.5" />
+          <span>Response Center</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('individual')}
           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'individual'
@@ -261,6 +543,30 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
         >
           <Users className="w-3.5 h-3.5" />
           <span>Submissions Log ({submissions.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('data_integrity')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'data_integrity'
+              ? 'bg-white dark:bg-slate-700 text-purple-900 dark:text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" />
+          <span>Data Integrity</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('submission_health')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'submission_health'
+              ? 'bg-white dark:bg-slate-700 text-purple-900 dark:text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5" />
+          <span>Submission Health</span>
         </button>
       </div>
 
@@ -569,6 +875,14 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
         />
       )}
 
+      {/* TAB: RESPONSE CENTER */}
+      {activeTab === 'responses' && (
+        <ResponseCenter 
+          quizzes={quizzes} 
+          onBack={() => setActiveTab('all_quizzes')}
+        />
+      )}
+
       {/* TAB 3: INDIVIDUAL SUBMISSIONS & LIVE ATTEMPTS */}
       {activeTab === 'individual' && (
         <div className="space-y-6">
@@ -697,6 +1011,534 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
         </div>
       )}
 
+      {/* TAB 4: DATA INTEGRITY */}
+      {activeTab === 'data_integrity' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-xl border border-indigo-950/60">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-300 flex items-center justify-center font-black">
+                    <ShieldAlert className="w-5 h-5 text-indigo-400" />
+                  </span>
+                  <h3 className="text-md font-black tracking-wide text-slate-100">
+                    ASSESSMENT DATA INTEGRITY CONTROL PANEL
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 max-w-xl">
+                  Cross-checks multi-layer persistence layers (Google Sheets, local state buffers, Supabase database collections, in-memory live traces) for orphanages, missing keys, and invalid student/quiz associations.
+                </p>
+              </div>
+              <button
+                onClick={fetchDiagnostics}
+                disabled={reconciliationLoading}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer select-none"
+              >
+                <RefreshCw className={`w-4 h-4 ${reconciliationLoading ? 'animate-spin' : ''}`} />
+                <span>Run Diagnostics Check</span>
+              </button>
+            </div>
+
+            {reconciliationLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+                <span className="text-xs text-slate-400 font-bold">Scanning database tables...</span>
+              </div>
+            ) : diagnostics ? (
+              <div className="mt-6 pt-6 border-t border-indigo-950/60 grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Metric Checks */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black tracking-wider text-slate-300 uppercase">
+                    System Health Checks
+                  </h4>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-xl border border-slate-900/60">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-black">✓</span>
+                        <span className="text-xs font-semibold text-slate-300">Valid Quiz Attempts</span>
+                      </div>
+                      <span className="font-mono text-xs font-black text-emerald-400">
+                        {diagnostics.validAttempts} attempts
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-xl border border-slate-900/60">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-black">✓</span>
+                        <span className="text-xs font-semibold text-slate-300">Valid Submissions</span>
+                      </div>
+                      <span className="font-mono text-xs font-black text-emerald-400">
+                        {diagnostics.validSubmissions} submissions
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-xl border border-slate-900/60">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-black">✓</span>
+                        <span className="text-xs font-semibold text-slate-300">Valid Question Responses</span>
+                      </div>
+                      <span className="font-mono text-xs font-black text-emerald-400">
+                        {diagnostics.validResponses} responses
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-xl border border-slate-900/60">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-black">✓</span>
+                        <span className="text-xs font-semibold text-slate-300">Valid Evaluated Grades</span>
+                      </div>
+                      <span className="font-mono text-xs font-black text-emerald-400">
+                        {diagnostics.validGrades} grades
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Warnings Section */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black tracking-wider text-slate-300 uppercase">
+                    Integrity Warnings ({
+                      (diagnostics.orphanedAttempts?.length || 0) +
+                      (diagnostics.orphanedSubmissions?.length || 0) +
+                      (diagnostics.submissionsWithoutQuiz?.length || 0) +
+                      (diagnostics.responsesWithoutQuestion?.length || 0) +
+                      (diagnostics.gradesWithoutSubmission?.length || 0) +
+                      (diagnostics.submissionsWithoutStudent?.length || 0)
+                    } anomalies detected)
+                  </h4>
+                  
+                  <div className="space-y-2.5">
+                    {(diagnostics.orphanedAttempts?.length || 0) > 0 ? (
+                      <div className="flex items-center justify-between bg-amber-950/20 p-3 rounded-xl border border-amber-900/40">
+                        <div className="flex items-center gap-2 text-amber-300">
+                          <span className="font-bold">⚠</span>
+                          <span className="text-xs font-semibold">Orphaned Quiz Attempts</span>
+                        </div>
+                        <span className="font-mono text-xs font-black text-amber-400">
+                          {diagnostics.orphanedAttempts.length} detected
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-slate-950/20 p-3 rounded-xl border border-slate-900/40 text-slate-500">
+                        <span className="text-xs">✓ No orphaned quiz attempts</span>
+                      </div>
+                    )}
+
+                    {(diagnostics.orphanedSubmissions?.length || 0) > 0 ? (
+                      <div className="flex items-center justify-between bg-amber-950/20 p-3 rounded-xl border border-amber-900/40">
+                        <div className="flex items-center gap-2 text-amber-300">
+                          <span className="font-bold">⚠</span>
+                          <span className="text-xs font-semibold">Orphaned Submissions</span>
+                        </div>
+                        <span className="font-mono text-xs font-black text-amber-400">
+                          {diagnostics.orphanedSubmissions.length} detected
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-slate-950/20 p-3 rounded-xl border border-slate-900/40 text-slate-500">
+                        <span className="text-xs">✓ No orphaned submissions</span>
+                      </div>
+                    )}
+
+                    {(diagnostics.submissionsWithoutQuiz?.length || 0) > 0 ? (
+                      <div className="flex items-center justify-between bg-amber-950/20 p-3 rounded-xl border border-amber-900/40">
+                        <div className="flex items-center gap-2 text-amber-300">
+                          <span className="font-bold">⚠</span>
+                          <span className="text-xs font-semibold">Submissions pointing to missing Quizzes</span>
+                        </div>
+                        <span className="font-mono text-xs font-black text-amber-400">
+                          {diagnostics.submissionsWithoutQuiz.length} detected
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-slate-950/20 p-3 rounded-xl border border-slate-900/40 text-slate-500">
+                        <span className="text-xs">✓ All submissions link to valid quizzes</span>
+                      </div>
+                    )}
+
+                    {(diagnostics.responsesWithoutQuestion?.length || 0) > 0 ? (
+                      <div className="flex items-center justify-between bg-amber-950/20 p-3 rounded-xl border border-amber-900/40">
+                        <div className="flex items-center gap-2 text-amber-300">
+                          <span className="font-bold">⚠</span>
+                          <span className="text-xs font-semibold">Responses referencing missing questions</span>
+                        </div>
+                        <span className="font-mono text-xs font-black text-amber-400">
+                          {diagnostics.responsesWithoutQuestion.length} detected
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-slate-950/20 p-3 rounded-xl border border-slate-900/40 text-slate-500">
+                        <span className="text-xs">✓ No answers reference missing questions</span>
+                      </div>
+                    )}
+
+                    {(diagnostics.gradesWithoutSubmission?.length || 0) > 0 ? (
+                      <div className="flex items-center justify-between bg-amber-950/20 p-3 rounded-xl border border-amber-900/40">
+                        <div className="flex items-center gap-2 text-amber-300">
+                          <span className="font-bold">⚠</span>
+                          <span className="text-xs font-semibold">Orphaned Grades (No Submission)</span>
+                        </div>
+                        <span className="font-mono text-xs font-black text-amber-400">
+                          {diagnostics.gradesWithoutSubmission.length} detected
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-slate-950/20 p-3 rounded-xl border border-slate-900/40 text-slate-500">
+                        <span className="text-xs">✓ All grades mapped to active submissions</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            ) : null}
+          </div>
+
+          {/* INSPECT & REPAIR WORKSPACE */}
+          {diagnostics && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs space-y-6">
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                  INSPECT & REPAIR INTEGRITY ANOMALIES
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Select anomalies to repair. Running repair will execute precise database backfills, sanitize stale schemas, and purge disconnected entities safely.
+                </p>
+              </div>
+
+              {/* Repair Checkbox Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className={`flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer ${
+                  selectedRepairs.includes('orphanedAttempts')
+                    ? 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRepairs.includes('orphanedAttempts')}
+                    onChange={() => toggleRepairType('orphanedAttempts')}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
+                      Reconcile Orphaned Attempts ({(diagnostics.orphanedAttempts || []).length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Submits active drafts containing answers or deletes empty/abandoned attempt records.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer ${
+                  selectedRepairs.includes('orphanedSubmissions')
+                    ? 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRepairs.includes('orphanedSubmissions')}
+                    onChange={() => toggleRepairType('orphanedSubmissions')}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
+                      Backfill Missing Attempt Session Traces ({(diagnostics.orphanedSubmissions || []).length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Generates matching database attempt records to complete session telemetry records.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer ${
+                  selectedRepairs.includes('submissionsWithoutQuiz')
+                    ? 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRepairs.includes('submissionsWithoutQuiz')}
+                    onChange={() => toggleRepairType('submissionsWithoutQuiz')}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
+                      Re-associate Submissions with missing Quizzes ({(diagnostics.submissionsWithoutQuiz || []).length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Links orphaned/unknown quiz references to active ministerial quiz assessments.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer ${
+                  selectedRepairs.includes('responsesWithoutQuestion')
+                    ? 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRepairs.includes('responsesWithoutQuestion')}
+                    onChange={() => toggleRepairType('responsesWithoutQuestion')}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
+                      Sanitize Responses referencing missing Questions ({(diagnostics.responsesWithoutQuestion || []).length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Removes answer payloads for questions that do not exist inside the quiz templates.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer ${
+                  selectedRepairs.includes('gradesWithoutSubmission')
+                    ? 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRepairs.includes('gradesWithoutSubmission')}
+                    onChange={() => toggleRepairType('gradesWithoutSubmission')}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
+                      Purge Orphaned Grades ({(diagnostics.gradesWithoutSubmission || []).length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Cleans up grades database records that lack any associated student submission.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3 rounded-xl border transition-all select-none cursor-pointer ${
+                  selectedRepairs.includes('submissionsWithoutStudent')
+                    ? 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30'
+                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRepairs.includes('submissionsWithoutStudent')}
+                    onChange={() => toggleRepairType('submissionsWithoutStudent')}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
+                      Map Unknown Student Identifiers ({(diagnostics.submissionsWithoutStudent || []).length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Binds legacy or unmapped student identifiers to a valid active fallback profile.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  disabled={selectedRepairs.length === 0 || repairProgressLoading}
+                  onClick={handleExecuteRepairs}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 text-white disabled:text-slate-400 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer select-none"
+                >
+                  {repairProgressLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>Repair Selected Anomalies ({selectedRepairs.length})</span>
+                </button>
+              </div>
+
+              {/* Repair Results Output Banner */}
+              {repairResults && (
+                <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 animate-fadeIn">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block uppercase">
+                    Repair Execution Outcome:
+                  </span>
+                  <div className="space-y-1">
+                    {repairResults.map((r, i) => (
+                      <p key={i} className="text-xs text-slate-600 dark:text-slate-400 font-mono flex items-center gap-2">
+                        <span className="text-purple-600">•</span>
+                        <span>{r}</span>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* INSPECTOR DETAILS TABLE */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase text-slate-400">
+                    Detailed Anomalies Inspector
+                  </h4>
+                  <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-full font-mono">
+                    Diagnostic Database Inspector
+                  </span>
+                </div>
+
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
+                    {[
+                      ...(diagnostics.orphanedAttempts || []),
+                      ...(diagnostics.orphanedSubmissions || []),
+                      ...(diagnostics.submissionsWithoutQuiz || []),
+                      ...(diagnostics.responsesWithoutQuestion || []),
+                      ...(diagnostics.gradesWithoutSubmission || []),
+                      ...(diagnostics.submissionsWithoutStudent || [])
+                    ].length === 0 ? (
+                      <div className="p-8 text-center text-xs text-slate-400 font-bold">
+                        Excellent! No data integrity anomalies found. Database is fully consistent.
+                      </div>
+                    ) : (
+                      [
+                        ...(diagnostics.orphanedAttempts || []),
+                        ...(diagnostics.orphanedSubmissions || []),
+                        ...(diagnostics.submissionsWithoutQuiz || []),
+                        ...(diagnostics.responsesWithoutQuestion || []),
+                        ...(diagnostics.gradesWithoutSubmission || []),
+                        ...(diagnostics.submissionsWithoutStudent || [])
+                      ].map((ano, index) => (
+                        <div key={index} className="p-3 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-100/50 dark:hover:bg-slate-900/60 transition-colors flex items-center justify-between gap-4 text-xs">
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-mono">
+                              {ano.type}
+                            </span>
+                            <div className="font-bold text-slate-800 dark:text-slate-200">
+                              Student: {ano.studentName || ano.studentId || 'N/A'}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              Entity ID: {ano.id || 'N/A'} {ano.quizId ? `| Quiz ID: ${ano.quizId}` : ''} {ano.questionId ? `| Question ID: ${ano.questionId}` : ''}
+                            </div>
+                          </div>
+                          {ano.submittedAt || ano.startedAt ? (
+                            <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                              {new Date(ano.submittedAt || ano.startedAt).toLocaleDateString()}
+                            </span>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 5: SUBMISSION HEALTH DIAGNOSTIC */}
+      {activeTab === 'submission_health' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-xl border border-indigo-950/60">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-300 flex items-center justify-center font-black">
+                    <Activity className="w-5 h-5 text-indigo-400" />
+                  </span>
+                  <h3 className="text-md font-black tracking-wide text-slate-100">
+                    SUBMISSION HEALTH PIPELINE DIAGNOSTIC
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 max-w-xl">
+                  Performs a live, end-to-end integration test of the quiz submission pipeline. Verifies schema validity, routing endpoints, response persistence, auto-grading computations, and grade persistence traces.
+                </p>
+              </div>
+              <button
+                onClick={runSubmissionHealthCheck}
+                disabled={healthTesting}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer select-none"
+              >
+                <RefreshCw className={`w-4 h-4 ${healthTesting ? 'animate-spin' : ''}`} />
+                <span>Verify Pipelines</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs max-w-2xl">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                <h4 className="text-xs font-black tracking-wider text-slate-400 uppercase">
+                  Submission Health Checklist
+                </h4>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Real-time pipeline verification
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                {healthResults.map((step) => {
+                  const isSuccess = step.status === 'success';
+                  const isError = step.status === 'error';
+                  const isRunning = step.status === 'running';
+
+                  return (
+                    <div key={step.key} className="py-3 flex flex-col space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {step.name}
+                        </span>
+                        
+                        <div className="flex items-center gap-2 font-mono text-xs font-black">
+                          {isRunning && (
+                            <RefreshCw className="w-4 h-4 text-purple-600 animate-spin" />
+                          )}
+                          {isSuccess && (
+                            <span className="text-emerald-500 font-black flex items-center gap-1">
+                              ✓
+                            </span>
+                          )}
+                          {isError && (
+                            <span className="text-rose-500 font-black flex items-center gap-1">
+                              ✕
+                            </span>
+                          )}
+                          {step.status === 'idle' && (
+                            <span className="text-slate-300 dark:text-slate-600">—</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {isError && step.error && (
+                        <div className="bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 px-3 py-2 rounded-lg border border-rose-100 dark:border-rose-900/60 font-mono text-[10px] space-y-1">
+                          <span className="font-bold uppercase block text-rose-700 dark:text-rose-400">
+                            Last error:
+                          </span>
+                          <p>{step.error}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Status footer summary */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px] text-slate-400">
+                <span>
+                  {healthTesting 
+                    ? 'Running end-to-end trace...' 
+                    : healthResults.every(r => r.status === 'success') 
+                      ? '✓ All pipeline phases are operational.' 
+                      : healthResults.some(r => r.status === 'error') 
+                        ? '✕ Pipeline errors detected. Check failure logs.' 
+                        : 'System idle. Trigger verification above.'
+                  }
+                </span>
+                <span className="font-mono">
+                  Test student identity: HEALTH_TEST_BOT
+                </span>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODALS */}
       {showImportModal && (
         <ImportQuizModal
@@ -738,7 +1580,13 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
       {selectedSubmissionForReview && (
         <QuizSubmissionReview
           submission={selectedSubmissionForReview}
-          questions={quizzes.find(q => q.id === selectedSubmissionForReview.quizId)?.questions}
+          questions={(() => {
+            const quiz = quizzes.find(q => q.id === selectedSubmissionForReview.quizId);
+            if (!quiz) return [];
+            if (quiz.currentVersionId === selectedSubmissionForReview.quizVersionId) return quiz.questions;
+            const historical = quiz.versionHistory?.find(v => `ver_${quiz.id}_v${v.version}` === selectedSubmissionForReview.quizVersionId);
+            return historical ? historical.questions : quiz.questions;
+          })()}
           onClose={() => setSelectedSubmissionForReview(null)}
           onSaveFeedback={(subId, feedback, score, updatedSub) => {
             quizManager.updateTeacherFeedback(subId, feedback, score, updatedSub);

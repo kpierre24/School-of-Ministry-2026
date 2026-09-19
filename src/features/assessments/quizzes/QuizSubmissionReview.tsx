@@ -361,7 +361,7 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Itemized Responses & Reflection Rubrics</h4>
             
             {responses.map((resp, i) => {
-              const relatedQ = questions.find(q => q.id === resp.questionId);
+              const relatedQ = questions.find(q => q.id === resp.questionId && (q as any).quizVersionId === submission.quizVersionId) || questions.find(q => q.id === resp.questionId);
               const isParagraph = (relatedQ?.type === 'paragraph') || (resp.textAnswer && resp.textAnswer.length > 5 && !resp.selectedOptionId);
               const words = getWordCount(resp.textAnswer);
               const qWeight = relatedQ?.weight || resp.pointsEarned || 10;

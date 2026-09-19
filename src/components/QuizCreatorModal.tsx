@@ -348,6 +348,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
     // Prepare version tracking
     let finalVersion = source?.version || 1;
     let finalHistory = source?.versionHistory || [];
+    const quizId = source?.id || `quiz_${Date.now()}`;
 
     const isPreviouslyPublished = source?.isPublished || source?.status === 'published';
     const hasModifications = isPreviouslyPublished && (
@@ -367,9 +368,11 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
       finalHistory = [...finalHistory, historyRecord];
     }
 
+    const currentVersionId = `ver_${quizId}_v${finalVersion}`;
+
     // Prepare full QuizAssignment package
     const finalQuiz: QuizAssignment = {
-      id: source?.id || `quiz_${Date.now()}`,
+      id: quizId,
       title,
       courseCode,
       moduleTrack,
@@ -385,6 +388,7 @@ export const QuizCreatorModal: React.FC<QuizCreatorModalProps> = ({
       shareCode,
       timeLimitMinutes,
       version: finalVersion,
+      currentVersionId,
       versionHistory: finalHistory,
       settings: {
         ...settings,

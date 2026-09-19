@@ -1452,13 +1452,15 @@ export function usePortalState() {
         {
           studentName: submission.studentName,
           studentEmail: submission.studentEmail,
-          responses: responsesPayload,
-          rawResponses: responsesPayload,
+          responses: submission.responses, // Pass full QuizSubmissionResponse[] with version IDs
+          rawResponses: responsesPayload,  // Keep flattened for backward compatibility if needed
           timeSpentSeconds: submission.timeSpentSeconds,
           quizId: submission.quizId,
+          quizVersionId: submission.quizVersionId, // Pass the specific version ID
           score: submission.score,
           totalPossible: submission.totalPossible,
-          percentage: submission.percentage
+          percentage: submission.percentage,
+          attemptId: (submission as any).attemptId
         }
       );
       showToast('success', 'Quiz Response Recorded', 'Your submission has been captured in HTEIM School of Ministry.');
@@ -1539,12 +1541,19 @@ export function usePortalState() {
           return normalizeStudentName(rCanon) === studentNorm || normalizeStudentName(rRaw) === studentNorm;
         });
 
+        const studentSubmissions = submissions.filter(sub => {
+          const subName = (sub.studentName || '').toLowerCase().trim();
+          const subCanon = resolveCanonical(subName);
+          return normalizeStudentName(subCanon) === studentNorm || normalizeStudentName(subName) === studentNorm;
+        });
+
         let attended = 0;
         let total = 0;
         let totalScorePct = 0;
         let scoredLessons = 0;
         const attendanceByDay: Record<string, { present: boolean; timestamp?: string; score?: string }> = {};
 
+        // 1. Process attendance records (including Google Sheets quizzes)
         effectiveClassDays.forEach(day => {
           const normDayId = (day.id || '').toLowerCase().trim();
           const normDayName = (day.name || '').toLowerCase().trim();
@@ -1616,6 +1625,20 @@ export function usePortalState() {
           total++;
         });
 
+        // 2. Process assignments & quizzes from submissions list
+        studentSubmissions.forEach(sub => {
+          if (sub.score !== undefined) {
+            const matchingAsg = customAssignments.find(a => a.id === sub.assignmentId);
+            const maxPoints = matchingAsg ? matchingAsg.maxPoints : (sub.maxScore || sub.maxPoints || 100);
+            const pct = Math.round((sub.score / maxPoints) * 100);
+            totalScorePct += pct;
+            scoredLessons++;
+          } else if (sub.percentage !== undefined) {
+            totalScorePct += sub.percentage;
+            scoredLessons++;
+          }
+        });
+
         const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
         const levelId = studentLevels[name] || getDefaultLevelForStudent(name);
         const avgScore = scoredLessons > 0 ? Math.round(totalScorePct / scoredLessons) : (attended > 0 ? rate : null);
@@ -1646,7 +1669,7 @@ export function usePortalState() {
       });
 
     return studentList;
-  }, [records, effectiveClassDays, deletedStudentNames, studentLevels]);
+  }, [records, effectiveClassDays, deletedStudentNames, studentLevels, submissions, customAssignments]);
 
   const classDayStats = useMemo(() => {
     const stats: Record<string, { count: number; percentage: number }> = {};

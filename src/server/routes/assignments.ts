@@ -115,6 +115,7 @@ assignmentsRouter.post("/public/quiz/:shareCode/submit", async (req: Request, re
     const submission = await assignmentsService.submitPublicQuizResponse(
       shareCode || quizId,
       {
+        ...req.body,
         studentName: studentName.trim(),
         studentEmail: studentEmail?.trim() || "",
         responses,
@@ -430,3 +431,59 @@ assignmentsRouter.post(
     }
   }
 );
+
+/**
+ * GET /api/assignments/reconciliation
+ * Retrieves data integrity and assessment diagnostics report.
+ */
+assignmentsRouter.get(
+  "/reconciliation",
+  requireAuth,
+  requirePermission(["assignments:read", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const actorUser = req.user!;
+      const allowedRoles = ["super_admin", "admin", "teacher", "lecturer", "registrar"];
+      if (!allowedRoles.includes(actorUser.role)) {
+        return res.status(403).json({ error: "Access denied: Staff clearance required." });
+      }
+
+      const diagnostics = await assignmentsService.getReconciliationDiagnostics();
+      return res.status(200).json(diagnostics);
+    } catch (err: any) {
+      logger.error("GET /api/assignments/reconciliation error:", err);
+      return res.status(500).json({ error: err.message || "Failed to fetch reconciliation diagnostics" });
+    }
+  }
+);
+
+/**
+ * POST /api/assignments/reconciliation/repair
+ * Runs selected automated reconciliation repairs.
+ */
+assignmentsRouter.post(
+  "/reconciliation/repair",
+  requireAuth,
+  requirePermission(["grades:write", "all:access"]),
+  async (req: Request, res: Response) => {
+    try {
+      const { repairTypes } = req.body;
+      const actorUser = req.user!;
+      const allowedRoles = ["super_admin", "admin", "teacher", "lecturer", "registrar"];
+      if (!allowedRoles.includes(actorUser.role)) {
+        return res.status(403).json({ error: "Access denied: Staff clearance required." });
+      }
+
+      if (!Array.isArray(repairTypes) || repairTypes.length === 0) {
+        return res.status(400).json({ error: "repairTypes must be a non-empty array of strings." });
+      }
+
+      const result = await assignmentsService.runReconciliationRepairs(repairTypes, actorUser);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      logger.error("POST /api/assignments/reconciliation/repair error:", err);
+      return res.status(500).json({ error: err.message || "Failed to execute reconciliation repairs" });
+    }
+  }
+);
+

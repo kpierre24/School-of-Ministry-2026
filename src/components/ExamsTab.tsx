@@ -640,6 +640,46 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       return [newAssignmentSub, ...filtered];
     });
 
+    // Authoritative Server-side Database submission so it appears in the teacher interface and saves state
+    try {
+      const publicQuizShareCode = matchingAsg?.quizData?.shareCode || (matchingAsg as any)?.shareCode || submission.shareCode || submission.quizId;
+
+      const rawRes = (submission as any).rawResponses || {};
+      let responsesPayload: Record<string, any> = {};
+      if (rawRes && typeof rawRes === 'object' && !Array.isArray(rawRes)) {
+        responsesPayload = rawRes;
+      } else if (Array.isArray(submission.responses)) {
+        submission.responses.forEach(r => {
+          if (r && r.questionId) {
+            const val = r.selectedOptionId ?? r.selectedOptionIds ?? r.textAnswer;
+            if (val !== undefined) {
+              responsesPayload[r.questionId] = val;
+            }
+          }
+        });
+      }
+
+      portalApi.submitPublicQuizResponse(
+        publicQuizShareCode,
+        {
+          studentName: submission.studentName,
+          studentEmail: submission.studentEmail,
+          responses: responsesPayload,
+          rawResponses: responsesPayload,
+          timeSpentSeconds: submission.timeSpentSeconds,
+          quizId: submission.quizId,
+          score: submission.score,
+          totalPossible: submission.totalPossible,
+          percentage: submission.percentage,
+          attemptId: (submission as any).attemptId
+        }
+      ).catch(e => {
+        console.warn('Server sync notice for authenticated quiz submission:', e);
+      });
+    } catch (err) {
+      console.warn('Could not submit quiz response to server database:', err);
+    }
+
     // Automatically sync into attendance records so the gradebook matrix updates in real-time
     if (setRecords) {
       const quizTitle = matchingAsg?.title || '';
@@ -2764,7 +2804,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     ))}
                     {customAssignments.map((asg, aIdx) => (
                       <th key={`asg-head-${asg.id}-${aIdx}`} className="p-3 text-center min-w-[140px] sm:min-w-[150px] sticky top-0 z-20 bg-indigo-50/95 text-indigo-900 border-b border-indigo-200 shadow-2xs" title={asg.title}>
-                        {asg.title} ({asg.maxPoints} pts)
+                        <div className="text-[10px] uppercase font-black text-indigo-400 mb-0.5 tracking-widest">
+                          {asg.type === 'quiz' ? 'Created Quiz' : 'Assignment'}
+                        </div>
+                        <div className="text-xs truncate max-w-[130px] mx-auto font-bold">
+                          {asg.title} ({asg.maxPoints} pts)
+                        </div>
                       </th>
                     ))}
                     <th className="p-3 text-center min-w-[90px] sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">Overall Avg</th>
@@ -3672,10 +3717,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Question Item Analytics ({activeCollatingQuiz.quizData.questions.length} Questions)</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeCollatingQuiz.quizData.questions.map((q, idx) => {
-                    const quizSubs = quizSubmissionsList.filter(s => s.quizId === activeCollatingQuiz.quizData!.id);
+                    const currentVerId = activeCollatingQuiz.quizData!.currentVersionId || `ver_${activeCollatingQuiz.quizData!.id}_v1`;
+                    const quizSubs = quizSubmissionsList.filter(s => s.quizId === activeCollatingQuiz.quizData!.id && (s.quizVersionId === currentVerId || (!s.quizVersionId && currentVerId.endsWith('_v1'))));
                     const correctCount = quizSubs.filter(s => {
-                      const resp = s.responses.find(r => r.questionId === q.id);
-                      return resp && resp.selectedOptionId === q.correctOptionId;
+                      const resp = s.responses.find(r => r.questionId === q.id && (r.quizVersionId === currentVerId || (!r.quizVersionId && currentVerId.endsWith('_v1'))));
+                      return resp && resp.isCorrect;
                     }).length;
                     const correctPct = quizSubs.length > 0 ? Math.round((correctCount / quizSubs.length) * 100) : 0;
 
@@ -3709,7 +3755,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-extrabold text-[10px] uppercase">
                         <th className="p-3 sticky top-0 left-0 z-30 bg-slate-100 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px]">Student Name</th>
-                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[120px]">Submitted At</th>
+                        <th className="p-3 sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[120px]">Version / Submitted</th>
                         <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[90px]">Tally Score</th>
                         <th className="p-3 text-center sticky top-0 z-20 bg-slate-100 border-b border-slate-200 min-w-[70px]">Pct</th>
                         {activeCollatingQuiz.quizData.questions.map((q, i) => (
@@ -3723,18 +3769,30 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                         .map(sub => (
                           <tr key={sub.id} className="group hover:bg-slate-50 transition-colors">
                             <td className="p-3 font-bold text-slate-900 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] truncate max-w-[160px]">{sub.studentName}</td>
-                            <td className="p-3 text-slate-500 font-mono text-[11px] border-b border-slate-100">{sub.submittedAt}</td>
+                            <td className="p-3 text-slate-500 font-mono text-[11px] border-b border-slate-100">
+                              <span className="block text-[9px] font-black text-indigo-600 uppercase mb-0.5">
+                                {sub.quizVersionId ? sub.quizVersionId.split('_').pop() : 'v1'}
+                              </span>
+                              {sub.submittedAt}
+                            </td>
                             <td className="p-3 text-center font-mono font-bold text-indigo-700 border-b border-slate-100">{sub.score} / {sub.totalPossible}</td>
                             <td className="p-3 text-center font-mono font-extrabold text-emerald-700 border-b border-slate-100">{sub.percentage}%</td>
                             {activeCollatingQuiz.quizData!.questions.map(q => {
-                              const resp = sub.responses.find(r => r.questionId === q.id);
-                              const isCorrect = resp?.selectedOptionId === q.correctOptionId;
+                              const currentVerId = activeCollatingQuiz.quizData!.currentVersionId || `ver_${activeCollatingQuiz.quizData!.id}_v1`;
+                              const resp = sub.responses.find(r => r.questionId === q.id && (r.quizVersionId === currentVerId || (!r.quizVersionId && currentVerId.endsWith('_v1'))));
+                              const isCorrect = resp?.isCorrect;
+                              const isMismatchedVersion = sub.quizVersionId !== currentVerId && !(sub.quizVersionId === undefined && currentVerId.endsWith('_v1'));
+                              
                               return (
-                                <td key={q.id} className="p-3 text-center border-b border-slate-100">
-                                  {isCorrect ? (
-                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">✓ Correct</span>
+                                <td key={q.id} className={`p-3 text-center border-b border-slate-100 ${isMismatchedVersion ? 'opacity-40 grayscale' : ''}`}>
+                                  {resp ? (
+                                    isCorrect ? (
+                                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">✓ Correct</span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">✕ Incorrect</span>
+                                    )
                                   ) : (
-                                    <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">✕ Incorrect</span>
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-[10px] font-bold rounded italic">N/A</span>
                                   )}
                                 </td>
                               );

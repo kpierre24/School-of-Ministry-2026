@@ -74,6 +74,8 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   // Attempt tracking
   const [attemptCount, setAttemptCount] = useState(1);
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [pinnedQuiz, setPinnedQuiz] = useState<QuizAssignment>(quiz);
+  const [pinnedQuizVersionId, setPinnedQuizVersionId] = useState<string | null>(null);
 
   // Auto-save & draft restoration state
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
@@ -102,11 +104,11 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   const [displayedQuestions, setDisplayedQuestions] = useState<QuizQuestion[]>([]);
 
   useEffect(() => {
-    let qList = [...quiz.questions];
-    if (quiz.settings?.shuffleQuestions) {
+    let qList = [...pinnedQuiz.questions];
+    if (pinnedQuiz.settings?.shuffleQuestions) {
       qList = qList.sort(() => Math.random() - 0.5);
     }
-    if (quiz.settings?.shuffleOptions) {
+    if (pinnedQuiz.settings?.shuffleOptions) {
       qList = qList.map(q => {
         if (q.type === 'multiple_choice' || q.type === 'checkboxes') {
           return {
@@ -118,7 +120,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
       });
     }
     setDisplayedQuestions(qList);
-  }, [quiz]);
+  }, [pinnedQuiz]);
 
   // Load draft or previous submission
   useEffect(() => {
@@ -158,6 +160,12 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
       studentEmail: studentEmail
     }).then(res => {
       if (res?.attemptId) setAttemptId(res.attemptId);
+      if (res?.quizSnapshot) {
+        setPinnedQuiz(res.quizSnapshot);
+      }
+      if (res?.quizVersionId) {
+        setPinnedQuizVersionId(res.quizVersionId);
+      }
     }).catch(err => {
       console.warn('Notice initializing server quiz attempt:', err);
     });
@@ -275,7 +283,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
       }
     });
 
-    if (quiz.settings?.collectStudentEmail && !studentEmail.trim()) {
+    if (pinnedQuiz.settings?.collectStudentEmail && !studentEmail.trim()) {
       errors.push('Please provide your student email address.');
     }
 
@@ -294,16 +302,18 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
     try {
       // 1. Calculate local preview grade
       const localSubmission = gradeQuizSubmission(
-        quiz,
+        pinnedQuiz,
         responses,
         effectiveStudentName,
         studentEmail,
         timeSpentSeconds
       );
       localSubmission.attemptNumber = attemptCount;
-      localSubmission.quizTitle = quiz.title;
+      localSubmission.quizTitle = pinnedQuiz.title;
       (localSubmission as any).rawResponses = responses;
-      (localSubmission as any).shareCode = quiz.shareCode || quiz.id;
+      (localSubmission as any).shareCode = pinnedQuiz.shareCode || pinnedQuiz.id;
+      (localSubmission as any).quizVersionId = pinnedQuizVersionId;
+      (localSubmission as any).attemptId = attemptId;
 
       let finalSubmission = localSubmission;
 
@@ -377,6 +387,11 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                 <span className="text-[10px] font-bold bg-amber-400/20 text-amber-200 px-2 py-0.5 rounded-full border border-amber-400/30">
                   {quiz.totalPoints || 100} Total Points
                 </span>
+                {pinnedQuizVersionId && (
+                  <span className="text-[10px] font-mono font-bold bg-emerald-400/20 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-400/30">
+                    Version: {pinnedQuizVersionId.replace(`ver_${quiz.id}_v`, 'v')}
+                  </span>
+                )}
               </div>
               <h1 className="text-lg sm:text-xl font-black tracking-tight truncate">
                 {quiz.title}
@@ -552,7 +567,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     <User className="w-3.5 h-3.5" /> Student Examination Profile
                   </span>
                   <span className="text-[11px] text-slate-500">
-                    Attempt #{attemptCount} {quiz.settings?.maxAttempts ? `of ${quiz.settings.maxAttempts}` : ''}
+                    Attempt #{attemptCount} {pinnedQuiz.settings?.maxAttempts ? `of ${pinnedQuiz.settings.maxAttempts}` : ''}
                   </span>
                 </div>
 
@@ -591,7 +606,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     )}
                   </div>
 
-                  {quiz.settings?.collectStudentEmail && (
+                  {pinnedQuiz.settings?.collectStudentEmail && (
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Student Email (For Grade Dispatch) <span className="text-rose-500">*</span>
@@ -875,7 +890,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
               
               {/* Score Banner */}
               <div className={`p-6 rounded-2xl border-2 text-white shadow-xl relative overflow-hidden ${
-                submissionResult.percentage >= (quiz.settings?.passingScorePercentage || 75)
+                submissionResult.percentage >= (pinnedQuiz.settings?.passingScorePercentage || 75)
                   ? 'bg-gradient-to-br from-emerald-700 via-teal-800 to-emerald-950 border-emerald-500'
                   : 'bg-gradient-to-br from-amber-700 via-rose-800 to-rose-950 border-rose-500'
               }`}>
@@ -900,7 +915,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                       {submissionResult.studentName}
                     </h2>
                     <p className="text-xs text-emerald-100 opacity-90 max-w-lg">
-                      {submissionResult.percentage >= (quiz.settings?.passingScorePercentage || 75)
+                      {submissionResult.percentage >= (pinnedQuiz.settings?.passingScorePercentage || 75)
                         ? 'Congratulations! You have satisfied the HTEIM curriculum academic threshold for this module.'
                         : 'Review the answer key and biblical commentary below to master this topic.'}
                     </p>
@@ -951,7 +966,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
                     <span>Print Score Slip</span>
                   </button>
 
-                  {(quiz.settings?.allowMultipleAttempts ?? true) && (
+                  {(pinnedQuiz.settings?.allowMultipleAttempts ?? true) && (
                     <button
                       onClick={handleRetakeQuiz}
                       className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-xs"

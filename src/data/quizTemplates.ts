@@ -307,6 +307,7 @@ export function gradeQuizSubmission(
   studentEmail?: string,
   timeSpentSeconds?: number
 ): QuizSubmission {
+  const currentVerId = quiz.currentVersionId || `ver_${quiz.id}_v1`;
   const submissionResponses = quiz.questions.map((q) => {
     const rawVal = responses[q.id];
     let isCorrect = false;
@@ -319,6 +320,7 @@ export function gradeQuizSubmission(
       pointsEarned = isCorrect ? weight : 0;
 
       return {
+        quizVersionId: currentVerId,
         questionId: q.id,
         selectedOptionId: selectedOptId,
         isCorrect,
@@ -338,6 +340,7 @@ export function gradeQuizSubmission(
       pointsEarned = isCorrect ? weight : 0;
 
       return {
+        quizVersionId: currentVerId,
         questionId: q.id,
         selectedOptionIds: selectedOptIds,
         isCorrect,
@@ -387,6 +390,7 @@ export function gradeQuizSubmission(
       }
 
       return {
+        quizVersionId: currentVerId,
         questionId: q.id,
         textAnswer: originalText,
         isCorrect,
@@ -400,6 +404,7 @@ export function gradeQuizSubmission(
       const hasContent = textVal.length > 5;
       
       return {
+        quizVersionId: currentVerId,
         questionId: q.id,
         textAnswer: textVal,
         isCorrect: false, // essay is false (pending review) under advanced auto-grading
@@ -410,6 +415,7 @@ export function gradeQuizSubmission(
     }
 
     return {
+      quizVersionId: currentVerId,
       questionId: q.id,
       selectedOptionId: typeof rawVal === 'string' ? rawVal : '',
       isCorrect: false,
@@ -425,6 +431,7 @@ export function gradeQuizSubmission(
   return {
     id: `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     quizId: quiz.id,
+    quizVersionId: currentVerId,
     shareCode: quiz.shareCode || quiz.id,
     quizTitle: quiz.title,
     studentName,

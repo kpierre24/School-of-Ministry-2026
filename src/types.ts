@@ -404,15 +404,19 @@ export type QuizGradeCalculation = 'highest' | 'latest' | 'average' | 'first';
 export type QuizAttemptStatus =
   | 'NOT_STARTED'
   | 'IN_PROGRESS'
+  | 'SUBMITTING'
   | 'SUBMITTED'
   | 'AUTO_SUBMITTED'
   | 'ABANDONED'
   | 'GRADED'
-  | 'RELEASED';
+  | 'RELEASED'
+  | 'EXPIRED';
 
 export type QuizAttempt = {
   id: string;
   quizId: string;
+  quizVersionId?: string;
+  shareCode?: string;
   studentId: string;
   studentName: string;
   studentEmail?: string;
@@ -423,6 +427,7 @@ export type QuizAttempt = {
   status: QuizAttemptStatus;
   lastSavedAt: string; // ISO String
   responses: QuizSubmissionResponse[];
+  rawResponses?: Record<string, any>;
   score?: number;
   maxPoints?: number;
   scorePercentage?: number;
@@ -430,6 +435,11 @@ export type QuizAttempt = {
   feedbackGiven?: boolean;
   instructorFeedback?: string;
   isReleased?: boolean;
+  gradingStatus?: 'auto_graded' | 'teacher_reviewed' | 'moderated' | 'released';
+  autoScore?: number;
+  teacherScore?: number;
+  manualAdjustmentPoints?: number;
+  manualAdjustmentReason?: string;
 };
 
 export interface QuizPoolConfig {
@@ -489,11 +499,13 @@ export type QuizAssignment = {
   category?: string;
   sectionHeaders?: { id: string; title: string; description?: string; afterQuestionIndex: number }[];
   version?: number; // starts at 1
+  currentVersionId?: string;
   versionHistory?: { version: number; updatedAt: string; questions: QuizQuestion[]; changeLog?: string }[];
 };
 
 export type QuizSubmissionResponse = {
   questionId: string;
+  quizVersionId?: string;
   selectedOptionId?: string;
   selectedOptionIds?: string[];
   textAnswer?: string;
@@ -518,6 +530,7 @@ export type QuizSubmissionResponse = {
 export type QuizSubmission = {
   id: string;
   quizId: string;
+  quizVersionId?: string;
   shareCode?: string;
   quizTitle?: string;
   studentName: string;
