@@ -47,6 +47,7 @@ function createMockSupabase() {
           return builder;
         }),
         is: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
         upsert: vi.fn(async () => ({ data: null, error: null })),
         insert: vi.fn(async () => ({ data: null, error: null })),
         maybeSingle: vi.fn(async () => {

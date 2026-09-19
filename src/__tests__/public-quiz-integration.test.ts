@@ -13,7 +13,8 @@ vi.mock('../server/services/supabaseServer', () => {
         or: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
-        order: vi.fn().mockImplementation(() => {
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockImplementation(() => {
           if (table === 'quiz_submissions') {
             return Promise.resolve({
               data: mockExistingSubmissions.data,

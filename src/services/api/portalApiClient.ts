@@ -14,7 +14,23 @@ import { getAuthHeaders } from '../../lib/rbacClient';
 const API_BASE = '/api';
 
 async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
+  let url = `${API_BASE}${endpoint}`;
+
+  // Fix: Handle relative URLs in Node.js/Test environments (Vitest/undici)
+  if (!url.startsWith('http')) {
+    const windowOrigin = typeof window !== 'undefined' && window.location?.origin;
+    const isValidOrigin = windowOrigin && 
+                         windowOrigin !== 'null' && 
+                         windowOrigin !== 'about:blank' && 
+                         windowOrigin.trim().length > 0;
+    
+    const base = isValidOrigin ? windowOrigin : 'http://localhost:3000';
+    
+    // Ensure we don't end up with http://localhost:3000//api...
+    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    url = `${cleanBase}${cleanPath}`;
+  }
 
   // Attach authoritative Firebase ID Token in Authorization header if available
   const authHeaders: Record<string, string> = {};

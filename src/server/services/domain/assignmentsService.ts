@@ -1447,6 +1447,32 @@ export const assignmentsService = {
     const quizTitle = finalQuiz.title || 'Assessment';
     const cleanStudentName = (payload.studentName || attempt?.student_name || '').trim();
 
+    // 1.5 Anti-Spam / Rate Limit & Multiple Attempt Check
+    if (attemptId && (attempt?.status === 'submitted' || attempt?.status === 'graded')) {
+      throw new Error('This quiz attempt has already been submitted.');
+    }
+
+    try {
+      const { data: existingSubmissions } = await supabase
+        .from('quiz_submissions')
+        .select('id, submitted_at')
+        .eq('quiz_id', quizId)
+        .ilike('student_name', cleanStudentName)
+        .order('submitted_at', { ascending: false })
+        .limit(1);
+
+      if (existingSubmissions && existingSubmissions.length > 0) {
+        const lastSub = existingSubmissions[0];
+        const diff = Date.now() - new Date(lastSub.submitted_at).getTime();
+        if (diff < 30000) {
+          throw new Error('Duplicate submission detected. Please wait at least 30 seconds between attempts.');
+        }
+      }
+    } catch (spamErr: any) {
+      if (spamErr.message?.includes('Duplicate submission detected')) throw spamErr;
+      // Other DB errors in spam check shouldn't block submission
+    }
+
     if (!cleanStudentName || cleanStudentName.length < 2) {
       throw new Error('A valid Student Name is required.');
     }
