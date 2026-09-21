@@ -3,32 +3,27 @@
  * including Google Drive shared video links, YouTube embeds, Vimeo, Loom, and direct streams.
  */
 
-export function extractGoogleDriveFileId(url: string): string | null {
-  if (!url) return null;
-  const trimmed = url.trim();
-  
-  // Standard Google Drive file URL patterns:
-  // https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-  // https://drive.google.com/open?id=FILE_ID
-  // https://drive.google.com/uc?id=FILE_ID
-  // https://docs.google.com/file/d/FILE_ID/edit
-  const match = trimmed.match(/(?:drive\.google\.com\/(?:file\/(?:u\/\d+\/)?d\/|open\?id=|uc\?id=)|docs\.google\.com\/.*\/d\/)([a-zA-Z0-9_-]{20,})/i);
-  if (match && match[1]) {
-    return match[1];
-  }
+import {
+  normalizeUrl,
+  extractYouTubeId,
+  extractVimeoId,
+  extractGoogleDriveId,
+  extractLoomId,
+  NormalizedUrlResult,
+  VideoProvider
+} from '../features/library/utils/urlNormalizer';
 
-  // Check query parameter id=...
-  const queryMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{20,})/i);
-  if (queryMatch && queryMatch[1]) {
-    return queryMatch[1];
-  }
-  
-  // Check if raw alphanumeric file ID
-  if (/^[a-zA-Z0-9_-]{25,60}$/.test(trimmed)) {
-    return trimmed;
-  }
-  
-  return null;
+export {
+  normalizeUrl,
+  extractYouTubeId,
+  extractVimeoId,
+  extractGoogleDriveId,
+  extractLoomId
+};
+export type { NormalizedUrlResult, VideoProvider };
+
+export function extractGoogleDriveFileId(url: string): string | null {
+  return extractGoogleDriveId(url);
 }
 
 export function getGoogleDriveEmbedUrl(fileId: string): string {
@@ -44,16 +39,7 @@ export function getGoogleDriveViewUrl(fileId: string): string {
 }
 
 export function extractYouTubeVideoId(url: string): string | null {
-  if (!url) return null;
-  const trimmed = url.trim();
-  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/i);
-  if (match && match[1]) return match[1];
-
-  // Additional check for query parameter ?v=... anywhere in URL
-  const vMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
-  if (vMatch && vMatch[1]) return vMatch[1];
-
-  return null;
+  return extractYouTubeId(url);
 }
 
 export function getYouTubeEmbedUrl(videoId: string, nocookie = true): string {
@@ -66,9 +52,7 @@ export function getYouTubeWatchUrl(videoId: string): string {
 }
 
 export function extractVimeoVideoId(url: string): string | null {
-  if (!url) return null;
-  const match = url.trim().match(/(?:vimeo\.com\/)(\d+)/i);
-  return match && match[1] ? match[1] : null;
+  return extractVimeoId(url);
 }
 
 export function getVimeoEmbedUrl(videoId: string): string {
@@ -76,9 +60,7 @@ export function getVimeoEmbedUrl(videoId: string): string {
 }
 
 export function extractLoomVideoId(url: string): string | null {
-  if (!url) return null;
-  const match = url.trim().match(/(?:loom\.com\/(?:share|embed)\/)([a-zA-Z0-9_-]+)/i);
-  return match && match[1] ? match[1] : null;
+  return extractLoomId(url);
 }
 
 export function getLoomEmbedUrl(videoId: string): string {
@@ -114,14 +96,15 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     };
   }
 
-  const gdriveId = extractGoogleDriveFileId(url);
-  if (gdriveId) {
+  const normalized = normalizeUrl(url);
+
+  if (normalized.provider === 'gdrive' && normalized.externalId) {
     return {
       type: 'gdrive',
-      fileId: gdriveId,
-      embedUrl: getGoogleDriveEmbedUrl(gdriveId),
-      proxyStreamUrl: getGoogleDriveDirectStreamUrl(gdriveId),
-      directWatchUrl: getGoogleDriveViewUrl(gdriveId),
+      fileId: normalized.externalId,
+      embedUrl: normalized.embedUrl || getGoogleDriveEmbedUrl(normalized.externalId),
+      proxyStreamUrl: getGoogleDriveDirectStreamUrl(normalized.externalId),
+      directWatchUrl: normalized.canonicalUrl,
       originalUrl: url,
       isDrive: true,
       isYouTube: false,
@@ -130,14 +113,13 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     };
   }
 
-  const youtubeId = extractYouTubeVideoId(url);
-  if (youtubeId) {
+  if (normalized.provider === 'youtube' && normalized.externalId) {
     return {
       type: 'youtube',
-      fileId: youtubeId,
-      embedUrl: getYouTubeEmbedUrl(youtubeId, true), // no-cookie host by default
-      standardEmbedUrl: getYouTubeEmbedUrl(youtubeId, false),
-      directWatchUrl: getYouTubeWatchUrl(youtubeId),
+      fileId: normalized.externalId,
+      embedUrl: normalized.embedUrl || getYouTubeEmbedUrl(normalized.externalId, true),
+      standardEmbedUrl: getYouTubeEmbedUrl(normalized.externalId, false),
+      directWatchUrl: normalized.canonicalUrl,
       originalUrl: url,
       isDrive: false,
       isYouTube: true,
@@ -146,12 +128,11 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     };
   }
 
-  const vimeoId = extractVimeoVideoId(url);
-  if (vimeoId) {
+  if (normalized.provider === 'vimeo' && normalized.externalId) {
     return {
       type: 'vimeo',
-      fileId: vimeoId,
-      embedUrl: getVimeoEmbedUrl(vimeoId),
+      fileId: normalized.externalId,
+      embedUrl: normalized.embedUrl || getVimeoEmbedUrl(normalized.externalId),
       originalUrl: url,
       isDrive: false,
       isYouTube: false,
@@ -160,12 +141,11 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     };
   }
 
-  const loomId = extractLoomVideoId(url);
-  if (loomId) {
+  if (normalized.provider === 'loom' && normalized.externalId) {
     return {
       type: 'loom',
-      fileId: loomId,
-      embedUrl: getLoomEmbedUrl(loomId),
+      fileId: normalized.externalId,
+      embedUrl: normalized.embedUrl || getLoomEmbedUrl(normalized.externalId),
       originalUrl: url,
       isDrive: false,
       isYouTube: false,
@@ -184,4 +164,5 @@ export function parseVideoMediaUrl(url: string): ParsedVideoMedia {
     isLoom: false,
   };
 }
+
 

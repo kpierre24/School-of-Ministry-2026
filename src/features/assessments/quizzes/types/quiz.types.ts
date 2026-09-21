@@ -156,65 +156,38 @@ export interface QuizAssignmentTarget {
 }
 
 export interface QuizResponse {
-  id?: string;
-  attemptId?: string;
   questionId: string;
   answer?: any;
   selectedOptionId?: string;
   selectedOptionIds?: string[];
   textAnswer?: string;
   savedAt?: string;
-  autoScore: number;
+  autoScore?: number;
   teacherScore?: number;
-  finalScore: number;
+  finalScore?: number;
   gradingStatus?: GradingStatus;
   teacherFeedback?: string;
   rubricEvaluation?: Record<string, number>;
   isCorrect?: boolean;
-  correctOptionId?: string; // Only returned to student if released/permitted
+  pointsEarned?: number; // legacy compatibility
+  correctOptionId?: string;
   correctOptionIds?: string[];
   acceptableAnswers?: string[];
   explanation?: string;
   feedbackCorrect?: string;
   feedbackIncorrect?: string;
+  quizVersionId?: string;
+  comment?: string;
+  instructorFeedback?: string;
 }
 
-export interface QuizAttempt {
-  id: string;
-  quizId: string;
-  quizVersionId: string;
-  assignmentId?: string;
-  studentId: string; // Stable UUID or external identifier
-  studentName: string;
-  studentEmail?: string;
-  isGuest?: boolean;
-  attemptNumber: number;
-  status: AttemptStatus;
-  startedAt: string; // ISO timestamp
-  expiresAt?: string; // Authoritative expiration ISO timestamp
-  submittedAt?: string;
-  lastSavedAt: string;
-  timeSpentSeconds: number;
-  autoSubmitted?: boolean;
-  score: number;
-  maxPoints: number;
-  percentage: number;
-  gradingStatus: GradingStatus;
-  releasedAt?: string;
-  responses: QuizResponse[];
-  feedback?: string;
-  teacherFeedback?: string;
-  moderatedBy?: string;
-  moderationReason?: string;
-  releasedBy?: string;
-  idempotencyKey?: string;
-}
+export type QuizSubmissionResponse = QuizResponse;
 
 export interface QuizGrade {
-  id: string;
-  attemptId: string;
-  quizId: string;
-  studentId: string;
+  id?: string;
+  attemptId?: string;
+  studentId?: string;
+  quizId?: string;
   autoScore: number;
   teacherScore?: number;
   moderatedScore?: number;
@@ -229,7 +202,50 @@ export interface QuizGrade {
   releasedBy?: string;
   releasedAt?: string;
   adjustmentReason?: string;
+  feedback?: string;
 }
+
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  quizVersionId: string;
+  assignmentId?: string;
+  shareCode?: string;
+  quizTitle?: string;
+  studentId?: string;
+  studentName: string;
+  studentEmail?: string;
+  attemptNumber?: number;
+  status: AttemptStatus | 'in_progress' | 'submitted' | 'graded' | 'released';
+  startedAt: string;
+  expiresAt?: string;
+  submittedAt?: string;
+  lastSavedAt?: string;
+  updatedAt?: string;
+  releasedAt?: string;
+  timeSpentSeconds: number;
+  autoSubmitted?: boolean;
+  responses: QuizResponse[];
+  grade?: QuizGrade;
+  // Denormalized fields for quick list views & analytics
+  score: number;
+  totalScore?: number;
+  maxPoints: number;
+  totalPossible?: number;
+  percentage: number;
+  scorePercentage?: number;
+  gradingStatus?: GradingStatus | 'auto_graded' | 'manual_review' | 'moderated';
+  teacherFeedback?: string;
+  feedback?: string;
+  feedbackGiven?: boolean;
+  manualAdjustmentPoints?: number;
+  manualAdjustmentReason?: string;
+  moderatorName?: string;
+  moderationReason?: string;
+  isReleased?: boolean;
+}
+
+export type QuizSubmission = QuizAttempt;
 
 export interface QuizAuditLog {
   id: string;

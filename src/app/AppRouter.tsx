@@ -290,6 +290,8 @@ export function AppRouter() {
 
       case 'library':
         return {
+          resources: state.libraryResources,
+          setResources: state.setLibraryResources,
           libraryResources: state.libraryResources,
           setLibraryResources: state.setLibraryResources,
           classroomMedia: state.classroomMedia,
@@ -299,6 +301,9 @@ export function AppRouter() {
           onOpenNotes: () => state.handleNavigate('notes'),
           onOpenInBible: () => state.handleNavigate('notes'),
           onOpenDiagnostics: state.appUser?.role === 'admin' ? () => state.setShowDiagnosticModal(true) : undefined,
+          courses: state.courses,
+          customAssignments: state.customAssignments,
+          onNavigateTab: (tab: string) => state.handleNavigate(tab as TabType),
         };
 
       case 'notes':

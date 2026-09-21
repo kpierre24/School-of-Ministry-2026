@@ -54,7 +54,7 @@ import {
 import { EmptyState } from './UXPrimitives';
 import { UserRole } from '../lib/userAuth';
 import { uploadToSupabaseStorage, syncAssignmentsFromSupabaseBucket } from '../lib/supabaseClient';
-import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment, QuizSubmission } from '../types';
+import { CustomAssignment, AssignmentSubmission, AppNotification, QuizAssignment, QuizAttempt } from '../types';
 import { generateGoogleCalendarUrl } from '../lib/calendarExport';
 import { QuizCreatorModal } from './QuizCreatorModal';
 import { QuizTakerView } from './QuizTakerView';
@@ -308,11 +308,14 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
   const [activeCollatingQuiz, setActiveCollatingQuiz] = useState<CustomAssignment | null>(null);
   const [copiedLinkToast, setCopiedLinkToast] = useState<string | null>(null);
 
-  // Stored Quiz Submissions List with persistence
-  const [quizSubmissionsList, setQuizSubmissionsList] = useState<QuizSubmission[]>(() => {
+  // Stored Quiz Attempts List with persistence
+  const [quizAttemptsList, setQuizAttemptsList] = useState<QuizAttempt[]>(() => {
     try {
-      const saved = localStorage.getItem('hteim_quiz_submissions');
+      const saved = localStorage.getItem('hteim_quiz_attempts');
       if (saved) return JSON.parse(saved);
+      // Migration from legacy key
+      const legacy = localStorage.getItem('hteim_quiz_submissions');
+      if (legacy) return JSON.parse(legacy);
     } catch {
       // ignore
     }
@@ -321,17 +324,17 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('hteim_quiz_submissions', JSON.stringify(quizSubmissionsList));
+      localStorage.setItem('hteim_quiz_attempts', JSON.stringify(quizAttemptsList));
     } catch {
       // ignore
     }
-  }, [quizSubmissionsList]);
+  }, [quizAttemptsList]);
 
-  // Listen for public quiz submissions submitted anywhere in the portal or across browser tabs
+  // Listen for public quiz attempts submitted anywhere in the portal or across browser tabs
   useEffect(() => {
     const handleQuizSubmitted = (e: any) => {
       if (e.detail && e.detail.id) {
-        setQuizSubmissionsList(prev => {
+        setQuizAttemptsList(prev => {
           const filtered = prev.filter(s => s.id !== e.detail.id);
           return [e.detail, ...filtered];
         });
@@ -339,11 +342,11 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     };
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'hteim_quiz_submissions' && e.newValue) {
+      if (e.key === 'hteim_quiz_attempts' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
-            setQuizSubmissionsList(parsed);
+            setQuizAttemptsList(parsed);
           }
         } catch {}
       }
@@ -357,10 +360,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     };
   }, []);
 
-  // Sync global submissions (which now includes quiz_submissions from the cloud) into local quizSubmissionsList
+  // Sync global submissions (which now includes quiz_attempts from the cloud) into local quizAttemptsList
   useEffect(() => {
     if (submissions && submissions.length > 0) {
-      setQuizSubmissionsList(prev => {
+      setQuizAttemptsList(prev => {
         const currentMap = new Map(prev.map(s => [s.id, s]));
         let modified = false;
 
@@ -372,14 +375,17 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             let responsesArray: any[] = [];
             
             if (matchingQuiz && sub.quizAnswers && !Array.isArray(sub.quizAnswers)) {
-              // Raw key-value mapping from the cloud API; re-grade to match QuizSubmissionResponse format
-              import('../data/quizTemplates').then(({ gradeQuizSubmission }) => {
-                 const graded = gradeQuizSubmission(matchingQuiz, sub.quizAnswers, sub.studentName || 'Student', sub.student?.email, sub.timeSpentSeconds);
+              // Raw key-value mapping from the cloud API; re-grade to match QuizResponse format
+              import('../data/quizTemplates').then(({ gradeQuizAttempt }) => {
+                 const graded = gradeQuizAttempt(matchingQuiz, sub.quizAnswers, sub.studentName || 'Student', sub.student?.email, sub.timeSpentSeconds);
                  graded.id = sub.id;
                  graded.quizTitle = matchingQuiz.title;
                  if (sub.score !== undefined && sub.score !== null) graded.score = sub.score;
-                 if (sub.percentage !== undefined && sub.percentage !== null) graded.percentage = sub.percentage;
-                 setQuizSubmissionsList(current => {
+                 if (sub.percentage !== undefined && sub.percentage !== null) {
+                    graded.scorePercentage = sub.percentage;
+                    graded.percentage = sub.percentage;
+                 }
+                 setQuizAttemptsList(current => {
                     const nextMap = new Map(current.map(s => [s.id, s]));
                     nextMap.set(sub.id, graded);
                     return Array.from(nextMap.values());
@@ -393,13 +399,18 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             currentMap.set(sub.id, {
               id: sub.id,
               quizId: sub.assignmentId,
+              quizVersionId: (sub as any).quizVersionId || matchingQuiz?.currentVersionId || 'v1',
               quizTitle: matchingQuiz?.title || (sub as any).quizTitle || (sub as any).assignmentTitle || 'Assessment',
               studentName: sub.studentName || 'Student',
               studentEmail: sub.student?.email || (sub as any).studentEmail || '',
+              status: (sub.status || 'submitted') as any,
+              startedAt: sub.submittedAt,
               submittedAt: sub.submittedAt,
+              updatedAt: sub.submittedAt,
               responses: responsesArray,
               score: sub.score ?? 0,
-              totalPossible: sub.maxPoints || sub.maxScore || 100,
+              maxPoints: sub.maxPoints || sub.maxScore || 100,
+              scorePercentage: sub.percentage || (sub.maxPoints ? Math.round(((sub.score || 0)/sub.maxPoints)*100) : 0),
               percentage: sub.percentage || (sub.maxPoints ? Math.round(((sub.score || 0)/sub.maxPoints)*100) : 0),
               timeSpentSeconds: sub.timeSpentSeconds || 0,
             });
@@ -611,45 +622,46 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     });
   };
 
-  const handleQuizSubmissionComplete = (submission: QuizSubmission) => {
+  const handleQuizSubmissionComplete = (attempt: QuizAttempt) => {
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
-    // Save into quizSubmissionsList
-    setQuizSubmissionsList(prev => [submission, ...prev]);
+    // Save into quizAttemptsList
+    setQuizAttemptsList(prev => [attempt, ...prev]);
 
     // Match quiz assignment maxPoints
-    const matchingAsg = customAssignments.find(a => a.quizData?.id === submission.quizId || a.id === submission.quizId);
-    const maxPoints = matchingAsg ? matchingAsg.maxPoints : submission.totalPossible;
+    const matchingAsg = customAssignments.find(a => a.quizData?.id === attempt.quizId || a.id === attempt.quizId);
+    const maxPoints = matchingAsg ? matchingAsg.maxPoints : (attempt.maxPoints || 100);
 
     // Convert into standard AssignmentSubmission so it updates student score matrix
     const newAssignmentSub: AssignmentSubmission = {
-      id: `SUB-${submission.id}`,
-      assignmentId: matchingAsg?.id || submission.quizId,
-      studentName: submission.studentName,
-      submittedAt: submission.submittedAt || nowStr,
-      score: submission.score,
-      studentFileName: `Quiz_AutoGraded_${submission.quizId}.json`,
-      studentNotes: `Completed Google Forms Class Day Quiz (${submission.percentage}% score). Correct tally: ${submission.score}/${submission.totalPossible} pts.`,
+      id: `SUB-${attempt.id}`,
+      assignmentId: matchingAsg?.id || attempt.quizId,
+      studentName: attempt.studentName,
+      submittedAt: attempt.submittedAt || nowStr,
+      score: attempt.score,
+      quizAttemptId: attempt.id,
+      studentFileName: `Quiz_AutoGraded_${attempt.quizId}.json`,
+      studentNotes: `Completed Class Day Quiz (${attempt.scorePercentage || 0}% score). Correct tally: ${attempt.score || 0}/${maxPoints} pts.`,
       status: 'Graded',
-      teacherFeedback: `Automated quiz tally: ${submission.score}/${submission.totalPossible} points (${submission.percentage}%). Completed on ${submission.submittedAt}.`,
+      teacherFeedback: `Automated quiz tally: ${attempt.score || 0}/${maxPoints} points (${attempt.scorePercentage || 0}%). Completed on ${attempt.submittedAt}.`,
       updatedAt: nowStr
     };
 
     setSubmissions(prev => {
-      const filtered = prev.filter(s => !(s.assignmentId === newAssignmentSub.assignmentId && (s?.studentName || '').toLowerCase().trim() === (submission?.studentName || '').toLowerCase().trim()));
+      const filtered = prev.filter(s => !(s.assignmentId === newAssignmentSub.assignmentId && (s?.studentName || '').toLowerCase().trim() === (attempt?.studentName || '').toLowerCase().trim()));
       return [newAssignmentSub, ...filtered];
     });
 
     // Authoritative Server-side Database submission so it appears in the teacher interface and saves state
     try {
-      const publicQuizShareCode = matchingAsg?.quizData?.shareCode || (matchingAsg as any)?.shareCode || submission.shareCode || submission.quizId;
+      const publicQuizShareCode = matchingAsg?.quizData?.shareCode || (matchingAsg as any)?.shareCode || attempt.shareCode || attempt.quizId;
 
-      const rawRes = (submission as any).rawResponses || {};
+      const rawRes = (attempt as any).rawResponses || {};
       let responsesPayload: Record<string, any> = {};
       if (rawRes && typeof rawRes === 'object' && !Array.isArray(rawRes)) {
         responsesPayload = rawRes;
-      } else if (Array.isArray(submission.responses)) {
-        submission.responses.forEach(r => {
+      } else if (Array.isArray(attempt.responses)) {
+        attempt.responses.forEach(r => {
           if (r && r.questionId) {
             const val = r.selectedOptionId ?? r.selectedOptionIds ?? r.textAnswer;
             if (val !== undefined) {
@@ -662,16 +674,16 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
       portalApi.submitPublicQuizResponse(
         publicQuizShareCode,
         {
-          studentName: submission.studentName,
-          studentEmail: submission.studentEmail,
+          studentName: attempt.studentName,
+          studentEmail: attempt.studentEmail,
           responses: responsesPayload,
           rawResponses: responsesPayload,
-          timeSpentSeconds: submission.timeSpentSeconds,
-          quizId: submission.quizId,
-          score: submission.score,
-          totalPossible: submission.totalPossible,
-          percentage: submission.percentage,
-          attemptId: (submission as any).attemptId
+          timeSpentSeconds: attempt.timeSpentSeconds,
+          quizId: attempt.quizId,
+          score: attempt.score,
+          totalPossible: attempt.maxPoints,
+          percentage: attempt.scorePercentage || attempt.percentage,
+          attemptId: (attempt as any).attemptId || attempt.id
         }
       ).catch(e => {
         console.warn('Server sync notice for authenticated quiz submission:', e);
@@ -692,10 +704,10 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
         targetDayKey = matchedClassDay.id;
       }
 
-      const scoreFormatted = `${submission.score}/${submission.totalPossible} (${submission.percentage}%)`;
+      const scoreFormatted = `${attempt.score}/${attempt.maxPoints} (${attempt.scorePercentage || attempt.percentage}%)`;
 
       setRecords(prev => {
-        const normStudent = normalizeStudentName(submission.studentName);
+        const normStudent = normalizeStudentName(attempt.studentName);
         const next = [...prev];
         const existingIdx = next.findIndex(r => {
           if (!r) return false;
@@ -711,18 +723,18 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             ...next[existingIdx],
             present: true,
             score: scoreFormatted,
-            percentage: submission.percentage,
+            percentage: attempt.scorePercentage || attempt.percentage,
             timestamp: nowStr
           };
         } else {
           next.push({
             id: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-            name: submission.studentName,
-            studentName: submission.studentName,
+            name: attempt.studentName,
+            studentName: attempt.studentName,
             classDay: targetDayKey,
             present: true,
             score: scoreFormatted,
-            percentage: submission.percentage,
+            percentage: attempt.scorePercentage || attempt.percentage,
             timestamp: nowStr
           });
         }
@@ -731,24 +743,24 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
     }
 
     logActivity({
-      actor: submission.studentName,
+      actor: attempt.studentName,
       role: 'student',
       actionCategory: 'Quiz Completed',
       actionTitle: 'Class Day Quiz Submitted',
-      details: `Submitted quiz answers. Score: ${submission.score}/${submission.totalPossible} (${submission.percentage}%).`,
-      targetStudent: submission.studentName
+      details: `Submitted quiz answers. Score: ${attempt.score}/${attempt.maxPoints} (${attempt.scorePercentage || attempt.percentage}%).`,
+      targetStudent: attempt.studentName
     });
 
     // Notify teacher/admin
     if (onNotificationCreated) {
       onNotificationCreated({
         id: generateUUID(),
-        title: `📝 Quiz Submitted: ${submission.studentName}`,
-        message: `${submission.studentName} completed class day quiz with score ${submission.score}/${submission.totalPossible} (${submission.percentage}%).`,
+        title: `📝 Quiz Submitted: ${attempt.studentName}`,
+        message: `${attempt.studentName} completed class day quiz with score ${attempt.score}/${attempt.maxPoints} (${attempt.scorePercentage || attempt.percentage}%).`,
         type: 'submission',
         targetRole: 'admin',
-        studentName: submission.studentName,
-        assignmentId: matchingAsg?.id || submission.quizId,
+        studentName: attempt.studentName,
+        assignmentId: matchingAsg?.id || attempt.quizId,
         createdAt: nowStr,
         read: false,
         priority: 'normal',
@@ -2445,7 +2457,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                     questions: []
                   };
 
-                  const submissionCount = quizSubmissionsList.filter(s => 
+                  const submissionCount = quizAttemptsList.filter(s => 
                     s.quizId === quiz.id || 
                     s.quizId === asg.id || 
                     (quiz.shareCode && s.quizId === quiz.shareCode)
@@ -2909,7 +2921,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
             shareCode: a.quizData?.shareCode || (a as any).shareCode || `qz_${a.id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
             questions: []
           })}
-          submissions={quizSubmissionsList}
+          submissions={quizAttemptsList}
           onSaveQuiz={handleSaveQuiz}
           onDeleteQuiz={(quizId) => {
             setCustomAssignments(prev => prev.filter(a => a.id !== quizId && a.quizData?.id !== quizId));
@@ -3670,7 +3682,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
           onClose={() => setActiveQuizTaker(null)}
           onSubmitQuiz={handleQuizSubmissionComplete}
           previousSubmission={
-            quizSubmissionsList.find(s => 
+            quizAttemptsList.find(s => 
               (s.quizId === activeQuizTaker.id || s.quizId === activeQuizTaker.shareCode) && 
               (s?.studentName || '').toLowerCase().trim() === (activeStudentName || '').toLowerCase().trim()
             ) ||
@@ -3683,17 +3695,20 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
               return {
                 id: sub.id,
                 quizId: activeQuizTaker.id,
+                quizVersionId: (sub as any).quizVersionId || activeQuizTaker.currentVersionId || 'v1',
                 quizTitle: activeQuizTaker.title,
                 studentName: sub.studentName,
                 submittedAt: sub.submittedAt,
+                startedAt: sub.submittedAt,
+                updatedAt: sub.submittedAt,
+                status: 'submitted',
                 responses: [],
-                totalScore: sub.score,
-                maxPoints: activeQuizTaker.totalPoints || 100,
-                scorePercentage: Math.round((sub.score / (activeQuizTaker.totalPoints || 100)) * 100),
                 score: sub.score,
-                totalPossible: activeQuizTaker.totalPoints || 100,
-                percentage: Math.round((sub.score / (activeQuizTaker.totalPoints || 100)) * 100)
-              } as QuizSubmission;
+                maxPoints: activeQuizTaker.totalPoints || 100,
+                scorePercentage: Math.round(((sub.score || 0) / (activeQuizTaker.totalPoints || 100)) * 100),
+                percentage: Math.round(((sub.score || 0) / (activeQuizTaker.totalPoints || 100)) * 100),
+                timeSpentSeconds: 0
+              } as QuizAttempt;
             })()
           }
         />
@@ -3718,12 +3733,12 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeCollatingQuiz.quizData.questions.map((q, idx) => {
                     const currentVerId = activeCollatingQuiz.quizData!.currentVersionId || `ver_${activeCollatingQuiz.quizData!.id}_v1`;
-                    const quizSubs = quizSubmissionsList.filter(s => s.quizId === activeCollatingQuiz.quizData!.id && (s.quizVersionId === currentVerId || (!s.quizVersionId && currentVerId.endsWith('_v1'))));
-                    const correctCount = quizSubs.filter(s => {
+                    const quizAttempts = quizAttemptsList.filter(s => s.quizId === activeCollatingQuiz.quizData!.id && (s.quizVersionId === currentVerId || (!s.quizVersionId && currentVerId.endsWith('_v1'))));
+                    const correctCount = quizAttempts.filter(s => {
                       const resp = s.responses.find(r => r.questionId === q.id && (r.quizVersionId === currentVerId || (!r.quizVersionId && currentVerId.endsWith('_v1'))));
                       return resp && resp.isCorrect;
                     }).length;
-                    const correctPct = quizSubs.length > 0 ? Math.round((correctCount / quizSubs.length) * 100) : 0;
+                    const correctPct = quizAttempts.length > 0 ? Math.round((correctCount / quizAttempts.length) * 100) : 0;
 
                     return (
                       <div key={q.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
@@ -3732,7 +3747,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                           <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-extrabold ${
                             correctPct >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {correctPct}% Correct ({correctCount}/{quizSubs.length})
+                            {correctPct}% Correct ({correctCount}/{quizAttempts.length})
                           </span>
                         </div>
                         <p className="text-xs text-slate-700 font-medium leading-snug">{q.questionText}</p>
@@ -3764,7 +3779,7 @@ export const ExamsTab: React.FC<ExamsTabProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {quizSubmissionsList
+                      {quizAttemptsList
                         .filter(s => s.quizId === activeCollatingQuiz.quizData!.id)
                         .map(sub => (
                           <tr key={sub.id} className="group hover:bg-slate-50 transition-colors">

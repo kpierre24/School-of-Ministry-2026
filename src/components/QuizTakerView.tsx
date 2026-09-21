@@ -27,8 +27,8 @@ import {
   FileText,
   AlertTriangle
 } from 'lucide-react';
-import { QuizAssignment, QuizQuestion, QuizSubmission, QuizSubmissionResponse } from '../types';
-import { gradeQuizSubmission } from '../data/quizTemplates';
+import { QuizAssignment, QuizQuestion, QuizAttempt, QuizResponse } from '../types';
+import { gradeQuizAttempt } from '../data/quizTemplates';
 import { useAccessibleModal } from '../lib/useAccessibleModal';
 import { portalApiClient } from '../services/api/portalApiClient';
 
@@ -37,9 +37,9 @@ export interface QuizTakerViewProps {
   studentRoster?: { name: string }[];
   currentStudentName?: string;
   studentName?: string;
-  previousSubmission?: QuizSubmission | null;
-  onSubmitQuiz?: (submission: QuizSubmission) => Promise<QuizSubmission | void> | QuizSubmission | void;
-  onComplete?: (submission: QuizSubmission) => void;
+  previousSubmission?: QuizAttempt | null;
+  onSubmitQuiz?: (attempt: QuizAttempt) => Promise<QuizAttempt | void> | QuizAttempt | void;
+  onComplete?: (attempt: QuizAttempt) => void;
   onClose: () => void;
 }
 
@@ -68,7 +68,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, boolean>>({});
   const [isSubmitted, setIsSubmitted] = useState(!!previousSubmission);
-  const [submissionResult, setSubmissionResult] = useState<QuizSubmission | null>(previousSubmission || null);
+  const [submissionResult, setSubmissionResult] = useState<QuizAttempt | null>(previousSubmission || null);
   const [resultsFilter, setResultsFilter] = useState<'all' | 'missed' | 'correct'>('all');
 
   // Attempt tracking
@@ -301,32 +301,32 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
 
     try {
       // 1. Calculate local preview grade
-      const localSubmission = gradeQuizSubmission(
+      const localAttempt = gradeQuizAttempt(
         pinnedQuiz,
         responses,
         effectiveStudentName,
         studentEmail,
         timeSpentSeconds
       );
-      localSubmission.attemptNumber = attemptCount;
-      localSubmission.quizTitle = pinnedQuiz.title;
-      (localSubmission as any).rawResponses = responses;
-      (localSubmission as any).shareCode = pinnedQuiz.shareCode || pinnedQuiz.id;
-      (localSubmission as any).quizVersionId = pinnedQuizVersionId;
-      (localSubmission as any).attemptId = attemptId;
+      localAttempt.attemptNumber = attemptCount;
+      localAttempt.quizTitle = pinnedQuiz.title;
+      (localAttempt as any).rawResponses = responses;
+      (localAttempt as any).shareCode = pinnedQuiz.shareCode || pinnedQuiz.id;
+      localAttempt.quizVersionId = pinnedQuizVersionId || localAttempt.quizVersionId;
+      (localAttempt as any).attemptId = attemptId;
 
-      let finalSubmission = localSubmission;
+      let finalAttempt = localAttempt;
 
       // 2. Authoritative Server Submission Call
       if (onSubmitQuiz) {
-        const serverSub = await onSubmitQuiz(localSubmission);
-        if (serverSub && typeof serverSub === 'object' && serverSub.id) {
-          finalSubmission = serverSub;
+        const serverAttempt = await onSubmitQuiz(localAttempt);
+        if (serverAttempt && typeof serverAttempt === 'object' && serverAttempt.id) {
+          finalAttempt = serverAttempt;
         }
       }
 
       // 3. Server confirmed success -> update UI to RELEASED / Completed
-      setSubmissionResult(finalSubmission);
+      setSubmissionResult(finalAttempt);
       setSubmissionPhase('RELEASED');
       setIsSubmitted(true);
 
@@ -338,7 +338,7 @@ export const QuizTakerView: React.FC<QuizTakerViewProps> = ({
         // ignore
       }
 
-      if (onComplete) onComplete(finalSubmission);
+      if (onComplete) onComplete(finalAttempt);
     } catch (err: any) {
       console.error('Quiz submission failed:', err);
       setSubmissionPhase('SUBMIT_FAILED');

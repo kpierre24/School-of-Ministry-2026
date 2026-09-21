@@ -41,6 +41,7 @@ Built with desktop-first precision and mobile-native responsiveness, the portal 
 
 ### 🎓 Academic & Student Management
 - **Curriculum Modules**: Structured course materials, video lectures, downloadable PDF handouts, and quizzes for all 6 core ministry modules.
+- **Digital Library & Media Center**: Comprehensive repository for syllabus handouts, video lectures (HTML5, YouTube, Vimeo), sermon audio, and scripture-linked study guides (see [Library Implementation Checklist](LIBRARY_IMPLEMENTATION_CHECKLIST.md)).
 - **Attendance Engine**: Daily attendance recording, attendance rate calculations, 75% satisfactory threshold enforcement, and at-risk warning alerts (students < 75%).
 - **Student 360° Profile**: Comprehensive view of individual student GPA, attendance metrics, payment logs, submitted homework, and activity audit timeline.
 - **Assignment & Quiz Suite**: Online assignment submission, teacher marking interface, AI-assisted essay evaluation via Google Gemini, and automated quiz scoring.

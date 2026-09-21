@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, AlertCircle, Save, MessageSquare, BookOpen, Award, FileText, Check, ShieldAlert, BadgeCheck } from 'lucide-react';
-import { QuizSubmission, QuizSubmissionResponse, QuizQuestion } from '../../../types';
+import { QuizAttempt, QuizResponse, QuizQuestion } from '../../../types';
 
 export interface QuizSubmissionReviewProps {
-  submission: QuizSubmission;
+  submission: QuizAttempt;
   questions?: QuizQuestion[];
   onClose: () => void;
   onSaveFeedback?: (
     submissionId: string,
     feedback: string,
     manualScoreOverride?: number,
-    updatedSubmission?: QuizSubmission
+    updatedSubmission?: QuizAttempt
   ) => void;
 }
 
@@ -22,7 +22,7 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
 }) => {
   const [feedbackText, setFeedbackText] = useState(submission.teacherFeedback || '');
   const [gradingStatus, setGradingStatus] = useState<'auto_graded' | 'teacher_reviewed' | 'moderated' | 'released'>(
-    submission.gradingStatus || 'auto_graded'
+    (submission.gradingStatus as any) || 'auto_graded'
   );
 
   // Manual Adjustment Audit Trail
@@ -32,7 +32,7 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
   const [moderationReason, setModerationReason] = useState<string>(submission.moderationReason || '');
 
   // Submissions local state
-  const [responses, setResponses] = useState<QuizSubmissionResponse[]>(submission.responses || []);
+  const [responses, setResponses] = useState<QuizResponse[]>(submission.responses || []);
   const [isSaved, setIsSaved] = useState(false);
 
   // Calculate word count
@@ -117,21 +117,20 @@ export const QuizSubmissionReview: React.FC<QuizSubmissionReviewProps> = ({
 
   const handleSave = () => {
     if (onSaveFeedback) {
-      const updatedSubmission: QuizSubmission = {
+      const updatedSubmission: QuizAttempt = {
         ...submission,
         responses,
         score: currentTotalScore,
-        totalScore: currentTotalScore,
         percentage: currentPercentage,
         scorePercentage: currentPercentage,
         teacherFeedback: feedbackText,
-        gradingStatus,
+        gradingStatus: gradingStatus as any,
         manualAdjustmentPoints: adjustmentPoints,
         manualAdjustmentReason: adjustmentReason,
         moderatorName,
         moderationReason,
-        feedbackGiven: true,
-        isReleased: gradingStatus === 'released'
+        isReleased: gradingStatus === 'released',
+        updatedAt: new Date().toISOString()
       };
 
       onSaveFeedback(submission.id, feedbackText, currentTotalScore, updatedSubmission);

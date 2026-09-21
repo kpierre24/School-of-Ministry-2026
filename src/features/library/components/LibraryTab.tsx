@@ -48,7 +48,7 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '../../../components/UXPrimitives';
 import { Modal } from '../../../components/Modal';
-import { LibraryResource, MediaResource } from '../../../types';
+import { LibraryResource, MediaResource, Course, CustomAssignment } from '../../../types';
 import { UserRole } from '../../../lib/userAuth';
 import { ClassroomMediaPlayer, DEFAULT_PRESET_MEDIA } from '../../../components/ClassroomMediaPlayer';
 import { parseVideoMediaUrl } from '../../../lib/mediaUtils';
@@ -57,6 +57,10 @@ import { ScriptureHoverPopover } from '../../../components/ScriptureHoverPopover
 import { ScriptureFlashcardsModal } from '../../../components/ScriptureFlashcardsModal';
 import { parseTextWithScriptures, extractScriptureReferences } from '../../../utils/scriptureDetector';
 import { createNoteFromLibraryExcerpt } from '../../../utils/notesStorage';
+import { CurriculumHierarchyView } from './CurriculumHierarchyView';
+import { AddResourceModal } from './AddResourceModal';
+import { buildAcademicHierarchy } from '../services/curriculumHierarchyService';
+import { toLegacyResource } from '../model';
 
 export const CURRICULUM_MODULES = [
   { code: 'SOM-MOD-1', title: 'Mod 1: Intro', fullName: 'Module 1: Introduction & Foundations' },
@@ -77,6 +81,9 @@ interface LibraryTabProps {
   onOpenDiagnostics?: () => void;
   onOpenNotes?: () => void;
   onOpenInBible?: (bookId: string, chapter: number, verse?: number) => void;
+  courses?: Course[];
+  customAssignments?: CustomAssignment[];
+  onNavigateTab?: (tab: string) => void;
 }
 
 // Helper to check if text contains raw binary zip code / PK header from DOCX
@@ -275,9 +282,15 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   studentName = 'General Student',
   onOpenDiagnostics,
   onOpenNotes,
-  onOpenInBible
+  onOpenInBible,
+  courses = [],
+  customAssignments = [],
+  onNavigateTab,
 }) => {
   const isStudent = userRole === 'student';
+
+  // View Mode: Academic Curriculum Relationships (Course -> Module -> Lesson) vs Flat Catalog
+  const [libraryViewMode, setLibraryViewMode] = useState<'curriculum' | 'catalog'>('curriculum');
 
   const [localResources, setLocalResources] = useState<LibraryResource[]>(() => {
     const saved = localStorage.getItem('hteim_library_resources');
@@ -304,6 +317,16 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
   const resources = propResources !== undefined ? propResources : localResources;
   const setResources = propSetResources !== undefined ? propSetResources : setLocalResources;
+
+  // Memoized academic hierarchy tree (Course -> Module -> Lesson -> [Resources, Quizzes, Assignments])
+  const academicCourses = useMemo(() => {
+    return buildAcademicHierarchy({
+      courses,
+      resources,
+      assignments: customAssignments,
+      studentIdentifier: studentName,
+    });
+  }, [courses, resources, customAssignments, studentName]);
 
   // Save state to localStorage
   useEffect(() => {
@@ -357,6 +380,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   
   // Modals
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [addResourcePlacement, setAddResourcePlacement] = useState<{ courseId?: string; moduleId?: string; lessonId?: string } | undefined>(undefined);
   const [previewResource, setPreviewResource] = useState<LibraryResource | null>(null);
   const [previewExtractedText, setPreviewExtractedText] = useState<string>('');
   const [isParsingPreview, setIsParsingPreview] = useState<boolean>(false);
@@ -420,6 +444,37 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 
     setResources(updatedResources);
     setEditingResource(null);
+  };
+
+  const handleSaveNewResource = (newRes: LibraryResource, isDraft: boolean) => {
+    setResources(prev => {
+      const updated = [newRes, ...prev];
+      try {
+        localStorage.setItem('schoolLibraryResources', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to save resources to localStorage:', err);
+      }
+      return updated;
+    });
+
+    // Also sync video or audio resources to classroom media player
+    if ((newRes.format === 'VIDEO' || newRes.format === 'AUDIO') && newRes.downloadUrl && setClassroomMedia) {
+      const isVideo = newRes.format === 'VIDEO';
+      const newMediaTrack: MediaResource = {
+        id: `media_${isVideo ? 'video' : 'audio'}_${Date.now()}`,
+        title: newRes.title,
+        speaker: newRes.author || 'HTEIM Faculty',
+        duration: newRes.size || (isVideo ? 'Video Stream' : 'Audio Track'),
+        type: isVideo ? 'video' : 'audio',
+        url: newRes.downloadUrl,
+        description: newRes.summary || '',
+        dateAdded: new Date().toISOString().split('T')[0]
+      };
+      setClassroomMedia(prev => [newMediaTrack, ...prev]);
+    }
+
+    setShowUploadModal(false);
+    setAddResourcePlacement(undefined);
   };
 
   // Inline Edit Mode State for Direct Card Edits
@@ -1121,31 +1176,87 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
               )}
 
               <button
+                type="button"
                 onClick={() => {
-                  setUploadMode('gdrive');
+                  setAddResourcePlacement(undefined);
                   setShowUploadModal(true);
                 }}
-                className="px-4 py-2 bg-gradient-to-r from-red-600 to-indigo-600 hover:from-red-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-                title="Add YouTube, Google Drive, Vimeo, or Zoom video links"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                title="Add learning material (PDF, Video, Website, Audio, Document, Presentation, Image)"
               >
-                <VideoIcon className="w-4 h-4" /> Add Video Link (YouTube / Drive)
-              </button>
-
-              <button
-                onClick={() => {
-                  setUploadMode('file');
-                  setShowUploadModal(true);
-                }}
-                className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <Upload className="w-4 h-4" /> Upload Lesson Files
+                <Plus className="w-4 h-4" /> Add Resource
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Classroom Sermon & Lecture Audio/Video Player */}
+      {/* View Mode Switcher: Academic Curriculum View (Course → Module → Lesson) vs Resource Catalog */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setLibraryViewMode('curriculum')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer ${
+              libraryViewMode === 'curriculum'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Academic Curriculum (Course → Module → Lesson)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLibraryViewMode('catalog')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer ${
+              libraryViewMode === 'catalog'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>All Resources Catalog ({resources.length})</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 px-2 text-2xs text-slate-500 dark:text-slate-400">
+          <span className="font-semibold">
+            {libraryViewMode === 'curriculum' ? 'Structured Academic Content' : 'Flat File & Media Library'}
+          </span>
+        </div>
+      </div>
+
+      {libraryViewMode === 'curriculum' ? (
+        <CurriculumHierarchyView
+          courses={academicCourses}
+          onOpenReader={(learningRes) => {
+            const legacy = toLegacyResource(learningRes);
+            setPreviewResource(legacy);
+          }}
+          onPlayVideo={(learningRes) => {
+            const legacy = toLegacyResource(learningRes);
+            setPreviewResource(legacy);
+          }}
+          onDownloadResource={(learningRes, e) => {
+            const legacy = toLegacyResource(learningRes);
+            handleDownload(legacy, e);
+          }}
+          onTakeQuiz={(quizId) => {
+            if (onNavigateTab) {
+              onNavigateTab('exams');
+            }
+          }}
+          onAddResource={(placement) => {
+            setAddResourcePlacement(placement);
+            setShowUploadModal(true);
+          }}
+          studentName={studentName}
+          userRole={userRole}
+        />
+      ) : (
+        <>
+          {/* Classroom Sermon & Lecture Audio/Video Player */}
       <ClassroomMediaPlayer
         mediaResources={classroomMedia}
         userRole={userRole}
@@ -1871,347 +1982,23 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           );
         })}
       </div>
+        </>
+      )}
 
-      {/* Upload Modal with File Drag-Drop & AI Processing */}
+      {/* Step-Based Add Resource Workflow Modal */}
       {showUploadModal && (
-        <Modal
+        <AddResourceModal
           isOpen={showUploadModal}
-          onClose={() => setShowUploadModal(false)}
-          title="Upload Lessons & AI Content Evaluator"
-          icon={<Upload className="w-5 h-5 text-indigo-600 shrink-0" />}
-          size="xl"
-        >
-          <form onSubmit={handleProcessUpload} className="space-y-4">
-              {/* Tab Selector: Upload Files vs Paste Text vs Google Drive */}
-              <div className="flex border-b border-slate-200 overflow-x-auto">
-                <button
-                  type="button"
-                  onClick={() => setUploadMode('file')}
-                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap ${
-                    uploadMode === 'file' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  Upload Files / Audio
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUploadMode('text')}
-                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap ${
-                    uploadMode === 'text' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  Paste Notes / Text
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUploadMode('gdrive')}
-                  className={`pb-2.5 px-3 text-xs font-extrabold border-b-2 cursor-pointer transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    uploadMode === 'gdrive' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <VideoIcon className="w-3.5 h-3.5 text-rose-500" /> YouTube & Drive Video Link
-                </button>
-              </div>
-
-              {uploadMode !== 'gdrive' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Author / Instructor</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Dr. Faculty Director"
-                      value={textAuthor}
-                      onChange={(e) => setTextAuthor(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Code</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. SOM-101"
-                      value={textCourseCode}
-                      onChange={(e) => setTextCourseCode(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {uploadMode === 'gdrive' ? (
-                <div className="space-y-3">
-                  <div className="p-3 bg-gradient-to-r from-rose-50 to-indigo-50 dark:from-rose-950/40 dark:to-indigo-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs space-y-1">
-                    <p className="font-extrabold flex items-center gap-1.5 text-slate-900 dark:text-white">
-                      <VideoIcon className="w-4 h-4 text-rose-600" /> Modular YouTube & Google Drive Video Integration
-                    </p>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                      Paste YouTube (<code>watch?v=...</code>, <code>youtu.be/...</code>, <code>shorts/</code>) or Google Drive share links (<code>drive.google.com/file/d/...</code>). Videos render in-app immediately!
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                      <label className="block text-[10px] font-bold uppercase text-slate-500">
-                        Video Share Link (YouTube or Google Drive) *
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGdriveUrl('https://www.youtube.com/watch?v=0-7I443BLoE');
-                            setGdriveTitle('Principles of Spiritual Leadership & Expository Preaching');
-                            setGdriveAuthor('Dr. Faculty Director');
-                            setGdriveCourseCode('SOM-101');
-                          }}
-                          className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          <Play className="w-3 h-3 fill-current" /> Sample YouTube
-                        </button>
-                        <span className="text-slate-300">|</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGdriveUrl('https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing');
-                            setGdriveTitle('Sunday Morning Livestream Worship & Sermon');
-                            setGdriveAuthor('HTEIM Faculty');
-                            setGdriveCourseCode('SOM-101');
-                          }}
-                          className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          <Globe className="w-3 h-3" /> Sample Google Drive
-                        </button>
-                      </div>
-                    </div>
-                    <input
-                      required
-                      type="url"
-                      placeholder="https://www.youtube.com/watch?v=... or https://drive.google.com/file/d/.../view"
-                      value={gdriveUrl}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setGdriveUrl(val);
-                        const p = parseVideoMediaUrl(val);
-                        if (!gdriveTitle) {
-                          if (p.isYouTube) setGdriveTitle(`YouTube Sermon Video (${p.fileId})`);
-                          else if (p.isDrive) setGdriveTitle('Google Drive Sermon Recording');
-                        }
-                      }}
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-indigo-700 dark:text-indigo-300 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Realtime Detection Banner */}
-                  {gdriveUrl.trim() && (() => {
-                    const parsed = parseVideoMediaUrl(gdriveUrl);
-                    if (parsed.isYouTube) {
-                      return (
-                        <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-900 dark:text-rose-200 text-[11px] font-bold flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
-                          <span>YouTube Video Detected! Video ID: <code className="font-mono bg-rose-100 dark:bg-rose-900/60 px-1 py-0.5 rounded">{parsed.fileId}</code></span>
-                        </div>
-                      );
-                    }
-                    if (parsed.isDrive) {
-                      return (
-                        <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-900 dark:text-blue-200 text-[11px] font-bold flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                          <span>Google Drive Shared Video Detected! File ID: <code className="font-mono bg-blue-100 dark:bg-blue-900/60 px-1 py-0.5 rounded">{parsed.fileId}</code></span>
-                        </div>
-                      );
-                    }
-                    if (parsed.embedUrl) {
-                      return (
-                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-[11px] font-bold flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>Direct Video Stream Detected ({parsed.type.toUpperCase()})</span>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {/* Live In-Modal Video Player Preview */}
-                  {gdriveUrl.trim() && (() => {
-                    const parsed = parseVideoMediaUrl(gdriveUrl);
-                    if (!parsed.embedUrl && !gdriveUrl.startsWith('http')) return null;
-
-                    return (
-                      <div className="space-y-1 pt-1">
-                        <div className="flex items-center justify-between">
-                          <label className="block text-[10px] font-bold uppercase text-slate-500">
-                            Live In-Modal Video Preview
-                          </label>
-                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> Ready to Stream
-                          </span>
-                        </div>
-                        <div className="w-full h-48 sm:h-56 bg-black rounded-xl overflow-hidden border border-slate-700 shadow-inner flex items-center justify-center relative">
-                          {parsed.isYouTube || parsed.isVimeo || parsed.isLoom || parsed.isDrive ? (
-                            <iframe
-                              src={parsed.embedUrl}
-                              className="w-full h-full border-0 rounded-xl"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              title="Video Upload Preview"
-                            />
-                          ) : (
-                            <video controls src={gdriveUrl} className="w-full h-full object-contain bg-black">
-                              Your browser does not support video preview.
-                            </video>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Recording Title *</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. Livestream: Sunday Worship & Prophetic Teaching"
-                      value={gdriveTitle}
-                      onChange={(e) => setGdriveTitle(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Speaker / Preacher</label>
-                      <input
-                        type="text"
-                        placeholder="Dr. Faculty Director"
-                        value={gdriveAuthor}
-                        onChange={(e) => setGdriveAuthor(e.target.value)}
-                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Course Code</label>
-                      <input
-                        type="text"
-                        placeholder="SOM-101"
-                        value={gdriveCourseCode}
-                        onChange={(e) => setGdriveCourseCode(e.target.value)}
-                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Brief Description / Notes</label>
-                    <textarea
-                      rows={2}
-                      placeholder="Key notes, prayer points, or scripture references..."
-                      value={gdriveSummary}
-                      onChange={(e) => setGdriveSummary(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none"
-                    />
-                  </div>
-                </div>
-              ) : uploadMode === 'file' ? (
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Select Lesson Files</label>
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 p-6 rounded-xl text-center cursor-pointer transition-all space-y-2"
-                  >
-                    <Upload className="w-8 h-8 text-indigo-600 mx-auto" />
-                    <div>
-                      <p className="text-xs font-extrabold text-slate-800">
-                        {selectedFiles.length > 0 
-                          ? `${selectedFiles.length} file(s) selected` 
-                          : 'Click or drag files to upload lessons'}
-                      </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        Supports PDF, TXT, DOC/DOCX, Audio (MP3), Markdown, etc.
-                      </p>
-                    </div>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-
-                  {selectedFiles.length > 0 && (
-                    <div className="mt-3 space-y-1.5 max-h-32 overflow-y-auto">
-                      {selectedFiles.map((f, i) => (
-                        <div key={i} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
-                          <span className="truncate max-w-[280px]">📄 {f.name}</span>
-                          <span className="text-[10px] font-mono text-slate-400">{(f.size / 1024).toFixed(1)} KB</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Lesson Title *</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. Expository Hermeneutics & Sermon Delivery"
-                      value={textTitle}
-                      onChange={(e) => setTextTitle(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Lesson Content / Transcript *</label>
-                    <textarea
-                      required
-                      rows={5}
-                      placeholder="Paste complete lesson notes, scripture references, or lecture transcript here..."
-                      value={textContent}
-                      onChange={(e) => setTextContent(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none font-medium"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* AI Notice Box */}
-              <div className="p-3 bg-gradient-to-r from-indigo-50 to-amber-50 border border-indigo-200 rounded-xl flex items-start gap-2.5 text-xs">
-                <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-extrabold text-indigo-950">Automatic Gemini AI Evaluation</p>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Gemini AI will read the content, generate an executive summary for the lesson card, extract key takeaways, and assign the appropriate category.
-                  </p>
-                </div>
-              </div>
-
-              {isEvaluating && (
-                <div className="p-4 bg-indigo-900 text-white rounded-xl text-center space-y-2 animate-pulse">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-400" />
-                  <p className="text-xs font-extrabold">{evaluationProgress || 'Evaluating lesson content with Gemini AI...'}</p>
-                </div>
-              )}
-
-            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowUploadModal(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isEvaluating}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Evaluate & Save Lessons
-              </button>
-            </div>
-          </form>
-        </Modal>
+          onClose={() => {
+            setShowUploadModal(false);
+            setAddResourcePlacement(undefined);
+          }}
+          onSaveResource={handleSaveNewResource}
+          courses={courses}
+          initialPlacement={addResourcePlacement}
+          currentUserRole={userRole}
+          currentUserName={studentName || 'HTEIM Faculty'}
+        />
       )}
 
       {/* Full Multi-Format Document Reader Modal (PDF, DOCX, Word, Text, Audio, Video) */}

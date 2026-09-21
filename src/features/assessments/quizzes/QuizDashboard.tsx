@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { portalApiClient } from '../../../services/api/portalApiClient';
 import { UserRole } from '../../../lib/userAuth';
-import { QuizAssignment, QuizSubmission } from '../../../types';
+import { QuizAssignment, QuizAttempt, QuizResponse } from '../../../types';
 import { QuizCreator } from './QuizCreator';
 import { QuizTaker } from './QuizTaker';
 import { QuizAnalytics } from './QuizAnalytics';
@@ -43,7 +43,7 @@ import { ExportQuizModal } from '../../../components/ExportQuizModal';
 export interface QuizDashboardProps {
   userRole: UserRole;
   quizzes?: QuizAssignment[];
-  submissions?: QuizSubmission[];
+  submissions?: QuizAttempt[];
   onSaveQuiz?: (quiz: QuizAssignment) => void;
   onDeleteQuiz?: (quizId: string) => void;
   onDuplicateQuiz?: (quiz: QuizAssignment) => void;
@@ -65,8 +65,8 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
   
   const quizzes = propsQuizzes || quizManager.quizzes;
   const submissions = useMemo(() => {
-    const map = new Map<string, QuizSubmission>();
-    (quizManager.submissions || []).forEach(s => {
+    const map = new Map<string, QuizAttempt>();
+    (quizManager.attempts || []).forEach(s => {
       if (s && s.id) map.set(s.id, s);
     });
     (propsSubmissions || []).forEach(s => {
@@ -75,7 +75,7 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
     return Array.from(map.values()).sort((a, b) => 
       new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
     );
-  }, [propsSubmissions, quizManager.submissions]);
+  }, [propsSubmissions, quizManager.attempts]);
 
   // Active View Tabs
   const [activeTab, setActiveTab] = useState<'all_quizzes' | 'analytics' | 'individual' | 'responses' | 'data_integrity' | 'submission_health'>('all_quizzes');
@@ -88,7 +88,7 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({
 
   // Selected Quiz for Analytics / Review
   const [selectedAnalyticsQuizId, setSelectedAnalyticsQuizId] = useState<string>(quizzes[0]?.id || '');
-  const [selectedSubmissionForReview, setSelectedSubmissionForReview] = useState<QuizSubmission | null>(null);
+  const [selectedSubmissionForReview, setSelectedSubmissionForReview] = useState<QuizAttempt | null>(null);
   const [activeAttempts, setActiveAttempts] = useState<any[]>([]);
 
   // Submission Health states

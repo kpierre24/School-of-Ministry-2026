@@ -55,7 +55,7 @@ export function useQuizAttempt({
   });
 
   const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, boolean>>({});
-  const [status, setStatus] = useState<AttemptStatus>(existingAttempt?.status || 'IN_PROGRESS');
+  const [status, setStatus] = useState<AttemptStatus | string>(existingAttempt?.status || 'IN_PROGRESS');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submissionResult, setSubmissionResult] = useState<QuizAttempt | null>(
     (existingAttempt?.status === 'SUBMITTED' || existingAttempt?.status === 'GRADED' || existingAttempt?.status === 'RELEASED')

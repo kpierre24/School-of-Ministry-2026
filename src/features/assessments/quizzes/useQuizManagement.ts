@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { QuizAssignment, QuizSubmission, CustomAssignment } from '../../../types';
-import { DEFAULT_QUIZ_TEMPLATES, gradeQuizSubmission } from '../../../data/quizTemplates';
+import { QuizAssignment, QuizAttempt, CustomAssignment } from '../../../types';
+import { DEFAULT_QUIZ_TEMPLATES, gradeQuizAttempt } from '../../../data/quizTemplates';
 import { supabase } from '../../../lib/supabaseClient';
 
 export interface UseQuizManagementReturn {
   quizzes: QuizAssignment[];
-  submissions: QuizSubmission[];
+  attempts: QuizAttempt[];
   isLoading: boolean;
   isSyncing: boolean;
   saveQuiz: (quiz: QuizAssignment) => Promise<void>;
@@ -17,12 +17,12 @@ export interface UseQuizManagementReturn {
     studentName: string,
     studentEmail?: string,
     timeSpentSeconds?: number
-  ) => Promise<QuizSubmission>;
+  ) => Promise<QuizAttempt>;
   updateTeacherFeedback: (
-    submissionId: string,
+    attemptId: string,
     feedback: string,
     manualScoreOverride?: number,
-    updatedSubmission?: Partial<QuizSubmission>
+    updatedAttempt?: Partial<QuizAttempt>
   ) => Promise<void>;
   saveDraft: (quizId: string, studentName: string, responses: Record<string, any>, email?: string) => void;
   getDraft: (quizId: string, studentName: string) => { responses: Record<string, any>; email?: string; savedAt?: string } | null;
@@ -31,7 +31,7 @@ export interface UseQuizManagementReturn {
 }
 
 const LOCAL_STORAGE_QUIZZES_KEY = 'hteim_custom_assignments';
-const LOCAL_STORAGE_SUBMISSIONS_KEY = 'hteim_quiz_submissions';
+const LOCAL_STORAGE_ATTEMPTS_KEY = 'hteim_quiz_attempts';
 const LOCAL_STORAGE_OFFLINE_QUEUE_KEY = 'hteim_quiz_offline_queue';
 
 export function useQuizManagement(
@@ -69,10 +69,13 @@ export function useQuizManagement(
     return DEFAULT_QUIZ_TEMPLATES;
   });
 
-  const [submissions, setSubmissions] = useState<QuizSubmission[]>(() => {
+  const [attempts, setAttempts] = useState<QuizAttempt[]>(() => {
     try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_SUBMISSIONS_KEY);
+      const saved = localStorage.getItem(LOCAL_STORAGE_ATTEMPTS_KEY);
       if (saved) return JSON.parse(saved);
+      
+      const legacy = localStorage.getItem('hteim_quiz_submissions');
+      if (legacy) return JSON.parse(legacy);
     } catch {
       // ignore
     }
@@ -82,20 +85,20 @@ export function useQuizManagement(
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Sync state to local storage & parent handler
+  // Sync state to local storage
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_SUBMISSIONS_KEY, JSON.stringify(submissions));
+      localStorage.setItem(LOCAL_STORAGE_ATTEMPTS_KEY, JSON.stringify(attempts));
     } catch {
       // ignore
     }
-  }, [submissions]);
+  }, [attempts]);
 
-  // Listen for quiz submissions submitted anywhere in the portal or other browser tabs
+  // Listen for quiz attempts submitted anywhere in the portal or other browser tabs
   useEffect(() => {
     const handleQuizSubmitted = (e: any) => {
       if (e.detail && e.detail.id) {
-        setSubmissions(prev => {
+        setAttempts(prev => {
           const filtered = prev.filter(s => s.id !== e.detail.id);
           return [e.detail, ...filtered];
         });
@@ -103,11 +106,11 @@ export function useQuizManagement(
     };
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === LOCAL_STORAGE_SUBMISSIONS_KEY && e.newValue) {
+      if (e.key === LOCAL_STORAGE_ATTEMPTS_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
-            setSubmissions(parsed);
+            setAttempts(parsed);
           }
         } catch {}
       }
@@ -122,30 +125,30 @@ export function useQuizManagement(
   }, []);
 
   // Sync to database if Supabase is connected
-  const syncSubmissionToDatabase = async (submission: QuizSubmission) => {
+  const syncAttemptToDatabase = async (attempt: QuizAttempt) => {
     if (!supabase) return;
     try {
       setIsSyncing(true);
-      const { error } = await supabase.from('quiz_submissions').upsert({
-        id: submission.id,
-        quiz_id: submission.quizId,
-        quiz_version_id: submission.quizVersionId,
-        quiz_title: submission.quizTitle,
-        student_name: submission.studentName,
-        student_email: submission.studentEmail,
-        score: submission.score,
-        total_possible: submission.totalPossible,
-        percentage: submission.percentage,
-        responses: submission.responses,
-        submitted_at: submission.submittedAt,
-        time_spent_seconds: submission.timeSpentSeconds,
+      const { error } = await supabase.from('quiz_attempts').upsert({
+        id: attempt.id,
+        quiz_id: attempt.quizId,
+        quiz_version_id: attempt.quizVersionId,
+        quiz_title: attempt.quizTitle,
+        student_name: attempt.studentName,
+        student_email: attempt.studentEmail,
+        score: attempt.score,
+        max_points: attempt.maxPoints,
+        score_percentage: attempt.scorePercentage,
+        responses: attempt.responses,
+        status: attempt.status,
+        submitted_at: attempt.submittedAt,
+        time_spent_seconds: attempt.timeSpentSeconds,
         updated_at: new Date().toISOString()
       });
 
       if (error) {
-        // Queue offline for retry
         const queue = JSON.parse(localStorage.getItem(LOCAL_STORAGE_OFFLINE_QUEUE_KEY) || '[]');
-        queue.push(submission);
+        queue.push(attempt);
         localStorage.setItem(LOCAL_STORAGE_OFFLINE_QUEUE_KEY, JSON.stringify(queue));
       }
     } catch {
@@ -171,7 +174,7 @@ export function useQuizManagement(
       title: quiz.title,
       courseCode: quiz.courseCode,
       moduleTrack: quiz.moduleTrack,
-      description: quiz.description,
+      description: quiz.description || '',
       dueDate: quiz.dueDate || '2026-09-30',
       maxPoints: quiz.totalPoints || 100,
       createdAt: quiz.createdAt,
@@ -179,7 +182,6 @@ export function useQuizManagement(
       quizData: quiz
     };
 
-    // Always persist to localStorage immediately
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_QUIZZES_KEY);
       const parsed: CustomAssignment[] = saved ? JSON.parse(saved) : [];
@@ -237,8 +239,8 @@ export function useQuizManagement(
     studentName: string,
     studentEmail?: string,
     timeSpentSeconds?: number
-  ): Promise<QuizSubmission> => {
-    const submission = gradeQuizSubmission(
+  ): Promise<QuizAttempt> => {
+    const attempt = gradeQuizAttempt(
       quiz,
       responses,
       studentName,
@@ -246,45 +248,39 @@ export function useQuizManagement(
       timeSpentSeconds
     );
 
-    setSubmissions(prev => {
-      // replace if same student & quiz
+    setAttempts(prev => {
       const filtered = prev.filter(s => !(s.quizId === quiz.id && s.studentName.toLowerCase().trim() === studentName.toLowerCase().trim()));
-      return [submission, ...filtered];
+      return [attempt, ...filtered];
     });
 
-    // Clear draft
     clearDraft(quiz.id, studentName);
-
-    // Sync to database asynchronously
-    syncSubmissionToDatabase(submission);
-
-    return submission;
+    syncAttemptToDatabase(attempt);
+    return attempt;
   }, []);
 
   const updateTeacherFeedback = useCallback(async (
-    submissionId: string,
+    attemptId: string,
     feedback: string,
     manualScoreOverride?: number,
-    updatedSubmission?: Partial<QuizSubmission>
+    updatedAttempt?: Partial<QuizAttempt>
   ) => {
-    setSubmissions(prev => prev.map(s => {
-      if (s.id !== submissionId) return s;
-      if (updatedSubmission) {
+    setAttempts(prev => prev.map(s => {
+      if (s.id !== attemptId) return s;
+      if (updatedAttempt) {
         return {
           ...s,
-          ...updatedSubmission
+          ...updatedAttempt
         };
       }
       const newScore = manualScoreOverride !== undefined ? manualScoreOverride : s.score;
-      const newPercentage = Math.round((newScore / (s.totalPossible || 1)) * 100);
+      const newPercentage = Math.round((newScore / (s.maxPoints || 100)) * 100);
       return {
         ...s,
         score: newScore,
-        totalScore: newScore,
-        percentage: newPercentage,
         scorePercentage: newPercentage,
-        feedbackGiven: true,
-        teacherFeedback: feedback
+        percentage: newPercentage,
+        teacherFeedback: feedback,
+        gradingStatus: 'teacher_reviewed'
       };
     }));
   }, []);
@@ -327,12 +323,12 @@ export function useQuizManagement(
     try {
       const queueRaw = localStorage.getItem(LOCAL_STORAGE_OFFLINE_QUEUE_KEY);
       if (!queueRaw) return;
-      const queue: QuizSubmission[] = JSON.parse(queueRaw);
+      const queue: QuizAttempt[] = JSON.parse(queueRaw);
       if (queue.length === 0) return;
 
       setIsSyncing(true);
       for (const item of queue) {
-        await supabase.from('quiz_submissions').upsert({
+        await supabase.from('quiz_attempts').upsert({
           id: item.id,
           quiz_id: item.quizId,
           quiz_version_id: item.quizVersionId,
@@ -340,9 +336,10 @@ export function useQuizManagement(
           student_name: item.studentName,
           student_email: item.studentEmail,
           score: item.score,
-          total_possible: item.totalPossible,
-          percentage: item.percentage,
+          max_points: item.maxPoints,
+          score_percentage: item.scorePercentage,
           responses: item.responses,
+          status: item.status,
           submitted_at: item.submittedAt
         });
       }
@@ -356,7 +353,7 @@ export function useQuizManagement(
 
   return {
     quizzes,
-    submissions,
+    attempts,
     isLoading,
     isSyncing,
     saveQuiz,

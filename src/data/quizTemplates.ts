@@ -1,4 +1,4 @@
-import { QuizAssignment, QuizQuestion, QuizSubmission } from '../types';
+import { QuizAssignment, QuizQuestion, QuizSubmission, QuizAttempt } from '../types';
 
 export const DEFAULT_QUIZ_TEMPLATES: QuizAssignment[] = [
   {
@@ -300,15 +300,15 @@ export const DEFAULT_QUIZ_TEMPLATES: QuizAssignment[] = [
 ];
 
 // Helper to calculate quiz grade & feedback
-export function gradeQuizSubmission(
+export function gradeQuizAttempt(
   quiz: QuizAssignment,
   responses: Record<string, any>,
   studentName: string,
   studentEmail?: string,
   timeSpentSeconds?: number
-): QuizSubmission {
+): QuizAttempt {
   const currentVerId = quiz.currentVersionId || `ver_${quiz.id}_v1`;
-  const submissionResponses = quiz.questions.map((q) => {
+  const attemptResponses = quiz.questions.map((q) => {
     const rawVal = responses[q.id];
     let isCorrect = false;
     let pointsEarned = 0;
@@ -332,7 +332,6 @@ export function gradeQuizSubmission(
       const selectedOptIds = Array.isArray(rawVal) ? rawVal : (typeof rawVal === 'string' ? [rawVal] : []);
       const correctIds = q.correctOptionIds || (q.correctOptionId ? [q.correctOptionId] : []);
       
-      // Exact match for full credit
       const isExact = correctIds.length === selectedOptIds.length && 
         correctIds.every(id => selectedOptIds.includes(id));
       
@@ -399,16 +398,14 @@ export function gradeQuizSubmission(
         explanation: q.explanation
       };
     } else if (q.type === 'paragraph') {
-      // Open-ended essay - marked as submitted, auto-graded score is 0 until teacher manual review or given temporary tentative credit
       const textVal = (typeof rawVal === 'string' ? rawVal : '').trim();
-      const hasContent = textVal.length > 5;
       
       return {
         quizVersionId: currentVerId,
         questionId: q.id,
         textAnswer: textVal,
-        isCorrect: false, // essay is false (pending review) under advanced auto-grading
-        pointsEarned: 0, // auto score is 0; must be teacher reviewed
+        isCorrect: false,
+        pointsEarned: 0,
         instructorFeedback: 'Pending teacher evaluation of essay.',
         explanation: q.explanation
       };
@@ -425,31 +422,28 @@ export function gradeQuizSubmission(
   });
 
   const totalPossible = quiz.totalPoints || quiz.questions.reduce((sum, q) => sum + (Number(q.weight) || 10), 0);
-  const totalScore = submissionResponses.reduce((sum, r) => sum + (r.pointsEarned || 0), 0);
+  const totalScore = attemptResponses.reduce((sum, r) => sum + (r.pointsEarned || 0), 0);
   const percentage = Math.min(100, Math.round((totalScore / (totalPossible || 1)) * 100));
 
   return {
-    id: `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     quizId: quiz.id,
     quizVersionId: currentVerId,
     shareCode: quiz.shareCode || quiz.id,
     quizTitle: quiz.title,
     studentName,
     studentEmail,
-    submittedAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-    responses: submissionResponses,
+    status: 'submitted',
+    startedAt: new Date().toISOString(),
+    submittedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    responses: attemptResponses,
     score: totalScore,
-    totalScore,
     totalPossible,
     maxPoints: totalPossible,
     percentage,
     scorePercentage: percentage,
     timeSpentSeconds,
-    isReleased: quiz.settings?.gradeReleasePolicy !== 'manual',
-    autoScore: totalScore,
-    teacherScore: totalScore,
-    moderatedScore: totalScore,
-    releasedScore: totalScore,
     gradingStatus: 'auto_graded'
   };
 }
@@ -517,4 +511,6 @@ export function scrubQuizForClient(quiz: QuizAssignment): QuizAssignment {
     }))
   };
 }
+
+export const gradeQuizSubmission = gradeQuizAttempt;
 

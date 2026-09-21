@@ -2,6 +2,49 @@ export type TabType = 'home' | 'attendance' | 'students' | 'courses' | 'exams' |
 
 import { UserRole } from './types/rbac';
 export * from './types/rbac';
+import { 
+  QuizAttempt, 
+  QuizResponse, 
+  QuizSubmission,
+  QuizSubmissionResponse,
+  AttemptStatus as QuizAttemptStatus, 
+  GradingStatus as QuizGradingStatus 
+} from './features/assessments/quizzes/types/quiz.types';
+
+export type { 
+  QuizAttempt, 
+  QuizResponse, 
+  QuizSubmission,
+  QuizSubmissionResponse,
+  QuizAttemptStatus, 
+  QuizGradingStatus 
+};
+
+import type {
+  ResourceType,
+  ResourceSource,
+  ResourceStatus,
+  ResourceViewerType,
+  LearningResource,
+  AcademicCourseNode,
+  AcademicModuleNode,
+  AcademicLessonNode,
+  LessonResourceBundle,
+  CurriculumHierarchy
+} from './features/library/types';
+
+export type {
+  ResourceType,
+  ResourceSource,
+  ResourceStatus,
+  ResourceViewerType,
+  LearningResource,
+  AcademicCourseNode,
+  AcademicModuleNode,
+  AcademicLessonNode,
+  LessonResourceBundle,
+  CurriculumHierarchy
+};
 import { AttendanceStatus, AttendanceStatusType } from './types/database';
 export * from './types/database';
 export type { StudentClassNote } from './utils/notesStorage';
@@ -401,46 +444,7 @@ export type QuizStatus =
 
 export type QuizGradeCalculation = 'highest' | 'latest' | 'average' | 'first';
 
-export type QuizAttemptStatus =
-  | 'NOT_STARTED'
-  | 'IN_PROGRESS'
-  | 'SUBMITTING'
-  | 'SUBMITTED'
-  | 'AUTO_SUBMITTED'
-  | 'ABANDONED'
-  | 'GRADED'
-  | 'RELEASED'
-  | 'EXPIRED';
-
-export type QuizAttempt = {
-  id: string;
-  quizId: string;
-  quizVersionId?: string;
-  shareCode?: string;
-  studentId: string;
-  studentName: string;
-  studentEmail?: string;
-  attemptNumber: number;
-  startedAt: string; // ISO String
-  expiresAt?: string; // ISO String - Authoritative Timer
-  submittedAt?: string; // ISO String
-  status: QuizAttemptStatus;
-  lastSavedAt: string; // ISO String
-  responses: QuizSubmissionResponse[];
-  rawResponses?: Record<string, any>;
-  score?: number;
-  maxPoints?: number;
-  scorePercentage?: number;
-  timeSpentSeconds?: number;
-  feedbackGiven?: boolean;
-  instructorFeedback?: string;
-  isReleased?: boolean;
-  gradingStatus?: 'auto_graded' | 'teacher_reviewed' | 'moderated' | 'released';
-  autoScore?: number;
-  teacherScore?: number;
-  manualAdjustmentPoints?: number;
-  manualAdjustmentReason?: string;
-};
+// Consolidated Quiz Types imported from ./features/assessments/quizzes/types/quiz.types
 
 export interface QuizPoolConfig {
   id: string;
@@ -503,62 +507,7 @@ export type QuizAssignment = {
   versionHistory?: { version: number; updatedAt: string; questions: QuizQuestion[]; changeLog?: string }[];
 };
 
-export type QuizSubmissionResponse = {
-  questionId: string;
-  quizVersionId?: string;
-  selectedOptionId?: string;
-  selectedOptionIds?: string[];
-  textAnswer?: string;
-  isCorrect?: boolean;
-  pointsEarned: number;
-  instructorFeedback?: string;
-  comment?: string;
-  manualScoreOverride?: number;
-  evaluatedBy?: string;
-  correctOptionId?: string; // Securely returned post-submission for results center
-  correctOptionIds?: string[]; // Securely returned post-submission for results center
-  acceptableAnswers?: string[]; // Securely returned post-submission for results center
-  explanation?: string; // Theological exegesis explanation returned post-submission
-  rubricEvaluation?: {
-    understanding?: number;
-    biblicalAccuracy?: number;
-    application?: number;
-    structure?: number;
-  };
-};
-
-export type QuizSubmission = {
-  id: string;
-  quizId: string;
-  quizVersionId?: string;
-  shareCode?: string;
-  quizTitle?: string;
-  studentName: string;
-  studentEmail?: string;
-  submittedAt: string;
-  responses: QuizSubmissionResponse[];
-  totalScore?: number;
-  maxPoints?: number;
-  scorePercentage?: number;
-  score: number;
-  totalPossible: number;
-  percentage: number;
-  attemptNumber?: number;
-  timeSpentSeconds?: number;
-  teacherFeedback?: string;
-  instructorFeedback?: string;
-  feedbackGiven?: boolean;
-  isReleased?: boolean;
-  autoScore?: number;
-  teacherScore?: number;
-  moderatedScore?: number;
-  releasedScore?: number;
-  moderationReason?: string;
-  moderatorName?: string;
-  manualAdjustmentPoints?: number;
-  manualAdjustmentReason?: string;
-  gradingStatus?: 'auto_graded' | 'teacher_reviewed' | 'moderated' | 'released';
-};
+// QuizSubmissionResponse and QuizSubmission are deprecated in favor of QuizResponse and QuizAttempt
 
 export type ExamItem = {
   id: string;
@@ -624,6 +573,12 @@ export type LibraryResource = {
   weekNumber?: number;
   completedByStudents?: string[];
   scriptureReferences?: string[];
+  status?: 'draft' | 'published' | 'archived';
+  isPublished?: boolean;
+  lessonId?: string;
+  tags?: string[];
+  thumbnailUrl?: string;
+  accessLevel?: string;
 };
 
 export type CustomAssignment = {
@@ -670,7 +625,8 @@ export type AssignmentSubmission = {
   studentTypedResponse?: string;
   
   // Quiz auto-graded responses
-  quizSubmissionData?: QuizSubmission;
+  quizAttemptId?: string;
+  quizAttempt?: QuizAttempt;
   quizAnswers?: any;
   percentage?: number;
   timeSpentSeconds?: number;

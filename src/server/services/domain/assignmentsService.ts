@@ -235,7 +235,7 @@ export const assignmentsService = {
       }
         
       try {
-         let quizQuery = supabase.from('quiz_submissions').select('*');
+         let quizQuery = supabase.from('quiz_attempts').select('*').in('status', ['submitted', 'graded', 'released']);
          if (filters?.assignmentId) {
            quizQuery = quizQuery.eq('quiz_id', filters.assignmentId);
          }
@@ -245,7 +245,6 @@ export const assignmentsService = {
                const tmpl = Array.isArray(DEFAULT_QUIZ_TEMPLATES)
                  ? DEFAULT_QUIZ_TEMPLATES.find((t: any) => t.id === qs.quiz_id || t.shareCode === qs.quiz_id)
                  : null;
-               const courseCode = qs.course_code || tmpl?.courseCode || 'MIN-101';
                const quizTitle = qs.quiz_title || tmpl?.title || 'Quiz Assessment';
 
                return {
@@ -254,25 +253,25 @@ export const assignmentsService = {
                   quizId: qs.quiz_id,
                   assignmentTitle: quizTitle,
                   quizTitle,
-                  courseCode,
-                  studentId: qs.student_id || qs.student_email || qs.student_name || 'external_user',
+                  studentId: qs.student_id || 'external_user',
                   student: {
                     id: qs.student_id || 'external_user',
                     name: qs.student_name,
                     email: qs.student_email
                   },
                   studentName: qs.student_name,
-                  status: qs.percentage >= 75 ? 'Graded' : 'Submitted',
+                  status: (qs.score_percentage || 0) >= 75 ? 'Graded' : 'Submitted',
                   submittedAt: qs.submitted_at,
                   score: qs.score,
-                  percentage: qs.percentage,
+                  percentage: qs.score_percentage,
                   quizVersionId: qs.quiz_version_id,
-                  maxPoints: qs.total_possible || 100,
-                  maxScore: qs.total_possible || 100,
+                  maxPoints: qs.max_points || 100,
+                  maxScore: qs.max_points || 100,
                   timeSpentSeconds: qs.time_spent_seconds || 0,
                   quizAnswers: qs.responses || {},
-                  studentNotes: `Completed Class Day Quiz (${qs.percentage}% score). Correct tally: ${qs.score}/${qs.total_possible || 100} pts.`,
-                  teacherFeedback: `Automated quiz tally: ${qs.score}/${qs.total_possible || 100} points (${qs.percentage}%). Completed on ${qs.submitted_at}.`
+                  quizAttemptId: qs.id,
+                  studentNotes: `Completed Class Day Quiz (${qs.score_percentage || 0}% score). Correct tally: ${qs.score || 0}/${qs.max_points || 100} pts.`,
+                  teacherFeedback: `Automated quiz tally: ${qs.score || 0}/${qs.max_points || 100} points (${qs.score_percentage || 0}%). Completed on ${qs.submitted_at}.`
                };
             });
             result = [...result, ...formattedQuizSubs];
@@ -1228,7 +1227,7 @@ export const assignmentsService = {
   /**
    * Retrieves active in-progress and submitted attempt records for live teacher monitoring.
    */
-  async getQuizAttempts(shareCodeOrId: string): Promise<any[]> {
+   async getQuizAttempts(shareCodeOrId: string): Promise<any[]> {
     const cleanCode = (shareCodeOrId || '').toLowerCase().trim();
     const attemptsList: any[] = [];
 
@@ -1239,17 +1238,20 @@ export const assignmentsService = {
         att.quiz_id?.toLowerCase() === cleanCode ||
         att.id?.toLowerCase() === cleanCode
       ) {
-        const respCount = Object.keys(att.responses || {}).length;
         attemptsList.push({
           id: att.id,
           studentName: att.student_name,
           studentEmail: att.student_email,
           status: att.status || 'in_progress',
-          answeredCount: respCount,
+          score: att.score,
+          maxPoints: att.max_points,
+          percentage: att.score_percentage,
           startedAt: att.started_at,
+          submittedAt: att.submitted_at,
           lastSaved: att.updated_at,
           responses: att.responses,
-          timeSpentSeconds: att.time_spent_seconds || 0
+          timeSpentSeconds: att.time_spent_seconds || 0,
+          gradingStatus: att.grading_status
         });
       }
     }
@@ -1260,25 +1262,28 @@ export const assignmentsService = {
       const { data } = await supabase
         .from('quiz_attempts')
         .select('*')
-        .or(`share_code.eq.${cleanCode},quiz_id.eq.${cleanCode}`);
+        .or(`share_code.eq.${cleanCode},quiz_id.eq.${cleanCode},id.eq.${cleanCode}`);
       
-      if (Array.isArray(data)) {
-        for (const row of data) {
+      if (data) {
+        data.forEach((row: any) => {
           if (!attemptsList.some(a => a.id === row.id)) {
-            const respCount = Object.keys(row.responses || {}).length;
             attemptsList.push({
               id: row.id,
               studentName: row.student_name,
               studentEmail: row.student_email,
               status: row.status || 'in_progress',
-              answeredCount: respCount,
+              score: row.score,
+              maxPoints: row.max_points,
+              percentage: row.score_percentage,
               startedAt: row.started_at,
+              submittedAt: row.submitted_at,
               lastSaved: row.updated_at,
               responses: row.responses,
-              timeSpentSeconds: row.time_spent_seconds || 0
+              timeSpentSeconds: row.time_spent_seconds || 0,
+              gradingStatus: row.grading_status
             });
           }
-        }
+        });
       }
     } catch {}
 
@@ -1454,10 +1459,11 @@ export const assignmentsService = {
 
     try {
       const { data: existingSubmissions } = await supabase
-        .from('quiz_submissions')
+        .from('quiz_attempts')
         .select('id, submitted_at')
         .eq('quiz_id', quizId)
         .ilike('student_name', cleanStudentName)
+        .eq('status', 'submitted')
         .order('submitted_at', { ascending: false })
         .limit(1);
 
@@ -1516,8 +1522,65 @@ export const assignmentsService = {
     const passingThreshold = Number(finalQuiz.settings?.passingScorePercentage) || 75;
     const isPassed = percentage >= passingThreshold;
 
-    const submissionObj = {
-      id: submissionId,
+    // 4. Atomic Database Updates
+    try {
+      let studentId = payload.studentId || attempt?.student_id || null;
+      if (!studentId && (payload.studentEmail || attempt?.student_email)) {
+        const { data: std } = await supabase.from('students').select('id').ilike('email', payload.studentEmail || attempt?.student_email).maybeSingle();
+        if (std?.id) studentId = std.id;
+      }
+
+      // Authoritative Attempt Status Update
+      const attemptUpdate = {
+        status: 'submitted',
+        submitted_at: timestamp,
+        updated_at: timestamp,
+        responses: responsesPayload,
+        score: earnedScore,
+        max_points: totalPossible,
+        score_percentage: percentage,
+        time_spent_seconds: payload.timeSpentSeconds || attempt?.time_spent_seconds || 0,
+        grading_status: 'auto_graded'
+      };
+
+      if (attemptId) {
+        await supabase.from('quiz_attempts').update(attemptUpdate).eq('id', attemptId);
+        
+        if (inMemoryQuizAttempts.has(attemptId)) {
+          const m = inMemoryQuizAttempts.get(attemptId);
+          Object.assign(m, attemptUpdate);
+          inMemoryQuizAttempts.set(attemptId, m);
+        }
+      } else {
+        // Fallback for direct submission without pre-created attempt
+        const fallbackAttemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        await supabase.from('quiz_attempts').insert([{
+          id: fallbackAttemptId,
+          quiz_id: quizId,
+          quiz_version_id: finalQuiz.currentVersionId,
+          student_name: cleanStudentName,
+          student_email: payload.studentEmail || '',
+          student_id: studentId,
+          started_at: timestamp,
+          ...attemptUpdate
+        }]);
+      }
+
+    } catch (dbErr) {
+      logger.warn('Authoritative quiz attempt DB update notice:', dbErr);
+    }
+
+    await logAuditEvent({
+      actorUserId: 'system',
+      entityType: 'quiz_attempt',
+      entityId: attemptId || 'direct_submission',
+      action: 'submit',
+      newValues: { studentName: cleanStudentName, score: earnedScore, attemptId },
+      reason: `Quiz '${quizTitle}' attempt submitted by '${cleanStudentName}'. Score: ${earnedScore}/${totalPossible} (${percentage}%)`,
+    });
+
+    return {
+      id: attemptId || submissionId,
       quizId,
       quizTitle,
       studentName: cleanStudentName,
@@ -1530,68 +1593,6 @@ export const assignmentsService = {
       submittedAt: timestamp,
       timeSpentSeconds: payload.timeSpentSeconds || attempt?.time_spent_seconds || 0,
     };
-
-    // 4. Atomic Database Updates
-    try {
-      let studentId = payload.studentId || attempt?.student_id || null;
-      // Re-resolve student ID if missing
-      if (!studentId && (payload.studentEmail || attempt?.student_email)) {
-        const { data: std } = await supabase.from('students').select('id').ilike('email', payload.studentEmail || attempt?.student_email).maybeSingle();
-        if (std?.id) studentId = std.id;
-      }
-
-      // Authoritative Attempt Status Update
-      if (attemptId) {
-        await supabase.from('quiz_attempts').update({
-          status: 'submitted',
-          submitted_at: timestamp,
-          updated_at: timestamp,
-          responses: responsesPayload,
-          score: earnedScore,
-          max_points: totalPossible,
-          score_percentage: percentage,
-          time_spent_seconds: submissionObj.timeSpentSeconds
-        }).eq('id', attemptId);
-        
-        if (inMemoryQuizAttempts.has(attemptId)) {
-          const m = inMemoryQuizAttempts.get(attemptId);
-          m.status = 'submitted';
-          m.responses = responsesPayload;
-          m.score = earnedScore;
-          inMemoryQuizAttempts.set(attemptId, m);
-        }
-      }
-
-      // Duplicate-safe submission entry
-      await supabase.from('quiz_submissions').upsert({
-        id: submissionId,
-        quiz_id: quizId,
-        quiz_version_id: attempt?.quiz_version_id || finalQuiz.currentVersionId,
-        quiz_title: quizTitle,
-        student_name: cleanStudentName,
-        student_id: studentId,
-        score: earnedScore,
-        total_possible: totalPossible,
-        percentage,
-        responses: responsesPayload,
-        submitted_at: timestamp,
-        updated_at: timestamp,
-      });
-
-    } catch (dbErr) {
-      logger.warn('Authoritative quiz submission DB update notice:', dbErr);
-    }
-
-    await logAuditEvent({
-      actorUserId: 'system',
-      entityType: 'quiz_submission',
-      entityId: submissionId,
-      action: 'submit',
-      newValues: { studentName: cleanStudentName, score: earnedScore, attemptId },
-      reason: `Quiz '${quizTitle}' submitted by '${cleanStudentName}'. Score: ${earnedScore}/${totalPossible} (${percentage}%)`,
-    });
-
-    return submissionObj;
   },
 
   /**

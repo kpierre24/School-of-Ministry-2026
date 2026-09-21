@@ -199,7 +199,7 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
   const isDocx = formatUpper === 'DOCX' || formatUpper === 'DOC' || fileNameLower.endsWith('.docx') || fileNameLower.endsWith('.doc') || (resource?.mimeType || '').includes('wordprocessingml') || (resource?.mimeType || '').includes('msword');
   const isAudio = formatUpper === 'AUDIO' || formatUpper === 'MP3' || formatUpper === 'WAV' || formatUpper === 'M4A' || fileNameLower.endsWith('.mp3') || fileNameLower.endsWith('.wav') || fileNameLower.endsWith('.m4a') || resource?.category === 'Lecture Audio';
   const videoDetails = parseVideoMediaUrl(resource?.downloadUrl || resource?.fileDataUrl || '');
-  const isVideo = formatUpper === 'VIDEO' || resource?.category === 'Livestream Recording' || videoDetails.isDrive || videoDetails.isYouTube;
+  const isVideo = formatUpper === 'VIDEO' || resource?.category === 'Livestream Recording' || videoDetails.isDrive || videoDetails.isYouTube || videoDetails.isVimeo || videoDetails.isLoom;
 
   // Load PDF Data and Extract Text
   useEffect(() => {
@@ -1045,23 +1045,32 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
               ) : isVideo ? (
                 /* VIDEO VIEWER */
                 <div className="space-y-4">
-                  {videoDetails.isDrive ? (
+                  {videoDetails.embedUrl && (videoDetails.isYouTube || videoDetails.isVimeo || videoDetails.isLoom || videoDetails.isDrive) ? (
                     <div className="space-y-3">
-                      <div className="p-8 bg-slate-950 text-white rounded-xl border border-slate-800 text-center space-y-4">
-                        <Play className="w-12 h-12 mx-auto text-rose-500" />
-                        <h3 className="text-base font-bold">{resource.title}</h3>
-                        <p className="text-xs text-slate-400 max-w-md mx-auto">
-                          Google Drive video stream for {resource.courseCode}. Click below to stream directly on Google Drive in high definition.
-                        </p>
-                        <div className="pt-2 flex justify-center gap-3">
-                          <a
-                            href={resource.downloadUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2 transition-all"
-                          >
-                            <ExternalLink className="w-4 h-4" /> Watch on Google Drive
-                          </a>
+                      <div className="w-full h-[65vh] rounded-xl bg-slate-950 overflow-hidden shadow-xl border border-slate-800 relative">
+                        <iframe
+                          src={videoDetails.embedUrl}
+                          className="w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          title={resource.title || 'Video Player'}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex-wrap gap-2">
+                        <span className="font-semibold text-slate-300">
+                          Platform: <strong className="text-white capitalize">{videoDetails.type}</strong> {videoDetails.fileId ? `(ID: ${videoDetails.fileId})` : ''}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          {videoDetails.directWatchUrl && (
+                            <a
+                              href={videoDetails.directWatchUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1.5 transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" /> Watch on {videoDetails.isYouTube ? 'YouTube' : videoDetails.isVimeo ? 'Vimeo' : videoDetails.isDrive ? 'Google Drive' : 'Original Site'}
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>
