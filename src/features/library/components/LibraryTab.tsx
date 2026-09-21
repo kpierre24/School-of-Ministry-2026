@@ -38,13 +38,15 @@ import {
   Check,
   Edit3,
   Globe,
+  GraduationCap,
   RefreshCw,
   CheckSquare,
   Square,
   Star,
   Award,
   Flame,
-  Layers
+  Layers,
+  Folder
 } from 'lucide-react';
 import { EmptyState } from '../../../components/UXPrimitives';
 import { Modal } from '../../../components/Modal';
@@ -60,7 +62,14 @@ import { createNoteFromLibraryExcerpt } from '../../../utils/notesStorage';
 import { CurriculumHierarchyView } from './CurriculumHierarchyView';
 import { AddResourceModal } from './AddResourceModal';
 import { buildAcademicHierarchy } from '../services/curriculumHierarchyService';
-import { toLegacyResource } from '../model';
+import { toLegacyResource, toLearningResource } from '../model';
+import { LibraryHomepage } from './LibraryHomepage';
+import { MyLibraryView } from './MyLibraryView';
+import { TeacherResourceManager } from './TeacherResourceManager';
+import { ResourceViewer } from './viewers/ResourceViewer';
+import { ResourceCollectionsView } from './ResourceCollectionsView';
+import { ResourceShareModal } from './ResourceShareModal';
+import { MyLibrarySection, LearningResource, ResourceCollection } from '../types';
 
 export const CURRICULUM_MODULES = [
   { code: 'SOM-MOD-1', title: 'Mod 1: Intro', fullName: 'Module 1: Introduction & Foundations' },
@@ -289,8 +298,132 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
 }) => {
   const isStudent = userRole === 'student';
 
-  // View Mode: Academic Curriculum Relationships (Course -> Module -> Lesson) vs Flat Catalog
-  const [libraryViewMode, setLibraryViewMode] = useState<'curriculum' | 'catalog'>('curriculum');
+  // View Mode: Homepage vs My Library vs Academic Curriculum vs Flat Catalog vs Collections vs Teacher Manager
+  const [libraryViewMode, setLibraryViewMode] = useState<'homepage' | 'my_library' | 'curriculum' | 'catalog' | 'collections' | 'teacher_manager'>('homepage');
+  const [myLibrarySection, setMyLibrarySection] = useState<MyLibrarySection>('favorites');
+  const [universalViewerResource, setUniversalViewerResource] = useState<any | null>(null);
+  const [shareModalResource, setShareModalResource] = useState<LearningResource | null>(null);
+
+  // Collections State (Phase 25)
+  const [collections, setCollections] = useState<ResourceCollection[]>(() => {
+    const saved = localStorage.getItem('hteim_library_collections');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      {
+        id: "col-orientation",
+        title: "New Student Orientation",
+        description: "Essential introduction materials, student handbook, and academic guidance for HTEIM School of Ministry.",
+        category: "Orientation",
+        resourceIds: ["res_som_mod1_video", "res_som_mod3_textbook"],
+        createdBy: "HTEIM Faculty",
+        createdAt: "2026-01-10T00:00:00.000Z",
+        updatedAt: "2026-01-10T00:00:00.000Z",
+        isPublic: true,
+        tags: ["#Orientation", "#Handbook"],
+        iconName: "Compass"
+      },
+      {
+        id: "col-foundations",
+        title: "Biblical Foundations",
+        description: "Core theological foundational texts, Hermeneutics study guides, and Old/New Testament surveys.",
+        category: "Theology",
+        resourceIds: ["res_som_mod1_video"],
+        createdBy: "Academic Dean",
+        createdAt: "2026-01-15T00:00:00.000Z",
+        updatedAt: "2026-01-15T00:00:00.000Z",
+        isPublic: true,
+        tags: ["#BibleStudy", "#Theology"],
+        iconName: "BookOpen"
+      },
+      {
+        id: "col-prayer",
+        title: "Prayer Resources",
+        description: "Comprehensive guides on intercessory prayer, spiritual warfare, and personal prayer devotional outlines.",
+        category: "Spiritual Formation",
+        resourceIds: ["res_som_mod5_video"],
+        createdBy: "Prayer Ministry Dept",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        updatedAt: "2026-02-01T00:00:00.000Z",
+        isPublic: true,
+        tags: ["#Prayer", "#SpiritualWarfare"],
+        iconName: "Flame"
+      },
+      {
+        id: "col-leadership",
+        title: "Leadership Training",
+        description: "Apostolic and pastoral ministry leadership principles, ethical decision making, and team dynamics.",
+        category: "Leadership",
+        resourceIds: ["res_som_mod4_video", "res_som_mod3_textbook"],
+        createdBy: "HTEIM Faculty",
+        createdAt: "2026-02-10T00:00:00.000Z",
+        updatedAt: "2026-02-10T00:00:00.000Z",
+        isPublic: true,
+        tags: ["#Leadership", "#PastoralMinistry"],
+        iconName: "Shield"
+      },
+      {
+        id: "col-evangelism",
+        title: "Evangelism Resources",
+        description: "Outreach training manuals, personal testimony templates, and global mission field handbooks.",
+        category: "Missions & Outreach",
+        resourceIds: ["res_som_mod2_video"],
+        createdBy: "Missions Director",
+        createdAt: "2026-02-15T00:00:00.000Z",
+        updatedAt: "2026-02-15T00:00:00.000Z",
+        isPublic: true,
+        tags: ["#Evangelism", "#Missions"],
+        iconName: "Globe"
+      },
+      {
+        id: "col-som-2026",
+        title: "School of Ministry 2026",
+        description: "Master academic collection containing required course textbooks, syllabus notes, and lecture media for 2026.",
+        category: "Academic Curriculum",
+        resourceIds: ["res_som_mod4_video", "res_som_mod5_video", "res_som_mod1_video", "res_som_mod2_video", "res_som_mod3_textbook", "res_som_mod6_studyguide"],
+        createdBy: "Academic Registrar",
+        createdAt: "2026-03-01T00:00:00.000Z",
+        updatedAt: "2026-03-01T00:00:00.000Z",
+        isPublic: true,
+        tags: ["#HTEIM2026", "#Curriculum"],
+        iconName: "GraduationCap"
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hteim_library_collections', JSON.stringify(collections));
+  }, [collections]);
+
+  const handleCreateCollection = (newColData: Partial<ResourceCollection>) => {
+    const newCol: ResourceCollection = {
+      id: `col-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: newColData.title || 'Untitled Collection',
+      description: newColData.description || '',
+      category: newColData.category || 'General',
+      resourceIds: newColData.resourceIds || [],
+      createdBy: studentName || 'HTEIM Faculty',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isPublic: true,
+      tags: newColData.tags || [],
+      iconName: 'Folder',
+    };
+    setCollections(prev => [newCol, ...prev]);
+  };
+
+  const handleUpdateCollection = (id: string, updates: Partial<ResourceCollection>) => {
+    setCollections(prev =>
+      prev.map(c => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c))
+    );
+  };
+
+  const handleDeleteCollection = (id: string) => {
+    setCollections(prev => prev.filter(c => c.id !== id));
+  };
 
   const [localResources, setLocalResources] = useState<LibraryResource[]>(() => {
     const saved = localStorage.getItem('hteim_library_resources');
@@ -1073,6 +1206,43 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
     setGdriveSummary('');
   };
 
+  const handleTeacherUpdateResource = (updated: LearningResource) => {
+    const legacy = toLegacyResource(updated);
+    setResources(prev => {
+      const exists = prev.some(r => r.id === legacy.id);
+      const next = exists ? prev.map(r => r.id === legacy.id ? legacy : r) : [legacy, ...prev];
+      localStorage.setItem('hteim_library_resources', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleTeacherDeleteResource = (resourceId: string) => {
+    setResources(prev => {
+      const next = prev.filter(r => r.id !== resourceId);
+      localStorage.setItem('hteim_library_resources', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleTeacherDuplicateResource = (resource: LearningResource) => {
+    const newId = `res-dup-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const duplicated: LearningResource = {
+      ...resource,
+      id: newId,
+      title: `${resource.title} (Copy)`,
+      status: 'draft',
+      isPublished: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const legacy = toLegacyResource(duplicated);
+    setResources(prev => {
+      const next = [legacy, ...prev];
+      localStorage.setItem('hteim_library_resources', JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
     <div className="material-screen space-y-6 animate-fadeIn pb-28 sm:pb-24 md:pb-8">
       {/* AI Summary Feedback Toast Banner */}
@@ -1191,25 +1361,64 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
         </div>
       </div>
 
-      {/* View Mode Switcher: Academic Curriculum View (Course → Module → Lesson) vs Resource Catalog */}
+      {/* View Mode Switcher: Library Home vs My Library vs Academic Curriculum vs Resource Catalog vs Teacher Manager */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setLibraryViewMode('homepage')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap ${
+              libraryViewMode === 'homepage'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>LIBRARY Home</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMyLibrarySection('favorites');
+              setLibraryViewMode('my_library');
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap ${
+              libraryViewMode === 'my_library'
+                ? 'bg-rose-500 text-white font-black shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Star className="w-4 h-4" />
+            <span>My Library (Saved & History)</span>
+          </button>
           <button
             type="button"
             onClick={() => setLibraryViewMode('curriculum')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap ${
               libraryViewMode === 'curriculum'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Academic Curriculum (Course → Module → Lesson)</span>
+            <span>Academic Curriculum</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLibraryViewMode('collections')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap ${
+              libraryViewMode === 'collections'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Folder className="w-4 h-4 text-blue-400" />
+            <span>Collections ({collections.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setLibraryViewMode('catalog')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap ${
               libraryViewMode === 'catalog'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -1218,25 +1427,102 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
             <Layers className="w-4 h-4" />
             <span>All Resources Catalog ({resources.length})</span>
           </button>
+          {!isStudent && (
+            <button
+              type="button"
+              onClick={() => setLibraryViewMode('teacher_manager')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap ${
+                libraryViewMode === 'teacher_manager'
+                  ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Teacher Manager</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 px-2 text-2xs text-slate-500 dark:text-slate-400">
           <span className="font-semibold">
-            {libraryViewMode === 'curriculum' ? 'Structured Academic Content' : 'Flat File & Media Library'}
+            {libraryViewMode === 'homepage'
+              ? 'Homepage & Full-Text Search'
+              : libraryViewMode === 'my_library'
+              ? 'Favorites, History & Downloads'
+              : libraryViewMode === 'curriculum'
+              ? 'Structured Academic Content'
+              : libraryViewMode === 'teacher_manager'
+              ? 'Faculty Resource Management'
+              : 'Flat File & Media Library'}
           </span>
         </div>
       </div>
 
-      {libraryViewMode === 'curriculum' ? (
+      {libraryViewMode === 'homepage' ? (
+        <LibraryHomepage
+          resources={resources}
+          onSelectResource={(selectedRes) => {
+            setUniversalViewerResource(selectedRes);
+          }}
+          onOpenAddResource={() => {
+            setAddResourcePlacement(undefined);
+            setShowUploadModal(true);
+          }}
+          onOpenMyLibrary={(section) => {
+            if (section) setMyLibrarySection(section);
+            setLibraryViewMode('my_library');
+          }}
+          onSelectCourse={(courseCode, courseTitle) => {
+            setLibraryViewMode('curriculum');
+          }}
+          userRole={userRole}
+        />
+      ) : libraryViewMode === 'my_library' ? (
+        <MyLibraryView
+          resources={resources.map((r: any) => toLearningResource(r))}
+          initialSection={myLibrarySection}
+          onSelectResource={(learningRes) => {
+            setUniversalViewerResource(learningRes);
+          }}
+          onNavigateToCatalog={() => setLibraryViewMode('homepage')}
+        />
+      ) : libraryViewMode === 'teacher_manager' ? (
+        <TeacherResourceManager
+          resources={resources.map((r: any) => toLearningResource(r))}
+          onAddResource={() => {
+            setAddResourcePlacement(undefined);
+            setShowUploadModal(true);
+          }}
+          onSelectResource={(learningRes) => {
+            setUniversalViewerResource(learningRes);
+          }}
+          onUpdateResource={handleTeacherUpdateResource}
+          onDeleteResource={handleTeacherDeleteResource}
+          onDuplicateResource={handleTeacherDuplicateResource}
+          userRole={userRole}
+          userName={studentName}
+        />
+      ) : libraryViewMode === 'collections' ? (
+        <ResourceCollectionsView
+          collections={collections}
+          resources={resources.map((r: any) => toLearningResource(r))}
+          isTeacherOrAdmin={!isStudent}
+          onSelectCollection={(col) => {}}
+          onCreateCollection={handleCreateCollection}
+          onUpdateCollection={handleUpdateCollection}
+          onDeleteCollection={handleDeleteCollection}
+          onOpenResource={(learningRes) => {
+            setUniversalViewerResource(learningRes);
+          }}
+        />
+      ) : libraryViewMode === 'curriculum' ? (
         <CurriculumHierarchyView
           courses={academicCourses}
           onOpenReader={(learningRes) => {
-            const legacy = toLegacyResource(learningRes);
-            setPreviewResource(legacy);
+            setUniversalViewerResource(learningRes);
           }}
           onPlayVideo={(learningRes) => {
-            const legacy = toLegacyResource(learningRes);
-            setPreviewResource(legacy);
+            setUniversalViewerResource(learningRes);
           }}
           onDownloadResource={(learningRes, e) => {
             const legacy = toLegacyResource(learningRes);
@@ -2493,6 +2779,71 @@ ${resource.fullContent || 'Full lesson document content loaded for student refer
           </Modal>
         );
       })()}
+
+      {/* ========================================================= */}
+      {/* UNIVERSAL RESOURCE VIEWER MODAL (Phases 7–12) */}
+      {/* ========================================================= */}
+      {universalViewerResource && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-5xl max-h-[92vh] flex flex-col bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header bar */}
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800">
+              <div className="flex items-center gap-2 truncate pr-4">
+                <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs sm:text-sm font-bold text-white truncate">
+                  {universalViewerResource.title}
+                </span>
+                <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                  {universalViewerResource.format || universalViewerResource.type || 'RESOURCE'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUniversalViewerResource(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+                aria-label="Close Viewer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Viewer Body */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-950/60">
+              <ResourceViewer
+                resource={universalViewerResource}
+                onComplete={() => {
+                  if (universalViewerResource?.id) {
+                    handleToggleComplete(universalViewerResource.id);
+                  }
+                }}
+                onSave={() => {
+                  // saved
+                }}
+                onDownload={(res) => {
+                  const legacy = toLegacyResource(res as any);
+                  handleDownload(legacy);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resource Share Modal (Phase 24) */}
+      <ResourceShareModal
+        resource={shareModalResource}
+        isOpen={!!shareModalResource}
+        onClose={() => setShareModalResource(null)}
+        onShareToCourse={(resId, courseId) => {
+          logger.info(`Shared resource ${resId} to course ${courseId}`);
+        }}
+        onShareToModule={(resId, moduleId) => {
+          logger.info(`Shared resource ${resId} to module ${moduleId}`);
+        }}
+        onShareWithStudents={(resId, note) => {
+          logger.info(`Shared resource ${resId} with students with note: ${note}`);
+        }}
+      />
 
     </div>
   );

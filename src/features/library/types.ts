@@ -22,6 +22,15 @@ export type ResourceStatus =
   | 'published'
   | 'archived';
 
+export type ResourceVisibility =
+  | 'public'
+  | 'authenticated'
+  | 'students'
+  | 'teachers'
+  | 'course'
+  | 'module'
+  | 'restricted';
+
 export type ResourceAccessLevel =
   | 'everyone'
   | 'students'
@@ -62,9 +71,14 @@ export interface LearningResource {
   uploadedBy: string;
 
   status: ResourceStatus;
+  visibility?: ResourceVisibility;
   accessLevel?: ResourceAccessLevel;
   accessCourseId?: string;
   accessModuleId?: string;
+  allowedRoles?: string[];
+  allowedUserIds?: string[];
+  allowedCourseIds?: string[];
+  allowedModuleIds?: string[];
 
   isDownloadable: boolean;
   isPublished: boolean;
@@ -196,3 +210,110 @@ export interface Book extends BaseLibraryResource {
 }
 
 export type LibraryResource = Book;
+
+/**
+ * Phase 15: Advanced Filter Dimensions
+ */
+export type ResourceTypeFilter = 'all' | 'videos' | 'pdfs' | 'documents' | 'audio' | 'links' | 'images';
+export type DateAddedFilter = 'all' | 'week' | 'month' | 'three_months' | 'year';
+
+export interface ResourceFilterState {
+  query: string;
+  type: ResourceTypeFilter;
+  course: string;
+  module: string;
+  category: string;
+  instructor: string;
+  dateAdded: DateAddedFilter;
+  tags: string[];
+  isFavoriteOnly?: boolean;
+  isCompletedOnly?: boolean;
+  isInProgressOnly?: boolean;
+}
+
+export const INITIAL_RESOURCE_FILTERS: ResourceFilterState = {
+  query: '',
+  type: 'all',
+  course: 'all',
+  module: 'all',
+  category: 'all',
+  instructor: 'all',
+  dateAdded: 'all',
+  tags: []
+};
+
+/**
+ * Phase 16: Canonical Theological Tags
+ */
+export const POPULAR_THEOLOGICAL_TAGS = [
+  '#Prayer',
+  '#Leadership',
+  '#Faith',
+  '#HolySpirit',
+  '#Evangelism',
+  '#BibleStudy',
+  '#Theology',
+  '#Discernment',
+  '#Apostolic',
+  '#Worship',
+  '#PastoralMinistry',
+  '#Hermeneutics',
+  '#Ethics'
+] as const;
+
+/**
+ * Phase 17: "My Library" Navigation Sections
+ */
+export type MyLibrarySection = 'favorites' | 'recent' | 'continue_learning' | 'downloads';
+
+/**
+ * Phase 18: Authoritative Resource Progress Model
+ */
+export interface ResourceProgress {
+  id: string;
+  studentId: string;
+  resourceId: string;
+  lastPositionSeconds: number;
+  durationSeconds: number;
+  lastPage?: number;
+  totalPages?: number;
+  percentage: number;
+  completed: boolean;
+  lastViewedAt: string;
+  completedAt?: string;
+  resourceType?: ResourceType;
+  resourceTitle?: string;
+  courseId?: string;
+  instructor?: string;
+  notesCount?: number;
+}
+
+/**
+ * Phase 19: Resource Completion Validation Rules
+ */
+export interface CompletionRuleResult {
+  completed: boolean;
+  percentage: number;
+  reason: string;
+  qualifiesForGraduation: boolean;
+}
+
+/**
+ * Phase 25: Resource Collections Model
+ */
+export interface ResourceCollection {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  coverImageUrl?: string;
+  resourceIds: string[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  isPublic?: boolean;
+  courseId?: string;
+  moduleId?: string;
+  tags?: string[];
+  iconName?: string;
+}

@@ -11,6 +11,9 @@ export interface ViewerBaseProps {
   studentId?: string;
   initialPage?: number;
   className?: string;
+  onComplete?: (completed: boolean) => void;
+  onSave?: (saved: boolean) => void;
+  onDownload?: (resource: AnyResource) => void;
   onProgressUpdate?: (progress: {
     currentPage?: number;
     totalPages?: number;

@@ -546,6 +546,15 @@ export type ResourceVersion = {
   downloadUrl?: string;
 };
 
+export type ResourceVisibility =
+  | 'public'
+  | 'authenticated'
+  | 'students'
+  | 'teachers'
+  | 'course'
+  | 'module'
+  | 'restricted';
+
 export type LibraryResource = {
   id: string;
   title: string;
@@ -579,6 +588,11 @@ export type LibraryResource = {
   tags?: string[];
   thumbnailUrl?: string;
   accessLevel?: string;
+  visibility?: ResourceVisibility;
+  allowedRoles?: string[];
+  allowedUserIds?: string[];
+  allowedCourseIds?: string[];
+  allowedModuleIds?: string[];
 };
 
 export type CustomAssignment = {
