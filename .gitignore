@@ -7,6 +7,8 @@ coverage/
 firebase-applet-config.json
 dev-dist/
 School-of-Ministry-2026-azure/
+.copilot-azure/
+test-results*.json
 *.tmp
 *.bak
 
